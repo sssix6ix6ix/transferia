@@ -13,7 +13,11 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-const DefaultAuth = "admin"
+const (
+	DefaultAuth = "admin"
+
+	defaultBufferSize = 100 * 1024 * 1024
+)
 
 type KafkaSource struct {
 	Connection  *KafkaConnectionOptions     `log:"true"`
@@ -94,7 +98,7 @@ func (s *KafkaSource) WithDefaults() {
 		s.Transformer = nil
 	}
 	if s.BufferSize == 0 {
-		s.BufferSize = 100 * 1024 * 1024
+		s.BufferSize = defaultBufferSize
 	}
 }
 
@@ -184,4 +188,11 @@ func (s *KafkaSource) Topics() []string {
 	}
 
 	return topics
+}
+
+func (s *KafkaSource) BufferSizeOrDefault() model.BytesSize {
+	if s.BufferSize == 0 {
+		return defaultBufferSize
+	}
+	return s.BufferSize
 }

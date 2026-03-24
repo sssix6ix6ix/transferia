@@ -18,6 +18,7 @@ import (
 	"github.com/transferia/transferia/pkg/stats"
 	"github.com/transferia/transferia/pkg/util"
 	"github.com/transferia/transferia/pkg/util/queues/sequencer"
+	"github.com/transferia/transferia/pkg/util/throttler"
 	"github.com/twmb/franz-go/pkg/kgo"
 	"go.ytsaurus.tech/library/go/core/log"
 )
@@ -32,24 +33,19 @@ type messageReader interface {
 	Close() error
 }
 
-type listableReader interface {
-	ListPartitions(ctx context.Context, topic string) ([]int32, error)
-}
-
 type Source struct {
-	config        *KafkaSource
-	metrics       *stats.SourceStats
-	logger        log.Logger
-	reader        messageReader
-	cancel        context.CancelFunc
-	ctx           context.Context
-	once          sync.Once
-	executor      *functions.Executor
-	errCh         chan error
-	parser        parsers.Parser
-	inflightMutex sync.Mutex
-	inflightBytes int
-	sequencer     *sequencer.Sequencer
+	config            *KafkaSource
+	metrics           *stats.SourceStats
+	logger            log.Logger
+	reader            messageReader
+	cancel            context.CancelFunc
+	ctx               context.Context
+	once              sync.Once
+	executor          *functions.Executor
+	errCh             chan error
+	parser            parsers.Parser
+	inflightThrottler throttler.Throttler
+	sequencer         *sequencer.Sequencer
 
 	pmx               sync.Mutex
 	partitionReleased bool // becomes true, when consumer loses partitions
@@ -81,7 +77,7 @@ func (p *Source) waitLimits() {
 	nextLogDuration := backoffTimer.NextBackOff()
 	logTime := time.Now()
 
-	for !p.inLimits() {
+	for p.inflightThrottler.ExceededLimits() {
 		time.Sleep(time.Millisecond * 10)
 		if p.ctx.Err() != nil {
 			p.logger.Warn("context aborted, stop wait for limits")
@@ -93,27 +89,21 @@ func (p *Source) waitLimits() {
 			p.logger.Warnf(
 				"reader throttled for %v, limits: %v / %v",
 				backoffTimer.GetElapsedTime(),
-				format.SizeInt(p.inflightBytes),
-				format.SizeInt(int(p.config.BufferSize)),
+				format.SizeUInt64(p.inflightThrottler.InflightBytes()),
+				format.SizeInt(int(p.config.BufferSizeOrDefault())),
 			)
 		}
 	}
 }
 
 func (p *Source) Run(sink abstract.AsyncSink) error {
-	parseWrapper := func(buffer []kgo.Record) []abstract.ChangeItem {
-		if len(buffer) == 0 {
-			return []abstract.ChangeItem{abstract.MakeSynchronizeEvent()}
-		}
-		return p.parse(buffer)
-	}
-	parseQ := parsequeue.NewWaitable(p.logger, p.config.ParseQueueParallelism, sink, parseWrapper, p.ack)
+	parseQ := parsequeue.NewWaitable(p.logger, p.config.ParseQueueParallelism, sink, p.parseWithSynchronizeEvent, p.ack)
 	defer parseQ.Close()
 
 	return p.run(parseQ)
 }
 
-func (p *Source) run(parseQ *parsequeue.WaitableParseQueue[[]kgo.Record]) error {
+func (p *Source) run(parseQ parsequeue.WaitableQueue[[]kgo.Record]) error {
 	defer func() {
 		p.metrics.Master.Set(0)
 		p.Stop()
@@ -154,7 +144,7 @@ func (p *Source) run(parseQ *parsequeue.WaitableParseQueue[[]kgo.Record]) error 
 
 		backoffTimer.Reset()
 		if len(m.Value) != 0 {
-			p.addInflight(len(m.Value))
+			p.inflightThrottler.AddInflight(uint64(len(m.Value)))
 			p.logger.Debugf("read message: %v:%v:%v", m.Topic, m.Partition, m.Offset)
 			buffer = append(buffer, m)
 			bufferSizeDelta := len(m.Value)
@@ -168,7 +158,7 @@ func (p *Source) run(parseQ *parsequeue.WaitableParseQueue[[]kgo.Record]) error 
 				continue
 			}
 		} else {
-			if time.Since(lastPush) < time.Second && p.inLimits() {
+			if time.Since(lastPush) < time.Second && !p.inflightThrottler.ExceededLimits() {
 				continue
 			}
 		}
@@ -202,52 +192,6 @@ func (p *Source) Stop() {
 			p.logger.Warn("unable to close reader", log.Error(err))
 		}
 	})
-}
-
-func (p *Source) ListPartitions() ([]abstract.Partition, error) {
-	listable, ok := p.reader.(listableReader)
-	if !ok {
-		return nil, xerrors.New("reader is not listable")
-	}
-
-	ctx, cancel := context.WithTimeout(p.ctx, time.Second*10)
-	defer cancel()
-
-	topics := p.config.Topics()
-	partitions := make([]abstract.Partition, 0)
-	for _, topic := range topics {
-		partitionNums, err := listable.ListPartitions(ctx, topic)
-		if err != nil {
-			return nil, xerrors.Errorf("unable to list partitions: %w", err)
-		}
-
-		for _, partition := range partitionNums {
-			partitions = append(partitions, abstract.Partition{
-				Partition: uint32(partition),
-				Topic:     topic,
-			})
-		}
-	}
-
-	return partitions, nil
-}
-
-func (p *Source) inLimits() bool {
-	p.inflightMutex.Lock()
-	defer p.inflightMutex.Unlock()
-	return p.config.BufferSize == 0 || int(p.config.BufferSize) > p.inflightBytes
-}
-
-func (p *Source) addInflight(size int) {
-	p.inflightMutex.Lock()
-	defer p.inflightMutex.Unlock()
-	p.inflightBytes += size
-}
-
-func (p *Source) reduceInflight(size int) {
-	p.inflightMutex.Lock()
-	defer p.inflightMutex.Unlock()
-	p.inflightBytes = p.inflightBytes - size
 }
 
 func (p *Source) Fetch() ([]abstract.ChangeItem, error) {
@@ -302,7 +246,7 @@ func (p *Source) ack(data []kgo.Record, pushSt time.Time, err error) {
 	for _, msg := range data {
 		totalSize += len(msg.Value)
 	}
-	defer p.reduceInflight(totalSize)
+	defer p.inflightThrottler.ReduceInflight(uint64(totalSize))
 	if err != nil {
 		util.Send(p.ctx, p.errCh, err)
 		return
@@ -322,6 +266,13 @@ func (p *Source) ack(data []kgo.Record, pushSt time.Time, err error) {
 		log.String("committed", sequencer.BuildPartitionOffsetLogLine(commitMessages)),
 	)
 	p.metrics.PushTime.RecordDuration(time.Since(pushSt))
+}
+
+func (p *Source) parseWithSynchronizeEvent(buffer []kgo.Record) []abstract.ChangeItem {
+	if len(buffer) == 0 {
+		return []abstract.ChangeItem{abstract.MakeSynchronizeEvent()}
+	}
+	return p.parse(buffer)
 }
 
 func (p *Source) parse(buffer []kgo.Record) []abstract.ChangeItem {
@@ -413,7 +364,7 @@ func (p *Source) changeItemAsMessage(ci abstract.ChangeItem) (parsers.Message, a
 		}
 }
 
-func (p *Source) sendSynchronizeEventIfNeeded(parseQ *parsequeue.WaitableParseQueue[[]kgo.Record]) error {
+func (p *Source) sendSynchronizeEventIfNeeded(parseQ parsequeue.WaitableQueue[[]kgo.Record]) error {
 	if p.config.SynchronizeIsNeeded {
 		p.logger.Info("Sending synchronize event")
 		if err := parseQ.Add([]kgo.Record{}); err != nil {
@@ -446,7 +397,8 @@ func recordsFromQueueMessages(messages []sequencer.QueueMessage) []kgo.Record {
 	return records
 }
 
-func newSource(cfg *KafkaSource, logger log.Logger, registry metrics.Registry) (*Source, error) {
+// newBaseSource creates partially initialized Source without reader
+func newBaseSource(cfg *KafkaSource, inflightThrottler throttler.Throttler, logger log.Logger, registry metrics.Registry) (*Source, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	if err := cfg.WithConnectionID(); err != nil {
 		cancel()
@@ -464,8 +416,7 @@ func newSource(cfg *KafkaSource, logger log.Logger, registry metrics.Registry) (
 		executor:          nil,
 		errCh:             make(chan error, 1),
 		parser:            nil,
-		inflightMutex:     sync.Mutex{},
-		inflightBytes:     0,
+		inflightThrottler: inflightThrottler,
 		sequencer:         sequencer.NewSequencer(),
 		pmx:               sync.Mutex{},
 		partitionReleased: false,
@@ -493,8 +444,17 @@ func newSource(cfg *KafkaSource, logger log.Logger, registry metrics.Registry) (
 	return source, nil
 }
 
-func newGroupSource(transferID string, cfg *KafkaSource, logger log.Logger, registry metrics.Registry, opts []kgo.Opt) (*Source, error) {
-	source, err := newSource(cfg, logger, registry)
+func NewSource(transferID string, cfg *KafkaSource, logger log.Logger, registry metrics.Registry) (*Source, error) {
+	opts, err := kafkaClientCommonOptions(cfg)
+	if err != nil {
+		return nil, xerrors.Errorf("unable to build options: %w", err)
+	}
+
+	if err := checkTopicExistence(opts, cfg.Topics()); err != nil {
+		return nil, xerrors.Errorf("unable to check topic existence: %w", err)
+	}
+
+	source, err := newBaseSource(cfg, throttler.NewMemoryThrottler(uint64(cfg.BufferSizeOrDefault())), logger, registry)
 	if err != nil {
 		return nil, xerrors.Errorf("unable to create Source for group: %w", err)
 	}
@@ -525,87 +485,4 @@ func newGroupSource(transferID string, cfg *KafkaSource, logger log.Logger, regi
 	source.reader = r
 
 	return source, nil
-}
-
-func newPartitionSource(transferID string, cfg *KafkaSource, partitionDesc *PartitionDescription, logger log.Logger, registry metrics.Registry, opts []kgo.Opt) (*Source, error) {
-	source, err := newSource(cfg, logger, registry)
-	if err != nil {
-		return nil, xerrors.Errorf("unable to create Source for partition: %w", err)
-	}
-
-	if len(cfg.GroupTopics) > 0 || cfg.Topic == "" {
-		return nil, abstract.NewFatalError(xerrors.New("only one topic has to be specified for partition source"))
-	}
-	if partitionDesc == nil {
-		return nil, abstract.NewFatalError(xerrors.New("partition required for partition source"))
-	}
-	partition := partitionDesc.Partition
-	topic := cfg.Topic
-
-	r, err := reader.NewPartitionReader(transferID, partition, topic, opts)
-	if err != nil {
-		return nil, xerrors.Errorf("unable to create reader for partition: %w", err)
-	}
-	source.reader = r
-
-	return source, nil
-}
-
-type PartitionDescription struct {
-	Partition int32
-}
-
-func NewSource(transferID string, cfg *KafkaSource, partitionDesc *PartitionDescription, logger log.Logger, registry metrics.Registry) (*Source, error) {
-	tlsConfig, err := cfg.Connection.TLSConfig()
-	if err != nil {
-		return nil, xerrors.Errorf("unable to get TLS config: %w", err)
-	}
-	cfg.Auth.Password, err = ResolvePassword(cfg.Connection, cfg.Auth)
-	if err != nil {
-		return nil, xerrors.Errorf("unable to get password: %w", err)
-	}
-	mechanism := cfg.Auth.GetFranzAuthMechanism()
-	brokers, err := ResolveBrokers(cfg.Connection)
-	if err != nil {
-		return nil, xerrors.Errorf("unable to resolve brokers: %w", err)
-	}
-
-	// common kafka client options
-	opts := []kgo.Opt{
-		kgo.SeedBrokers(brokers...),
-		kgo.DialTLSConfig(tlsConfig),
-		kgo.FetchMaxBytes(10 * 1024 * 1024), // 10MB
-		kgo.ConnIdleTimeout(30 * time.Second),
-		kgo.RequestTimeoutOverhead(20 * time.Second),
-	}
-
-	if mechanism != nil {
-		opts = append(opts, kgo.SASL(mechanism))
-	}
-
-	if cfg.BufferSize == 0 {
-		cfg.BufferSize = 100 * 1024 * 1024
-	}
-
-	kfClient, err := kgo.NewClient(opts...)
-	if err != nil {
-		return nil, xerrors.Errorf("unable to create kafka client to ensure topics: %w", err)
-	}
-	topics := cfg.GroupTopics
-	if len(topics) == 0 {
-		topics = []string{cfg.Topic}
-	}
-	if err := ensureTopicsExistWithRetries(kfClient, topics...); err != nil {
-		return nil, xerrors.Errorf("unable to ensure topic exists: %w", err)
-	}
-	kfClient.Close()
-
-	if partitionDesc != nil {
-		source, err := newPartitionSource(transferID, cfg, partitionDesc, logger, registry, opts)
-		if err != nil {
-			return nil, xerrors.Errorf("unable to create partition source: %w", err)
-		}
-		return source, nil
-	}
-	return newGroupSource(transferID, cfg, logger, registry, opts)
 }

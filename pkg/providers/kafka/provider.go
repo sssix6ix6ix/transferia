@@ -129,7 +129,18 @@ func (p *Provider) Source() (abstract.Source, error) {
 	if len(p.transfer.DataObjects.GetIncludeObjects()) > 0 && len(src.GroupTopics) == 0 { // infer topics from transfer
 		src.GroupTopics = p.transfer.DataObjects.GetIncludeObjects()
 	}
-	return NewSource(p.transfer.ID, src, nil, p.logger, p.registry)
+	return NewSource(p.transfer.ID, src, p.logger, p.registry)
+}
+
+func (p *Provider) PartitionSource(partition abstract.Partition) (abstract.QueueToS3Source, error) {
+	src, ok := p.transfer.Src.(*KafkaSource)
+	if !ok {
+		return nil, xerrors.Errorf("unexpected async source type: %T", p.transfer.Src)
+	}
+	if err := src.WithConnectionID(); err != nil {
+		return nil, xerrors.Errorf("unable to resolve connection for async source: %w", err)
+	}
+	return NewPartitionSource(p.transfer.ID, src, PartitionDescription{Partition: int32(partition.Partition)}, p.logger, p.registry)
 }
 
 func (p *Provider) Sink(middlewares.Config) (abstract.Sinker, error) {

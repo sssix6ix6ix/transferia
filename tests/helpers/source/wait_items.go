@@ -7,14 +7,15 @@ import (
 	mocksink "github.com/transferia/transferia/tests/helpers/mock_sink"
 )
 
-func WaitForItems(src abstract.Source, expectedItemsCount int, waitBeforeClose time.Duration) ([][]abstract.ChangeItem, error) {
+func WaitForItems(src abstract.QueueToS3Source, expectedItemsCount int, waitBeforeClose time.Duration) ([][]abstract.ChangeItem, error) {
 	res := make([][]abstract.ChangeItem, 0)
-	sink := mocksink.NewMockAsyncSink(func(items []abstract.ChangeItem) error {
+	sink := mocksink.NewMockQueueToS3Sink(func(item abstract.ChangeItem) uint64 {
+		return item.QueueMessageMeta.Offset
+	}, func(items []abstract.ChangeItem) error {
 		res = append(res, items)
 		expectedItemsCount -= len(items)
 		return nil
-	},
-	)
+	}, nil)
 
 	errCh := make(chan error, 1)
 	go func() {

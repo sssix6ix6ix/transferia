@@ -30,9 +30,11 @@ type Replication interface {
 	Source() (abstract.Source, error)
 }
 
-type AsyncReplication interface {
+// PartitionableSource add to provider `abstract.QueueToS3Source` factory to provider
+// it means that provider can do data replication for specified partition.
+type PartitionableSource interface {
 	Provider
-	AsyncSource() (abstract.QueueToS3Source, error)
+	PartitionSource(partition abstract.Partition) (abstract.QueueToS3Source, error)
 }
 
 // Abstract2Provider add `base.DataProvider` factory to provider.

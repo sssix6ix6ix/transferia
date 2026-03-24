@@ -11,32 +11,19 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
+	mocksink "github.com/transferia/transferia/tests/helpers/mock_sink"
 )
-
-type mockSink struct {
-	push func(items []abstract.ChangeItem) chan error
-}
-
-func (m mockSink) Close() error {
-	return nil
-}
-
-func (m mockSink) AsyncPush(items []abstract.ChangeItem) chan error {
-	return m.push(items)
-}
 
 func TestSinkNotBlocking(t *testing.T) {
 	parallelism := 10
 	pushCnt := atomic.Int32{}
 	ackCnt := atomic.Int32{}
 	parseCnt := atomic.Int32{}
-	q := New[int](logger.Log, parallelism, &mockSink{
-		push: func(items []abstract.ChangeItem) chan error {
-			pushCnt.Add(1)
-			resCh := make(chan error) // push never finished
-			return resCh
-		},
-	}, func(data int) []abstract.ChangeItem {
+	q := New[int](logger.Log, parallelism, mocksink.NewMockAsyncSinkWithChan(func(items []abstract.ChangeItem) chan error {
+		pushCnt.Add(1)
+		resCh := make(chan error) // push never finished
+		return resCh
+	}), func(data int) []abstract.ChangeItem {
 		parseCnt.Add(1)
 		return nil // immediate parse
 	}, func(data int, _ time.Time, _ error) {
@@ -68,13 +55,9 @@ func TestAckOrder(t *testing.T) {
 	var res []int
 	mu := sync.Mutex{}
 	inflight := atomic.Int32{}
-	q := New[int](logger.Log, parallelism, &mockSink{
-		push: func(items []abstract.ChangeItem) chan error {
-			resCh := make(chan error, 1)
-			resCh <- nil
-			return resCh
-		},
-	}, func(data int) []abstract.ChangeItem {
+	q := New[int](logger.Log, parallelism, mocksink.NewMockAsyncSinkWithChan(func(items []abstract.ChangeItem) chan error {
+		return nil
+	}), func(data int) []abstract.ChangeItem {
 		inflight.Add(1)
 		defer inflight.Add(-1)
 		wgMap[data].Wait()
@@ -111,14 +94,10 @@ func TestAckOrder(t *testing.T) {
 func TestGracefullyShutdown(t *testing.T) {
 	var res []int
 	mu := sync.Mutex{}
-	q := New[int](logger.Log, 5, &mockSink{
-		push: func(items []abstract.ChangeItem) chan error {
-			resCh := make(chan error, 1)
-			resCh <- nil
-			time.Sleep(2 * time.Millisecond)
-			return resCh
-		},
-	}, func(data int) []abstract.ChangeItem {
+	q := New[int](logger.Log, 5, mocksink.NewMockAsyncSinkWithChan(func(items []abstract.ChangeItem) chan error {
+		time.Sleep(2 * time.Millisecond)
+		return nil
+	}), func(data int) []abstract.ChangeItem {
 		time.Sleep(time.Millisecond)
 		return nil
 	}, func(data int, _ time.Time, _ error) {
@@ -151,17 +130,13 @@ func TestRandomParseDelay(t *testing.T) {
 	}
 	ackIter := 0
 	pushIter := 0
-	q := New[int](logger.Log, parallelism, &mockSink{
-		push: func(items []abstract.ChangeItem) chan error {
-			resCh := make(chan error, 1)
-			resCh <- nil
-			require.Equal(t, pushIter, items[0].ColumnValues[0].(int))
-			mu.Lock()
-			defer mu.Unlock()
-			pushIter++
-			return resCh
-		},
-	}, func(data int) []abstract.ChangeItem {
+	q := New[int](logger.Log, parallelism, mocksink.NewMockAsyncSink(func(items []abstract.ChangeItem) error {
+		require.Equal(t, pushIter, items[0].ColumnValues[0].(int))
+		mu.Lock()
+		defer mu.Unlock()
+		pushIter++
+		return nil
+	}), func(data int) []abstract.ChangeItem {
 		mu.Lock()
 		fmt.Printf("%d STARTED, counter:%d->%d\n", data, counter, counter+1)
 		counter++

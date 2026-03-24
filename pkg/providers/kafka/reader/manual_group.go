@@ -36,7 +36,10 @@ func fetchPartitionNextOffset(group string, partition int32, topic string, admin
 
 // groupExists gets the group description and returns ErrGroupNotFound if the group wasn't found or the group is dead
 func groupExists(admCl *kadm.Client, group string) error {
-	groupDescriptions, err := admCl.DescribeGroups(context.TODO(), group)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	groupDescriptions, err := admCl.DescribeGroups(ctx, group)
 	if err != nil {
 		// CoordinatorNotAvailable may be caused by the absence of the consumer group
 		var shardErrs *kadm.ShardErrors

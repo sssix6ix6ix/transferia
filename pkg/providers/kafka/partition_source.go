@@ -1,0 +1,134 @@
+package kafka
+
+import (
+	"context"
+	"errors"
+	"time"
+
+	"github.com/transferia/transferia/library/go/core/metrics"
+	"github.com/transferia/transferia/library/go/core/xerrors"
+	"github.com/transferia/transferia/pkg/abstract"
+	queue_to_s3_parsequeue "github.com/transferia/transferia/pkg/parsequeue/queue_to_s3"
+	"github.com/transferia/transferia/pkg/providers/kafka/reader"
+	"github.com/transferia/transferia/pkg/util/queues/sequencer"
+	"github.com/transferia/transferia/pkg/util/throttler"
+	"go.ytsaurus.tech/library/go/core/log"
+)
+
+type listableReader interface {
+	ListPartitions(ctx context.Context, topic string) ([]int32, error)
+}
+
+type PartitionSource struct {
+	*Source
+
+	partition int32
+}
+
+func (s *PartitionSource) Run(sink abstract.QueueToS3Sink) error {
+	parseQ := queue_to_s3_parsequeue.NewWaitable(s.logger, s.config.ParseQueueParallelism, sink, s.parseWithSynchronizeEvent, s.ackV2)
+
+	var runErr error
+	runErr = s.run(parseQ)
+	parseQ.Close()
+
+	if parseQ.Error() != nil {
+		runErr = errors.Join(runErr, xerrors.Errorf("parse queue error: %w", parseQ.Error()))
+	}
+
+	return runErr
+}
+
+func (s *PartitionSource) ListPartitions() ([]abstract.Partition, error) {
+	listable, ok := s.reader.(listableReader)
+	if !ok {
+		return nil, xerrors.New("reader is not listable")
+	}
+
+	ctx, cancel := context.WithTimeout(s.ctx, time.Second*10)
+	defer cancel()
+
+	topics := s.config.Topics()
+	partitions := make([]abstract.Partition, 0)
+	for _, topic := range topics {
+		partitionNums, err := listable.ListPartitions(ctx, topic)
+		if err != nil {
+			return nil, xerrors.Errorf("unable to list partitions: %w", err)
+		}
+
+		for _, partition := range partitionNums {
+			partitions = append(partitions, abstract.Partition{
+				Partition: uint32(partition),
+				Topic:     topic,
+			})
+		}
+	}
+
+	return partitions, nil
+}
+
+func (s *PartitionSource) ackV2(pushResult abstract.QueueResult) error {
+	sequencerMessages := offsetsToQueueMessages(s.config.Topic, s.partition, pushResult.Offsets)
+	commitMessages, err := s.sequencer.Pushed(sequencerMessages)
+	if err != nil {
+		return xerrors.Errorf("sequencer found an error in pushed messages, err: %w", err)
+	}
+	if err := s.reader.CommitMessages(s.ctx, recordsFromQueueMessages(commitMessages)...); err != nil {
+		return xerrors.Errorf("failed to commit commit messages: %w", err)
+	}
+
+	s.logger.Info(
+		"Commit messages done",
+		log.String("pushed", sequencer.BuildMapPartitionToOffsetsRange(sequencerMessages)),
+		log.String("committed", sequencer.BuildPartitionOffsetLogLine(commitMessages)),
+	)
+
+	return nil
+}
+
+func offsetsToQueueMessages(topic string, partition int32, offsets []uint64) []sequencer.QueueMessage {
+	messages := make([]sequencer.QueueMessage, len(offsets))
+	for i := range offsets {
+		messages[i].Topic = topic
+		messages[i].Partition = int(partition)
+		messages[i].Offset = int64(offsets[i])
+	}
+	return messages
+}
+
+type PartitionDescription struct {
+	Partition int32
+}
+
+func NewPartitionSource(transferID string, cfg *KafkaSource, partitionDesc PartitionDescription, logger log.Logger, registry metrics.Registry) (*PartitionSource, error) {
+	opts, err := kafkaClientCommonOptions(cfg)
+	if err != nil {
+		return nil, xerrors.Errorf("unable to build options for partition source: %w", err)
+	}
+
+	if err := checkTopicExistence(opts, cfg.Topics()); err != nil {
+		return nil, xerrors.Errorf("unable to check topic existence for partition source: %w", err)
+	}
+
+	baseSource, err := newBaseSource(cfg, throttler.NewStubThrottler(), logger, registry)
+	if err != nil {
+		return nil, xerrors.Errorf("unable to create Source for partition: %w", err)
+	}
+
+	if len(cfg.GroupTopics) > 0 || cfg.Topic == "" {
+		return nil, abstract.NewFatalError(xerrors.New("only one topic has to be specified for partition source"))
+	}
+
+	topic := cfg.Topic
+	partition := partitionDesc.Partition
+	r, err := reader.NewPartitionReader(transferID, partition, topic, opts)
+	if err != nil {
+		return nil, xerrors.Errorf("unable to create reader for partition: %w", err)
+	}
+	baseSource.reader = r
+
+	return &PartitionSource{
+		Source:    baseSource,
+		partition: partitionDesc.Partition,
+	}, nil
+}

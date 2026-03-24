@@ -24,12 +24,13 @@ func NewSource(transfer *model.Transfer, lgr log.Logger, registry metrics.Regist
 }
 
 func NewAsyncSource(transfer *model.Transfer, lgr log.Logger, registry metrics.Registry, cp coordinator.Coordinator) (abstract.QueueToS3Source, error) {
-	replicator, ok := providers.Source[providers.AsyncReplication](lgr, registry, cp, transfer)
+	replicator, ok := providers.Source[providers.PartitionableSource](lgr, registry, cp, transfer)
 	if !ok {
 		lgr.Error("Unable to create async source")
 		return nil, xerrors.Errorf("unknown async source: %s: %T", transfer.SrcType(), transfer.Src)
 	}
-	res, err := replicator.AsyncSource()
+	// TODO fix in TM-9507
+	res, err := replicator.PartitionSource(abstract.NewEmptyPartition())
 	if err != nil {
 		return nil, xerrors.Errorf("unable to create async %T: %w", transfer.Src, err)
 	}

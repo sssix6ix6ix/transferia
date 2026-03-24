@@ -42,7 +42,7 @@ type Source struct {
 
 	reader       *readerThreadSafe
 	schema       *schemaWrapper
-	memThrottler *throttler.MemoryThrottler
+	memThrottler throttler.Throttler
 	ydbClient    *ydb.Driver
 
 	errCh chan error
