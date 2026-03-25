@@ -59,7 +59,7 @@ func commit(client yt.Client, opts *CommitOptions) error {
 				log.Any("table_path", opts.Path), log.Duration("elapsed_time", time.Since(startMoment)))
 		}
 
-		if opts.CleanupType != model.Drop {
+		if opts.CleanupType == model.DisabledCleanup {
 			startMoment = time.Now()
 			sortedMerge := currentStageTablePath == sortedTablePath
 			if opts.IsDynamicSorted {

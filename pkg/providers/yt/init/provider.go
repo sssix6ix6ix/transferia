@@ -40,9 +40,9 @@ var (
 	_ providers.Abstract2Provider = (*Provider)(nil)
 	_ providers.Abstract2Sinker   = (*Provider)(nil)
 
-	_ providers.Cleanuper  = (*Provider)(nil)
-	_ providers.TMPCleaner = (*Provider)(nil)
-	_ providers.Verifier   = (*Provider)(nil)
+	_ providers.DstCleanuper = (*Provider)(nil)
+	_ providers.TMPCleaner   = (*Provider)(nil)
+	_ providers.Verifier     = (*Provider)(nil)
 )
 
 type Provider struct {
@@ -182,7 +182,7 @@ func (p *Provider) CleanupSuitable(transferType abstract.TransferType) bool {
 	return transferType != abstract.TransferTypeSnapshotOnly
 }
 
-func (p *Provider) Cleanup(ctx context.Context, task *model.TransferOperation) error {
+func (p *Provider) CleanupDestination(ctx context.Context) error {
 	return nil
 }
 

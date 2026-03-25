@@ -20,12 +20,12 @@ func CleanupNeeded(transfer model.Transfer) bool {
 		return true
 	}
 
-	cleanuper, ok := providers.SourceAs[providers.Cleanuper](&transfer)
-	if !ok {
-		return false
+	if _, ok := providers.DestinationAs[providers.DstCleanuper](&transfer); ok {
+		return true
 	}
 
-	return cleanuper.CleanupSuitable(transfer.Type)
+	cleanuper, ok := providers.SourceAs[providers.SrcCleanuper](&transfer)
+	return ok && cleanuper.CleanupSuitable(transfer.Type)
 }
 
 func CleanupResource(ctx context.Context, task model.TransferOperation, transfer model.Transfer, logger log.Logger, cp coordinator.Coordinator) error {
@@ -38,12 +38,20 @@ func CleanupResource(ctx context.Context, task model.TransferOperation, transfer
 		return xerrors.Errorf("unable to cleanup tmp: %w", err)
 	}
 
-	cleanuper, ok := providers.Source[providers.Cleanuper](logger, solomon.NewRegistry(solomon.NewRegistryOpts()), cp, &transfer)
-	if !ok || !cleanuper.CleanupSuitable(transfer.Type) {
-		logger.Infof("CleanupResource(%v) for transfer(%v) has no active resource", task.OperationID, transfer.ID)
-		return nil
+	srcCleanuper, ok := providers.Source[providers.SrcCleanuper](logger, solomon.NewRegistry(solomon.NewRegistryOpts()), cp, &transfer)
+	if ok && srcCleanuper.CleanupSuitable(transfer.Type) {
+		if err := srcCleanuper.CleanupSource(ctx); err != nil {
+			return xerrors.Errorf("unable to cleanup source: %w", err)
+		}
 	}
-	return cleanuper.Cleanup(ctx, &task)
+
+	dstCleanuper, ok := providers.Destination[providers.DstCleanuper](logger, solomon.NewRegistry(solomon.NewRegistryOpts()), cp, &transfer, nil)
+	if ok {
+		if err := dstCleanuper.CleanupDestination(ctx); err != nil {
+			return xerrors.Errorf("unable to cleanup destination: %w", err)
+		}
+	}
+	return nil
 }
 
 func cleanupTmp(ctx context.Context, transfer model.Transfer, logger log.Logger, cp coordinator.Coordinator, task model.TransferOperation) error {

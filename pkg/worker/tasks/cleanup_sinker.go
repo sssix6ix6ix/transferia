@@ -30,6 +30,11 @@ func (l *SnapshotLoader) CleanupSinker(tables abstract.TableMap) error {
 		return nil
 	}
 
+	if l.transfer.Dst.CleanupMode() == model.UseTmpPolicy {
+		logger.Log.Info("Replace cleanup mode is enabled, do not remove data on start")
+		return nil
+	}
+
 	if l.transfer.TmpPolicy != nil {
 		if err := model.EnsureTmpPolicySupported(l.transfer.Dst, l.transfer); err != nil {
 			return errors.CategorizedErrorf(categories.Target, model.ErrInvalidTmpPolicy, err)

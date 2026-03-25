@@ -69,10 +69,10 @@ var (
 	_ providers.Sinker       = (*Provider)(nil)
 	_ providers.Checksumable = (*Provider)(nil)
 
-	_ providers.Activator   = (*Provider)(nil)
-	_ providers.Deactivator = (*Provider)(nil)
-	_ providers.Cleanuper   = (*Provider)(nil)
-	_ providers.Updater     = (*Provider)(nil)
+	_ providers.Activator    = (*Provider)(nil)
+	_ providers.Deactivator  = (*Provider)(nil)
+	_ providers.SrcCleanuper = (*Provider)(nil)
+	_ providers.Updater      = (*Provider)(nil)
 )
 
 type Provider struct {
@@ -267,7 +267,7 @@ func (p *Provider) CleanupSuitable(transferType abstract.TransferType) bool {
 	return transferType != abstract.TransferTypeSnapshotOnly
 }
 
-func (p *Provider) Cleanup(ctx context.Context, task *model.TransferOperation) error {
+func (p *Provider) CleanupSource(ctx context.Context) error {
 	src, ok := p.transfer.Src.(*MysqlSource)
 	if !ok {
 		return xerrors.Errorf("unexpected source type: %T", p.transfer.Src)

@@ -193,7 +193,7 @@ func (s *sink) commitTable(tablePath ypath.Path, scheme abstract.TableColumns) e
 		startMoment := time.Now()
 		isDynamicSorted := s.config.UseStaticTableOnSnapshot() && !s.config.Ordered()
 		var reduceBinaryPath ypath.Path
-		if isDynamicSorted && s.config.CleanupMode() != model.Drop {
+		if isDynamicSorted && s.config.CleanupMode() == model.DisabledCleanup {
 			binaryPath, err := dataplaneExecutablePath(s.config, s.ytClient, s.logger)
 			if err != nil {
 				return xerrors.Errorf("unable to get binary path for reduce operation: %w", err)

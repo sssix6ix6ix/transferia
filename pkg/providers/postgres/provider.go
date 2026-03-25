@@ -71,7 +71,7 @@ var (
 	_ providers.Verifier     = (*Provider)(nil)
 	_ providers.Activator    = (*Provider)(nil)
 	_ providers.Deactivator  = (*Provider)(nil)
-	_ providers.Cleanuper    = (*Provider)(nil)
+	_ providers.SrcCleanuper = (*Provider)(nil)
 )
 
 type Provider struct {
@@ -85,7 +85,7 @@ func (p *Provider) CleanupSuitable(transferType abstract.TransferType) bool {
 	return transferType != abstract.TransferTypeSnapshotOnly
 }
 
-func (p *Provider) Cleanup(ctx context.Context, task *model.TransferOperation) error {
+func (p *Provider) CleanupSource(ctx context.Context) error {
 	src, err := p.srcParamsFromTransfer()
 	if err != nil {
 		return xerrors.Errorf("error getting src params from transfer: %w", err)

@@ -31,12 +31,17 @@ type Activator interface {
 	Activate(ctx context.Context, task *model.TransferOperation, table abstract.TableMap, callbacks ActivateCallbacks) error
 }
 
-// Cleanuper enable custom functionality on transfer `Activate`/`Upload`/`Reupload` tasks on `Cleanup` stage.
+// SrcCleanuper enable custom functionality on transfer `Activate`/`Upload`/`Reupload` tasks on `Cleanup` stage.
 // If CleanupSuitable returns false then Cleanup won't be called.
-type Cleanuper interface {
+type SrcCleanuper interface {
 	Provider
-	Cleanup(ctx context.Context, task *model.TransferOperation) error
+	CleanupSource(ctx context.Context) error
 	CleanupSuitable(transferType abstract.TransferType) bool
+}
+
+type DstCleanuper interface {
+	Provider
+	CleanupDestination(ctx context.Context) error
 }
 
 // Deactivator enable custom functionality on transfer `Deactivate` task.
