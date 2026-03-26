@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	stderrors "errors"
 	"fmt"
 	"math"
 	"reflect"
@@ -998,16 +999,17 @@ func compareSlices(lVal []interface{}, lSchema abstract.ColSchema, rVal []interf
 		return false, nil
 	}
 	equal := true
-	errors := util.NewErrs(nil)
+	var cmpErrs []error
 	for i := range lVal {
 		iEqual, err := tryCompare(lVal[i], colSchemaForSliceElement(lSchema), rVal[i], colSchemaForSliceElement(rSchema), priorityComparators, true)
 		if err != nil {
-			errors = append(errors, xerrors.Errorf("failed to compare slice element [%d]: %w", i, err))
+			err = xerrors.Errorf("failed to compare slice element [%d]: %w", i, err)
 		}
+		cmpErrs = append(cmpErrs, err)
 		equal = equal && iEqual
 	}
-	if !errors.Empty() {
-		return false, errors
+	if err := stderrors.Join(cmpErrs...); err != nil {
+		return false, err
 	}
 	return equal, nil
 }

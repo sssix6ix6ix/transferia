@@ -199,9 +199,8 @@ func (s *Storage) CheckSecondaryWorkersDone(startTime time.Time, cp any, transfe
 	if err != nil {
 		return false, errors.CategorizedErrorf(categories.Internal, "can't to get workers for operation '%v': %w", operationID, err)
 	}
-	errs := model.AggregateWorkerErrors(workers, operationID)
-	if len(errs) > 0 {
-		return false, xerrors.Errorf("errors detected on secondary workers: %v", errs)
+	if err := model.AggregateWorkerErrors(workers, operationID); err != nil {
+		return false, xerrors.Errorf("errors detected on secondary workers: %v", err)
 	}
 
 	// check is all workers successfully done

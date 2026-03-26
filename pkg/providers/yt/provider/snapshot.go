@@ -2,14 +2,15 @@ package provider
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"sync"
 
 	"github.com/dustin/go-humanize"
 	"github.com/transferia/transferia/library/go/core/xerrors"
-	"github.com/transferia/transferia/pkg/base"
-	"github.com/transferia/transferia/pkg/base/events"
+	"github.com/transferia/transferia/pkg/abstract2"
+	"github.com/transferia/transferia/pkg/abstract2/events"
 	yt2 "github.com/transferia/transferia/pkg/providers/yt"
 	"github.com/transferia/transferia/pkg/providers/yt/provider/dataobjects"
 	"github.com/transferia/transferia/pkg/providers/yt/provider/schema"
@@ -59,7 +60,7 @@ type pushInfo struct {
 	rows int
 }
 
-func (s *snapshotSource) Start(ctx context.Context, target base.EventTarget) error {
+func (s *snapshotSource) Start(ctx context.Context, target abstract2.EventTarget) error {
 	s.isStarted = true
 	defer func() { s.isStarted = false }()
 	s.isDone = false
@@ -97,22 +98,22 @@ func (s *snapshotSource) Start(ctx context.Context, target base.EventTarget) err
 	s.readQ = make(chan *lazyYSON)
 	s.pushQ = make(chan pushInfo, MaxInflightCount)
 
-	var errs util.Errors
+	var errs []error
 
 	readErrCh := s.startReading(ctx, readBatchSizeRows)
 	go s.pusher(tbl, target)
 	if pushErr := s.consumePushResults(); pushErr != nil {
-		errs = util.AppendErr(errs,
+		errs = append(errs,
 			xerrors.Errorf("error pushing events for table %s[%d:%d]: %w",
 				s.part.Name(), s.lowerIdx, s.upperIdx, pushErr))
 	}
 	if readErr := <-readErrCh; readErr != nil {
-		errs = util.AppendErr(errs, xerrors.Errorf("error reading table %s[%d:%d]: %w",
+		errs = append(errs, xerrors.Errorf("error reading table %s[%d:%d]: %w",
 			s.part.Name(), s.lowerIdx, s.upperIdx, readErr))
 	}
 
-	if len(errs) > 0 {
-		return errs
+	if err := errors.Join(errs...); err != nil {
+		return err
 	}
 
 	s.isDone = true
@@ -133,7 +134,7 @@ func (s *snapshotSource) getTableStats(ctx context.Context) (rowCount, uncomprSi
 
 func (s *snapshotSource) consumePushResults() error {
 	hasErr := false
-	var errs util.Errors
+	var errs []error
 	for push := range s.pushQ {
 		err := <-push.res
 		if err != nil {
@@ -141,15 +142,15 @@ func (s *snapshotSource) consumePushResults() error {
 				s.stopFn()
 				hasErr = true
 			}
-			errs = util.AppendErr(errs, err)
+			errs = append(errs, err)
 		} else {
 			s.doneCnt += uint64(push.rows)
 		}
 	}
-	if len(errs) > 0 {
-		return util.UniqueErrors(errs)
+	if len(errs) == 0 {
+		return nil
 	}
-	return nil
+	return errors.Join(util.UniqueErrors(errs)...)
 }
 
 func (s *snapshotSource) startReading(ctx context.Context, batchSize uint64) chan error {
@@ -170,7 +171,7 @@ func (s *snapshotSource) startReading(ctx context.Context, batchSize uint64) cha
 }
 
 func (s *snapshotSource) runReaders(ctx context.Context, batchSize uint64, stopCh <-chan bool) error {
-	var errs util.Errors
+	var errs []error
 	type tblRange struct {
 		lower uint64
 		upper uint64
@@ -211,17 +212,17 @@ func (s *snapshotSource) runReaders(ctx context.Context, batchSize uint64, stopC
 		readErr := <-readResCh
 		if readErr != nil {
 			s.stopFn()
-			errs = util.AppendErr(errs, readErr)
+			errs = append(errs, readErr)
 		}
 	}
 	close(s.readQ)
-	if len(errs) > 0 {
-		return util.UniqueErrors(errs)
+	if len(errs) == 0 {
+		return nil
 	}
-	return nil
+	return errors.Join(util.UniqueErrors(errs)...)
 }
 
-func (s *snapshotSource) pusher(tbl table.YtTable, target base.EventTarget) {
+func (s *snapshotSource) pusher(tbl table.YtTable, target abstract2.EventTarget) {
 	var batch *batch
 	var batchSize int
 
@@ -232,12 +233,12 @@ func (s *snapshotSource) pusher(tbl table.YtTable, target base.EventTarget) {
 		batchSize = 0
 	}
 
-	push := func(batch base.EventBatch, cnt int) {
+	push := func(batch abstract2.EventBatch, cnt int) {
 		// trigger mandatory flush if almost MaxInflightCount batches has been pushed
 		// and no results has been received or processed
 		if (cap(s.pushQ) - len(s.pushQ)) <= 1 {
 			s.pushQ <- pushInfo{
-				res:  target.AsyncPush(base.NewSingleEventBatch(events.NewDefaultSynchronizeEvent(tbl, partID))),
+				res:  target.AsyncPush(abstract2.NewSingleEventBatch(events.NewDefaultSynchronizeEvent(tbl, partID))),
 				rows: 0,
 			}
 		}
@@ -247,7 +248,7 @@ func (s *snapshotSource) pusher(tbl table.YtTable, target base.EventTarget) {
 		}
 	}
 
-	push(base.NewSingleEventBatch(events.NewDefaultTableLoadEvent(tbl, events.TableLoadBegin).WithPart(partID)), 0)
+	push(abstract2.NewSingleEventBatch(events.NewDefaultTableLoadEvent(tbl, events.TableLoadBegin).WithPart(partID)), 0)
 
 	resetBatch(100)
 	for row := range s.readQ {
@@ -265,7 +266,7 @@ func (s *snapshotSource) pusher(tbl table.YtTable, target base.EventTarget) {
 		push(batch, lastLen)
 	}
 
-	push(base.NewSingleEventBatch(events.NewDefaultTableLoadEvent(tbl, events.TableLoadEnd).WithPart(partID)), 0)
+	push(abstract2.NewSingleEventBatch(events.NewDefaultTableLoadEvent(tbl, events.TableLoadEnd).WithPart(partID)), 0)
 	close(s.pushQ)
 }
 
@@ -280,8 +281,8 @@ func (s *snapshotSource) Stop() error {
 	return nil
 }
 
-func (s *snapshotSource) Progress() (base.EventSourceProgress, error) {
-	return base.NewDefaultEventSourceProgress(s.isDone, s.doneCnt, s.totalCnt), nil
+func (s *snapshotSource) Progress() (abstract2.EventSourceProgress, error) {
+	return abstract2.NewDefaultEventSourceProgress(s.isDone, s.doneCnt, s.totalCnt), nil
 }
 
 func NewSnapshotSource(cfg yt2.YtSourceModel, ytc yt.Client, part *dataobjects.Part,

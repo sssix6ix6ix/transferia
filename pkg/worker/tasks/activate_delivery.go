@@ -10,7 +10,7 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/base"
+	"github.com/transferia/transferia/pkg/abstract2"
 	"github.com/transferia/transferia/pkg/data"
 	"github.com/transferia/transferia/pkg/errors"
 	"github.com/transferia/transferia/pkg/errors/categories"
@@ -82,14 +82,14 @@ func ActivateDelivery(ctx context.Context, task *model.TransferOperation, cp coo
 			}
 		}
 
-		if trackerProvider, ok := dataProvider.(base.TrackerProvider); ok {
+		if trackerProvider, ok := dataProvider.(abstract2.TrackerProvider); ok {
 			if err := trackerProvider.ResetTracker(transfer.Type); err != nil {
 				return errors.CategorizedErrorf(categories.Source, "error reseting tracker: %w", err)
 			}
 		}
 
 		if !transfer.IncrementOnly() {
-			snapshotProvider, ok := dataProvider.(base.SnapshotProvider)
+			snapshotProvider, ok := dataProvider.(abstract2.SnapshotProvider)
 			if !ok {
 				return errors.CategorizedErrorf(categories.Source, "source is not SnapshotProvider, so does not support snapshot")
 			}

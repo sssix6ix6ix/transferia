@@ -2,7 +2,6 @@ package metrics
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"math"
 	"os"
@@ -69,7 +68,7 @@ func stat(pid int, statType string) (*SysInfo, error) {
 		stdout, _ := exec.Command("ps", args, strconv.Itoa(pid)).Output()
 		ret := formatStdOut(stdout, 1)
 		if len(ret) == 0 {
-			return new(SysInfo), errors.New("Can't find process with this PID: " + strconv.Itoa(pid))
+			return new(SysInfo), xerrors.New("Can't find process with this PID: " + strconv.Itoa(pid))
 		}
 		return &SysInfo{
 			CPU:         parseFloat(ret[0]),
@@ -98,7 +97,7 @@ func stat(pid int, statType string) (*SysInfo, error) {
 		splitAfter := strings.SplitAfter(string(procStatFileBytes), ")")
 
 		if len(splitAfter) == 0 || len(splitAfter) == 1 {
-			return new(SysInfo), errors.New("Can't find process with this PID: " + strconv.Itoa(pid))
+			return new(SysInfo), xerrors.New("Can't find process with this PID: " + strconv.Itoa(pid))
 		}
 		infos := strings.Split(splitAfter[1], " ")
 		stat := &Stat{

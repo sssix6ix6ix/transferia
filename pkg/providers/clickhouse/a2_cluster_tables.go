@@ -8,8 +8,8 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	yslices "github.com/transferia/transferia/library/go/slices"
 	"github.com/transferia/transferia/pkg/abstract"
-	"github.com/transferia/transferia/pkg/base"
-	"github.com/transferia/transferia/pkg/base/filter"
+	"github.com/transferia/transferia/pkg/abstract2"
+	"github.com/transferia/transferia/pkg/abstract2/filter"
 	"github.com/transferia/transferia/pkg/connection/clickhouse"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/model"
 	"go.ytsaurus.tech/library/go/core/log"
@@ -47,7 +47,7 @@ func (s *ClusterTables) Err() error {
 func (s *ClusterTables) Close() {
 }
 
-func (s *ClusterTables) Object() (base.DataObject, error) {
+func (s *ClusterTables) Object() (abstract2.DataObject, error) {
 	t := s.tables[s.iter]
 	if len(s.partFilter) > 0 {
 		t.partFilter = s.partFilter
@@ -121,9 +121,9 @@ func newClusterTablesFromDescription(storage ClickhouseStorage, config *model.Ch
 	return objs, nil
 }
 
-// Hack: convert base.DataObjectFilter to abstract.IncludeTableList to CH storage
+// Hack: convert abstract2.DataObjectFilter to abstract.IncludeTableList to CH storage
 type filterWrapper struct {
-	baseFilter base.DataObjectFilter
+	baseFilter abstract2.DataObjectFilter
 }
 
 func (f *filterWrapper) Include(tID abstract.TableID) bool {
@@ -143,7 +143,7 @@ func (f *filterWrapper) IncludeTableList() ([]abstract.TableID, error) {
 	return nil, xerrors.New("table listing is not supported by this filter")
 }
 
-func NewClusterTables(storage ClickhouseStorage, config *model.ChSource, inputFilter base.DataObjectFilter) (*ClusterTables, error) {
+func NewClusterTables(storage ClickhouseStorage, config *model.ChSource, inputFilter abstract2.DataObjectFilter) (*ClusterTables, error) {
 	if descriptionFilter, ok := inputFilter.(filter.FilterableFilter); ok {
 		tableDescriptions, err := descriptionFilter.ListFilters()
 		if err != nil {

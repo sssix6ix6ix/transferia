@@ -2,7 +2,6 @@ package eventhub_test
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"math/rand"
 	"os"
@@ -214,7 +213,7 @@ func (sender *eventhubSender) Send(ctx context.Context, data []byte) error {
 
 	err = batch.AddEventData(&azeventhubs.EventData{Body: data}, nil)
 	if err != nil {
-		if errors.Is(err, azeventhubs.ErrEventDataTooLarge) {
+		if xerrors.Is(err, azeventhubs.ErrEventDataTooLarge) {
 			return xerrors.New("event data is too large to send")
 		}
 		return err

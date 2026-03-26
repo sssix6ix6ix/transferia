@@ -3,8 +3,8 @@ package lfstaging
 import (
 	"time"
 
+	"github.com/transferia/transferia/library/go/core/xerrors"
 	"go.ytsaurus.tech/yt/go/yt"
-	"golang.org/x/xerrors"
 )
 
 func closeGaps(

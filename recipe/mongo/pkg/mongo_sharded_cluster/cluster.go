@@ -2,6 +2,7 @@ package mongo_sharded_cluster
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -169,22 +170,19 @@ func StopCluster(logger log.Logger, envInfo EnvironmentInfo) error {
 		return xerrors.Errorf("unable to read file: %w", err)
 	}
 
-	var multiErr util.Errors
+	var stopErrs []error
 	pidsAsStrings := strings.Split(string(data), "\n")
 	for _, pidAsString := range pidsAsStrings {
 		pidInt, err := extractPidFromString(pidAsString)
+		stopErrs = append(stopErrs, err)
 		if err != nil {
-			multiErr = util.AppendErr(multiErr, err)
 			continue
 		}
 		err = closeWithPidInt(pidInt)
+		stopErrs = append(stopErrs, err)
 		if err != nil {
-			multiErr = util.AppendErr(multiErr, err)
 			continue
 		}
 	}
-	if !multiErr.Empty() {
-		return multiErr
-	}
-	return nil
+	return errors.Join(stopErrs...)
 }

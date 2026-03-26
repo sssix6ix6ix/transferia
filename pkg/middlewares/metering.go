@@ -2,9 +2,9 @@ package middlewares
 
 import (
 	"github.com/transferia/transferia/pkg/abstract"
-	"github.com/transferia/transferia/pkg/base"
+	"github.com/transferia/transferia/pkg/abstract2"
 	"github.com/transferia/transferia/pkg/metering"
-	"github.com/transferia/transferia/pkg/providers/middlewares"
+	"github.com/transferia/transferia/pkg/middlewares/asynchronizer"
 )
 
 func InputDataMetering() func(abstract.Sinker) abstract.Sinker {
@@ -19,8 +19,8 @@ func OutputDataMetering() func(abstract.Sinker) abstract.Sinker {
 	}
 }
 
-func OutputDataBatchMetering() func(middlewares.Asynchronizer) middlewares.Asynchronizer {
-	return func(t middlewares.Asynchronizer) middlewares.Asynchronizer {
+func OutputDataBatchMetering() func(asynchronizer.Asynchronizer) asynchronizer.Asynchronizer {
+	return func(t asynchronizer.Asynchronizer) asynchronizer.Asynchronizer {
 		return newOutputDataBatchMetering(t)
 	}
 }
@@ -70,10 +70,10 @@ func (m *outputDataMetering) Push(input []abstract.ChangeItem) error {
 }
 
 type outputDataBatchMetering struct {
-	asynk middlewares.Asynchronizer
+	asynk asynchronizer.Asynchronizer
 }
 
-func newOutputDataBatchMetering(t middlewares.Asynchronizer) *outputDataBatchMetering {
+func newOutputDataBatchMetering(t asynchronizer.Asynchronizer) *outputDataBatchMetering {
 	return &outputDataBatchMetering{
 		asynk: t,
 	}
@@ -83,7 +83,7 @@ func (m *outputDataBatchMetering) Close() error {
 	return m.asynk.Close()
 }
 
-func (m *outputDataBatchMetering) Push(input base.EventBatch) error {
+func (m *outputDataBatchMetering) Push(input abstract2.EventBatch) error {
 	pushErr := m.asynk.Push(input)
 	if pushErr == nil {
 		metering.Agent().CountOutputBatch(input)

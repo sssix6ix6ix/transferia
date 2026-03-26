@@ -2,6 +2,7 @@ package target
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -9,8 +10,8 @@ import (
 	"github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/base"
-	baseevent "github.com/transferia/transferia/pkg/base/events"
+	"github.com/transferia/transferia/pkg/abstract2"
+	baseevent "github.com/transferia/transferia/pkg/abstract2/events"
 	yt_provider "github.com/transferia/transferia/pkg/providers/yt"
 	"github.com/transferia/transferia/pkg/providers/yt/copy/events"
 	"github.com/transferia/transferia/pkg/providers/yt/yt_client"
@@ -136,7 +137,7 @@ func (t *YtCopyTarget) runCopy(task copyTask) error {
 	return nil
 }
 
-func (t *YtCopyTarget) AsyncPush(in base.EventBatch) chan error {
+func (t *YtCopyTarget) AsyncPush(in abstract2.EventBatch) chan error {
 	var rollbacks util.Rollbacks
 	defer rollbacks.Do()
 
@@ -158,14 +159,14 @@ func (t *YtCopyTarget) AsyncPush(in base.EventBatch) chan error {
 			ytTxClient = tx
 		}
 
-		var errs util.Errors
+		var errs []error
 		var wg sync.WaitGroup
 		onFinish := func(err error) {
 			wg.Done()
 			if err == nil {
 				input.TableProcessed()
 			} else {
-				errs = util.AppendErr(errs, err)
+				errs = append(errs, err)
 			}
 		}
 
@@ -188,8 +189,8 @@ func (t *YtCopyTarget) AsyncPush(in base.EventBatch) chan error {
 
 		t.logger.Info("Waiting for all table copy task to be done")
 		wg.Wait()
-		if errs != nil {
-			return util.MakeChanWithError(xerrors.Errorf("task error: %w", errs))
+		if err := errors.Join(errs...); err != nil {
+			return util.MakeChanWithError(xerrors.Errorf("task error: %w", err))
 		}
 
 		rollbacks.Cancel()
@@ -200,7 +201,7 @@ func (t *YtCopyTarget) AsyncPush(in base.EventBatch) chan error {
 		}
 		t.logger.Debug("Done processing EventBatch")
 		return util.MakeChanWithError(nil)
-	case base.EventBatch:
+	case abstract2.EventBatch:
 		for input.Next() {
 			ev, err := input.Event()
 			if err != nil {
@@ -228,7 +229,7 @@ func (t *YtCopyTarget) Close() error {
 	return err
 }
 
-func NewTarget(logger log.Logger, metrics metrics.Registry, cfg *yt_provider.YtCopyDestination, transferID string) (base.EventTarget, error) {
+func NewTarget(logger log.Logger, metrics metrics.Registry, cfg *yt_provider.YtCopyDestination, transferID string) (abstract2.EventTarget, error) {
 	y, err := yt_client.FromConnParams(cfg, logger)
 	if err != nil {
 		return nil, xerrors.Errorf("error creating ytrpc client: %w", err)

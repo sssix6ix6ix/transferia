@@ -1,7 +1,7 @@
 package events
 
 import (
-	"github.com/transferia/transferia/pkg/base"
+	"github.com/transferia/transferia/pkg/abstract2"
 	"github.com/transferia/transferia/pkg/providers/yt/tablemeta"
 )
 
@@ -10,7 +10,7 @@ type tableEvent struct {
 }
 
 type TableEvent interface {
-	base.Event
+	abstract2.Event
 	Table() *tablemeta.YtTableMeta
 }
 

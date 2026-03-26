@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -22,7 +23,6 @@ import (
 	"github.com/transferia/transferia/pkg/format"
 	"github.com/transferia/transferia/pkg/stats"
 	"github.com/transferia/transferia/pkg/util"
-	"github.com/transferia/transferia/pkg/util/math"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
@@ -93,7 +93,7 @@ func (a *Storage) LoadTable(ctx context.Context, table abstract.TableDescription
 	batch = NewRecordBatch(cntr, stream.Stream.AsModel())
 
 	reader := bufio.NewScanner(stdout)
-	buf := make([]byte, 1024*1024, math.Max(a.config.MaxRowSize, 1024*1024))
+	buf := make([]byte, 1024*1024, max(a.config.MaxRowSize, 1024*1024))
 	reader.Buffer(buf, a.config.MaxRowSize)
 	for reader.Scan() {
 		select {
@@ -287,8 +287,8 @@ func (a *Storage) parse(data []byte) (*Message, []string) {
 	var logs []string
 	var res *Message
 	scanner := bufio.NewScanner(bytes.NewReader(data))
-	buf := make([]byte, 1024*1024, math.Max(1024*1024, a.config.MaxRowSize))
-	scanner.Buffer(buf, math.Max(1024*1024, a.config.MaxRowSize))
+	buf := make([]byte, 1024*1024, max(1024*1024, a.config.MaxRowSize))
+	scanner.Buffer(buf, max(1024*1024, a.config.MaxRowSize))
 	for scanner.Scan() {
 		row := scanner.Bytes()
 		if len(row) > 1024*1024 {
@@ -443,12 +443,12 @@ func (a *Storage) runCommand(args ...string) ([]byte, error) {
 	}
 
 	scr := bufio.NewScanner(errReader)
-	var errs util.Errors
+	var stderrLines []error
 	for scr.Scan() {
-		errs = append(errs, xerrors.New(scr.Text()))
+		stderrLines = append(stderrLines, xerrors.New(scr.Text()))
 	}
-	if len(errs) > 0 {
-		a.logger.Warnf("stderr: %v", log.Error(errs))
+	if err := errors.Join(stderrLines...); err != nil {
+		a.logger.Warnf("stderr: %v", log.Error(err))
 	}
 	return outBuf.Bytes(), nil
 }

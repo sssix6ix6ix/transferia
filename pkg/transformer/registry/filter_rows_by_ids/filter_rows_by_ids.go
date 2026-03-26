@@ -1,8 +1,6 @@
 package filterrowsbyids
 
 import (
-	"errors"
-
 	"github.com/jackc/pgtype"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
@@ -51,7 +49,7 @@ func NewFilterRowsByIDsTransformer(cfg Config, lgr log.Logger) (*FilterRowsByIDs
 		return nil, xerrors.Errorf("unable to create columns filter: %w", err)
 	}
 	if len(cfg.AllowedIDs) == 0 {
-		return nil, errors.New("list of allowed IDs shouldn't be empty")
+		return nil, xerrors.New("list of allowed IDs shouldn't be empty")
 	}
 
 	allowedIDPrefixesByLength := make(map[int]map[string]struct{})

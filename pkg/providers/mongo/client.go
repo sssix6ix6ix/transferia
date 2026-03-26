@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/transferia/transferia/internal/logger"
@@ -19,7 +20,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.uber.org/atomic"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
@@ -77,7 +77,7 @@ func Connect(ctx context.Context, opts MongoConnectionOptions, lgr log.Logger) (
 	if err != nil {
 		return nil, xerrors.Errorf("Cannot prepare connection options for source endpoint: %w", err)
 	}
-	id := tmMongoConnectID.Inc()
+	id := tmMongoConnectID.Add(1)
 	lgr.Info("Creating mongo client", log.Int64("mongo_client_wrapper_id", id),
 		log.String("opts.ClusterID", opts.ClusterID),
 		log.String("opts.ConnectionID", opts.ConnectionID),

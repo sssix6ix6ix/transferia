@@ -2,6 +2,7 @@ package greenplum
 
 import (
 	"context"
+	"errors"
 	"io"
 	"sync"
 
@@ -9,7 +10,6 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	pgsink "github.com/transferia/transferia/pkg/providers/postgres"
-	"github.com/transferia/transferia/pkg/util"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
@@ -57,17 +57,16 @@ func (s *pgSinksImpl) Close() error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	errors := util.NewErrs()
+	var closeErrs []error
 
 	for _, s := range s.sinks {
-		errors = util.AppendErr(errors, s.sink.Close())
+		if err := s.sink.Close(); err != nil {
+			closeErrs = append(closeErrs, err)
+		}
 	}
 	s.storage.Close()
 
-	if len(errors) > 0 {
-		return errors
-	}
-	return nil
+	return errors.Join(closeErrs...)
 }
 
 // PGStorage returns a PG Storage for the given segment. The resulting object MUST NOT be closed: it will be closed automatically when the sink itself is closed.

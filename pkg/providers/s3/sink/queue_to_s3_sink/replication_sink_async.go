@@ -2,7 +2,6 @@ package queue_to_s3_sink
 
 import (
 	"context"
-	"errors"
 	"io"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -36,7 +35,7 @@ var _ abstract.QueueToS3Sink = (*AsyncSink)(nil)
 func (s *AsyncSink) Close() error {
 	err := s.snapshotWriter.Close()
 	// SnapshotWriter already closed, can happen when Close() is called while commiting new file
-	if errors.Is(err, io.ErrClosedPipe) {
+	if xerrors.Is(err, io.ErrClosedPipe) {
 		return nil
 	}
 	return err

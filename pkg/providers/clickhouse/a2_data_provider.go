@@ -8,7 +8,7 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	dp_model "github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/base"
+	"github.com/transferia/transferia/pkg/abstract2"
 	"github.com/transferia/transferia/pkg/connection/clickhouse"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/model"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/schema"
@@ -27,10 +27,10 @@ type DataProvider struct {
 
 // To verify providers contract implementation
 var (
-	_ base.SnapshotProvider = (*DataProvider)(nil)
+	_ abstract2.SnapshotProvider = (*DataProvider)(nil)
 )
 
-func (c *DataProvider) TableSchema(part base.DataObjectPart) (*abstract.TableSchema, error) {
+func (c *DataProvider) TableSchema(part abstract2.DataObjectPart) (*abstract.TableSchema, error) {
 	desc, err := part.ToOldTableDescription()
 	if err != nil {
 		return nil, xerrors.Errorf("unable to load part: %w", err)
@@ -42,11 +42,11 @@ func (c *DataProvider) BeginSnapshot() error {
 	return nil
 }
 
-func (c *DataProvider) DataObjects(filter base.DataObjectFilter) (base.DataObjects, error) {
+func (c *DataProvider) DataObjects(filter abstract2.DataObjectFilter) (abstract2.DataObjects, error) {
 	return NewClusterTables(c.storage, c.config, filter)
 }
 
-func (c *DataProvider) CreateSnapshotSource(part base.DataObjectPart) (base.ProgressableEventSource, error) {
+func (c *DataProvider) CreateSnapshotSource(part abstract2.DataObjectPart) (abstract2.ProgressableEventSource, error) {
 	st, ok := part.(*TablePartA2)
 	if !ok {
 		return nil, xerrors.Errorf("unexpected part type %T, expected: TableShard", part)
@@ -97,7 +97,7 @@ func (c *DataProvider) EndSnapshot() error {
 	return nil
 }
 
-func (c *DataProvider) ResolveOldTableDescriptionToDataPart(tableDesc abstract.TableDescription) (base.DataObjectPart, error) {
+func (c *DataProvider) ResolveOldTableDescriptionToDataPart(tableDesc abstract.TableDescription) (abstract2.DataObjectPart, error) {
 	return nil, xerrors.New("not implemented")
 }
 
@@ -114,13 +114,13 @@ func (c *DataProvider) Close() error {
 	return nil
 }
 
-func (c *DataProvider) DataObjectsToTableParts(filter base.DataObjectFilter) ([]abstract.TableDescription, error) {
+func (c *DataProvider) DataObjectsToTableParts(filter abstract2.DataObjectFilter) ([]abstract.TableDescription, error) {
 	objects, err := c.DataObjects(filter)
 	if err != nil {
 		return nil, xerrors.Errorf("Can't get data objects: %w", err)
 	}
 
-	tableDescriptions, err := base.DataObjectsToTableParts(objects, filter)
+	tableDescriptions, err := abstract2.DataObjectsToTableParts(objects, filter)
 	if err != nil {
 		return nil, xerrors.Errorf("Can't convert data objects to table descriptions: %w", err)
 	}
@@ -128,7 +128,7 @@ func (c *DataProvider) DataObjectsToTableParts(filter base.DataObjectFilter) ([]
 	return tableDescriptions, nil
 }
 
-func (c *DataProvider) TablePartToDataObjectPart(tableDescription *abstract.TableDescription) (base.DataObjectPart, error) {
+func (c *DataProvider) TablePartToDataObjectPart(tableDescription *abstract.TableDescription) (abstract2.DataObjectPart, error) {
 	var part TablePartA2
 	if err := json.Unmarshal([]byte(tableDescription.Filter), &part); err != nil {
 		return nil, xerrors.Errorf("Can't deserialize table part: %w", err)
@@ -136,7 +136,7 @@ func (c *DataProvider) TablePartToDataObjectPart(tableDescription *abstract.Tabl
 	return &part, nil
 }
 
-func NewClickhouseProvider(logger log.Logger, registry metrics.Registry, config *model.ChSource, transfer *dp_model.Transfer) (base.SnapshotProvider, error) {
+func NewClickhouseProvider(logger log.Logger, registry metrics.Registry, config *model.ChSource, transfer *dp_model.Transfer) (abstract2.SnapshotProvider, error) {
 	sinkParams, err := config.ToSinkParams()
 	if err != nil {
 		return nil, xerrors.Errorf("unable to get sink params: %w", err)

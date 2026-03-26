@@ -1,6 +1,7 @@
 package snapshot
 
 import (
+	"context"
 	"os"
 	"testing"
 
@@ -12,7 +13,6 @@ import (
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
 	"github.com/transferia/transferia/pkg/worker/tasks"
 	"github.com/transferia/transferia/tests/helpers"
-	"golang.org/x/net/context"
 )
 
 var (

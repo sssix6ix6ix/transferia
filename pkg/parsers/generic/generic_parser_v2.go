@@ -12,9 +12,9 @@ import (
 
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	"github.com/transferia/transferia/pkg/base"
-	"github.com/transferia/transferia/pkg/base/adapter"
-	"github.com/transferia/transferia/pkg/base/events"
+	"github.com/transferia/transferia/pkg/abstract2"
+	"github.com/transferia/transferia/pkg/abstract2/adapter"
+	"github.com/transferia/transferia/pkg/abstract2/events"
 	"github.com/transferia/transferia/pkg/parsers"
 	"github.com/transferia/transferia/pkg/parsers/registry/logfeller/lib"
 	"github.com/valyala/fastjson"
@@ -31,32 +31,32 @@ type ysonEventBatch struct {
 	events        []events.InsertEvent
 	parser        *GenericParser
 	partition     abstract.Partition
-	parsedTable   base.Table
-	unparsedTable base.Table
+	parsedTable   abstract2.Table
+	unparsedTable abstract2.Table
 	parseErr      error
 	msg           parsers.Message
 }
 
-func (p *GenericParser) baseTable(partition abstract.Partition) base.Table {
+func (p *GenericParser) baseTable(partition abstract.Partition) abstract2.Table {
 	return adapter.NewTableFromLegacy(p.schema, abstract.TableID{
 		Name:      partition.Topic,
 		Namespace: "",
 	})
 }
 
-func (p *GenericParser) baseUnparsedTable(partition abstract.Partition) base.Table {
+func (p *GenericParser) baseUnparsedTable(partition abstract.Partition) abstract2.Table {
 	return adapter.NewTableFromLegacy(UnparsedSchema, abstract.TableID{
 		Namespace: fmt.Sprintf("%v_unparsed", partition.Topic),
 		Name:      "",
 	})
 }
 
-func (p *GenericParser) ParseBatch(batch parsers.MessageBatch) base.EventBatch {
+func (p *GenericParser) ParseBatch(batch parsers.MessageBatch) abstract2.EventBatch {
 	partition := abstract.NewPartition(batch.Topic, batch.Partition)
-	wCh := make([]chan base.EventBatch, len(batch.Messages))
+	wCh := make([]chan abstract2.EventBatch, len(batch.Messages))
 	sem := semaphore.NewWeighted(int64(runtime.GOMAXPROCS(0)))
 	for i, m := range batch.Messages {
-		rChan := make(chan base.EventBatch, 1)
+		rChan := make(chan abstract2.EventBatch, 1)
 		wCh[i] = rChan
 		_ = sem.Acquire(context.Background(), 1)
 		go func(i int, m parsers.Message) {
@@ -65,14 +65,14 @@ func (p *GenericParser) ParseBatch(batch parsers.MessageBatch) base.EventBatch {
 			wCh[i] <- batch
 		}(i, m)
 	}
-	var eventBatches []base.EventBatch
+	var eventBatches []abstract2.EventBatch
 	for _, ch := range wCh {
 		eventBatches = append(eventBatches, <-ch)
 	}
-	return base.NewBatchFromBatches(eventBatches)
+	return abstract2.NewBatchFromBatches(eventBatches)
 }
 
-func (p *GenericParser) Parse(msg parsers.Message, partition abstract.Partition) base.EventBatch {
+func (p *GenericParser) Parse(msg parsers.Message, partition abstract.Partition) abstract2.EventBatch {
 	if p.lfParser {
 		return p.logfellerParse(msg, partition)
 	}
@@ -80,7 +80,7 @@ func (p *GenericParser) Parse(msg parsers.Message, partition abstract.Partition)
 	return p.genericParse(msg, partition)
 }
 
-func (p *GenericParser) genericParse(msg parsers.Message, partition abstract.Partition) base.EventBatch {
+func (p *GenericParser) genericParse(msg parsers.Message, partition abstract.Partition) abstract2.EventBatch {
 	table := adapter.NewTableFromLegacy(p.schema, abstract.TableID{
 		Name:      partition.Topic,
 		Namespace: "",
@@ -90,7 +90,7 @@ func (p *GenericParser) genericParse(msg parsers.Message, partition abstract.Par
 		Namespace: "",
 	})
 	partStr := partition.String()
-	var items []base.Event
+	var items []abstract2.Event
 	scanner := bufio.NewScanner(bytes.NewReader(msg.Value))
 	bufSize := len(msg.Value) + 2
 	buf := make([]byte, 0, bufSize)
@@ -147,10 +147,10 @@ func (p *GenericParser) genericParse(msg parsers.Message, partition abstract.Par
 		}
 		items = append(items, ev)
 	}
-	return base.NewEventBatch(items)
+	return abstract2.NewEventBatch(items)
 }
 
-func (p *GenericParser) parseLine(table base.Table, line string) (events.InsertBuilder, map[string]interface{}, error) {
+func (p *GenericParser) parseLine(table abstract2.Table, line string) (events.InsertBuilder, map[string]interface{}, error) {
 	switch p.genericCfg.Format {
 	case "json":
 		builder, rest, err := p.parseJSONLine(table, line)
@@ -169,7 +169,7 @@ func (p *GenericParser) parseLine(table base.Table, line string) (events.InsertB
 	}
 }
 
-func (p *GenericParser) parseJSONLine(table base.Table, line string) (events.InsertBuilder, map[string]interface{}, error) {
+func (p *GenericParser) parseJSONLine(table abstract2.Table, line string) (events.InsertBuilder, map[string]interface{}, error) {
 	blrd := events.NewDefaultInsertBuilder(table)
 	parser := p.jsonParserPool.Get()
 	defer p.jsonParserPool.Put(parser)
@@ -248,7 +248,7 @@ func (p *GenericParser) parseJSONLine(table base.Table, line string) (events.Ins
 	return blrd, rest, nil
 }
 
-func (p *GenericParser) parseTSKVLine(table base.Table, line string) (events.InsertBuilder, map[string]interface{}, error) {
+func (p *GenericParser) parseTSKVLine(table abstract2.Table, line string) (events.InsertBuilder, map[string]interface{}, error) {
 	blrd := events.NewDefaultInsertBuilder(table)
 
 	v := make(map[string]interface{})
@@ -391,7 +391,7 @@ func (l *ysonEventBatch) Next() bool {
 	return false
 }
 
-func (l *ysonEventBatch) Event() (base.Event, error) {
+func (l *ysonEventBatch) Event() (abstract2.Event, error) {
 	if l.parseErr != nil {
 		return nil, l.parseErr
 	}
@@ -413,7 +413,7 @@ func (l *ysonEventBatch) MarshalYSON(w *yson.Writer) error {
 	return w.Finish()
 }
 
-func (p *GenericParser) logfellerParse(msg parsers.Message, partition abstract.Partition) base.EventBatch {
+func (p *GenericParser) logfellerParse(msg parsers.Message, partition abstract.Partition) abstract2.EventBatch {
 	transportMeta := fmt.Sprintf(
 		"%v@@%v@@%v@@%v@@%v@@%v@@%v@@%v@@",
 		partition.String(),

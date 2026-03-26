@@ -5,8 +5,8 @@ import (
 	"encoding/binary"
 	"io"
 
+	"github.com/transferia/transferia/library/go/core/xerrors"
 	"golang.org/x/exp/slices"
-	"golang.org/x/xerrors"
 )
 
 var (

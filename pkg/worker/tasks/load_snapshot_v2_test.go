@@ -13,7 +13,7 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/base"
+	"github.com/transferia/transferia/pkg/abstract2"
 	"github.com/transferia/transferia/pkg/providers"
 	"github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/providers/stdout"
@@ -62,7 +62,7 @@ func (p *abstract2Provider) Type() abstract.ProviderType {
 	return abstract.ProviderTypeMock
 }
 
-func (p *abstract2Provider) DataProvider() (base.DataProvider, error) {
+func (p *abstract2Provider) DataProvider() (abstract2.DataProvider, error) {
 	return p, nil
 }
 
@@ -79,25 +79,25 @@ func (p *abstract2Provider) Close() error {
 func (p *abstract2Provider) BeginSnapshot() error {
 	return nil
 }
-func (p *abstract2Provider) DataObjects(filter base.DataObjectFilter) (base.DataObjects, error) {
+func (p *abstract2Provider) DataObjects(filter abstract2.DataObjectFilter) (abstract2.DataObjects, error) {
 	return nil, nil
 }
-func (p *abstract2Provider) TableSchema(part base.DataObjectPart) (*abstract.TableSchema, error) {
+func (p *abstract2Provider) TableSchema(part abstract2.DataObjectPart) (*abstract.TableSchema, error) {
 	return nil, nil
 }
-func (p *abstract2Provider) CreateSnapshotSource(part base.DataObjectPart) (base.ProgressableEventSource, error) {
+func (p *abstract2Provider) CreateSnapshotSource(part abstract2.DataObjectPart) (abstract2.ProgressableEventSource, error) {
 	return nil, nil
 }
 func (p *abstract2Provider) EndSnapshot() error {
 	return nil
 }
-func (p *abstract2Provider) ResolveOldTableDescriptionToDataPart(tableDesc abstract.TableDescription) (base.DataObjectPart, error) {
+func (p *abstract2Provider) ResolveOldTableDescriptionToDataPart(tableDesc abstract.TableDescription) (abstract2.DataObjectPart, error) {
 	return nil, nil
 }
-func (p *abstract2Provider) DataObjectsToTableParts(filter base.DataObjectFilter) ([]abstract.TableDescription, error) {
+func (p *abstract2Provider) DataObjectsToTableParts(filter abstract2.DataObjectFilter) ([]abstract.TableDescription, error) {
 	return nil, nil
 }
-func (p *abstract2Provider) TablePartToDataObjectPart(tableDescription *abstract.TableDescription) (base.DataObjectPart, error) {
+func (p *abstract2Provider) TablePartToDataObjectPart(tableDescription *abstract.TableDescription) (abstract2.DataObjectPart, error) {
 	return nil, nil
 }
 

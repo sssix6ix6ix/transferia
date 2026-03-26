@@ -7,7 +7,7 @@ import (
 
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	"github.com/transferia/transferia/pkg/base"
+	"github.com/transferia/transferia/pkg/abstract2"
 	"github.com/transferia/transferia/pkg/util"
 )
 
@@ -94,7 +94,7 @@ func (rm *RowsMetric) Count(items []abstract.ChangeItem, calculateValuesSize boo
 	}
 }
 
-func (rm *RowsMetric) CountForBatch(input base.EventBatch) {
+func (rm *RowsMetric) CountForBatch(input abstract2.EventBatch) {
 	count := uint64(input.Count())
 	if count > 0 {
 		rm.statsMu.Lock()

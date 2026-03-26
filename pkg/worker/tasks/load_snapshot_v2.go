@@ -11,10 +11,10 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/base"
-	"github.com/transferia/transferia/pkg/base/adapter"
-	"github.com/transferia/transferia/pkg/base/events"
-	"github.com/transferia/transferia/pkg/base/filter"
+	"github.com/transferia/transferia/pkg/abstract2"
+	"github.com/transferia/transferia/pkg/abstract2/adapter"
+	"github.com/transferia/transferia/pkg/abstract2/events"
+	"github.com/transferia/transferia/pkg/abstract2/filter"
 	"github.com/transferia/transferia/pkg/data"
 	"github.com/transferia/transferia/pkg/errors"
 	"github.com/transferia/transferia/pkg/errors/categories"
@@ -31,8 +31,8 @@ import (
 )
 
 func (l *SnapshotLoader) sendTableControlEventV2(
-	eventFactory func(part *abstract.OperationTablePart) (base.Event, error),
-	target base.EventTarget,
+	eventFactory func(part *abstract.OperationTablePart) (abstract2.Event, error),
+	target abstract2.EventTarget,
 	tables ...*abstract.OperationTablePart,
 ) error {
 	tablesSet := map[string]bool{}
@@ -47,9 +47,9 @@ func (l *SnapshotLoader) sendTableControlEventV2(
 		if err != nil {
 			return xerrors.Errorf("unable to build event: %w", err)
 		}
-		eventString := base.EventToString(event)
+		eventString := abstract2.EventToString(event)
 
-		if err := <-target.AsyncPush(base.NewEventBatch([]base.Event{event})); err != nil {
+		if err := <-target.AsyncPush(abstract2.NewEventBatch([]abstract2.Event{event})); err != nil {
 			return xerrors.Errorf("unable to sent '%v' for table %v: %w", eventString, fqtn, err)
 		}
 
@@ -62,8 +62,8 @@ func (l *SnapshotLoader) sendTableControlEventV2(
 	return nil
 }
 
-func (l *SnapshotLoader) sendStateEventV2(state events.TableLoadState, provider base.SnapshotProvider, target base.EventTarget, tables ...*abstract.OperationTablePart) error {
-	eventFactory := func(part *abstract.OperationTablePart) (base.Event, error) {
+func (l *SnapshotLoader) sendStateEventV2(state events.TableLoadState, provider abstract2.SnapshotProvider, target abstract2.EventTarget, tables ...*abstract.OperationTablePart) error {
+	eventFactory := func(part *abstract.OperationTablePart) (abstract2.Event, error) {
 		dataObjectPart, err := provider.TablePartToDataObjectPart(part.ToTableDescription())
 		if err != nil {
 			return nil, xerrors.Errorf("unable create data object part for table part %v: %w", part.TableFQTN(), err)
@@ -78,15 +78,15 @@ func (l *SnapshotLoader) sendStateEventV2(state events.TableLoadState, provider 
 	return l.sendTableControlEventV2(eventFactory, target, tables...)
 }
 
-func (l *SnapshotLoader) sendCleanupEventV2(target base.EventTarget, tables ...*abstract.OperationTablePart) error {
-	eventFactory := func(part *abstract.OperationTablePart) (base.Event, error) {
+func (l *SnapshotLoader) sendCleanupEventV2(target abstract2.EventTarget, tables ...*abstract.OperationTablePart) error {
+	eventFactory := func(part *abstract.OperationTablePart) (abstract2.Event, error) {
 		return events.CleanupEvent(*part.ToTableID()), nil
 	}
 
 	return l.sendTableControlEventV2(eventFactory, target, tables...)
 }
 
-func (l *SnapshotLoader) makeTargetV2(lgr log.Logger) (dataTarget base.EventTarget, closer func(), err error) {
+func (l *SnapshotLoader) makeTargetV2(lgr log.Logger) (dataTarget abstract2.EventTarget, closer func(), err error) {
 	dataTarget, err = targets.NewTarget(l.transfer, l.operation, lgr, l.registry, l.cp)
 	if xerrors.Is(err, targets.UnknownTargetError) { // Legacy fallback
 		legacySink, err := sink.MakeAsyncSink(l.transfer, l.operation, lgr, l.registry, l.cp, middlewares.MakeConfig(middlewares.WithEnableRetries))
@@ -106,7 +106,7 @@ func (l *SnapshotLoader) makeTargetV2(lgr log.Logger) (dataTarget base.EventTarg
 	return dataTarget, closer, nil
 }
 
-func (l *SnapshotLoader) applyTransferTmpPolicyV2(inputFilter base.DataObjectFilter) error {
+func (l *SnapshotLoader) applyTransferTmpPolicyV2(inputFilter abstract2.DataObjectFilter) error {
 	if l.transfer.TmpPolicy == nil {
 		return nil
 	}
@@ -124,7 +124,7 @@ func (l *SnapshotLoader) applyTransferTmpPolicyV2(inputFilter base.DataObjectFil
 	return nil
 }
 
-func (l *SnapshotLoader) createSnapshotProviderV2() (base.SnapshotProvider, error) {
+func (l *SnapshotLoader) createSnapshotProviderV2() (abstract2.SnapshotProvider, error) {
 	snapshotProvider, err := data.NewSnapshotProvider(logger.Log, l.registry, l.transfer, l.cp)
 	if err != nil {
 		return nil, xerrors.Errorf("unable to create snapshot provider: %w", err)
@@ -138,7 +138,7 @@ func (l *SnapshotLoader) createSnapshotProviderV2() (base.SnapshotProvider, erro
 	return snapshotProvider, nil
 }
 
-func IntersectFilter(transfer *model.Transfer, basic base.DataObjectFilter) (base.DataObjectFilter, error) {
+func IntersectFilter(transfer *model.Transfer, basic abstract2.DataObjectFilter) (abstract2.DataObjectFilter, error) {
 	if transfer.DataObjects == nil || len(transfer.DataObjects.IncludeObjects) == 0 {
 		return basic, nil
 	}
@@ -152,7 +152,7 @@ func IntersectFilter(transfer *model.Transfer, basic base.DataObjectFilter) (bas
 	return transferFilter, nil
 }
 
-func (l *SnapshotLoader) UploadV2(ctx context.Context, snapshotProvider base.SnapshotProvider, tables []abstract.TableDescription) error {
+func (l *SnapshotLoader) UploadV2(ctx context.Context, snapshotProvider abstract2.SnapshotProvider, tables []abstract.TableDescription) error {
 	paralleledRuntime, ok := l.transfer.Runtime.(abstract.ShardingTaskRuntime)
 
 	if !ok || paralleledRuntime.SnapshotWorkersNum() <= 1 {
@@ -168,12 +168,12 @@ func (l *SnapshotLoader) UploadV2(ctx context.Context, snapshotProvider base.Sna
 	return nil
 }
 
-func (l *SnapshotLoader) uploadV2Single(ctx context.Context, snapshotProvider base.SnapshotProvider, inTables []abstract.TableDescription) error {
+func (l *SnapshotLoader) uploadV2Single(ctx context.Context, snapshotProvider abstract2.SnapshotProvider, inTables []abstract.TableDescription) error {
 	if inTables != nil && len(inTables) == 0 {
 		return abstract.NewFatalError(xerrors.New("no tables in snapshot"))
 	}
 
-	var inputFilter base.DataObjectFilter
+	var inputFilter abstract2.DataObjectFilter
 	if inTables != nil {
 		inputFilter = filter.NewFromDescription(inTables)
 	}
@@ -288,7 +288,7 @@ func (l *SnapshotLoader) uploadV2Single(ctx context.Context, snapshotProvider ba
 	return nil
 }
 
-func (l *SnapshotLoader) uploadV2Sharded(ctx context.Context, snapshotProvider base.SnapshotProvider, tables []abstract.TableDescription) error {
+func (l *SnapshotLoader) uploadV2Sharded(ctx context.Context, snapshotProvider abstract2.SnapshotProvider, tables []abstract.TableDescription) error {
 	if l.transfer.IsMain() {
 		if err := l.uploadV2Main(ctx, snapshotProvider, tables); err != nil {
 			return xerrors.Errorf("unable to sharded upload(main worker) tables v2: %w", err)
@@ -302,7 +302,7 @@ func (l *SnapshotLoader) uploadV2Sharded(ctx context.Context, snapshotProvider b
 	return nil
 }
 
-func (l *SnapshotLoader) uploadV2Main(ctx context.Context, snapshotProvider base.SnapshotProvider, inTables []abstract.TableDescription) error {
+func (l *SnapshotLoader) uploadV2Main(ctx context.Context, snapshotProvider abstract2.SnapshotProvider, inTables []abstract.TableDescription) error {
 	workers, err := l.cp.GetOperationWorkers(l.operation.OperationID)
 	if err != nil {
 		return xerrors.Errorf("failed to get operation workers: %w", err)
@@ -325,7 +325,7 @@ func (l *SnapshotLoader) uploadV2Main(ctx context.Context, snapshotProvider base
 			xerrors.Errorf("sharded transfer do not support temporary tables policy, please, turn it off or make transfer not sharded"))
 	}
 
-	var inputFilter base.DataObjectFilter
+	var inputFilter abstract2.DataObjectFilter
 	if inTables != nil {
 		inputFilter = filter.NewFromDescription(inTables)
 	}
@@ -450,7 +450,7 @@ func (l *SnapshotLoader) uploadV2Main(ctx context.Context, snapshotProvider base
 	return nil
 }
 
-func (l *SnapshotLoader) uploadV2Secondary(ctx context.Context, snapshotProvider base.SnapshotProvider) error {
+func (l *SnapshotLoader) uploadV2Secondary(ctx context.Context, snapshotProvider abstract2.SnapshotProvider) error {
 	runtime, ok := l.transfer.Runtime.(abstract.ShardingTaskRuntime)
 	if !ok || runtime.SnapshotWorkersNum() <= 1 {
 		return errors.CategorizedErrorf(categories.Internal, "run sharding upload with non sharding runtime for operation '%v'", l.operation.OperationID)
@@ -514,7 +514,7 @@ func (l *SnapshotLoader) uploadV2Secondary(ctx context.Context, snapshotProvider
 	return nil
 }
 
-func (l *SnapshotLoader) doUploadTablesV2(ctx context.Context, snapshotProvider base.SnapshotProvider, tppGetter table_part_provider.AbstractTablePartProviderGetter) error {
+func (l *SnapshotLoader) doUploadTablesV2(ctx context.Context, snapshotProvider abstract2.SnapshotProvider, tppGetter table_part_provider.AbstractTablePartProviderGetter) error {
 	ctx = util.ContextWithTimestamp(ctx, time.Now())
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()

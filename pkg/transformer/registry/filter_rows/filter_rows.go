@@ -2,13 +2,13 @@ package filterrows
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"math"
 	"strings"
 	"time"
 
 	"github.com/spf13/cast"
+	"github.com/transferia/transferia/library/go/core/xerrors"
 	parser "github.com/transferia/transferia/library/go/yandex/cloud/filter"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/transformer"
@@ -17,7 +17,6 @@ import (
 	"go.ytsaurus.tech/library/go/core/log"
 	yts "go.ytsaurus.tech/yt/go/schema"
 	"golang.org/x/exp/constraints"
-	"golang.org/x/xerrors"
 )
 
 const Type = abstract.TransformerType("filter_rows")
@@ -191,7 +190,7 @@ func matchValue(val1 interface{}, term termWithValues) (bool, error) {
 	int1, err := toInt64E(val1)
 	if err == nil {
 		isInt1 = true
-	} else if errors.Is(err, errIntOverflow) {
+	} else if xerrors.Is(err, errIntOverflow) {
 		return false, xerrors.Errorf("Unable to compare values: %w", errIntOverflow)
 	}
 

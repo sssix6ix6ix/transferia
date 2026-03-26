@@ -2,10 +2,10 @@ package postgres
 
 import (
 	"database/sql/driver"
+	"errors"
 
 	"github.com/jackc/pgtype"
 	"github.com/transferia/transferia/pkg/providers/postgres/sqltimestamp"
-	"github.com/transferia/transferia/pkg/util"
 )
 
 type Timestamptz struct {
@@ -28,7 +28,7 @@ func (t *Timestamptz) DecodeText(ci *pgtype.ConnInfo, src []byte) error {
 		tim, errF := sqltimestamp.Parse(string(src))
 		infmod := isTimestampInfinite(string(src))
 		if errF != nil && infmod != pgtype.None {
-			return util.Errors{err, errF}
+			return errors.Join(err, errF)
 		}
 		t.Timestamptz = pgtype.Timestamptz{Time: tim, Status: pgtype.Present, InfinityModifier: infmod}
 	}

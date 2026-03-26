@@ -6,7 +6,7 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/changeitem"
-	"github.com/transferia/transferia/pkg/base"
+	"github.com/transferia/transferia/pkg/abstract2"
 	"github.com/transferia/transferia/pkg/providers/yt/provider/types"
 	"go.ytsaurus.tech/yt/go/yson"
 )
@@ -85,7 +85,7 @@ func (e *event) ToOldChangeItem() (*abstract.ChangeItem, error) {
 	return changeItem, nil
 }
 
-func (e *event) Table() base.Table {
+func (e *event) Table() abstract2.Table {
 	return e.parentBatch.table
 }
 
@@ -93,7 +93,7 @@ func (e *event) NewValuesCount() int {
 	return e.parentBatch.table.ColumnsCount()
 }
 
-func (e *event) NewValue(i int) (base.Value, error) {
+func (e *event) NewValue(i int) (abstract2.Value, error) {
 	if err := e.maybeUnmarshal(); err != nil {
 		return nil, xerrors.Errorf("unable to unmarshal: %w", err)
 	}

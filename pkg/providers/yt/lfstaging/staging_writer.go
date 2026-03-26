@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/transferia/transferia/library/go/core/xerrors"
 	"go.ytsaurus.tech/yt/go/ypath"
 	"go.ytsaurus.tech/yt/go/yt"
-	"golang.org/x/xerrors"
 )
 
 type stagingWriter struct {

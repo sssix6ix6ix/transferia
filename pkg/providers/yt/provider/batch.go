@@ -1,7 +1,7 @@
 package provider
 
 import (
-	"github.com/transferia/transferia/pkg/base"
+	"github.com/transferia/transferia/pkg/abstract2"
 	"github.com/transferia/transferia/pkg/providers/yt/provider/table"
 )
 
@@ -45,7 +45,7 @@ func (b *batch) Size() int {
 	return size
 }
 
-func (b *batch) Event() (base.Event, error) {
+func (b *batch) Event() (abstract2.Event, error) {
 	return NewEventFromLazyYSON(b, b.idx), nil
 }
 

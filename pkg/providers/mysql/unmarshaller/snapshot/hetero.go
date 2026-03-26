@@ -5,12 +5,12 @@ import (
 	"strconv"
 
 	"github.com/spf13/cast"
+	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/providers/mysql/unmarshaller/types"
 	"github.com/transferia/transferia/pkg/util/castx"
 	"github.com/transferia/transferia/pkg/util/strict"
 	"go.ytsaurus.tech/yt/go/schema"
-	"golang.org/x/xerrors"
 )
 
 func unmarshalHetero(value interface{}, colSchema *abstract.ColSchema) (any, error) {

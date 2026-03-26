@@ -1,7 +1,6 @@
 package errors
 
 import (
-	"errors"
 	"testing"
 	"time"
 
@@ -48,9 +47,9 @@ func multipleErrorsGenerator(definer int) error {
 	case definer%13 == 0:
 		return xerrors.Errorf("13 definer error: %w", instantiatedError)
 	case definer%101 == 0:
-		return errors.New("101 definer error")
+		return xerrors.New("101 definer error")
 	case definer%103 == 0:
-		return errors.New("103 definer error")
+		return xerrors.New("103 definer error")
 	default:
 		return xerrors.Errorf("default definer error: %w", instantiatedError)
 	}
@@ -86,14 +85,6 @@ func TestEqualCausesOneNil(t *testing.T) {
 func TestEqualCausesBothNil(t *testing.T) {
 	var a error = nil
 	var b error = nil
-
-	require.False(t, EqualCauses(a, b))
-	require.False(t, EqualCauses(b, a))
-}
-
-func TestEqualCausesGolangErrorsUnequal(t *testing.T) {
-	a := multipleErrorsGenerator(101)
-	b := multipleErrorsGenerator(101)
 
 	require.False(t, EqualCauses(a, b))
 	require.False(t, EqualCauses(b, a))

@@ -3,7 +3,7 @@ package dataobjects
 import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	"github.com/transferia/transferia/pkg/base"
+	"github.com/transferia/transferia/pkg/abstract2"
 	"github.com/transferia/transferia/pkg/providers/yt/tablemeta"
 	"go.ytsaurus.tech/yt/go/ypath"
 	"go.ytsaurus.tech/yt/go/yt"
@@ -39,7 +39,7 @@ func (o *shardingDataObject) Close() {
 	o.idx = o.table.RowCount
 }
 
-func (o *shardingDataObject) Part() (base.DataObjectPart, error) {
+func (o *shardingDataObject) Part() (abstract2.DataObjectPart, error) {
 	if o.idx < 0 && o.idx >= o.table.RowCount {
 		return nil, xerrors.Errorf("iter idx %d out of bounds", o.idx)
 	}

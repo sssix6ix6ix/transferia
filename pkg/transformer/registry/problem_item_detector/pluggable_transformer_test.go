@@ -1,10 +1,10 @@
 package problemitemdetector
 
 import (
-	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 )
 
@@ -15,7 +15,7 @@ type mockSink struct {
 
 func (s *mockSink) Push([]abstract.ChangeItem) error {
 	if s.pushWithError {
-		return errors.New("error")
+		return xerrors.New("error")
 	}
 	return nil
 }

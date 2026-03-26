@@ -12,12 +12,12 @@ import (
 	"github.com/cenkalti/backoff/v4"
 	"github.com/spf13/cast"
 	"github.com/transferia/transferia/library/go/core/metrics"
+	"github.com/transferia/transferia/library/go/core/xerrors"
 	yslices "github.com/transferia/transferia/library/go/slices"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/stats"
 	"github.com/transferia/transferia/pkg/util/set"
 	"go.ytsaurus.tech/library/go/core/log"
-	"golang.org/x/xerrors"
 )
 
 type Sink struct {

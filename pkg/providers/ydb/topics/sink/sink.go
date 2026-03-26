@@ -3,6 +3,7 @@ package topicsink
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -262,21 +263,17 @@ func (s *sink) deleteWriterByGroupID(groupID string) error {
 }
 
 func (s *sink) closeWriters() error {
-	errs := util.NewErrs()
+	var closeErrs []error
 
 	s.writers.Clear(func(mp map[string]cancelableWriter) {
 		for _, wr := range mp {
 			if err := wr.Close(context.Background()); err != nil && !xerrors.Is(err, context.Canceled) {
-				errs = util.AppendErr(errs, xerrors.Errorf("failed to close Writer: %w", err))
+				closeErrs = append(closeErrs, xerrors.Errorf("failed to close Writer: %w", err))
 			}
 		}
 	})
 
-	if len(errs) > 0 {
-		return errs
-	}
-
-	return nil
+	return errors.Join(closeErrs...)
 }
 
 func splitSerializedMessages(maxSize int, serializedMessages []serializer.SerializedMessage) (int, [][]topicwriter.Message) {

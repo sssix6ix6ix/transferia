@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/transferia/transferia/pkg/abstract"
-	"github.com/transferia/transferia/pkg/base"
+	"github.com/transferia/transferia/pkg/abstract2"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
@@ -19,7 +19,7 @@ func (*stubAgent) SetOpts(*MeteringOpts) error {
 
 func (*stubAgent) CountInputRows(items []abstract.ChangeItem)  {}
 func (*stubAgent) CountOutputRows(items []abstract.ChangeItem) {}
-func (*stubAgent) CountOutputBatch(input base.EventBatch)      {}
+func (*stubAgent) CountOutputBatch(input abstract2.EventBatch) {}
 
 func (sa *stubAgent) RunPusher(ctx context.Context, interval time.Duration) error {
 	sa.logger.Warn("it is stub metering agent, exiting...")

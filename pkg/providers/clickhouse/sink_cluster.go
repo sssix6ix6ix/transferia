@@ -6,6 +6,7 @@ package clickhouse
 
 import (
 	"context"
+	stderrors "errors"
 	"sync"
 
 	"github.com/transferia/transferia/internal/logger"
@@ -17,7 +18,6 @@ import (
 	"github.com/transferia/transferia/pkg/providers/clickhouse/model"
 	topology2 "github.com/transferia/transferia/pkg/providers/clickhouse/topology"
 	"github.com/transferia/transferia/pkg/stats"
-	"github.com/transferia/transferia/pkg/util"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
@@ -61,12 +61,14 @@ func (c *sinkCluster) Insert(spec *TableSpec, rows []abstract.ChangeItem) error 
 func (c *sinkCluster) TruncateTable(tableName string) error {
 	ctx := context.TODO()
 	if c.perHostDDL() {
-		errs := util.NewErrs()
+		var errs []error
 		for _, ss := range c.sinkServers {
-			errs = util.AppendErr(errs, ss.TruncateTable(ctx, tableName, false))
+			if err := ss.TruncateTable(ctx, tableName, false); err != nil {
+				errs = append(errs, err)
+			}
 		}
-		if len(errs) > 0 {
-			return xerrors.Errorf("cannot truncate table in per host style: %w", errs)
+		if err := stderrors.Join(errs...); err != nil {
+			return xerrors.Errorf("cannot truncate table in per host style: %w", err)
 		}
 		return nil
 	}
@@ -82,12 +84,14 @@ func (c *sinkCluster) TruncateTable(tableName string) error {
 func (c *sinkCluster) DropTable(tableName string) error {
 	ctx := context.TODO()
 	if c.perHostDDL() {
-		errs := util.NewErrs()
+		var errs []error
 		for _, ss := range c.sinkServers {
-			errs = util.AppendErr(errs, ss.DropTable(ctx, tableName, false))
+			if err := ss.DropTable(ctx, tableName, false); err != nil {
+				errs = append(errs, err)
+			}
 		}
-		if len(errs) > 0 {
-			return xerrors.Errorf("cannot drop table in per host style: %w", errs)
+		if err := stderrors.Join(errs...); err != nil {
+			return xerrors.Errorf("cannot drop table in per host style: %w", err)
 		}
 		return nil
 	}
@@ -150,27 +154,25 @@ func (c *sinkCluster) perHostDDL() bool {
 }
 
 func (c *sinkCluster) Close() error {
-	errors := util.NewErrs()
+	var closeErrs []error
 	for _, s := range c.sinkServers {
 		if err := s.Close(); err != nil {
-			errors = util.AppendErr(errors, xerrors.Errorf("failed to close SinkServer: %w", err))
+			closeErrs = append(closeErrs, xerrors.Errorf("failed to close SinkServer: %w", err))
 		}
 	}
-	if len(errors) > 0 {
-		return errors
-	}
-	return nil
+	return stderrors.Join(closeErrs...)
 }
 
 func (c *sinkCluster) Reset() error {
-	errors := util.NewErrs()
-
+	var closeErrs []error
 	for _, s := range c.sinkServers {
-		errors = util.AppendErr(errors, s.Close())
+		if err := s.Close(); err != nil {
+			closeErrs = append(closeErrs, err)
+		}
 	}
 
-	if len(errors) > 0 {
-		logger.Log.Warn("ClickHouse cluster reset encountered Close error(s)", log.Error(errors))
+	if err := stderrors.Join(closeErrs...); err != nil {
+		logger.Log.Warn("ClickHouse cluster reset encountered Close error(s)", log.Error(err))
 	}
 
 	return c.Init()
@@ -178,7 +180,7 @@ func (c *sinkCluster) Reset() error {
 
 func (c *sinkCluster) Init() error {
 	st := make([]*SinkServer, 0)
-	var errs util.Errors
+	var errs []error
 	for _, host := range yslices.Shuffle(c.config.AltHosts(), nil) {
 		c.logger.Debugf("init sinkServer %v", host.String())
 		sinkServer, err := NewSinkServer(
@@ -199,7 +201,7 @@ func (c *sinkCluster) Init() error {
 	if len(st) > 0 {
 		c.sinkServers = st
 	} else {
-		return xerrors.Errorf("no sink servers in cluster with: %v hosts: %w", len(c.config.AltHosts()), errs)
+		return xerrors.Errorf("no sink servers in cluster with: %v hosts: %w", len(c.config.AltHosts()), stderrors.Join(errs...))
 	}
 
 	return nil

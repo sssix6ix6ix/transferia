@@ -1,8 +1,9 @@
 package slicesx
 
 import (
-	"errors"
 	"fmt"
+
+	"github.com/transferia/transferia/library/go/core/xerrors"
 )
 
 // OversizePolicy defines the behavior when a single element's size exceeds the limit.
@@ -16,10 +17,10 @@ const (
 )
 
 var (
-	ErrOversizedElement = errors.New("element size exceeds split limit")
-	ErrNonPositiveLimit = errors.New("splitByBytesVal must be positive")
-	ErrNilSizeFunc      = errors.New("sizeFunc must not be nil")
-	ErrInvalidPolicy    = errors.New("invalid oversize policy")
+	ErrOversizedElement = xerrors.New("element size exceeds split limit")
+	ErrNonPositiveLimit = xerrors.New("splitByBytesVal must be positive")
+	ErrNilSizeFunc      = xerrors.New("sizeFunc must not be nil")
+	ErrInvalidPolicy    = xerrors.New("invalid oversize policy")
 )
 
 // SplitBySize splits a slice into chunks where each chunk's total size (determined by sizeFunc)

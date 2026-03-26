@@ -12,8 +12,8 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/base"
-	"github.com/transferia/transferia/pkg/base/events"
+	"github.com/transferia/transferia/pkg/abstract2"
+	"github.com/transferia/transferia/pkg/abstract2/events"
 	"github.com/transferia/transferia/pkg/providers"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/chrecipe"
 	"github.com/transferia/transferia/pkg/util"
@@ -24,7 +24,7 @@ type fakeTarget struct {
 	items map[abstract.TableID][]abstract.ChangeItem
 }
 
-func (f *fakeTarget) AsyncPush(input base.EventBatch) chan error {
+func (f *fakeTarget) AsyncPush(input abstract2.EventBatch) chan error {
 	f.mutex.Lock()
 	defer f.mutex.Unlock()
 

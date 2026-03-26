@@ -3,6 +3,7 @@ package sink
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -16,7 +17,6 @@ import (
 	"github.com/transferia/transferia/pkg/abstract/model"
 	s3_provider "github.com/transferia/transferia/pkg/providers/s3"
 	"github.com/transferia/transferia/pkg/stats"
-	"github.com/transferia/transferia/pkg/util"
 	"go.ytsaurus.tech/library/go/core/log"
 	"golang.org/x/sync/semaphore"
 )
@@ -172,22 +172,20 @@ func (s *ReplicationSink) tryUploadWithIntersectionGuard(cache *FileCache, fileP
 		}(i, part)
 	}
 	isFatal := false
-	var errs util.Errors
+	var errs []error
 	for i := 0; i < len(cacheParts); i++ {
 		err := <-resCh[i]
-		if err != nil {
-			errs = append(errs, err)
-		}
+		errs = append(errs, err)
 		if abstract.IsFatal(err) {
 			isFatal = true
 		}
 	}
 
-	if len(errs) > 0 {
+	if err := errors.Join(errs...); err != nil {
 		if isFatal {
-			return abstract.NewFatalError(xerrors.Errorf("fatal error in upload file part: %w", errs))
+			return abstract.NewFatalError(xerrors.Errorf("fatal error in upload file part: %w", err))
 		}
-		return xerrors.Errorf("unable to upload file part: %w", errs)
+		return xerrors.Errorf("unable to upload file part: %w", err)
 	}
 	return nil
 }

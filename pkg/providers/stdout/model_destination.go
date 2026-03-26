@@ -6,7 +6,7 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/middlewares/async/bufferer"
+	"github.com/transferia/transferia/pkg/middlewares/synchronizer/bufferer"
 	"go.uber.org/zap/zapcore"
 )
 

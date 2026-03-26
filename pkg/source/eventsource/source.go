@@ -6,21 +6,21 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/base"
+	"github.com/transferia/transferia/pkg/abstract2"
 	"github.com/transferia/transferia/pkg/targets/legacy"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
 type eventSourceSource struct {
-	source        base.EventSource
+	source        abstract2.EventSource
 	cleanupPolicy model.CleanupType
 	tmpPolicy     *model.TmpPolicyConfig
 
 	logger log.Logger
 }
 
-// NewSource constructs a wrapper over the given base.EventSource with the abstract.Source interface
-func NewSource(logger log.Logger, source base.EventSource, cleanupPolicy model.CleanupType, tmpPolicy *model.TmpPolicyConfig) abstract.Source {
+// NewSource constructs a wrapper over the given abstract2.EventSource with the abstract.Source interface
+func NewSource(logger log.Logger, source abstract2.EventSource, cleanupPolicy model.CleanupType, tmpPolicy *model.TmpPolicyConfig) abstract.Source {
 	return &eventSourceSource{
 		source:        source,
 		cleanupPolicy: cleanupPolicy,

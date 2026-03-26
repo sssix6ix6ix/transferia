@@ -7,7 +7,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
-	v1 "github.com/opencontainers/image-spec/specs-go/v1"
+	opencontainers_specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -26,7 +26,7 @@ func (m *MockDockerClient) ImagePull(ctx context.Context, ref string, options ty
 }
 
 func (m *MockDockerClient) ContainerCreate(ctx context.Context, config *container.Config, hostConfig *container.HostConfig,
-	networkingConfig *network.NetworkingConfig, platform *v1.Platform, containerName string,
+	networkingConfig *network.NetworkingConfig, platform *opencontainers_specs.Platform, containerName string,
 ) (container.CreateResponse, error) {
 	args := m.Called(ctx, config, hostConfig, networkingConfig, platform, containerName)
 	return args.Get(0).(container.CreateResponse), args.Error(1)

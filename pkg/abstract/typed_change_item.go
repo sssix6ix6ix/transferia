@@ -2,12 +2,12 @@ package abstract
 
 import (
 	"encoding/json"
+	"errors"
 	"reflect"
 	"time"
 
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract/changeitem"
-	"github.com/transferia/transferia/pkg/util"
 	"github.com/valyala/fastjson"
 )
 
@@ -26,45 +26,42 @@ func (t *TypedChangeItem) MarshalJSON() ([]byte, error) {
 	v := reflect.ValueOf(*t)
 
 	jsonMap := map[string]TypedValue{}
-	var errs util.Errors
+	var errs []error
 	for i := 0; i < v.NumField(); i++ {
 		jsonMap[reflect.TypeOf(*t).Field(i).Name], err = packTypedValue(v.Field(i).Interface())
-		errs = util.AppendErr(errs, err)
+		errs = append(errs, err)
 	}
-	if len(errs) > 0 {
-		return nil, xerrors.Errorf("unable to pack change item: %w", errs)
+	if err := errors.Join(errs...); err != nil {
+		return nil, xerrors.Errorf("unable to pack change item: %w", err)
 	}
 
 	return json.Marshal(jsonMap)
 }
 
 func (t *TypedChangeItem) UnmarshalJSON(data []byte) error {
-	var errs util.Errors
+	var errs []error
 	fastjson.MustParse(string(data)).GetObject().Visit(func(k []byte, v *fastjson.Value) {
 		extractedV, parseErr := unpackTypedValue(v)
 		if parseErr == nil {
 			reflect.Indirect(reflect.ValueOf(t)).FieldByName(string(k)).Set(reflect.ValueOf(extractedV))
 		}
-		errs = util.AppendErr(errs, parseErr)
+		errs = append(errs, parseErr)
 	})
-	if len(errs) > 0 {
-		return xerrors.Errorf("unable to unpack: %w", errs)
+	if err := errors.Join(errs...); err != nil {
+		return xerrors.Errorf("unable to unpack: %w", err)
 	}
 	return nil
 }
 
 func (t *TypedChangeItem) packTypedValues() ([]TypedValue, error) {
 	var res []TypedValue
-	var errs util.Errors
+	var errs []error
 	for _, val := range t.ColumnValues {
 		typedV, err := packTypedValue(val)
-		errs = util.AppendErr(errs, err)
+		errs = append(errs, err)
 		res = append(res, typedV)
 	}
-	if len(errs) > 0 {
-		return nil, errs
-	}
-	return res, nil
+	return res, errors.Join(errs...)
 }
 
 func (t *TypedChangeItem) unpackTypedValues(v *fastjson.Value) ([]interface{}, error) {
@@ -201,13 +198,13 @@ func unpackTypedValue(item *fastjson.Value) (any, error) {
 		return res, nil
 	case typeName[map[string]interface{}]():
 		res := map[string]interface{}{}
-		var errs util.Errors
+		var errs []error
 		item.Get("value").GetObject().Visit(func(key []byte, v *fastjson.Value) {
 			res[string(key)], err = unpackTypedValue(v)
-			errs = util.AppendErr(errs, err)
+			errs = append(errs, err)
 		})
-		if len(errs) > 0 {
-			return nil, xerrors.Errorf("errors: %w", errs)
+		if err := errors.Join(errs...); err != nil {
+			return nil, xerrors.Errorf("errors: %w", err)
 		}
 		return res, nil
 	case typeName[changeitem.QueueMessageMeta]():
@@ -250,42 +247,42 @@ func packTypedValue(val any) (TypedValue, error) {
 		return TypedValue{Value: val, Type: typeNameFromValue(val)}, nil
 	case []interface{}:
 		var items []TypedValue
-		var errs util.Errors
+		var errs []error
 		for _, item := range castedV {
 			packedV, err := packTypedValue(item)
-			errs = util.AppendErr(errs, err)
+			errs = append(errs, err)
 			items = append(items, packedV)
 		}
-		if len(errs) > 0 {
-			return *new(TypedValue), xerrors.Errorf("many errs: %w", errs)
+		if err := errors.Join(errs...); err != nil {
+			return *new(TypedValue), xerrors.Errorf("many errs: %w", err)
 		}
 		return TypedValue{Value: items, Type: typeNameFromValue(val)}, nil
 	case map[string]interface{}:
-		var errs util.Errors
+		var errs []error
 		data := map[string]TypedValue{}
 		for k, v := range castedV {
 			var err error
 			data[k], err = packTypedValue(v)
-			errs = util.AppendErr(errs, err)
+			errs = append(errs, err)
 		}
-		if len(errs) > 0 {
-			return *new(TypedValue), xerrors.Errorf("many errs: %w", errs)
+		if err := errors.Join(errs...); err != nil {
+			return *new(TypedValue), xerrors.Errorf("many errs: %w", err)
 		}
 		return TypedValue{Value: data, Type: typeNameFromValue(val)}, nil
 	case [][]interface{}: // Clickhouse nested arrays
 		var data [][]TypedValue
-		var errs util.Errors
+		var errs []error
 		for _, arr := range castedV {
 			var items []TypedValue
 			for _, item := range arr {
 				packedV, err := packTypedValue(item)
-				errs = util.AppendErr(errs, err)
+				errs = append(errs, err)
 				items = append(items, packedV)
 			}
 			data = append(data, items)
 		}
-		if len(errs) > 0 {
-			return *new(TypedValue), xerrors.Errorf("many errs: %w", errs)
+		if err := errors.Join(errs...); err != nil {
+			return *new(TypedValue), xerrors.Errorf("many errs: %w", err)
 		}
 		return TypedValue{Value: data, Type: typeNameFromValue(val)}, nil
 	case *TableSchema:

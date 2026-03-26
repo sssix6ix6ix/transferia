@@ -6,7 +6,6 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/providers/delta/action"
 	"github.com/transferia/transferia/pkg/providers/delta/store"
-	util_math "github.com/transferia/transferia/pkg/util/math"
 )
 
 type history struct {
@@ -168,7 +167,7 @@ func (h *history) getEarliestReproducibleCommitVersion() (int64, error) {
 			if version == 0 || err != nil {
 				return 0, nil
 			}
-			smallestDeltaVersion = util_math.MinT(version, smallestDeltaVersion)
+			smallestDeltaVersion = min(version, smallestDeltaVersion)
 			if lastCompleteCheckpoint > 0 && lastCompleteCheckpoint >= smallestDeltaVersion {
 				return lastCompleteCheckpoint, nil
 			}

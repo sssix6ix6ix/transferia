@@ -8,7 +8,7 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/typesystem"
-	"github.com/transferia/transferia/pkg/base"
+	"github.com/transferia/transferia/pkg/abstract2"
 	"go.ytsaurus.tech/library/go/core/log"
 	"go.ytsaurus.tech/yt/go/schema"
 )
@@ -57,7 +57,7 @@ func (d *DataObjects) Close() {
 	d.iter = len(d.catalog.Streams)
 }
 
-func (d *DataObjects) Object() (base.DataObject, error) {
+func (d *DataObjects) Object() (abstract2.DataObject, error) {
 	return &DataObject{
 		iter:   -1,
 		stream: d.catalog.Streams[d.iter],
@@ -82,7 +82,7 @@ func (d *DataObjects) ToOldTableMap() (abstract.TableMap, error) {
 	return res, nil
 }
 
-func NewDataObjects(catalog *Catalog, filter base.DataObjectFilter) (*DataObjects, error) {
+func NewDataObjects(catalog *Catalog, filter abstract2.DataObjectFilter) (*DataObjects, error) {
 	if filter != nil {
 		var filteredStream []Stream
 		for _, stream := range catalog.Streams {
@@ -143,7 +143,7 @@ func (d *DataObject) Err() error {
 func (d *DataObject) Close() {
 }
 
-func (d *DataObject) Part() (base.DataObjectPart, error) {
+func (d *DataObject) Part() (abstract2.DataObjectPart, error) {
 	return d, nil
 }
 

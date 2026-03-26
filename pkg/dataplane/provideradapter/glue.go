@@ -4,8 +4,8 @@ import (
 	"reflect"
 
 	"github.com/transferia/transferia/internal/logger"
+	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"golang.org/x/xerrors"
 )
 
 var (

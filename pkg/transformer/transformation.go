@@ -2,6 +2,7 @@ package transformer
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -11,7 +12,6 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/changeitem"
 	"github.com/transferia/transferia/pkg/stats"
-	"github.com/transferia/transferia/pkg/util"
 	"go.ytsaurus.tech/library/go/core/log"
 	"go.ytsaurus.tech/yt/go/schema"
 )
@@ -23,14 +23,11 @@ type transformation struct {
 	transformers []abstract.Transformer
 	plan         map[abstract.TableID]map[string][]abstract.Transformer
 	sink         abstract.Sinker
-
-	registry metrics.Registry
-	sta      *stats.MiddlewareTransformerStats
-	logger   log.Logger
-
-	mutex sync.Mutex
-
-	runtimeOpts abstract.TransformationRuntimeOpts
+	registry     metrics.Registry
+	sta          *stats.MiddlewareTransformerStats
+	logger       log.Logger
+	mutex        sync.Mutex
+	runtimeOpts  abstract.TransformationRuntimeOpts
 }
 
 func (u *transformation) clone() *transformation {
@@ -39,31 +36,27 @@ func (u *transformation) clone() *transformation {
 		transformers: u.transformers,
 		plan:         make(map[abstract.TableID]map[string][]abstract.Transformer),
 		sink:         nil,
-
-		registry: u.registry,
-		sta:      stats.NewMiddlewareTransformerStats(u.registry),
-		logger:   u.logger,
-
-		mutex: sync.Mutex{},
-
-		runtimeOpts: u.runtimeOpts,
+		registry:     u.registry,
+		sta:          stats.NewMiddlewareTransformerStats(u.registry),
+		logger:       u.logger,
+		mutex:        sync.Mutex{},
+		runtimeOpts:  u.runtimeOpts,
 	}
 }
-
 func (u *transformation) AddTablePlan(table abstract.TableID, schema *abstract.TableSchema) ([]abstract.Transformer, error) {
 	tablePlan := make([]abstract.Transformer, 0)
 	inputSchemaHash, err := schema.Hash()
 	if err != nil {
 		u.logger.Warnf("unable to get table schema hash: %v", err)
 	}
-	var errs util.Errors
+	var errs []error
 	outputSchema := schema
 	for _, tr := range u.transformers {
 		if tr.Suitable(table, outputSchema) {
 			tablePlan = append(tablePlan, tr)
 			resSchema, err := tr.ResultSchema(outputSchema)
 			if err != nil {
-				errs = util.AppendErr(errs, abstract.NewFatalError(xerrors.Errorf("unable to build result schema for: %s: %w", tr.Description(), err)))
+				errs = append(errs, abstract.NewFatalError(xerrors.Errorf("unable to build result schema for: %s: %w", tr.Description(), err)))
 				continue
 			}
 			outputSchema = resSchema
@@ -85,12 +78,11 @@ func (u *transformation) AddTablePlan(table abstract.TableID, schema *abstract.T
 	} else {
 		u.logger.Infof("no transformations for table %v", table.Fqtn())
 	}
-	if !errs.Empty() {
-		return nil, xerrors.Errorf("fail to add table: %s plan: %w", table.String(), errs)
+	if err = errors.Join(errs...); err != nil {
+		return nil, xerrors.Errorf("fail to add table: %s plan: %w", table.String(), err)
 	}
 	return tablePlan, nil
 }
-
 func (u *transformation) printfPlan(tableID abstract.TableID, transformers []abstract.Transformer) string {
 	str := fmt.Sprintf("%v:\n", tableID.Fqtn())
 	for i, tr := range transformers {
@@ -98,14 +90,11 @@ func (u *transformation) printfPlan(tableID abstract.TableID, transformers []abs
 	}
 	return str
 }
-
 func (u *transformation) preparePlans(items []abstract.ChangeItem) (map[abstract.TableID]map[string][]abstract.Transformer, error) {
 	u.mutex.Lock()
 	defer u.mutex.Unlock()
-
 	result := map[abstract.TableID]map[string][]abstract.Transformer{}
-
-	var errs util.Errors
+	var errs []error
 	var err error
 	for _, item := range items {
 		tableID := item.TableID()
@@ -120,34 +109,30 @@ func (u *transformation) preparePlans(items []abstract.ChangeItem) (map[abstract
 		if !ok {
 			tablePlan, err = u.AddTablePlan(tableID, item.TableSchema)
 			if err != nil {
-				errs = util.AppendErr(errs, xerrors.Errorf("unable to add table plan: %w", err))
+				errs = append(errs, xerrors.Errorf("unable to add table plan: %w", err))
 			}
 		}
 		result[tableID][schemaHash] = append(result[tableID][schemaHash], tablePlan...)
 	}
-	if !errs.Empty() {
-		return nil, xerrors.Errorf("prepare transformer plan failed: %w", errs)
+	if err = errors.Join(errs...); err != nil {
+		return nil, xerrors.Errorf("prepare transformer plan failed: %w", err)
 	}
 	return result, nil
 }
-
 func (u *transformation) Push(items []abstract.ChangeItem) error {
 	itemsIncomingCount := len(items)
 	startMoment := time.Now()
-
 	plans, err := u.preparePlans(items)
 	if err != nil {
 		return xerrors.Errorf("unable to prepare transformation: %w", err)
 	}
 	tableItems := abstract.SplitByTableID(items)
 	result := make(chan chan abstract.TransformerResult, len(plans))
-
 	for tid, plan := range plans {
 		resICh := make(chan abstract.TransformerResult)
 		result <- resICh
 		go u.do(tid, plan, tableItems[tid], resICh)
 	}
-
 	transformed := make([]abstract.ChangeItem, 0)
 	errors := make([]abstract.TransformerError, 0)
 	for i := 0; i < len(plans); i++ {
@@ -156,35 +141,28 @@ func (u *transformation) Push(items []abstract.ChangeItem) error {
 		errors = append(errors, iRes.Errors...)
 	}
 	close(result)
-
 	elapsed := time.Since(startMoment)
 	itemsTransformedCount := len(transformed)
 	itemsDroppedCount := itemsIncomingCount - itemsTransformedCount
-
 	if itemsDroppedCount > 0 {
 		u.sta.Dropped.Add(int64(itemsDroppedCount))
 	}
 	u.sta.Elapsed.RecordDuration(elapsed)
 	u.sta.Errors.Add(int64(len(errors)))
-
 	u.logFormatStringIfErrors(errors, "transformation of %d plans applied in %s; converted %d into %d items (%+d items), %d errors", len(plans), elapsed.String(), itemsIncomingCount, itemsTransformedCount, -itemsDroppedCount, len(errors))
-
 	if len(errors) > 0 {
 		if err := u.pushErrors(errors); err != nil {
 			return xerrors.Errorf("failed to process transformation errors: %w", err)
 		}
 	}
-
 	return u.sink.Push(transformed)
 }
-
 func (u *transformation) Close() error {
 	if u.sink != nil {
 		return u.sink.Close()
 	}
 	return nil
 }
-
 func (u *transformation) logFormatStringIfErrors(errors []abstract.TransformerError, msg string, args ...any) {
 	lgr := u.logger.Debugf
 	if len(errors) > 0 {
@@ -192,7 +170,6 @@ func (u *transformation) logFormatStringIfErrors(errors []abstract.TransformerEr
 	}
 	lgr(msg, args...)
 }
-
 func (u *transformation) pushErrors(errors []abstract.TransformerError) error {
 	if len(errors) == 0 {
 		return nil
@@ -217,7 +194,6 @@ func (u *transformation) pushErrors(errors []abstract.TransformerError) error {
 	}
 	return nil
 }
-
 func errorChangeItems(errors []abstract.TransformerError) []abstract.ChangeItem {
 	res := make([]abstract.ChangeItem, len(errors))
 	for i, errRow := range errors {
@@ -257,7 +233,6 @@ func errorChangeItems(errors []abstract.TransformerError) []abstract.ChangeItem 
 	}
 	return res
 }
-
 func (u *transformation) do(tableID abstract.TableID, tablePlans map[string][]abstract.Transformer, items []abstract.ChangeItem, resCh chan abstract.TransformerResult) {
 	result := abstract.TransformerResult{
 		Transformed: make([]abstract.ChangeItem, 0),
@@ -266,7 +241,6 @@ func (u *transformation) do(tableID abstract.TableID, tablePlans map[string][]ab
 	input := items
 	u.logger.Debugf("for '%s' are '%v' plans to transform '%v' changeitems", tableID.String(), len(tablePlans), len(input))
 	currentSchemaHash, _ := input[0].TableSchema.Hash()
-
 	for i, lastIndex := 0, 0; i <= len(input); i++ {
 		var hash string
 		if i < len(input) {
@@ -276,20 +250,16 @@ func (u *transformation) do(tableID abstract.TableID, tablePlans map[string][]ab
 			}
 		}
 		toApply := input[lastIndex:i]
-
 		for _, transformer := range tablePlans[currentSchemaHash] {
 			st := time.Now()
 			currentTransformerResult := transformer.Apply(toApply)
-
 			toApply = currentTransformerResult.Transformed
 			result.Errors = append(result.Errors, currentTransformerResult.Errors...)
-
 			errorExample := ""
 			if len(currentTransformerResult.Errors) != 0 {
 				mapBytes, _ := json.Marshal(currentTransformerResult.Errors[0].Input.AsMap())
 				errorExample = fmt.Sprintf("err:%s, changeItem:%s", currentTransformerResult.Errors[0].Error, mapBytes)
 			}
-
 			u.logFormatStringIfErrors(
 				currentTransformerResult.Errors,
 				"transformation plan applied for table '%s' - transformer '%s' - got %d items, transformed %d items with %d errors in %v milliseconds, err: %s",
@@ -310,7 +280,6 @@ func (u *transformation) do(tableID abstract.TableID, tablePlans map[string][]ab
 	}
 	resCh <- result
 }
-
 func (u *transformation) MakeSinkMiddleware() abstract.SinkOption {
 	return func(sink abstract.Sinker) abstract.Sinker {
 		executorInstance := u.clone()
@@ -318,13 +287,11 @@ func (u *transformation) MakeSinkMiddleware() abstract.SinkOption {
 		return executorInstance
 	}
 }
-
 func (u *transformation) AddTransformer(transformer abstract.Transformer) error {
 	u.transformers = append(u.transformers, transformer)
 	u.plan = make(map[abstract.TableID]map[string][]abstract.Transformer)
 	return nil
 }
-
 func (u *transformation) printfSchema(schema abstract.TableColumns) string {
 	res := fmt.Sprintf("Columns: %d\n", len(schema))
 	for _, col := range schema {
@@ -332,11 +299,9 @@ func (u *transformation) printfSchema(schema abstract.TableColumns) string {
 	}
 	return res
 }
-
 func (u *transformation) RuntimeOpts() abstract.TransformationRuntimeOpts {
 	return u.runtimeOpts
 }
-
 func Sinker(
 	config *Transformers,
 	runtime abstract.TransformationRuntimeOpts,
@@ -350,14 +315,11 @@ func Sinker(
 			transformers: transformers,
 			plan:         make(map[abstract.TableID]map[string][]abstract.Transformer),
 			sink:         s,
-
-			registry: registry,
-			sta:      stats.NewMiddlewareTransformerStats(registry),
-			logger:   lgr,
-
-			mutex: sync.Mutex{},
-
-			runtimeOpts: runtime,
+			registry:     registry,
+			sta:          stats.NewMiddlewareTransformerStats(registry),
+			logger:       lgr,
+			mutex:        sync.Mutex{},
+			runtimeOpts:  runtime,
 		}
 		return tt.MakeSinkMiddleware()(s)
 	}

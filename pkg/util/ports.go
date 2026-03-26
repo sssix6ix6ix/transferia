@@ -1,6 +1,7 @@
 package util
 
 import (
+	"errors"
 	"net"
 
 	"github.com/transferia/transferia/library/go/core/xerrors"
@@ -15,7 +16,7 @@ func GetFreePort() (port int, resultError error) {
 	}
 	defer func(lsnr net.Listener) {
 		if err := lsnr.Close(); err != nil {
-			resultError = NewErrs(err, resultError)
+			resultError = errors.Join(err, resultError)
 		}
 	}(lsnr)
 	addr := lsnr.Addr()

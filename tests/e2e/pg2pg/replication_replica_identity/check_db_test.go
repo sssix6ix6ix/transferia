@@ -4,8 +4,8 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
-	"cuelang.org/go/pkg/time"
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"

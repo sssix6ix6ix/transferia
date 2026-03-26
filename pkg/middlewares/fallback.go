@@ -1,6 +1,7 @@
 package middlewares
 
 import (
+	"errors"
 	"strings"
 
 	"github.com/transferia/transferia/library/go/core/xerrors"
@@ -8,7 +9,6 @@ import (
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/abstract/typesystem"
 	"github.com/transferia/transferia/pkg/stats"
-	"github.com/transferia/transferia/pkg/util"
 	"go.ytsaurus.tech/library/go/core/log"
 	"golang.org/x/exp/slices"
 )
@@ -106,7 +106,7 @@ func (f *fallbacker) Push(items []abstract.ChangeItem) error {
 
 	for i, item := range items {
 		fallbackWasApplied := false
-		var errs util.Errors
+		var errs []error
 		for _, fallback := range f.fallbacks {
 			if r, err := fallback.Function(&item); err != nil {
 				if xerrors.Is(err, typesystem.FallbackDoesNotApplyErr) {
@@ -118,9 +118,9 @@ func (f *fallbacker) Push(items []abstract.ChangeItem) error {
 				items[i] = *r
 			}
 		}
-		if len(errs) > 0 {
+		if err := errors.Join(errs...); err != nil {
 			f.stat.Errors.Add(int64(len(errs)))
-			return xerrors.Errorf("failed to apply fallbacks: %w", errs)
+			return xerrors.Errorf("failed to apply fallbacks: %w", err)
 		}
 		if fallbackWasApplied {
 			fallbackApplicationCount += 1

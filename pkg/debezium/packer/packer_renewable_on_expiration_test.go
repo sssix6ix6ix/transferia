@@ -1,12 +1,12 @@
 package packer
 
 import (
-	"errors"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/internal/logger"
+	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 )
 
@@ -74,7 +74,7 @@ func TestNewPackerRenewableOnExpiration_Success(t *testing.T) {
 
 func TestNewPackerRenewableOnExpiration_FactoryError(t *testing.T) {
 	// Arrange
-	expectedError := errors.New("factory error")
+	expectedError := xerrors.New("factory error")
 	factory := MockPackerFactory(nil, nil, expectedError)
 
 	// Act
@@ -162,7 +162,7 @@ func TestPackerRenewableOnExpiration_Pack_RenewalNeeded_FactoryError(t *testing.
 	// Arrange
 	expiredPacker := &MockPacker{packResult: []byte("expired result")}
 	expiredExpirer := &MockExpirer{expiresAt: time.Now().Add(-time.Hour)}
-	factoryError := errors.New("renewal factory error")
+	factoryError := xerrors.New("renewal factory error")
 
 	reissuer := &PackerRenewableOnExpiration{
 		Packer:  expiredPacker,
@@ -217,7 +217,7 @@ func TestPackerRenewableOnExpiration_Pack_RenewalNeeded_ExpiredNewPacker(t *test
 
 func TestPackerRenewableOnExpiration_Pack_OriginalPackerError(t *testing.T) {
 	// Arrange
-	packerError := errors.New("packer error")
+	packerError := xerrors.New("packer error")
 	mockPacker := &MockPacker{packError: packerError}
 	mockExpirer := &MockExpirer{expiresAt: time.Now().Add(time.Hour)}
 	reissuer := &PackerRenewableOnExpiration{

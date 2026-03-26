@@ -6,7 +6,7 @@ import (
 
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	"github.com/transferia/transferia/pkg/base"
+	"github.com/transferia/transferia/pkg/abstract2"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
@@ -18,7 +18,7 @@ type DDLSource struct {
 	ch      abstract.Storage
 	mutex   sync.Mutex
 	running bool
-	part    base.DataObjectPart
+	part    abstract2.DataObjectPart
 	logger  log.Logger
 }
 
@@ -28,7 +28,7 @@ func (p *DDLSource) Running() bool {
 	return p.running
 }
 
-func (p *DDLSource) Start(ctx context.Context, target base.EventTarget) error {
+func (p *DDLSource) Start(ctx context.Context, target abstract2.EventTarget) error {
 	p.mutex.Lock()
 	p.running = true
 	p.mutex.Unlock()
@@ -63,7 +63,7 @@ func (p *DDLSource) finish() error {
 	return nil
 }
 
-func NewDDLSource(logger log.Logger, part base.DataObjectPart, ch abstract.Storage) *DDLSource {
+func NewDDLSource(logger log.Logger, part abstract2.DataObjectPart, ch abstract.Storage) *DDLSource {
 	return &DDLSource{
 		logger:  logger,
 		ch:      ch,

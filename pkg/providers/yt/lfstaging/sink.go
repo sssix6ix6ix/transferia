@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
 	ytcommon "github.com/transferia/transferia/pkg/providers/yt"
@@ -13,7 +14,6 @@ import (
 	ytschema "go.ytsaurus.tech/yt/go/schema"
 	"go.ytsaurus.tech/yt/go/ypath"
 	"go.ytsaurus.tech/yt/go/yt"
-	"golang.org/x/xerrors"
 )
 
 type sink struct {

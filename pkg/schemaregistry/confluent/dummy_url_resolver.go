@@ -4,9 +4,9 @@
 package confluent
 
 import (
-	"errors"
+	"github.com/transferia/transferia/library/go/core/xerrors"
 )
 
 func ResolveYSRNamespaceIDToConnectionParams(namespaceID string) (params YSRConnectionParams, err error) {
-	return params, errors.New("not implemented for open-source")
+	return params, xerrors.New("not implemented for open-source")
 }

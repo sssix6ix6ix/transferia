@@ -1,8 +1,8 @@
 package protoscanner
 
 import (
+	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	"golang.org/x/xerrors"
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
 

@@ -5,9 +5,9 @@ import (
 	"context"
 	"io"
 
+	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/changeitem/strictify"
-	"golang.org/x/xerrors"
 )
 
 // strictifyingSerializer wraps a Serializer and applies strictification to each ChangeItem before serialization.

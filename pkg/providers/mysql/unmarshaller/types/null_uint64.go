@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"database/sql/driver"
 
-	"golang.org/x/xerrors"
+	"github.com/transferia/transferia/library/go/core/xerrors"
 )
 
 type NullUint64 struct {

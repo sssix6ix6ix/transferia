@@ -13,7 +13,7 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
 	chConn "github.com/transferia/transferia/pkg/connection/clickhouse"
-	"github.com/transferia/transferia/pkg/middlewares/async/bufferer"
+	"github.com/transferia/transferia/pkg/middlewares/synchronizer/bufferer"
 	"go.uber.org/zap/zapcore"
 )
 

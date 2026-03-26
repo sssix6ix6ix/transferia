@@ -5,13 +5,13 @@ import (
 	"time"
 
 	"github.com/transferia/transferia/library/go/core/xerrors"
-	"github.com/transferia/transferia/pkg/base"
-	"github.com/transferia/transferia/pkg/base/types"
+	"github.com/transferia/transferia/pkg/abstract2"
+	"github.com/transferia/transferia/pkg/abstract2/types"
 	"github.com/transferia/transferia/pkg/providers/yt/provider/table"
 	"go.ytsaurus.tech/yt/go/schema"
 )
 
-func castInt64Based(raw int64, col table.YtColumn) (base.Value, error) {
+func castInt64Based(raw int64, col table.YtColumn) (abstract2.Value, error) {
 	switch t := col.YtType().(schema.Type); t {
 	case schema.TypeInt8:
 		v := int8(raw)
@@ -36,7 +36,7 @@ func castInt64Based(raw int64, col table.YtColumn) (base.Value, error) {
 	}
 }
 
-func castUInt64Based(raw uint64, col table.YtColumn) (base.Value, error) {
+func castUInt64Based(raw uint64, col table.YtColumn) (abstract2.Value, error) {
 	switch t := col.YtType().(schema.Type); t {
 	case schema.TypeUint8:
 		v := uint8(raw)
@@ -65,7 +65,7 @@ func castUInt64Based(raw uint64, col table.YtColumn) (base.Value, error) {
 	}
 }
 
-func castFloat64Based(raw float64, col table.YtColumn) (base.Value, error) {
+func castFloat64Based(raw float64, col table.YtColumn) (abstract2.Value, error) {
 	switch t := col.YtType().(schema.Type); t {
 	case schema.TypeFloat32:
 		v := float32(raw)
@@ -77,7 +77,7 @@ func castFloat64Based(raw float64, col table.YtColumn) (base.Value, error) {
 	}
 }
 
-func castNullValue(col table.YtColumn) (base.Value, error) {
+func castNullValue(col table.YtColumn) (abstract2.Value, error) {
 	switch t := col.YtType().(schema.Type); t {
 	case schema.TypeInt8:
 		return types.NewDefaultInt8Value(nil, col), nil
@@ -118,7 +118,7 @@ func castNullValue(col table.YtColumn) (base.Value, error) {
 	}
 }
 
-func castPrimitive(raw interface{}, col table.YtColumn) (base.Value, error) {
+func castPrimitive(raw interface{}, col table.YtColumn) (abstract2.Value, error) {
 	if raw == nil {
 		if !col.Nullable() {
 			return nil, xerrors.Errorf("unexpected null value in column %s", col.FullName())
@@ -188,7 +188,7 @@ func castPrimitive(raw interface{}, col table.YtColumn) (base.Value, error) {
 	}
 }
 
-func Cast(raw interface{}, colRaw base.Column) (base.Value, error) {
+func Cast(raw interface{}, colRaw abstract2.Column) (abstract2.Value, error) {
 	col, ok := colRaw.(table.YtColumn)
 	if !ok {
 		return nil, xerrors.Errorf("expected YT column, got %T", colRaw)

@@ -3,7 +3,6 @@ package replacefkeycommon
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -11,6 +10,7 @@ import (
 	mysql_client "github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/internal/logger"
+	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
@@ -151,5 +151,5 @@ func waitForSync(t *testing.T) error {
 		}
 	}
 
-	return errors.New("incorrect rows count or sync timeout")
+	return xerrors.New("incorrect rows count or sync timeout")
 }

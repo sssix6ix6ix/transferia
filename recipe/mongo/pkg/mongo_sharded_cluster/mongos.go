@@ -2,6 +2,7 @@ package mongo_sharded_cluster
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -165,7 +166,7 @@ func (s MongoS) WithRootConnection(ctxFunc func(client *mongo.Client) error) (er
 	defer func() {
 		err := client.Disconnect(context.TODO())
 		if err != nil {
-			errResult = util.NewErrs(err, errResult)
+			errResult = errors.Join(err, errResult)
 		}
 	}()
 

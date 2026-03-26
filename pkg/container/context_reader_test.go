@@ -2,7 +2,6 @@ package container
 
 import (
 	"context"
-	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -79,7 +78,7 @@ func TestContextReader_Read(t *testing.T) {
 
 	t.Run("reader error propagation", func(t *testing.T) {
 		// Create a reader that returns an error
-		errReader := &errorReader{err: errors.New("read error")}
+		errReader := &errorReader{err: xerrors.New("read error")}
 		ctxFactory := func() (context.Context, context.CancelFunc) {
 			return context.WithCancel(context.Background())
 		}

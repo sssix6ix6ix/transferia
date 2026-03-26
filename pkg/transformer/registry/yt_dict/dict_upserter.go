@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/providers/yt/provider/types"
 	"go.ytsaurus.tech/yt/go/schema"
-	"golang.org/x/xerrors"
 )
 
 func upsertToDict(dict, key, val any, keyComplexType schema.ComplexType) (any, error) {

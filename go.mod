@@ -5,7 +5,6 @@ go 1.25
 require (
 	cloud.google.com/go v0.123.0
 	cloud.google.com/go/bigquery v1.72.0
-	cuelang.org/go v0.4.3
 	github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs/v2 v2.0.1
 	github.com/ClickHouse/clickhouse-go/v2 v2.33.1
 	github.com/DATA-DOG/go-sqlmock v1.5.2
@@ -30,7 +29,6 @@ require (
 	github.com/go-sql-driver/mysql v1.9.3
 	github.com/goccy/go-json v0.10.5
 	github.com/gofrs/uuid v4.4.0+incompatible
-	github.com/golang/mock v1.7.0-rc.1
 	github.com/golang/protobuf v1.5.4
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
@@ -142,7 +140,6 @@ require (
 	github.com/clipperhouse/stringish v0.1.1 // indirect
 	github.com/clipperhouse/uax29/v2 v2.3.0 // indirect
 	github.com/cloudflare/circl v1.6.1 // indirect
-	github.com/cockroachdb/apd/v2 v2.0.2 // indirect
 	github.com/containerd/containerd v1.7.29 // indirect
 	github.com/containerd/log v0.1.0 // indirect
 	github.com/containerd/platforms v1.0.0-rc.1 // indirect
@@ -154,7 +151,6 @@ require (
 	github.com/dlclark/regexp2 v1.11.5 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/emicklei/go-restful/v3 v3.11.0 // indirect
-	github.com/emicklei/proto v1.11.0 // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/fxamacker/cbor/v2 v2.9.0 // indirect
@@ -172,6 +168,7 @@ require (
 	github.com/golang-jwt/jwt/v4 v4.5.2 // indirect
 	github.com/golang-jwt/jwt/v5 v5.3.1 // indirect
 	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
+	github.com/golang/mock v1.7.0-rc.1 // indirect
 	github.com/golang/snappy v1.0.0 // indirect
 	github.com/google/flatbuffers v25.9.23+incompatible // indirect
 	github.com/google/gnostic-models v0.6.9 // indirect
@@ -213,7 +210,6 @@ require (
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.3-0.20250322232337-35a7c28c31ee // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
-	github.com/mpvl/unique v0.0.0-20150818121801-cbe035fff7de // indirect
 	github.com/muesli/reflow v0.3.0 // indirect
 	github.com/muesli/termenv v0.15.3-0.20240618155329-98d742f6907a // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
@@ -231,7 +227,6 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
-	github.com/protocolbuffers/txtpbfmt v0.0.0-20240116145035-ef3ab179eed6 // indirect
 	github.com/rekby/fixenv v0.7.0 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/segmentio/asm v1.2.0 // indirect

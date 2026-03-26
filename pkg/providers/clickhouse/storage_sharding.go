@@ -2,6 +2,7 @@ package clickhouse
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 
@@ -16,7 +17,6 @@ import (
 	"github.com/transferia/transferia/pkg/providers/clickhouse/model"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/schema"
 	"github.com/transferia/transferia/pkg/stats"
-	"github.com/transferia/transferia/pkg/util"
 	"go.ytsaurus.tech/library/go/core/log"
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
@@ -68,7 +68,7 @@ func (s *ShardStorage) GetRowsCount(tableID abstract.TableID) (uint64, error) {
 	if distr {
 		return s.defaultShard().GetRowsCount(tableID)
 	}
-	var errs util.Errors
+	var errs []error
 	total := uint64(0)
 	for name, shard := range s.shards {
 		sc, err := shard.GetRowsCount(tableID)
@@ -77,8 +77,8 @@ func (s *ShardStorage) GetRowsCount(tableID abstract.TableID) (uint64, error) {
 		}
 		total += sc
 	}
-	if len(errs) > 0 {
-		return 0, xerrors.Errorf("unable to row count sharded storage: %w", errs)
+	if err := errors.Join(errs...); err != nil {
+		return 0, xerrors.Errorf("unable to row count sharded storage: %w", err)
 	}
 	return total, nil
 }
@@ -90,14 +90,14 @@ func (s *ShardStorage) Close() {
 }
 
 func (s *ShardStorage) Ping() error {
-	var errs util.Errors
+	var errs []error
 	for _, shard := range s.shards {
 		if err := shard.Ping(); err != nil {
 			errs = append(errs, xerrors.Errorf("unable to ping shard: %v: %v", s, err))
 		}
 	}
-	if len(errs) > 0 {
-		return xerrors.Errorf("unable to ping: %w", errs)
+	if err := errors.Join(errs...); err != nil {
+		return xerrors.Errorf("unable to ping: %w", err)
 	}
 	return nil
 }
@@ -114,7 +114,7 @@ func (s *ShardStorage) TableSizeInBytes(table abstract.TableID) (uint64, error) 
 	if distr {
 		return s.defaultShard().TableSizeInBytes(table)
 	}
-	var errs util.Errors
+	var errs []error
 	total := uint64(0)
 	for name, shard := range s.shards {
 		sc, err := shard.TableSizeInBytes(table)
@@ -123,8 +123,8 @@ func (s *ShardStorage) TableSizeInBytes(table abstract.TableID) (uint64, error) 
 		}
 		total += sc
 	}
-	if len(errs) > 0 {
-		return 0, xerrors.Errorf("unable to get table size for sharded ch: %w", errs)
+	if err := errors.Join(errs...); err != nil {
+		return 0, xerrors.Errorf("unable to get table size for sharded ch: %w", err)
 	}
 	return total, nil
 }
@@ -188,14 +188,14 @@ func (s *ShardStorage) LoadTopBottomSample(table abstract.TableDescription, push
 	if distr {
 		return s.defaultShard().LoadTopBottomSample(table, pusher)
 	}
-	var errs util.Errors
+	var errs []error
 	for name, shard := range s.shards {
 		if err := shard.LoadTopBottomSample(table, pusher); err != nil {
 			errs = append(errs, xerrors.Errorf("unable to load top-bottom sample for shard: %v: %w", name, err))
 		}
 	}
-	if len(errs) > 0 {
-		return xerrors.Errorf("unable to load top-bottom sample for sharded clickhouse: %w", errs)
+	if err := errors.Join(errs...); err != nil {
+		return xerrors.Errorf("unable to load top-bottom sample for sharded clickhouse: %w", err)
 	}
 	return nil
 }
@@ -208,14 +208,14 @@ func (s *ShardStorage) LoadRandomSample(table abstract.TableDescription, pusher 
 	if distr {
 		return s.defaultShard().LoadRandomSample(table, pusher)
 	}
-	var errs util.Errors
+	var errs []error
 	for name, shard := range s.shards {
 		if err := shard.LoadRandomSample(table, pusher); err != nil {
 			errs = append(errs, xerrors.Errorf("unable to load random sample for shard: %v: %w", name, err))
 		}
 	}
-	if len(errs) > 0 {
-		return xerrors.Errorf("unable to load random sample for sharded clickhouse: %w", errs)
+	if err := errors.Join(errs...); err != nil {
+		return xerrors.Errorf("unable to load random sample for sharded clickhouse: %w", err)
 	}
 	return nil
 }
@@ -228,14 +228,14 @@ func (s *ShardStorage) LoadSampleBySet(table abstract.TableDescription, keySet [
 	if distr {
 		return s.defaultShard().LoadSampleBySet(table, keySet, pusher)
 	}
-	var errs util.Errors
+	var errs []error
 	for name, shard := range s.shards {
 		if err := shard.LoadSampleBySet(table, keySet, pusher); err != nil {
 			errs = append(errs, xerrors.Errorf("unable to load keyset for shard: %v: %w", name, err))
 		}
 	}
-	if len(errs) > 0 {
-		return xerrors.Errorf("unable to keyset for sharded clickhouse: %w", errs)
+	if err := errors.Join(errs...); err != nil {
+		return xerrors.Errorf("unable to keyset for sharded clickhouse: %w", err)
 	}
 	return nil
 }

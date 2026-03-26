@@ -2,8 +2,6 @@ package util
 
 import (
 	"io"
-
-	mathutil "github.com/transferia/transferia/pkg/util/math"
 )
 
 type ChannelReader struct {
@@ -37,7 +35,7 @@ func (r *ChannelReader) Read(dst []byte) (int, error) {
 		}
 	}
 
-	n := mathutil.Min(len(dst), len(r.buffer))
+	n := min(len(dst), len(r.buffer))
 	copy(dst, r.buffer[:n])
 	r.buffer = r.buffer[n:]
 	return n, nil

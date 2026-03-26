@@ -1,13 +1,13 @@
 package reader
 
 import (
-	"errors"
 	"io"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/internal/logger"
+	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/providers/s3/reader/s3raw"
 )
 
@@ -20,7 +20,7 @@ type mockS3RawReader struct {
 
 func (m *mockS3RawReader) ReadAt(p []byte, off int64) (int, error) {
 	if m.fail {
-		return 0, errors.New("fail")
+		return 0, xerrors.New("fail")
 	}
 	if int(off) >= len(m.data) {
 		return 0, io.EOF

@@ -1,7 +1,6 @@
 package errors
 
 import (
-	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -12,7 +11,7 @@ import (
 
 //go:noinline
 func Original() error {
-	return xerrors.Errorf("aaaa: %w", errors.New("simple error"))
+	return xerrors.Errorf("aaaa: %w", xerrors.New("simple error"))
 }
 
 //go:noinline
@@ -23,7 +22,7 @@ func Middle() error {
 type MethodTester struct{}
 
 func (m MethodTester) Original() error {
-	return xerrors.Errorf("aaaa: %w", errors.New("simple error"))
+	return xerrors.Errorf("aaaa: %w", xerrors.New("simple error"))
 }
 
 func (m MethodTester) Middle() error {
@@ -39,12 +38,12 @@ func TestExtractCodePath(t *testing.T) {
 		{
 			name:     "error with complex stack trace",
 			err:      xerrors.Errorf("roooot %w", Middle()),
-			expected: "Original.Middle.TestExtractCodePath",
+			expected: "Original.Original.Middle.TestExtractCodePath",
 		},
 		{
 			name:     "error in struct methods",
 			err:      xerrors.Errorf("rooot: %w", MethodTester{}.Middle()),
-			expected: "MethodTester.Original.MethodTester.Middle.TestExtractCodePath",
+			expected: "MethodTester.Original.MethodTester.Original.MethodTester.Middle.TestExtractCodePath",
 		},
 	}
 
@@ -57,7 +56,7 @@ func TestExtractCodePath(t *testing.T) {
 }
 
 func TestLogFatalErrorEmptyMessage(t *testing.T) {
-	baseErr := errors.New(`FATAL: database "test_database" does not exist (SQLSTATE 3D000)`)
+	baseErr := xerrors.New(`FATAL: database "test_database" does not exist (SQLSTATE 3D000)`)
 
 	wrappedErr1 := xerrors.Errorf("failed to connect to a PostgreSQL instance: %w", baseErr)
 

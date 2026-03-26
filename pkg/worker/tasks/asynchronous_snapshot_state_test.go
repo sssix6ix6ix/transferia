@@ -1,15 +1,15 @@
 package tasks
 
 import (
-	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/library/go/core/metrics/solomon"
+	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/cleanup"
-	"github.com/transferia/transferia/pkg/middlewares/async/bufferer"
+	"github.com/transferia/transferia/pkg/middlewares/synchronizer/bufferer"
 )
 
 type fakeSink struct {
@@ -30,7 +30,7 @@ func (s *fakeSink) Push(items []abstract.ChangeItem) error {
 
 func TestAsynchronousSnapshotStateNonRowItem(t *testing.T) {
 	sink := newFakeSink(func(items []abstract.ChangeItem) error {
-		return errors.New("some error")
+		return xerrors.New("some error")
 	})
 
 	bufferer := bufferer.Bufferer(logger.Log, bufferer.BuffererConfig{TriggingCount: 0, TriggingSize: 0, TriggingInterval: 0}, solomon.NewRegistry(nil))

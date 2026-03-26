@@ -1,13 +1,13 @@
 package ytdict
 
 import (
+	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/providers/yt/provider/table"
 	"github.com/transferia/transferia/pkg/transformer"
 	"github.com/transferia/transferia/pkg/transformer/registry/filter"
 	"go.ytsaurus.tech/library/go/core/log"
 	"go.ytsaurus.tech/yt/go/schema"
-	"golang.org/x/xerrors"
 )
 
 const (

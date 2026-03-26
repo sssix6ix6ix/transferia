@@ -5,8 +5,8 @@ import (
 	"context"
 	_ "embed"
 	"testing"
+	"time"
 
-	"cuelang.org/go/pkg/time"
 	"github.com/jackc/pgx/v4"
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/library/go/test/canon"

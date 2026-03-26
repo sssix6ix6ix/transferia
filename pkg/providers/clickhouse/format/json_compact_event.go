@@ -7,9 +7,9 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/changeitem"
-	"github.com/transferia/transferia/pkg/base"
-	"github.com/transferia/transferia/pkg/base/adapter"
-	"github.com/transferia/transferia/pkg/base/events"
+	"github.com/transferia/transferia/pkg/abstract2"
+	"github.com/transferia/transferia/pkg/abstract2/adapter"
+	"github.com/transferia/transferia/pkg/abstract2/events"
 )
 
 type JSONCompactEvent struct {
@@ -53,7 +53,7 @@ func (e *JSONCompactEvent) ToOldChangeItem() (*abstract.ChangeItem, error) {
 	}, nil
 }
 
-func (e *JSONCompactEvent) Table() base.Table {
+func (e *JSONCompactEvent) Table() abstract2.Table {
 	return adapter.NewTableFromLegacy(e.cols, e.table)
 }
 
@@ -61,7 +61,7 @@ func (e *JSONCompactEvent) NewValuesCount() int {
 	return len(e.cols.Columns())
 }
 
-func (e *JSONCompactEvent) NewValue(i int) (base.Value, error) {
+func (e *JSONCompactEvent) NewValue(i int) (abstract2.Value, error) {
 	return nil, xerrors.New("compact json event NewValue not implemented")
 }
 

@@ -3,7 +3,7 @@ package source
 import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	"github.com/transferia/transferia/pkg/base"
+	"github.com/transferia/transferia/pkg/abstract2"
 	"github.com/transferia/transferia/pkg/providers/yt/iter"
 )
 
@@ -24,7 +24,7 @@ func (d dataObjects) Close() {
 	d.it.Close()
 }
 
-func (d dataObjects) Object() (base.DataObject, error) {
+func (d dataObjects) Object() (abstract2.DataObject, error) {
 	return d.obj, nil
 }
 
@@ -57,7 +57,7 @@ func (d dataObject) Close() {
 	d.it.Close()
 }
 
-func (d dataObject) Part() (base.DataObjectPart, error) {
+func (d dataObject) Part() (abstract2.DataObjectPart, error) {
 	return d.part, nil
 }
 

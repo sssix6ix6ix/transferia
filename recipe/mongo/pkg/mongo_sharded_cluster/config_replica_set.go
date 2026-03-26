@@ -2,6 +2,7 @@ package mongo_sharded_cluster
 
 import (
 	"context"
+	"errors"
 
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/util"
@@ -21,15 +22,11 @@ type ConfigReplicaSet struct {
 }
 
 func (c *ConfigReplicaSet) Close() error {
-	var errs util.Errors
+	var errs []error
 	for _, mongod := range c.MongoDaemons {
-		err := mongod.Close()
-		errs = util.AppendErr(errs, err)
+		errs = append(errs, mongod.Close())
 	}
-	if len(errs) == 0 {
-		return nil
-	}
-	return errs
+	return errors.Join(errs...)
 }
 
 func LaunchConfigReplicaSet(

@@ -2,6 +2,7 @@ package ydb
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path"
 	"strings"
@@ -9,7 +10,6 @@ import (
 
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/library/go/core/xerrors"
-	"github.com/transferia/transferia/pkg/util"
 	"github.com/transferia/transferia/pkg/util/castx"
 	"github.com/ydb-platform/ydb-go-sdk/v3"
 	"github.com/ydb-platform/ydb-go-sdk/v3/table"
@@ -38,7 +38,6 @@ func execQuery(ctx context.Context, ydbClient *ydb.Driver, query string) error {
 	}
 	return nil
 }
-
 func dropChangeFeedIfExistsOneTable(ctx context.Context, ydbClient *ydb.Driver, tablePath, transferID string) (deleted bool, err error) {
 	query := fmt.Sprintf(ydbV1+"ALTER TABLE `%s` DROP CHANGEFEED %s", tablePath, transferID)
 	err = execQuery(ctx, ydbClient, query)
@@ -51,7 +50,6 @@ func dropChangeFeedIfExistsOneTable(ctx context.Context, ydbClient *ydb.Driver, 
 	}
 	return true, nil
 }
-
 func createChangeFeedOneTable(ctx context.Context, ydbClient *ydb.Driver, tablePath, transferID string, cfg *YdbSource) error {
 	autoPartitioningStr := ", TOPIC_AUTO_PARTITIONING = 'ENABLED'"
 	if err := createChangeFeedWithAutoPartitioning(ctx, ydbClient, autoPartitioningStr, tablePath, transferID, cfg); err == nil {
@@ -63,10 +61,8 @@ func createChangeFeedOneTable(ctx context.Context, ydbClient *ydb.Driver, tableP
 	logger.Log.Infof("trying to create changefeed without auto partitioning for table %s", tablePath)
 	return createChangeFeedWithAutoPartitioning(ctx, ydbClient, "", tablePath, transferID, cfg)
 }
-
 func createChangeFeedWithAutoPartitioning(ctx context.Context, ydbClient *ydb.Driver, autoPartitioningStr string, tablePath, transferID string, cfg *YdbSource) error {
 	queryParams := fmt.Sprintf("FORMAT = 'JSON', MODE = '%s'%s", string(cfg.ChangeFeedMode), autoPartitioningStr)
-
 	if period := cfg.ChangeFeedRetentionPeriod; period != nil {
 		asIso, err := castx.DurationToIso8601(*period)
 		if err != nil {
@@ -74,15 +70,12 @@ func createChangeFeedWithAutoPartitioning(ctx context.Context, ydbClient *ydb.Dr
 		}
 		queryParams += fmt.Sprintf(", RETENTION_PERIOD = Interval('%s')", asIso)
 	}
-
 	query := fmt.Sprintf(ydbV1+"ALTER TABLE `%s` ADD CHANGEFEED %s WITH (%s)", tablePath, transferID, queryParams)
 	err := execQuery(ctx, ydbClient, query)
 	if err != nil {
 		return xerrors.Errorf("unable to add changefeed, err: %w", err)
 	}
-
 	topicPath := makeChangeFeedPath(tablePath, transferID)
-
 	err = ydbClient.Topic().Alter(
 		ctx,
 		topicPath,
@@ -109,14 +102,11 @@ func checkChangeFeedConsumerOnline(ctx context.Context, ydbClient *ydb.Driver, t
 	}
 	return false, nil
 }
-
 func makeChangeFeedPath(tablePath, feedName string) string {
 	return path.Join(tablePath, feedName)
 }
-
 func makeTablePathFromTopicPath(topicPath, feedName, database string) string {
 	result := strings.TrimSuffix(topicPath, "/"+feedName)
-
 	if database[0] != '/' {
 		database = "/" + database
 	}
@@ -124,20 +114,16 @@ func makeTablePathFromTopicPath(topicPath, feedName, database string) string {
 	result = strings.TrimPrefix(result, "/")
 	return result
 }
-
 func CreateChangeFeed(cfg *YdbSource, transferID string) error {
 	if cfg.ChangeFeedCustomName != "" {
 		return nil // User already created changefeed and specified its name.
 	}
-
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*3)
 	defer cancel()
-
 	ydbClient, err := newYDBSourceDriver(ctx, cfg)
 	if err != nil {
 		return xerrors.Errorf("unable to create ydb, err: %w", err)
 	}
-
 	for _, tablePath := range cfg.Tables {
 		err = createChangeFeedOneTable(ctx, ydbClient, tablePath, transferID, cfg)
 		if err != nil {
@@ -146,20 +132,16 @@ func CreateChangeFeed(cfg *YdbSource, transferID string) error {
 	}
 	return nil
 }
-
 func CreateChangeFeedIfNotExists(cfg *YdbSource, transferID string) error {
 	if cfg.ChangeFeedCustomName != "" {
 		return nil // User already created changefeed and specified its name.
 	}
-
 	clientCtx, cancel := context.WithTimeout(context.Background(), time.Minute*3)
 	defer cancel()
-
 	ydbClient, err := newYDBSourceDriver(clientCtx, cfg)
 	if err != nil {
 		return xerrors.Errorf("unable to create ydb, err: %w", err)
 	}
-
 	for _, tablePath := range cfg.Tables {
 		isOnline, err := checkChangeFeedConsumerOnline(clientCtx, ydbClient, tablePath, transferID)
 		if err != nil {
@@ -175,29 +157,22 @@ func CreateChangeFeedIfNotExists(cfg *YdbSource, transferID string) error {
 	}
 	return nil
 }
-
 func DropChangeFeed(cfg *YdbSource, transferID string) error {
 	if cfg.ChangeFeedCustomName != "" {
 		return nil // Don't drop changefeed that was manually created by user.
 	}
-
 	clientCtx, cancel := context.WithTimeout(context.Background(), time.Minute*3)
 	defer cancel()
-
 	ydbClient, err := newYDBSourceDriver(clientCtx, cfg)
 	if err != nil {
 		return xerrors.Errorf("unable to create ydb, err: %w", err)
 	}
-
-	var mErr util.Errors
+	var mErr []error
 	for _, tablePath := range cfg.Tables {
 		_, err := dropChangeFeedIfExistsOneTable(clientCtx, ydbClient, tablePath, transferID)
 		if err != nil {
 			mErr = append(mErr, xerrors.Errorf("unable to drop changeFeed for table %s, err: %w", tablePath, err))
 		}
 	}
-	if !mErr.Empty() {
-		return mErr
-	}
-	return nil
+	return errors.Join(mErr...)
 }

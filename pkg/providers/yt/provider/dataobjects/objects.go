@@ -7,8 +7,8 @@ import (
 
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	"github.com/transferia/transferia/pkg/base"
-	"github.com/transferia/transferia/pkg/base/filter"
+	"github.com/transferia/transferia/pkg/abstract2"
+	"github.com/transferia/transferia/pkg/abstract2/filter"
 	yt2 "github.com/transferia/transferia/pkg/providers/yt"
 	"github.com/transferia/transferia/pkg/providers/yt/tablemeta"
 	"go.ytsaurus.tech/library/go/core/log"
@@ -30,7 +30,7 @@ type YTDataObjects struct {
 	currentParts []partKey
 	cfg          yt2.YtSourceModel
 	lgr          log.Logger
-	filter       base.DataObjectFilter
+	filter       abstract2.DataObjectFilter
 }
 
 func (objs *YTDataObjects) Next() bool {
@@ -117,7 +117,7 @@ func (objs *YTDataObjects) Close() {
 	objs.parts = nil
 }
 
-func (objs *YTDataObjects) Object() (base.DataObject, error) {
+func (objs *YTDataObjects) Object() (abstract2.DataObject, error) {
 	if objs.currentParts != nil {
 		return newPreshardedDataObject(objs.txID, objs.currentParts), nil
 	}
@@ -239,7 +239,7 @@ func (objs *YTDataObjects) ParsePartKey(data string) (*abstract.TableID, error) 
 	return abstract.NewTableID("", partKey.Table), nil
 }
 
-func NewDataObjects(cfg yt2.YtSourceModel, tx yt.Tx, lgr log.Logger, filter base.DataObjectFilter) *YTDataObjects {
+func NewDataObjects(cfg yt2.YtSourceModel, tx yt.Tx, lgr log.Logger, filter abstract2.DataObjectFilter) *YTDataObjects {
 	var txID yt.TxID
 	if tx != nil {
 		txID = tx.ID()

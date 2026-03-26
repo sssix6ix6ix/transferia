@@ -16,7 +16,6 @@ import (
 	"github.com/transferia/transferia/pkg/providers/clickhouse/model"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/sharding"
 	topology2 "github.com/transferia/transferia/pkg/providers/clickhouse/topology"
-	"github.com/transferia/transferia/pkg/util"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
@@ -40,22 +39,19 @@ func (s *sink) Close() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	result := util.NewErrs()
+	var closeErrs []error
 
 	for i, ls := range s.shardMap {
 		sink := ls.SinkIfInitialized()
 		if sink != nil {
 			if err := sink.Close(); err != nil {
-				result = util.AppendErr(result, xerrors.Errorf("failed to close shard %d: %w", i, err))
+				closeErrs = append(closeErrs, xerrors.Errorf("failed to close shard %d: %w", i, err))
 			}
 		}
 	}
 	s.closed = true
 
-	if len(result) > 0 {
-		return result
-	}
-	return nil
+	return errors.Join(closeErrs...)
 }
 
 func (s *sink) Push(input []abstract.ChangeItem) error {

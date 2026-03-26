@@ -3,6 +3,7 @@ package clickhouse
 import (
 	"context"
 	"database/sql"
+	stderrors "errors"
 	"fmt"
 	"math/big"
 	"strconv"
@@ -181,19 +182,16 @@ func (s *Storage) isView(table abstract.TableDescription) bool {
 }
 
 func (s *Storage) checkTypes(columns abstract.TableColumns) error {
-	errors := util.NewErrs()
+	var typeErrs []error
 	for _, column := range columns {
 		columnType := strings.TrimPrefix(column.OriginalType, "ch:")
 		for _, nonTransferableType := range nonTransferableTypes {
 			if strings.HasPrefix(columnType, nonTransferableType) {
-				errors = util.AppendErr(errors, xerrors.Errorf("Can't transfer type '%v', column '%v'", columnType, column.ColumnName))
+				typeErrs = append(typeErrs, xerrors.Errorf("Can't transfer type '%v', column '%v'", columnType, column.ColumnName))
 			}
 		}
 	}
-	if !errors.Empty() {
-		return errors
-	}
-	return nil
+	return stderrors.Join(typeErrs...)
 }
 
 func (s *Storage) TableSchema(ctx context.Context, table abstract.TableID) (*abstract.TableSchema, error) {

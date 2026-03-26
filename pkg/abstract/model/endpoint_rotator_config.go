@@ -1,7 +1,6 @@
 package model
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -47,9 +46,9 @@ const (
 )
 
 var (
-	ErrRotatorConfigInvalidPartType      = errors.New("invalid part type")
-	ErrRotatorConfigInvalidPartSize      = errors.New("part size should be positive (PartSize > 0)")
-	ErrRotatorConfigInvalidKeepPartCount = errors.New("keep part count should be positive (KeepPartCount > 0)")
+	ErrRotatorConfigInvalidPartType      = xerrors.New("invalid part type")
+	ErrRotatorConfigInvalidPartSize      = xerrors.New("part size should be positive (PartSize > 0)")
+	ErrRotatorConfigInvalidKeepPartCount = xerrors.New("keep part count should be positive (KeepPartCount > 0)")
 )
 
 // TODO remove workaround when proper fix rolls out: YCDESIGN-1338 TM-1891

@@ -2,11 +2,11 @@ package changeitem
 
 import (
 	"encoding/json"
+	"errors"
 
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/errors/coded"
 	"github.com/transferia/transferia/pkg/errors/codes"
-	"github.com/transferia/transferia/pkg/util"
 )
 
 type DBSchema map[TableID]*TableSchema
@@ -33,7 +33,7 @@ func (s *DBSchema) String(withSchema bool, filter includeable) string {
 }
 
 func (s DBSchema) CheckPrimaryKeys(filter includeable) error {
-	var errs util.Errors
+	var errs []error
 	for tID, columns := range s {
 		if !filter.Include(tID) {
 			continue
@@ -42,8 +42,8 @@ func (s DBSchema) CheckPrimaryKeys(filter includeable) error {
 			errs = append(errs, coded.Errorf(codes.GenericNoPKey, "%s: no key columns found", tID.Fqtn()))
 		}
 	}
-	if len(errs) > 0 {
-		return xerrors.Errorf("Tables: %v / %v check failed:\n%w", len(errs), len(s), util.NewErrs(errs...))
+	if err := errors.Join(errs...); err != nil {
+		return xerrors.Errorf("Tables: %v / %v check failed:\n%w", len(errs), len(s), err)
 	}
 	return nil
 }

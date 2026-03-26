@@ -11,9 +11,9 @@ import (
 	"github.com/elastic/go-elasticsearch/v7"
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/internal/logger"
+	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/providers/elastic"
 	"github.com/transferia/transferia/pkg/util/jsonx"
-	"golang.org/x/xerrors"
 )
 
 func createElasticIndex(t *testing.T, esClient *elasticsearch.Client, indexName string, indexParamsRawJSON string) {

@@ -7,7 +7,7 @@ import (
 
 	"github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/pkg/abstract"
-	"github.com/transferia/transferia/pkg/base"
+	"github.com/transferia/transferia/pkg/abstract2"
 )
 
 var (
@@ -24,7 +24,7 @@ type MeteringAgent interface {
 	SetOpts(config *MeteringOpts) error
 	CountInputRows(items []abstract.ChangeItem)
 	CountOutputRows(items []abstract.ChangeItem)
-	CountOutputBatch(input base.EventBatch)
+	CountOutputBatch(input abstract2.EventBatch)
 
 	WithStats(stats *MeteringStats)
 }

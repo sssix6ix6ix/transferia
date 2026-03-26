@@ -2,6 +2,7 @@ package tasks
 
 import (
 	"context"
+	stderrors "errors"
 	"fmt"
 	"slices"
 	"sync"
@@ -806,7 +807,7 @@ func (l *SnapshotLoader) checkLoaderError() error {
 // extractErrorsUntil extracts errors from the passed channel and places them in a single box
 // until either the context is cancelled (or finished), or the passed channel is closed.
 func extractErrorsUntil(ctx context.Context, ch <-chan error) error {
-	result := util.NewErrs()
+	var collected []error
 
 overCh:
 	for {
@@ -817,14 +818,11 @@ overCh:
 			if !ok {
 				break overCh
 			}
-			util.AppendErr(result, err)
+			collected = append(collected, err)
 		}
 	}
 
-	if len(result) == 0 {
-		return nil
-	}
-	return result
+	return stderrors.Join(collected...)
 }
 
 func (l *SnapshotLoader) tableSchema(ctx context.Context, table abstract.TableID, storage abstract.Storage) (*abstract.TableSchema, error) {

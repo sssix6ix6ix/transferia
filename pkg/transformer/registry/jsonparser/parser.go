@@ -3,6 +3,7 @@ package jsonparser
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -17,7 +18,6 @@ import (
 	jsonparser "github.com/transferia/transferia/pkg/parsers/registry/json"
 	"github.com/transferia/transferia/pkg/stats"
 	"github.com/transferia/transferia/pkg/transformer"
-	"github.com/transferia/transferia/pkg/util"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
@@ -46,23 +46,23 @@ func changeItemAsMessage(ci *abstract.ChangeItem) (msg parsers.Message, part abs
 	if ci.TableSchema != blank.BlankSchema {
 		return parsers.Message{}, abstract.Partition{}, xerrors.Errorf("unexpected schema: %v", ci.TableSchema.Columns())
 	}
-	var errs util.Errors
+	var errs []error
 	xtras, err := blank.ExtractValue[map[string]string](ci, blank.ExtrasColumn)
-	errs = util.AppendErr(errs, err)
+	errs = append(errs, err)
 	partition, err := blank.ExtractValue[string](ci, blank.PartitionColum)
-	errs = util.AppendErr(errs, err)
+	errs = append(errs, err)
 	seqNo, err := blank.ExtractValue[uint64](ci, blank.SeqNoColumn)
-	errs = util.AppendErr(errs, err)
+	errs = append(errs, err)
 	cTime, err := blank.ExtractValue[time.Time](ci, blank.CreateTimeColumn)
-	errs = util.AppendErr(errs, err)
+	errs = append(errs, err)
 	wTime, err := blank.ExtractValue[time.Time](ci, blank.WriteTimeColumn)
-	errs = util.AppendErr(errs, err)
+	errs = append(errs, err)
 	rawData, err := blank.ExtractValue[[]byte](ci, blank.RawMessageColumn)
-	errs = util.AppendErr(errs, err)
+	errs = append(errs, err)
 	sourceID, err := blank.ExtractValue[string](ci, blank.SourceIDColumn)
-	errs = util.AppendErr(errs, err)
-	if len(errs) > 0 {
-		return msg, part, xerrors.Errorf("format errors: %w", errs)
+	errs = append(errs, err)
+	if err := errors.Join(errs...); err != nil {
+		return msg, part, xerrors.Errorf("format errors: %w", err)
 	}
 	if err := json.Unmarshal([]byte(partition), &part); err != nil {
 		return msg, part, xerrors.Errorf("unable to parse partition: %w", err)

@@ -11,7 +11,7 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
 	debeziumparameters "github.com/transferia/transferia/pkg/debezium/parameters"
-	"github.com/transferia/transferia/pkg/middlewares/async/bufferer"
+	"github.com/transferia/transferia/pkg/middlewares/synchronizer/bufferer"
 	"github.com/transferia/transferia/pkg/providers/ydb"
 	topicsink "github.com/transferia/transferia/pkg/providers/ydb/topics/sink"
 	"github.com/transferia/transferia/pkg/util/queues/coherence_check"

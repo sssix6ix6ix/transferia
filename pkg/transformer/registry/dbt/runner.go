@@ -17,7 +17,7 @@ import (
 	"github.com/transferia/transferia/pkg/runtime/shared/pod"
 	"go.ytsaurus.tech/library/go/core/log"
 	"gopkg.in/yaml.v3"
-	v1 "k8s.io/api/core/v1"
+	k8s_core "k8s.io/api/core/v1"
 )
 
 type runner struct {
@@ -172,7 +172,7 @@ func (r *runner) run(ctx context.Context) error {
 			"max-file": "3",
 		},
 		Namespace:     "",
-		RestartPolicy: v1.RestartPolicyNever,
+		RestartPolicy: k8s_core.RestartPolicyNever,
 		PodName:       "",
 		Image:         r.fullImageID(),
 		LogDriver:     "local",

@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/transferia/transferia/pkg/abstract"
-	"github.com/transferia/transferia/pkg/base"
+	"github.com/transferia/transferia/pkg/abstract2"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/format"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/model"
 )
@@ -43,7 +43,7 @@ func (b *HTTPEventsBatch) Size() int {
 	return b.SizeBytes
 }
 
-func (b *HTTPEventsBatch) Event() (base.Event, error) {
+func (b *HTTPEventsBatch) Event() (abstract2.Event, error) {
 	row := b.scanner.Bytes()
 	return format.NewEvent(b.Format, row, b.Cols, b.ColNames, b.Part.TableID, b.readerStart)
 }

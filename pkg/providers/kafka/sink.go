@@ -2,6 +2,7 @@ package kafka
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/segmentio/kafka-go"
@@ -71,7 +72,7 @@ func (s *sink) Push(input []abstract.ChangeItem) error {
 		if err := s.writer.WriteMessages(ctx, s.logger, topicName, currMessages); err != nil {
 			switch t := err.(type) {
 			case kafka.WriteErrors:
-				return xerrors.Errorf("returned kafka.WriteErrors, err: %w", util.NewErrs(t...))
+				return xerrors.Errorf("returned kafka.WriteErrors, err: %w", errors.Join([]error(t)...))
 			case kafka.MessageTooLargeError:
 				return xerrors.Errorf("message exceeded max message size (current BatchBytes: %d, len(key):%d, len(val):%d", s.config.BatchBytes, len(t.Message.Key), len(t.Message.Value))
 			default:

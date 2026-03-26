@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"path"
 	"regexp"
@@ -23,7 +24,6 @@ import (
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/providers/ydb/decimal"
 	"github.com/transferia/transferia/pkg/stats"
-	"github.com/transferia/transferia/pkg/util"
 	"github.com/transferia/transferia/pkg/xtls"
 	"github.com/ydb-platform/ydb-go-sdk/v3"
 	"github.com/ydb-platform/ydb-go-sdk/v3/credentials"
@@ -249,17 +249,14 @@ func (s *sinker) getFullPath(tablePath ydbPath) string {
 func (s *sinker) Close() error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
-	errors := util.NewErrs()
+	var closeErrs []error
 	if err := s.db.Close(ctx); err != nil {
-		errors = util.AppendErr(errors, xerrors.Errorf("failed to close a connection to YDB: %w", err))
+		closeErrs = append(closeErrs, xerrors.Errorf("failed to close a connection to YDB: %w", err))
 	}
 	s.once.Do(func() {
 		close(s.closeCh)
 	})
-	if len(errors) > 0 {
-		return errors
-	}
-	return nil
+	return errors.Join(closeErrs...)
 }
 
 func (s *sinker) isClosed() bool {
@@ -616,18 +613,18 @@ func (s *sinker) Push(input []abstract.ChangeItem) error {
 		}
 	}
 	wg := sync.WaitGroup{}
-	errs := util.Errors{}
+	var batchErrs []error
 	for tablePath, batch := range batches {
 		if err := s.checkTable(tablePath, batch[0].TableSchema); err != nil {
 			if err == SchemaMismatchErr {
 				time.Sleep(time.Second)
 				if err := s.checkTable(tablePath, batch[0].TableSchema); err != nil {
 					s.logger.Error("Check table error", log.Error(err))
-					errs = append(errs, xerrors.Errorf("unable to check table %s: %w", tablePath, err))
+					batchErrs = append(batchErrs, xerrors.Errorf("unable to check table %s: %w", tablePath, err))
 				}
 			} else {
 				s.logger.Error("Check table error", log.Error(err))
-				errs = append(errs, err)
+				batchErrs = append(batchErrs, err)
 			}
 		}
 		// The most fragile part of Collape is processing PK changing events.
@@ -641,15 +638,15 @@ func (s *sinker) Push(input []abstract.ChangeItem) error {
 				defer wg.Done()
 				if err := s.pushBatch(tablePath, chunk); err != nil {
 					msg := fmt.Sprintf("Unable to push %d items into table %s", len(chunk), tablePath)
-					errs = append(errs, xerrors.Errorf("%s: %w", msg, err))
+					batchErrs = append(batchErrs, xerrors.Errorf("%s: %w", msg, err))
 					logger.Log.Error(msg, log.Error(err))
 				}
 			}(tablePath, chunk)
 		}
 	}
 	wg.Wait()
-	if len(errs) > 0 {
-		return xerrors.Errorf("unable to proceed input batch: %w", errs)
+	if err := errors.Join(batchErrs...); err != nil {
+		return xerrors.Errorf("unable to proceed input batch: %w", err)
 	}
 
 	return nil

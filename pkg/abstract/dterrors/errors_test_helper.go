@@ -5,8 +5,13 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/library/go/core/xerrors"
-	errors "golang.org/x/xerrors"
 )
+
+// opaqueErrNoUnwrap wraps err without implementing Unwrap, so errors.Is/As do not traverse
+// (similar to former errors.Opaque; xerrors has no Opaque).
+type opaqueErrNoUnwrap struct{ err error }
+
+func (e opaqueErrNoUnwrap) Error() string { return e.err.Error() }
 
 // CheckErrorWrapping checks that your custom error wrapper will not be damaged
 // by other wrappers and vice vera.
@@ -45,7 +50,7 @@ func checkErrorWrappingGeneral(t *testing.T, comment string, isOpaque bool,
 		wrappedRelevantError := xerrors.Errorf("wrapped fatal error: %w", relevantError)
 		wrappedRelevantError2 := xerrors.Errorf("wrapped fatal error [2]: %w", relevantError)
 		opaqueError := xerrors.Errorf("opaque: %v", relevantError)
-		opaqueError2 := errors.Opaque(relevantError)
+		opaqueError2 := opaqueErrNoUnwrap{err: relevantError}
 
 		require.False(t, predicate(simpleError), "irrelevant errors should not satisfy predicate")
 		require.False(t, predicate(wrappedSimpleError), "wrapped irrelevant errors should not satisfy predicate")

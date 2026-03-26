@@ -17,8 +17,8 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/library/go/ptr"
 	dp_model "github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/base"
-	"github.com/transferia/transferia/pkg/base/events"
+	"github.com/transferia/transferia/pkg/abstract2"
+	"github.com/transferia/transferia/pkg/abstract2/events"
 	"github.com/transferia/transferia/pkg/connection/clickhouse"
 	"github.com/transferia/transferia/pkg/format"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/errors"
@@ -58,7 +58,7 @@ func (c *HTTPTarget) toAltName(dbName string, tableName string) string {
 	return fmt.Sprintf("`%s`.`%s`", targetDB, tableName)
 }
 
-func (c *HTTPTarget) AsyncPush(input base.EventBatch) chan error {
+func (c *HTTPTarget) AsyncPush(input abstract2.EventBatch) chan error {
 	switch batch := input.(type) {
 	case *HTTPEventsBatch:
 		st := time.Now()
@@ -140,7 +140,7 @@ func (c *HTTPTarget) AsyncPush(input base.EventBatch) chan error {
 			}
 		}
 		return util.MakeChanWithError(nil)
-	case base.EventBatch:
+	case abstract2.EventBatch:
 		for batch.Next() {
 			ev, err := batch.Event()
 			if err != nil {

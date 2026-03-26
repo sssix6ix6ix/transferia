@@ -15,9 +15,9 @@ import (
 	"github.com/transferia/transferia/pkg/errors"
 	"github.com/transferia/transferia/pkg/errors/categories"
 	"github.com/transferia/transferia/pkg/middlewares"
-	"github.com/transferia/transferia/pkg/middlewares/async"
-	"github.com/transferia/transferia/pkg/middlewares/async/bufferer"
 	"github.com/transferia/transferia/pkg/middlewares/memthrottle"
+	"github.com/transferia/transferia/pkg/middlewares/synchronizer"
+	"github.com/transferia/transferia/pkg/middlewares/synchronizer/bufferer"
 	"github.com/transferia/transferia/pkg/providers"
 	"github.com/transferia/transferia/pkg/stats"
 	"go.ytsaurus.tech/library/go/core/log"
@@ -54,7 +54,7 @@ func MakeAsyncSink(
 		}
 		pipelineAsync = wrapSinkIntoAsyncPipeline(sink, transfer, lgr, mtrcs, middleware, config)
 	}
-	pipelineAsync = async.Measurer(lgr)(pipelineAsync)
+	pipelineAsync = synchronizer.Measurer(lgr)(pipelineAsync)
 	return pipelineAsync, nil
 }
 
@@ -158,7 +158,7 @@ func wrapSinkIntoAsyncPipeline(sink abstract.Sinker, transfer *model.Transfer, l
 			pipelineAsync = memthrottle.MemoryThrottler(memthrottle.DefaultConfig(memLimit), lgr)(pipelineAsync)
 		}
 	} else {
-		pipelineAsync = async.Synchronizer(lgr)(sink)
+		pipelineAsync = synchronizer.Synchronizer(lgr)(sink)
 	}
 	return pipelineAsync
 }

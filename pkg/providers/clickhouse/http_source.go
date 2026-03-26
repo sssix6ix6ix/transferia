@@ -12,13 +12,13 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	"github.com/transferia/transferia/pkg/base"
+	"github.com/transferia/transferia/pkg/abstract2"
 	"github.com/transferia/transferia/pkg/connection/clickhouse"
-	middlewares2 "github.com/transferia/transferia/pkg/middlewares"
+	"github.com/transferia/transferia/pkg/middlewares"
+	"github.com/transferia/transferia/pkg/middlewares/asynchronizer"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/format"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/httpclient"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/model"
-	"github.com/transferia/transferia/pkg/providers/middlewares"
 	"github.com/transferia/transferia/pkg/stats"
 	"github.com/transferia/transferia/pkg/util"
 	"go.ytsaurus.tech/library/go/core/log"
@@ -65,7 +65,7 @@ func (s *HTTPSource) IOFormat() model.ClickhouseIOFormat {
 	return defaultIOFormat
 }
 
-func (s *HTTPSource) Start(ctx context.Context, target base.EventTarget) error {
+func (s *HTTPSource) Start(ctx context.Context, target abstract2.EventTarget) error {
 	s.state.Lock()
 	if s.state.StopRequested {
 		s.state.Unlock()
@@ -89,7 +89,7 @@ func (s *HTTPSource) Start(ctx context.Context, target base.EventTarget) error {
 	}()
 	s.state.Unlock()
 
-	syncTarget := middlewares2.OutputDataBatchMetering()(middlewares.NewEventTargetWrapper(target))
+	syncTarget := middlewares.OutputDataBatchMetering()(asynchronizer.NewEventTargetWrapper(target))
 	if err := backoff.RetryNotify(
 		func() error {
 			return s.rowsByHTTP(ctx, syncTarget)
@@ -121,7 +121,7 @@ func (s *HTTPSource) fetchCount(ctx context.Context) (uint64, error) {
 	return res, nil
 }
 
-func (s *HTTPSource) rowsByHTTP(ctx context.Context, syncTarget middlewares.Asynchronizer) error {
+func (s *HTTPSource) rowsByHTTP(ctx context.Context, syncTarget asynchronizer.Asynchronizer) error {
 	lastPushTime := time.Now()
 	query := buildQuery(s.query, s.part.Part.Rows, s.state.Current, string(s.IOFormat()))
 	s.lgr.Info("Start query in ClickHouse", log.String("table", s.part.TableID.Fqtn()), log.String("query", query))
@@ -218,10 +218,10 @@ func (s *HTTPSource) Stop() error {
 	return nil
 }
 
-func (s *HTTPSource) Progress() (base.EventSourceProgress, error) {
+func (s *HTTPSource) Progress() (abstract2.EventSourceProgress, error) {
 	s.state.Lock()
 	defer s.state.Unlock()
-	return base.NewDefaultEventSourceProgress(!s.state.Running, s.state.Current, s.state.Total), nil
+	return abstract2.NewDefaultEventSourceProgress(!s.state.Running, s.state.Current, s.state.Total), nil
 }
 
 func NewHTTPSourceImpl(

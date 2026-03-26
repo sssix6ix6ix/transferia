@@ -8,7 +8,7 @@ import (
 	"github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	"github.com/transferia/transferia/pkg/base"
+	"github.com/transferia/transferia/pkg/abstract2"
 	yt2 "github.com/transferia/transferia/pkg/providers/yt"
 	"github.com/transferia/transferia/pkg/providers/yt/provider/dataobjects"
 	"github.com/transferia/transferia/pkg/providers/yt/provider/schema"
@@ -32,7 +32,7 @@ type source struct {
 
 // To verify providers contract implementation
 var (
-	_ base.SnapshotProvider = (*source)(nil)
+	_ abstract2.SnapshotProvider = (*source)(nil)
 
 	mainTxTimeout = yson.Duration(10 * time.Minute)
 )
@@ -75,15 +75,15 @@ func (s *source) BeginSnapshot() error {
 	return nil
 }
 
-func (s *source) DataObjects(filter base.DataObjectFilter) (base.DataObjects, error) {
+func (s *source) DataObjects(filter abstract2.DataObjectFilter) (abstract2.DataObjects, error) {
 	return s.dataObjectsCore(filter), nil
 }
 
-func (s *source) dataObjectsCore(filter base.DataObjectFilter) *dataobjects.YTDataObjects {
+func (s *source) dataObjectsCore(filter abstract2.DataObjectFilter) *dataobjects.YTDataObjects {
 	return dataobjects.NewDataObjects(s.cfg, s.tx, s.logger, filter)
 }
 
-func (s *source) TableSchema(part base.DataObjectPart) (*abstract.TableSchema, error) {
+func (s *source) TableSchema(part abstract2.DataObjectPart) (*abstract.TableSchema, error) {
 	p, ok := part.(*dataobjects.Part)
 	if !ok {
 		return nil, xerrors.Errorf("part %T is not yt dataobject part: %s", part, part.FullName())
@@ -95,7 +95,7 @@ func (s *source) TableSchema(part base.DataObjectPart) (*abstract.TableSchema, e
 	return yttable.ToOldTable()
 }
 
-func (s *source) CreateSnapshotSource(part base.DataObjectPart) (base.ProgressableEventSource, error) {
+func (s *source) CreateSnapshotSource(part abstract2.DataObjectPart) (abstract2.ProgressableEventSource, error) {
 	p, ok := part.(*dataobjects.Part)
 	if !ok {
 		return nil, xerrors.Errorf("part %T is not yt dataobject part: %s", part, part.FullName())
@@ -112,15 +112,15 @@ func (s *source) EndSnapshot() error {
 	return nil
 }
 
-func (s *source) ResolveOldTableDescriptionToDataPart(tableDesc abstract.TableDescription) (base.DataObjectPart, error) {
+func (s *source) ResolveOldTableDescriptionToDataPart(tableDesc abstract.TableDescription) (abstract2.DataObjectPart, error) {
 	return nil, xerrors.New("legacy is not supported")
 }
 
-func (s *source) DataObjectsToTableParts(filter base.DataObjectFilter) ([]abstract.TableDescription, error) {
+func (s *source) DataObjectsToTableParts(filter abstract2.DataObjectFilter) ([]abstract.TableDescription, error) {
 	return s.dataObjectsCore(filter).ToTableParts()
 }
 
-func (s *source) TablePartToDataObjectPart(tableDescription *abstract.TableDescription) (base.DataObjectPart, error) {
+func (s *source) TablePartToDataObjectPart(tableDescription *abstract.TableDescription) (abstract2.DataObjectPart, error) {
 	key, err := dataobjects.ParsePartKey(string(tableDescription.Filter))
 	if err != nil {
 		return nil, xerrors.Errorf("Can't parse part key: %w", err)

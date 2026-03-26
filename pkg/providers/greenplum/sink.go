@@ -2,6 +2,7 @@ package greenplum
 
 import (
 	"context"
+	"errors"
 	"sync"
 
 	"github.com/transferia/transferia/internal/logger"
@@ -10,8 +11,6 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/middlewares"
-	"github.com/transferia/transferia/pkg/util"
-	mathutil "github.com/transferia/transferia/pkg/util/math"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
@@ -169,7 +168,7 @@ func (s *Sink) ensureSegPoolInitialized(ctx context.Context) error {
 	if err != nil {
 		return xerrors.Errorf("failed to get the total number of segments: %w", err)
 	}
-	s.segPool = NewRandomSegPointerPool(totalSegments, mathutil.Max(int(float64(totalSegments)*s.SegPoolShare), 1))
+	s.segPool = NewRandomSegPointerPool(totalSegments, max(int(float64(totalSegments)*s.SegPoolShare), 1))
 	return nil
 }
 
@@ -214,18 +213,17 @@ func (s *Sink) flushRowChangeItemsToSegments(ctx context.Context) error {
 	wg.Wait()
 	close(outputChan)
 
-	errs := util.NewErrs()
+	var errs []error
 	for el := range outputChan {
 		if el.segment != nil {
 			delete(s.rowChangeItems, *el.segment)
 		}
-		errs = util.AppendErr(errs, el.err)
+		if el.err != nil {
+			errs = append(errs, el.err)
+		}
 	}
 
-	if len(errs) > 0 {
-		return errs
-	}
-	return nil
+	return errors.Join(errs...)
 }
 
 func (s *Sink) flushRowChangeItemsToCoordinator(ctx context.Context) error {

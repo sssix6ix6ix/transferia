@@ -5,7 +5,7 @@ import (
 
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	"github.com/transferia/transferia/pkg/base"
+	"github.com/transferia/transferia/pkg/abstract2"
 	ytschema "go.ytsaurus.tech/yt/go/schema"
 	"golang.org/x/exp/slices"
 )
@@ -68,7 +68,7 @@ func (r *RecordBatch) Size() int {
 	return binary.Size(r.records)
 }
 
-func (r *RecordBatch) Event() (base.Event, error) {
+func (r *RecordBatch) Event() (abstract2.Event, error) {
 	return NewStreamRecord(
 		r.stream,
 		r.colNames,

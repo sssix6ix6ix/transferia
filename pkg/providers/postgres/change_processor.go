@@ -6,6 +6,7 @@ import (
 	"database/sql/driver"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"slices"
 	"time"
@@ -18,7 +19,6 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	"github.com/transferia/transferia/pkg/util"
 	"github.com/transferia/transferia/pkg/util/castx"
 	"github.com/transferia/transferia/pkg/util/jsonx"
 	"github.com/transferia/transferia/pkg/util/set"
@@ -143,7 +143,7 @@ func (c *changeProcessor) fixupChange(
 		}
 	}
 
-	errs := util.NewErrs()
+	var errs []error
 
 	skipCols := set.New[string]()
 	for i, name := range change.ColumnNames {
@@ -157,12 +157,12 @@ func (c *changeProcessor) fixupChange(
 				continue
 			}
 
-			errs = util.AppendErr(errs, xerrors.Errorf(`Unknown column "%s"; table schema has probably changed`, name))
+			errs = append(errs, xerrors.Errorf(`Unknown column "%s"; table schema has probably changed`, name))
 		}
 		var err error
 		change.ColumnValues[i], err = c.restoreType(change.ColumnValues[i], columnTypeOIDs[i], &colSchema)
 		if err != nil {
-			errs = util.AppendErr(errs, xerrors.Errorf("Can't cast value '%v' for column '%v': %w", change.ColumnValues[i], name, err))
+			errs = append(errs, xerrors.Errorf("Can't cast value '%v' for column '%v': %w", change.ColumnValues[i], name, err))
 		}
 	}
 	if !skipCols.Empty() {
@@ -173,18 +173,18 @@ func (c *changeProcessor) fixupChange(
 	for i, name := range change.OldKeys.KeyNames {
 		colSchema, ok := parsingSchema[abstract.ColumnName(name)]
 		if !ok {
-			errs = util.AppendErr(errs, xerrors.Errorf(`Unknown old key column "%s"; table schema has probably changed`, name))
+			errs = append(errs, xerrors.Errorf(`Unknown old key column "%s"; table schema has probably changed`, name))
 			continue
 		}
 		var err error
 		change.OldKeys.KeyValues[i], err = c.restoreType(change.OldKeys.KeyValues[i], oldKeyTypeOIDs[i], &colSchema)
 		if err != nil {
-			errs = util.AppendErr(errs, xerrors.Errorf("Can't cast value '%v' for column '%v': %w", change.ColumnValues[i], name, err))
+			errs = append(errs, xerrors.Errorf("Can't cast value '%v' for column '%v': %w", change.ColumnValues[i], name, err))
 		}
 	}
 
-	if len(errs) > 0 {
-		return makeChangeItemError(errs.String(), change)
+	if err := errors.Join(errs...); err != nil {
+		return makeChangeItemError(err.Error(), change)
 	}
 
 	c.filterUserTypes(parsingSchema, change)

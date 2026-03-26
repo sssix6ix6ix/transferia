@@ -5,7 +5,7 @@ import (
 	"bytes"
 	"math"
 
-	"golang.org/x/xerrors"
+	"github.com/transferia/transferia/library/go/core/xerrors"
 )
 
 type LineBreakScanner struct {

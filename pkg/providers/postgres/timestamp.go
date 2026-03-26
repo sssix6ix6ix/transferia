@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"database/sql/driver"
+	"errors"
 	"strings"
 	"time"
 
@@ -37,7 +38,7 @@ func (t *Timestamp) DecodeText(ci *pgtype.ConnInfo, src []byte) error {
 		tim, errF := sqltimestamp.Parse(string(src))
 		infmod := isTimestampInfinite(string(src))
 		if errF != nil && infmod != pgtype.None {
-			return util.Errors{err, errF}
+			return errors.Join(err, errF)
 		}
 		t.Timestamp = pgtype.Timestamp{Time: tim, Status: pgtype.Present, InfinityModifier: infmod}
 	}

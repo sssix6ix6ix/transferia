@@ -71,9 +71,8 @@ func defaultCheckAreWorkersDone(startTime time.Time, cp coordinator.Coordinator,
 		time.Since(startTime),
 	)
 
-	errs := model.AggregateWorkerErrors(workers, operationID)
-	if len(errs) > 0 {
-		return false, xerrors.Errorf("errors detected on secondary workers: %v", errs)
+	if err := model.AggregateWorkerErrors(workers, operationID); err != nil {
+		return false, xerrors.Errorf("errors detected on secondary workers: %v", err)
 	}
 
 	if completed {

@@ -11,7 +11,7 @@ import (
 	"github.com/transferia/transferia/pkg/abstract/model"
 	kafkaConn "github.com/transferia/transferia/pkg/connection/kafka"
 	debeziumparameters "github.com/transferia/transferia/pkg/debezium/parameters"
-	"github.com/transferia/transferia/pkg/middlewares/async/bufferer"
+	"github.com/transferia/transferia/pkg/middlewares/synchronizer/bufferer"
 	"github.com/transferia/transferia/pkg/util/queues/coherence_check"
 	"go.uber.org/zap/zapcore"
 )

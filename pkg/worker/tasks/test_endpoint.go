@@ -2,6 +2,7 @@ package tasks
 
 import (
 	"context"
+	stderrors "errors"
 	"time"
 
 	"github.com/transferia/transferia/internal/logger"
@@ -18,7 +19,6 @@ import (
 	"github.com/transferia/transferia/pkg/sink"
 	"github.com/transferia/transferia/pkg/storage"
 	"github.com/transferia/transferia/pkg/transformer"
-	"github.com/transferia/transferia/pkg/util"
 )
 
 type EndpointParam struct {
@@ -128,7 +128,7 @@ func SniffSnapshotData(ctx context.Context, tr *abstract.TestResult, transfer *m
 	tr.Ok(ConfigCheckType)
 	tr.Preview = map[abstract.TableID][]abstract.ChangeItem{}
 	defer sourceStorage.Close()
-	var errs util.Errors
+	var errs []error
 	previewSchemas := abstract.TableMap{}
 	for table := range tables {
 		cctx, cancel := context.WithTimeout(ctx, time.Minute)
@@ -199,8 +199,8 @@ func SniffSnapshotData(ctx context.Context, tr *abstract.TestResult, transfer *m
 	}
 	tr.Schema = previewSchemas
 
-	if len(errs) > 0 {
-		return tr.NotOk(LoadSampleCheckType, xerrors.Errorf("found failures %v: %w", len(errs), errs))
+	if err := stderrors.Join(errs...); err != nil {
+		return tr.NotOk(LoadSampleCheckType, xerrors.Errorf("found failures %v: %w", len(errs), err))
 	}
 
 	tr.Ok(EstimateTableCheckType)

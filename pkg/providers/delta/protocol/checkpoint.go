@@ -8,7 +8,6 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/providers/delta/store"
-	"github.com/transferia/transferia/pkg/util/math"
 )
 
 const LastCheckpointPath string = "_last_checkpoint"
@@ -147,7 +146,7 @@ func metadataFromCheckpoint(checkpoint *CheckpointInstance) *CheckpointMetaData 
 func FindLastCompleteCheckpoint(s store.Store, cv CheckpointInstance) (*CheckpointInstance, error) {
 	cur := cv.Version
 	for cur >= 0 {
-		iter, err := s.ListFrom(CheckpointPrefix(s.Root(), math.MaxT(0, cur-1000)))
+		iter, err := s.ListFrom(CheckpointPrefix(s.Root(), max(0, cur-1000)))
 		if err != nil {
 			return nil, xerrors.Errorf("unable to list checkpoints: %w", err)
 		}

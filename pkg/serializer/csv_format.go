@@ -4,10 +4,10 @@ import (
 	"encoding/base64"
 	"encoding/json"
 
+	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/util/castx"
 	"go.ytsaurus.tech/yt/go/schema"
-	"golang.org/x/xerrors"
 )
 
 // toCsvValue converts a value to its CSV string representation based on the schema type.

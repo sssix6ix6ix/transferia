@@ -5,11 +5,11 @@ import (
 
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	"github.com/transferia/transferia/pkg/base"
+	"github.com/transferia/transferia/pkg/abstract2"
 )
 
 type YtTable interface {
-	base.Table
+	abstract2.Table
 	AddColumn(YtColumn)
 	ColumnNames() ([]string, error)
 }
@@ -42,14 +42,14 @@ func (t *table) ColumnsCount() int {
 	return len(t.columns)
 }
 
-func (t *table) Column(i int) base.Column {
+func (t *table) Column(i int) abstract2.Column {
 	if i < 0 || i >= len(t.columns) {
 		return nil
 	}
 	return t.columns[i]
 }
 
-func (t *table) ColumnByName(name string) base.Column {
+func (t *table) ColumnByName(name string) abstract2.Column {
 	for _, col := range t.columns {
 		if col.Name() == name {
 			return col

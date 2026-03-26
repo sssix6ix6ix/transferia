@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/library/go/core/metrics/solomon"
-	"github.com/transferia/transferia/pkg/base"
-	"github.com/transferia/transferia/pkg/base/filter"
+	"github.com/transferia/transferia/pkg/abstract2"
+	"github.com/transferia/transferia/pkg/abstract2/filter"
 	yt_provider "github.com/transferia/transferia/pkg/providers/yt"
 	"github.com/transferia/transferia/pkg/providers/yt/recipe"
 	"go.ytsaurus.tech/yt/go/ypath"
@@ -195,7 +195,7 @@ func createTestTable(env *yttest.Env, ctx context.Context, tablePath ypath.Path)
 	return err
 }
 
-func listObjects(objs base.DataObjects) ([]string, error) {
+func listObjects(objs abstract2.DataObjects) ([]string, error) {
 	var res []string
 	for objs.Next() {
 		obj, err := objs.Object()

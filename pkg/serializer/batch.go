@@ -6,12 +6,12 @@ import (
 	"io"
 	"runtime"
 	"sync"
+	"sync/atomic"
 
+	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/serializer/buffer"
-	"go.uber.org/atomic"
 	"golang.org/x/sync/errgroup"
-	"golang.org/x/xerrors"
 )
 
 const (
@@ -146,7 +146,7 @@ func (s *batchSerializer) SerializeAndWrite(ctx context.Context, items []*abstra
 		cond.L.Unlock()
 	}()
 
-	totalWritten := atomic.NewInt32(0)
+	var totalWritten atomic.Int32
 
 	bufsCnt := (len(items) + s.threshold - 1) / s.threshold
 	for i := range bufsCnt {

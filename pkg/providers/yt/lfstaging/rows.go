@@ -5,9 +5,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	ytschema "go.ytsaurus.tech/yt/go/schema"
-	"golang.org/x/xerrors"
 )
 
 type intermediateRow struct {

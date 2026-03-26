@@ -3,7 +3,7 @@ package schema
 import (
 	"encoding/binary"
 
-	"github.com/transferia/transferia/pkg/base"
+	"github.com/transferia/transferia/pkg/abstract2"
 )
 
 type DDLBatch struct {
@@ -24,7 +24,7 @@ func (b *DDLBatch) Next() bool {
 	return len(b.DDLs) < b.iter
 }
 
-func (b *DDLBatch) Event() (base.Event, error) {
+func (b *DDLBatch) Event() (abstract2.Event, error) {
 	return b.DDLs[b.iter], nil
 }
 

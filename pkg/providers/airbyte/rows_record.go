@@ -1,6 +1,7 @@
 package airbyte
 
 import (
+	"errors"
 	"strconv"
 	"time"
 
@@ -8,11 +9,10 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/changeitem"
-	"github.com/transferia/transferia/pkg/base"
-	"github.com/transferia/transferia/pkg/base/adapter"
-	"github.com/transferia/transferia/pkg/base/events"
-	"github.com/transferia/transferia/pkg/base/types"
-	"github.com/transferia/transferia/pkg/util"
+	"github.com/transferia/transferia/pkg/abstract2"
+	"github.com/transferia/transferia/pkg/abstract2/adapter"
+	"github.com/transferia/transferia/pkg/abstract2/events"
+	"github.com/transferia/transferia/pkg/abstract2/types"
 	"go.ytsaurus.tech/yt/go/schema"
 )
 
@@ -30,7 +30,7 @@ func (s *RowsRecord) ToOldChangeItem() (*abstract.ChangeItem, error) {
 		return nil, xerrors.Errorf("unable to parse record data: %w", err)
 	}
 	values := make([]interface{}, len(s.cols))
-	var errs util.Errors
+	var errs []error
 	for i, col := range s.cols {
 		if col == RecordIndexCol.ColumnName {
 			values[i] = int64(s.rowIndex)
@@ -42,8 +42,8 @@ func (s *RowsRecord) ToOldChangeItem() (*abstract.ChangeItem, error) {
 		}
 		values[i] = restoredValue
 	}
-	if len(errs) > 0 {
-		return nil, xerrors.Errorf("unable to convert change: %w", errs)
+	if err := errors.Join(errs...); err != nil {
+		return nil, xerrors.Errorf("unable to convert change: %w", err)
 	}
 	return &abstract.ChangeItem{
 		ID:               uint32(s.Record.EmittedAt),
@@ -87,7 +87,7 @@ func restore(col abstract.ColSchema, val interface{}) (interface{}, error) {
 	return abstract.Restore(col, val), nil
 }
 
-func (s *RowsRecord) Table() base.Table {
+func (s *RowsRecord) Table() abstract2.Table {
 	return adapter.NewTableFromLegacy(s.TableSchema, s.Stream.TableID())
 }
 
@@ -95,7 +95,7 @@ func (s *RowsRecord) NewValuesCount() int {
 	return len(s.TableSchema.Columns())
 }
 
-func (s *RowsRecord) NewValue(i int) (base.Value, error) {
+func (s *RowsRecord) NewValue(i int) (abstract2.Value, error) {
 	if err := s.Record.LazyParse(); err != nil {
 		return nil, xerrors.Errorf("unable to parse record data: %w", err)
 	}

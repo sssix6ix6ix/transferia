@@ -1,6 +1,7 @@
 package validator
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/transferia/transferia/internal/logger"
@@ -22,7 +23,7 @@ func (t TypesystemCheckerSink) Close() error {
 }
 
 func (t TypesystemCheckerSink) Push(items []abstract.ChangeItem) error {
-	var errs util.Errors
+	var errs []error
 	for _, row := range items {
 		if !row.IsRowEvent() {
 			logger.Log.Info("non-row event presented")
@@ -47,11 +48,11 @@ func (t TypesystemCheckerSink) Push(items []abstract.ChangeItem) error {
 			}
 		}
 	}
-	if len(errs) > 0 {
-		for _, err := range errs {
-			logger.Log.Errorf("%v", err)
+	if err := errors.Join(errs...); err != nil {
+		for _, e := range errs {
+			logger.Log.Errorf("%v", e)
 		}
-		return abstract.NewFatalError(xerrors.Errorf("invalid items: %w", errs))
+		return abstract.NewFatalError(xerrors.Errorf("invalid items: %w", err))
 	}
 	return nil
 }

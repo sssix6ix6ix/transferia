@@ -2,7 +2,6 @@ package eventhub
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -93,7 +92,7 @@ func (s *Source) readPartition(partitionID string, partitionClient *azeventhubs.
 		cancel()
 
 		if err != nil {
-			if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+			if xerrors.Is(err, context.DeadlineExceeded) || xerrors.Is(err, context.Canceled) {
 				continue
 			}
 			select {

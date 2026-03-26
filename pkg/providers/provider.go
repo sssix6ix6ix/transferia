@@ -6,7 +6,7 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/base"
+	"github.com/transferia/transferia/pkg/abstract2"
 	"github.com/transferia/transferia/pkg/middlewares"
 	"go.ytsaurus.tech/library/go/core/log"
 )
@@ -37,17 +37,17 @@ type PartitionableSource interface {
 	PartitionSource(partition abstract.Partition) (abstract.QueueToS3Source, error)
 }
 
-// Abstract2Provider add `base.DataProvider` factory to provider.
+// Abstract2Provider add `abstract2.DataProvider` factory to provider.
 // this means that provider can do abstract2 data provider
 type Abstract2Provider interface {
 	Provider
-	DataProvider() (base.DataProvider, error)
+	DataProvider() (abstract2.DataProvider, error)
 }
 
 // Abstract2Sinker add abstract2 writer factory to provider
 type Abstract2Sinker interface {
 	Provider
-	Target(...abstract.SinkOption) (base.EventTarget, error)
+	Target(...abstract.SinkOption) (abstract2.EventTarget, error)
 }
 
 // Sinker add generic writer factory to provider

@@ -2,9 +2,9 @@ package opensearch
 
 import (
 	"os"
+	"regexp"
 	"testing"
 
-	"cuelang.org/go/pkg/regexp"
 	"github.com/stretchr/testify/require"
 )
 
@@ -21,11 +21,13 @@ func TestCheckOpenSearchEqualElasticSearch(t *testing.T) {
 	elasticSearch, err := os.ReadFile("./model_elasticsearch_destination.go")
 	require.NoError(t, err)
 
-	openSearchExpected, err := regexp.ReplaceAll(`ElasticSearch`, string(elasticSearch), "OpenSearch")
-	require.NoError(t, err)
-	openSearchExpected, err = regexp.ReplaceAll(`ELASTICSEARCH`, openSearchExpected, "OPENSEARCH")
-	require.NoError(t, err)
-	openSearchExpected, err = regexp.ReplaceAll(`elasticsearch`, openSearchExpected, "opensearch")
-	require.NoError(t, err)
+	openSearchExpected := replaceAllRE(`ElasticSearch`, string(elasticSearch), "OpenSearch")
+	openSearchExpected = replaceAllRE(`ELASTICSEARCH`, openSearchExpected, "OPENSEARCH")
+	openSearchExpected = replaceAllRE(`elasticsearch`, openSearchExpected, "opensearch")
 	require.Equal(t, string(openSearch), openSearchExpected)
+}
+
+func replaceAllRE(pattern, src, repl string) string {
+	re := regexp.MustCompile(pattern)
+	return re.ReplaceAllString(src, repl)
 }

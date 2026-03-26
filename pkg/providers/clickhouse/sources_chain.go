@@ -2,21 +2,21 @@ package clickhouse
 
 import (
 	"context"
+	"errors"
 
 	"github.com/transferia/transferia/library/go/core/xerrors"
-	"github.com/transferia/transferia/pkg/base"
-	"github.com/transferia/transferia/pkg/util"
+	"github.com/transferia/transferia/pkg/abstract2"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
 type SourcesChain struct {
-	sources []base.EventSource
+	sources []abstract2.EventSource
 	logger  log.Logger
 }
 
-func (p *SourcesChain) Progress() (base.EventSourceProgress, error) {
+func (p *SourcesChain) Progress() (abstract2.EventSourceProgress, error) {
 	for _, source := range p.sources {
-		if progressable, ok := source.(base.ProgressableEventSource); ok {
+		if progressable, ok := source.(abstract2.ProgressableEventSource); ok {
 			return progressable.Progress()
 		}
 	}
@@ -32,7 +32,7 @@ func (p *SourcesChain) Running() bool {
 	return false
 }
 
-func (p *SourcesChain) Start(ctx context.Context, target base.EventTarget) error {
+func (p *SourcesChain) Start(ctx context.Context, target abstract2.EventTarget) error {
 	for _, source := range p.sources {
 		if err := source.Start(ctx, target); err != nil {
 			return xerrors.Errorf("unable to start %T event source: %w", source, err)
@@ -43,19 +43,19 @@ func (p *SourcesChain) Start(ctx context.Context, target base.EventTarget) error
 }
 
 func (p *SourcesChain) Stop() error {
-	var errs util.Errors
+	var errs []error
 	for _, provider := range p.sources {
 		if err := provider.Stop(); err != nil {
 			errs = append(errs, err)
 		}
 	}
-	if len(errs) > 0 {
-		return xerrors.Errorf("unable to stop sources chain: %w", errs)
+	if err := errors.Join(errs...); err != nil {
+		return xerrors.Errorf("unable to stop sources chain: %w", err)
 	}
 	return nil
 }
 
-func NewSourcesChain(logger log.Logger, sources ...base.EventSource) base.ProgressableEventSource {
+func NewSourcesChain(logger log.Logger, sources ...abstract2.EventSource) abstract2.ProgressableEventSource {
 	return &SourcesChain{
 		sources: sources,
 		logger:  logger,

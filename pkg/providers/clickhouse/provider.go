@@ -9,7 +9,7 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	dp_model "github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/base"
+	"github.com/transferia/transferia/pkg/abstract2"
 	"github.com/transferia/transferia/pkg/data"
 	"github.com/transferia/transferia/pkg/middlewares"
 	"github.com/transferia/transferia/pkg/providers"
@@ -56,7 +56,7 @@ type Provider struct {
 	transfer *dp_model.Transfer
 }
 
-func (p *Provider) Target(options ...abstract.SinkOption) (base.EventTarget, error) {
+func (p *Provider) Target(options ...abstract.SinkOption) (abstract2.EventTarget, error) {
 	if _, ok := p.transfer.Src.(*model.ChSource); !ok {
 		return nil, targets.UnknownTargetError
 	}
@@ -104,7 +104,7 @@ func (p *Provider) Storage() (abstract.Storage, error) {
 	return storage, nil
 }
 
-func (p *Provider) DataProvider() (base.DataProvider, error) {
+func (p *Provider) DataProvider() (abstract2.DataProvider, error) {
 	specificConfig, ok := p.transfer.Src.(*model.ChSource)
 	if !ok {
 		return nil, xerrors.Errorf("Unexpected source type: %T", p.transfer.Src)

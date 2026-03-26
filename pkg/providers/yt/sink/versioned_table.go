@@ -2,6 +2,7 @@ package sink
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -309,12 +310,12 @@ func (t *VersionedTable) getExistingRowVersions(ctx context.Context, tx yt.Table
 		}(lookupKeys[i:upper], errCh)
 		errChs = append(errChs, errCh)
 	}
-	var errs util.Errors
+	var errs []error
 	for _, ch := range errChs {
-		errs = util.AppendErr(errs, <-ch)
+		errs = append(errs, <-ch)
 	}
-	if len(errs) != 0 {
-		return nil, errs
+	if err := errors.Join(errs...); err != nil {
+		return nil, err
 	}
 	return versions, nil
 }

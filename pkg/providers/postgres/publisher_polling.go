@@ -2,7 +2,6 @@ package postgres
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -73,7 +72,7 @@ const (
 	stuckPullInterval        = 60 * time.Minute
 )
 
-var ErrBadPostgresHealth = errors.New("postgres health problem")
+var ErrBadPostgresHealth = xerrors.New("postgres health problem")
 
 type pollWindow struct {
 	Left    uint32

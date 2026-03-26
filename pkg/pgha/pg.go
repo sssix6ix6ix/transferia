@@ -2,6 +2,7 @@ package pgha
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -16,7 +17,6 @@ import (
 	"github.com/transferia/transferia/pkg/dbaas"
 	"github.com/transferia/transferia/pkg/errors/coded"
 	"github.com/transferia/transferia/pkg/errors/codes"
-	"github.com/transferia/transferia/pkg/util"
 	"go.ytsaurus.tech/library/go/core/log"
 	"golang.yandex/hasql"
 	"golang.yandex/hasql/checkers"
@@ -242,7 +242,7 @@ func NewFromHosts(dbName, user, password string, hosts []string, port int, ssl b
 	}
 	if len(pingErrs) > 0 && len(pingErrs) == len(hosts) {
 		logger.Log.Error("unable to ping any host", log.Any("error", pingErrs))
-		return nil, coded.Errorf(codes.PostgresAllHostsUnavailable, "All hosts are unavailable: %w", util.NewErrs(pingErrs...))
+		return nil, coded.Errorf(codes.PostgresAllHostsUnavailable, "All hosts are unavailable: %w", errors.Join(pingErrs...))
 	}
 	// Use options to fine-tune cluster behaviour
 	opts := []hasql.ClusterOption{

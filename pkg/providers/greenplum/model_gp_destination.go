@@ -7,7 +7,7 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	dp_model "github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/middlewares/async/bufferer"
+	"github.com/transferia/transferia/pkg/middlewares/synchronizer/bufferer"
 	ch_model "github.com/transferia/transferia/pkg/providers/clickhouse/model"
 	"github.com/transferia/transferia/pkg/providers/postgres"
 	"go.uber.org/zap/zapcore"

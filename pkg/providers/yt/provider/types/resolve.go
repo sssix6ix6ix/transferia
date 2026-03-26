@@ -4,12 +4,12 @@ import (
 	"math"
 
 	"github.com/transferia/transferia/library/go/core/xerrors"
-	"github.com/transferia/transferia/pkg/base"
-	"github.com/transferia/transferia/pkg/base/types"
+	"github.com/transferia/transferia/pkg/abstract2"
+	"github.com/transferia/transferia/pkg/abstract2/types"
 	"go.ytsaurus.tech/yt/go/schema"
 )
 
-func resolvePrimitive(t schema.Type) (base.Type, error) {
+func resolvePrimitive(t schema.Type) (abstract2.Type, error) {
 	switch t {
 	case schema.TypeInt8:
 		return types.NewInt8Type(), nil
@@ -60,7 +60,7 @@ func UnwrapOptional(ytType schema.ComplexType) (schema.ComplexType, bool) {
 	return ytType, false
 }
 
-func Resolve(typ schema.ComplexType) (base.Type, error) {
+func Resolve(typ schema.ComplexType) (abstract2.Type, error) {
 	switch t := typ.(type) {
 	case schema.Type:
 		if result, err := resolvePrimitive(t); err != nil {

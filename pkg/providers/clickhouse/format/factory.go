@@ -6,7 +6,7 @@ import (
 
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	"github.com/transferia/transferia/pkg/base"
+	"github.com/transferia/transferia/pkg/abstract2"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/model"
 )
 
@@ -51,7 +51,7 @@ func NewValidator(reader io.Reader, format model.ClickhouseIOFormat, expectedCol
 	return NewFatalValidator(validator), nil
 }
 
-func NewEvent(format model.ClickhouseIOFormat, row []byte, cols *abstract.TableSchema, names []string, table abstract.TableID, readerTime time.Time) (base.Event, error) {
+func NewEvent(format model.ClickhouseIOFormat, row []byte, cols *abstract.TableSchema, names []string, table abstract.TableID, readerTime time.Time) (abstract2.Event, error) {
 	switch format {
 	case model.ClickhouseIOFormatCSV:
 		return NewCSVEvent(row, cols, names, table, readerTime), nil

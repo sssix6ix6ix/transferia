@@ -9,7 +9,7 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/base"
+	"github.com/transferia/transferia/pkg/abstract2"
 	"github.com/transferia/transferia/pkg/data"
 	"github.com/transferia/transferia/pkg/errors"
 	"github.com/transferia/transferia/pkg/errors/categories"
@@ -32,8 +32,8 @@ type LocalWorker struct {
 	asyncsink           abstract.QueueToS3Sink
 	legacySource        abstract.Source
 	asyncsource         abstract.QueueToS3Source
-	replicationProvider base.ReplicationProvider
-	replicationSource   base.EventSource
+	replicationProvider abstract2.ReplicationProvider
+	replicationSource   abstract2.EventSource
 	wg                  sync.WaitGroup
 	stopCh              chan struct{}
 	mutex               sync.Mutex
@@ -185,7 +185,7 @@ func (w *LocalWorker) initialize() (err error) {
 				return errors.CategorizedErrorf(categories.Source, "failed to create source: %w", err)
 			}
 		} else {
-			if replicationProvider, ok := dataProvider.(base.ReplicationProvider); ok {
+			if replicationProvider, ok := dataProvider.(abstract2.ReplicationProvider); ok {
 				w.replicationProvider = replicationProvider
 				if err := w.replicationProvider.Init(); err != nil {
 					return errors.CategorizedErrorf(categories.Source, "failed to initialize replication provider: %w", err)

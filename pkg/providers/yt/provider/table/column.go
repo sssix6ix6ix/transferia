@@ -2,7 +2,7 @@ package table
 
 import (
 	"github.com/transferia/transferia/pkg/abstract"
-	"github.com/transferia/transferia/pkg/base"
+	"github.com/transferia/transferia/pkg/abstract2"
 	"go.ytsaurus.tech/yt/go/schema"
 )
 
@@ -11,8 +11,8 @@ const (
 )
 
 type YtColumn interface {
-	base.Column
-	setTable(base.Table)
+	abstract2.Column
+	setTable(abstract2.Table)
 	YtType() schema.ComplexType
 }
 
@@ -20,12 +20,12 @@ type column struct {
 	name       string
 	ytType     schema.ComplexType
 	ytCol      schema.Column
-	typ        base.Type
-	tbl        base.Table
+	typ        abstract2.Type
+	tbl        abstract2.Table
 	isOptional bool
 }
 
-func (c *column) Table() base.Table {
+func (c *column) Table() abstract2.Table {
 	return c.tbl
 }
 
@@ -37,7 +37,7 @@ func (c *column) FullName() string {
 	return c.name
 }
 
-func (c *column) Type() base.Type {
+func (c *column) Type() abstract2.Type {
 	return c.typ
 }
 
@@ -45,7 +45,7 @@ func (c *column) YtType() schema.ComplexType {
 	return c.ytType
 }
 
-func (c *column) Value(val interface{}) (base.Value, error) {
+func (c *column) Value(val interface{}) (abstract2.Value, error) {
 	panic("not implemented")
 }
 
@@ -77,11 +77,11 @@ func (c *column) ToOldColumn() (*abstract.ColSchema, error) {
 	return &s, nil
 }
 
-func (c *column) setTable(t base.Table) {
+func (c *column) setTable(t abstract2.Table) {
 	c.tbl = t
 }
 
-func NewColumn(name string, typ base.Type, ytType schema.ComplexType, ytCol schema.Column, isOptional bool) YtColumn {
+func NewColumn(name string, typ abstract2.Type, ytType schema.ComplexType, ytCol schema.Column, isOptional bool) YtColumn {
 	return &column{
 		name:       name,
 		ytType:     ytType,

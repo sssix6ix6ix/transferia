@@ -3,6 +3,7 @@ package writer
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"net"
 	"sync"
@@ -12,7 +13,6 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/providers/kafka/client"
 	serializer "github.com/transferia/transferia/pkg/serializer/queue"
-	"github.com/transferia/transferia/pkg/util"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
@@ -93,7 +93,7 @@ func (w *Writer) WriteMessages(ctx context.Context, lgr log.Logger, topicName st
 	if err := w.rawKafkaWriter.WriteMessages(ctx, finalMsgs...); err != nil {
 		switch t := err.(type) {
 		case kafka.WriteErrors:
-			return xerrors.Errorf("returned kafka.WriteErrors, err: %w", util.NewErrs(t...))
+			return xerrors.Errorf("returned kafka.WriteErrors, err: %w", errors.Join([]error(t)...))
 		case kafka.MessageTooLargeError:
 			return xerrors.Errorf("message exceeded max message size (len(key):%d, len(val):%d", len(t.Message.Key), len(t.Message.Value))
 		default:

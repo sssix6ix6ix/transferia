@@ -1,13 +1,14 @@
 package engine
 
 import (
-	"log"
 	"strings"
 
 	"github.com/confluentinc/confluent-kafka-go/v2/schemaregistry/confluent"
 	"github.com/confluentinc/confluent-kafka-go/v2/schemaregistry/confluent/types"
 	"github.com/jhump/protoreflect/desc"
 	"github.com/jhump/protoreflect/desc/protoprint"
+	"github.com/transferia/transferia/internal/logger"
+	"go.ytsaurus.tech/library/go/core/log"
 	"google.golang.org/genproto/googleapis/api"
 	"google.golang.org/genproto/googleapis/api/annotations"
 	rpchttp "google.golang.org/genproto/googleapis/rpc/http"
@@ -89,7 +90,7 @@ func init() {
 	}
 	fdMap, err := desc.CreateFileDescriptors(fds)
 	if err != nil {
-		log.Fatalf("Could not create fds: %v", err)
+		logger.Log.Fatal("could not create file descriptors for builtin protos", log.NamedError("error", err))
 	}
 	printer := protoprint.Printer{ //nolint:exhaustruct
 		PreferMultiLineStyleComments:           false,
@@ -109,7 +110,7 @@ func init() {
 		var writer strings.Builder
 		err = printer.PrintProtoFile(value, &writer)
 		if err != nil {
-			log.Fatalf("Could not print %s", key)
+			logger.Log.Fatal("could not print builtin proto file", log.String("key", key), log.NamedError("error", err))
 		}
 		// trim prefix for schemaregistry/confluent/meta.proto -> confluent/meta.proto
 		BuiltInDeps[trimSRPrefix(key)] = writer.String()

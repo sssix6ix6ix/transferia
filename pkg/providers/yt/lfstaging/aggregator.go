@@ -4,12 +4,12 @@ import (
 	"context"
 	"time"
 
+	"github.com/transferia/transferia/library/go/core/xerrors"
 	"go.ytsaurus.tech/library/go/core/log"
 	"go.ytsaurus.tech/yt/go/mapreduce/spec"
 	"go.ytsaurus.tech/yt/go/ypath"
 	"go.ytsaurus.tech/yt/go/yt"
 	"go.ytsaurus.tech/yt/go/ytlock"
-	"golang.org/x/xerrors"
 )
 
 type tableAggregator struct {

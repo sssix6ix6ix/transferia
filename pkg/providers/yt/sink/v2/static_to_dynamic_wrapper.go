@@ -260,7 +260,9 @@ func (s *sinker) processIndexes(input []abstract.ChangeItem, indexCols []string)
 
 	var indexErrs []error
 	for err := range resultCh {
-		indexErrs = append(indexErrs, err)
+		if err != nil {
+			indexErrs = append(indexErrs, err)
+		}
 	}
 	return errors.Join(indexErrs...)
 }

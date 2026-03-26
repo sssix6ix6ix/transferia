@@ -3,7 +3,7 @@ package dataobjects
 import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	"github.com/transferia/transferia/pkg/base"
+	"github.com/transferia/transferia/pkg/abstract2"
 	"go.ytsaurus.tech/yt/go/yt"
 )
 
@@ -35,7 +35,7 @@ func (o *preshardedDataObject) Close() {
 	o.idx = len(o.partKeys)
 }
 
-func (o *preshardedDataObject) Part() (base.DataObjectPart, error) {
+func (o *preshardedDataObject) Part() (abstract2.DataObjectPart, error) {
 	if l := len(o.partKeys); o.idx >= l {
 		return nil, xerrors.Errorf("part index %d out of range %d", o.idx, l)
 	}

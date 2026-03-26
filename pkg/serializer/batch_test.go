@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	"golang.org/x/xerrors"
 )
 
 type dummySerializer struct {

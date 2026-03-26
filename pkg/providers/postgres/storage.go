@@ -3,7 +3,6 @@ package postgres
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -499,7 +498,7 @@ func (s *Storage) ExactTableDescriptionRowsCount(ctx context.Context, table abst
 	query := exactCountQuery(&table)
 	var count uint64
 	if err := s.Conn.QueryRow(ctxWithTimeout, query).Scan(&count); err != nil {
-		if errors.Is(err, context.DeadlineExceeded) {
+		if xerrors.Is(err, context.DeadlineExceeded) {
 			logger.Log.Warn("Calculating table rows count took too long - we recomment create index on cursor column", log.String("table", table.String()))
 			return 0, nil
 		}

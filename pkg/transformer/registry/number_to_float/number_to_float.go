@@ -4,13 +4,13 @@ import (
 	"container/list"
 	"encoding/json"
 
+	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/transformer"
 	"github.com/transferia/transferia/pkg/transformer/registry/filter"
 	"github.com/transferia/transferia/pkg/util/set"
 	"go.ytsaurus.tech/library/go/core/log"
 	yts "go.ytsaurus.tech/yt/go/schema"
-	"golang.org/x/xerrors"
 )
 
 const (

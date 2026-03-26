@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/kikimr/public/sdk/go/persqueue"
@@ -27,6 +26,7 @@ import (
 	"github.com/ydb-platform/ydb-go-sdk/v3/topic/topicoptions"
 	"github.com/ydb-platform/ydb-go-sdk/v3/topic/topictypes"
 	"github.com/ydb-platform/ydb-go-sdk/v3/topic/topicwriter"
+	"go.uber.org/mock/gomock"
 )
 
 var (

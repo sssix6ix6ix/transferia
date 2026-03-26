@@ -4,7 +4,7 @@ import (
 	"sort"
 
 	"github.com/transferia/transferia/pkg/abstract"
-	"github.com/transferia/transferia/pkg/base"
+	"github.com/transferia/transferia/pkg/abstract2"
 	"github.com/transferia/transferia/pkg/connection/clickhouse"
 )
 
@@ -44,7 +44,7 @@ func (s *Table) Err() error {
 func (s *Table) Close() {
 }
 
-func (s *Table) Part() (base.DataObjectPart, error) {
+func (s *Table) Part() (abstract2.DataObjectPart, error) {
 	part := s.parts[s.iter]
 	shardNum := s.shardNum[part.Shard]
 	if shardNum == 0 {

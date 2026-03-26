@@ -2,6 +2,7 @@ package greenplum
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/jackc/pgconn"
@@ -9,7 +10,6 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/providers/postgres"
-	"github.com/transferia/transferia/pkg/util"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
@@ -54,10 +54,10 @@ func Segment(index int) GPSegPointer {
 // May modify the passed storage parameters
 func openPGStorage(config *postgres.PgStorageParams) (*postgres.Storage, error) {
 	// this creates a TCP connection to the segment!
-	var errs util.Errors
+	var errs []error
 
 	if result, err := postgres.NewStorage(config); err != nil {
-		errs = util.AppendErr(errs, err)
+		errs = append(errs, err)
 	} else {
 		return result, nil
 	}
@@ -65,18 +65,18 @@ func openPGStorage(config *postgres.PgStorageParams) (*postgres.Storage, error) 
 	if len(config.TLSFile) > 0 {
 		// Try fallback to a connection without TLS.
 		// Unfortunately, the TLS error is not a public interface or type; we can only check the message. This is unreliable, so just always try fallback.
-		logger.Log.Warn("failed to create a PostgreSQL storage with encrypted connection", log.Error(errs))
+		logger.Log.Warn("failed to create a PostgreSQL storage with encrypted connection", log.Error(errors.Join(errs...)))
 		config.TLSFile = ""
 		config.TryHostCACertificates = false
 		logger.Log.Info("Trying to connect to a PostgreSQL instance using unencrypted connection.")
 		if result, err := postgres.NewStorage(config); err != nil {
-			errs = util.AppendErr(errs, xerrors.Errorf("fallback to unencrypted connection failed: %w", err))
+			errs = append(errs, xerrors.Errorf("fallback to unencrypted connection failed: %w", err))
 		} else {
 			return result, nil
 		}
 	}
 
-	return nil, xerrors.Errorf("failed to create a PostgreSQL storage: %w", errs)
+	return nil, xerrors.Errorf("failed to create a PostgreSQL storage: %w", errors.Join(errs...))
 }
 
 func (s *Storage) configurePGStorageForGreenplum(storage *postgres.Storage) {

@@ -2,6 +2,7 @@ package snapshot
 
 import (
 	"database/sql"
+	"errors"
 	"reflect"
 	"strings"
 	"time"
@@ -9,7 +10,6 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/providers/mysql/unmarshaller/types"
-	"github.com/transferia/transferia/pkg/util"
 )
 
 func NewValueReceiver(k *sql.ColumnType, originalTypeName string, location *time.Location) any {
@@ -38,17 +38,17 @@ func UnmarshalHomo(receivers []any, table []abstract.ColSchema) ([]any, error) {
 
 func unmarshal(receivers []any, table []abstract.ColSchema, unmarshalFieldFunc func(any, *abstract.ColSchema) (any, error)) ([]any, error) {
 	result := make([]any, len(receivers))
-	errors := util.Errors{}
+	var fieldErrs []error
 	for i := range receivers {
 		unmarshallingResult, err := unmarshalFieldFunc(receivers[i], &table[i])
 		if err != nil {
-			errors = append(errors, xerrors.Errorf("column [%d] %q: %w", i, table[i].ColumnName, err))
+			fieldErrs = append(fieldErrs, xerrors.Errorf("column [%d] %q: %w", i, table[i].ColumnName, err))
 			continue
 		}
 		result[i] = unmarshallingResult
 	}
-	if len(errors) > 0 {
-		return nil, xerrors.Errorf("failed to unmarshal: %w", errors)
+	if err := errors.Join(fieldErrs...); err != nil {
+		return nil, xerrors.Errorf("failed to unmarshal: %w", err)
 	}
 	return result, nil
 }

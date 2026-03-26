@@ -2,7 +2,6 @@ package postgres
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -21,7 +20,7 @@ const (
 	lockRenewInterval = 2 * time.Second
 )
 
-var ErrConsumerLocked = errors.New("keeper: Consumer already locked")
+var ErrConsumerLocked = xerrors.New("keeper: Consumer already locked")
 
 type Config struct {
 	config.DBConfig

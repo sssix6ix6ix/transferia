@@ -2,7 +2,6 @@ package ydb
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"path"
 	"sync"
@@ -96,7 +95,7 @@ func (s *Source) run(parseQ *parsequeue.WaitableParseQueue[[]batchWithSize]) err
 			defer cancel()
 			return s.reader.ReadMessageBatch(currCtx)
 		}()
-		if err != nil && !errors.Is(err, context.DeadlineExceeded) {
+		if err != nil && !xerrors.Is(err, context.DeadlineExceeded) {
 			return xerrors.Errorf("read returned error, err: %w", err)
 		}
 		if ydbBatch != nil {

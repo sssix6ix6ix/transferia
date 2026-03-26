@@ -6,8 +6,8 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/base"
-	"github.com/transferia/transferia/pkg/base/events"
+	"github.com/transferia/transferia/pkg/abstract2"
+	"github.com/transferia/transferia/pkg/abstract2/events"
 	"github.com/transferia/transferia/pkg/util/worker_pool"
 	"github.com/transferia/transferia/pkg/worker/tasks/cleanup"
 	"go.ytsaurus.tech/library/go/core/log"
@@ -23,7 +23,7 @@ type legacyEventTarget struct {
 }
 
 type convertItem struct {
-	batch  base.EventBatch
+	batch  abstract2.EventBatch
 	doneCh chan convertResult
 }
 
@@ -42,7 +42,7 @@ func NewEventTarget(
 	logger log.Logger,
 	asyncSink abstract.AsyncSink,
 	cleanupType model.CleanupType,
-	tmpPolicy *model.TmpPolicyConfig) base.EventTarget {
+	tmpPolicy *model.TmpPolicyConfig) abstract2.EventTarget {
 	parallelism := runtime.GOMAXPROCS(0)
 	t := &legacyEventTarget{
 		logger:      logger,
@@ -122,7 +122,7 @@ func (t *legacyEventTarget) convert(in interface{}) {
 			continue
 		}
 
-		legacyEvt, ok := evt.(base.SupportsOldChangeItem)
+		legacyEvt, ok := evt.(abstract2.SupportsOldChangeItem)
 		if !ok {
 			continue
 		}
@@ -137,7 +137,7 @@ func (t *legacyEventTarget) convert(in interface{}) {
 	task.doneCh <- res
 }
 
-func (t *legacyEventTarget) AsyncPush(input base.EventBatch) chan error {
+func (t *legacyEventTarget) AsyncPush(input abstract2.EventBatch) chan error {
 	resCh := make(chan error, 1)
 	convCh := make(chan convertResult)
 

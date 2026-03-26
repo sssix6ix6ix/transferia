@@ -3,6 +3,7 @@ package abstract
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -26,7 +27,7 @@ const IsAsyncPartsUploadedStateKey = "is-async-parts-uploaded"
 
 func BuildIncludeMap(objects []string, providerType ProviderType) (map[TableID]bool, error) {
 	includeObjects := map[TableID]bool{}
-	var errs util.Errors
+	var errs []error
 	for _, obj := range objects {
 		tid, err := ParseTableIDForProvider(obj, providerType)
 		if err != nil {
@@ -35,8 +36,8 @@ func BuildIncludeMap(objects []string, providerType ProviderType) (map[TableID]b
 		}
 		includeObjects[*tid] = true
 	}
-	if len(errs) > 0 {
-		return nil, xerrors.Errorf("unable to parse objects: %w", errs)
+	if err := errors.Join(errs...); err != nil {
+		return nil, xerrors.Errorf("unable to parse objects: %w", err)
 	}
 	return includeObjects, nil
 }

@@ -2,7 +2,6 @@ package mongo
 
 import (
 	"context"
-	"errors"
 	"strings"
 	"time"
 
@@ -33,7 +32,7 @@ func (s Storage) readRowsAndPushByChunks(
 	for cursor.Next(ctx) {
 		var item bson.D
 		if err := cursor.Decode(&item); err != nil {
-			if errors.Is(err, bsoncore.ErrInvalidLength) || strings.Contains(err.Error(), "invalid length") {
+			if xerrors.Is(err, bsoncore.ErrInvalidLength) || strings.Contains(err.Error(), "invalid length") {
 				return coded.Errorf(codes.MongoInvalidDeprecatedBinarySubtype, "cursor.Decode returned error: %w", err)
 			}
 			return xerrors.Errorf("cursor.Decode returned error: %w", err)

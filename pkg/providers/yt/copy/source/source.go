@@ -7,7 +7,7 @@ import (
 	"github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	"github.com/transferia/transferia/pkg/base"
+	"github.com/transferia/transferia/pkg/abstract2"
 	yt2 "github.com/transferia/transferia/pkg/providers/yt"
 	"github.com/transferia/transferia/pkg/providers/yt/copy/events"
 	"github.com/transferia/transferia/pkg/providers/yt/tablemeta"
@@ -29,7 +29,7 @@ type source struct {
 
 // To verify providers contract implementation
 var (
-	_ base.SnapshotProvider = (*source)(nil)
+	_ abstract2.SnapshotProvider = (*source)(nil)
 )
 
 func (s *source) Init() error {
@@ -64,15 +64,15 @@ func (s *source) EndSnapshot() error {
 	return nil
 }
 
-func (s *source) DataObjects(filter base.DataObjectFilter) (base.DataObjects, error) {
+func (s *source) DataObjects(filter abstract2.DataObjectFilter) (abstract2.DataObjects, error) {
 	return newDataObjects(s.snapshotID), nil
 }
 
-func (s *source) TableSchema(part base.DataObjectPart) (*abstract.TableSchema, error) {
+func (s *source) TableSchema(part abstract2.DataObjectPart) (*abstract.TableSchema, error) {
 	return nil, nil // this is special homo-copy-source
 }
 
-func (s *source) CreateSnapshotSource(part base.DataObjectPart) (base.ProgressableEventSource, error) {
+func (s *source) CreateSnapshotSource(part abstract2.DataObjectPart) (abstract2.ProgressableEventSource, error) {
 	s.logger.Debugf("Creating snapshot source for %s", s.snapshotID)
 	if part.FullName() != s.snapshotID {
 		return nil, xerrors.Errorf("part name %s doesn't match current snapshot tx id %s", part.FullName(), s.snapshotID)
@@ -80,17 +80,17 @@ func (s *source) CreateSnapshotSource(part base.DataObjectPart) (base.Progressab
 	return s, nil
 }
 
-func (s *source) ResolveOldTableDescriptionToDataPart(tableDesc abstract.TableDescription) (base.DataObjectPart, error) {
+func (s *source) ResolveOldTableDescriptionToDataPart(tableDesc abstract.TableDescription) (abstract2.DataObjectPart, error) {
 	return nil, xerrors.New("legacy table desc is not supported")
 }
 
-func (s *source) DataObjectsToTableParts(filter base.DataObjectFilter) ([]abstract.TableDescription, error) {
+func (s *source) DataObjectsToTableParts(filter abstract2.DataObjectFilter) ([]abstract.TableDescription, error) {
 	objects, err := s.DataObjects(filter)
 	if err != nil {
 		return nil, xerrors.Errorf("Can't get data objects: %w", err)
 	}
 
-	tableDescriptions, err := base.DataObjectsToTableParts(objects, filter)
+	tableDescriptions, err := abstract2.DataObjectsToTableParts(objects, filter)
 	if err != nil {
 		return nil, xerrors.Errorf("Can't convert data objects to table descriptions: %w", err)
 	}
@@ -98,7 +98,7 @@ func (s *source) DataObjectsToTableParts(filter base.DataObjectFilter) ([]abstra
 	return tableDescriptions, nil
 }
 
-func (s *source) TablePartToDataObjectPart(tableDescription *abstract.TableDescription) (base.DataObjectPart, error) {
+func (s *source) TablePartToDataObjectPart(tableDescription *abstract.TableDescription) (abstract2.DataObjectPart, error) {
 	if tableDescription == nil {
 		return nil, xerrors.New("table description is nil")
 	}
@@ -110,7 +110,7 @@ func (s *source) Running() bool {
 	return s.snapshotIsRunning
 }
 
-func (s *source) Start(ctx context.Context, target base.EventTarget) error {
+func (s *source) Start(ctx context.Context, target abstract2.EventTarget) error {
 	s.logger.Debugf("Starting snapshot source for %s", s.snapshotID)
 	defer func() {
 		s.snapshotIsRunning = false
@@ -125,9 +125,9 @@ func (s *source) Stop() error {
 	return nil
 }
 
-func (s *source) Progress() (base.EventSourceProgress, error) {
+func (s *source) Progress() (abstract2.EventSourceProgress, error) {
 	if s.snapshotEvtBatch == nil {
-		return base.NewDefaultEventSourceProgress(false, uint64(0), uint64(len(s.tables))), nil
+		return abstract2.NewDefaultEventSourceProgress(false, uint64(0), uint64(len(s.tables))), nil
 	}
 	return s.snapshotEvtBatch.Progress(), nil
 }

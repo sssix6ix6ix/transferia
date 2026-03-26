@@ -2,7 +2,6 @@ package postgres
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -127,7 +126,7 @@ func (slot *Slot) Suicide() error {
 				if err != nil {
 					errMsg := fmt.Sprintf("slot.SuicideImpl() returned error: %s", err)
 					slot.logger.Error(errMsg)
-					return errors.New(errMsg)
+					return xerrors.New(errMsg)
 				}
 			} else {
 				slot.logger.Info("Slot already deleted")
@@ -145,7 +144,7 @@ func (slot *Slot) Suicide() error {
 			if exist {
 				errMsg := "slot still exists after success deleting"
 				slot.logger.Error(errMsg)
-				return errors.New(errMsg)
+				return xerrors.New(errMsg)
 			}
 			return nil
 		},

@@ -2,6 +2,7 @@ package httpuploader
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"sync"
 
@@ -24,7 +25,7 @@ func newInsertQuery(insertParams model.InsertParams, db string, table string, ro
 }
 
 func marshalQuery(batch []abstract.ChangeItem, rules *MarshallingRules, q query, avgRowSize int, parallelism uint64) error {
-	var errs util.Errors
+	var errs []error
 	type marshalTask struct {
 		buf *bytes.Buffer
 		row abstract.ChangeItem
@@ -32,9 +33,7 @@ func marshalQuery(batch []abstract.ChangeItem, rules *MarshallingRules, q query,
 
 	taskPool := worker_pool.NewDefaultWorkerPool(func(row interface{}) {
 		task := row.(*marshalTask)
-		if err := MarshalCItoJSON(task.row, rules, task.buf); err != nil {
-			errs = util.AppendErr(errs, err)
-		}
+		errs = append(errs, MarshalCItoJSON(task.row, rules, task.buf))
 	}, parallelism)
 	// Cannot just do defer taskPool.Close() because in case all tasks are succesfuly added to the pool,
 	// pool.Close must be called before checking errs list. In this case defer must be canceled
@@ -54,8 +53,8 @@ func marshalQuery(batch []abstract.ChangeItem, rules *MarshallingRules, q query,
 
 	_ = taskPool.Close()
 	rb.Cancel()
-	if len(errs) != 0 {
-		return xerrors.Errorf("marshalling errors: %w", util.UniqueErrors(errs))
+	if err := errors.Join(errs...); err != nil {
+		return xerrors.Errorf("marshalling errors: %w", errors.Join(util.UniqueErrors(errs)...))
 	}
 	return nil
 }

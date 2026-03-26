@@ -2,6 +2,7 @@ package airbyte
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 
@@ -10,7 +11,6 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/runtime/shared/pod"
-	"github.com/transferia/transferia/pkg/util"
 	"github.com/transferia/transferia/pkg/util/gobwrapper"
 	"go.uber.org/zap/zapcore"
 )
@@ -108,7 +108,7 @@ func (b *StringOrArray) MarshalJSON() ([]byte, error) {
 }
 
 func (b *StringOrArray) UnmarshalJSON(data []byte) error {
-	var errs util.Errors
+	var errs []error
 	var many []string
 	if err := json.Unmarshal(data, &many); err == nil {
 		b.Array = many
@@ -123,11 +123,11 @@ func (b *StringOrArray) UnmarshalJSON(data []byte) error {
 	} else {
 		errs = append(errs, err)
 	}
-	return xerrors.Errorf("unable to parse json property: %w", errs)
+	return xerrors.Errorf("unable to parse json property: %w", errors.Join(errs...))
 }
 
 func (b *JSONProperty) UnmarshalJSON(data []byte) error {
-	var errs util.Errors
+	var errs []error
 	var many manyTypes
 	if err := json.Unmarshal(data, &many); err == nil {
 		b.Type = many.Type
@@ -146,7 +146,7 @@ func (b *JSONProperty) UnmarshalJSON(data []byte) error {
 	} else {
 		errs = append(errs, err)
 	}
-	return xerrors.Errorf("unable to parse json property: %w", errs)
+	return xerrors.Errorf("unable to parse json property: %w", errors.Join(errs...))
 }
 
 // JSONProperty type can be array or single string, so had to implement custom unmarshal

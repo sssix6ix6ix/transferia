@@ -5,7 +5,7 @@ import (
 	"slices"
 
 	"github.com/transferia/transferia/library/go/core/xerrors"
-	basetypes "github.com/transferia/transferia/pkg/base/types"
+	basetypes "github.com/transferia/transferia/pkg/abstract2/types"
 	"github.com/transferia/transferia/pkg/providers/yt/provider/table"
 	"github.com/transferia/transferia/pkg/providers/yt/provider/types"
 	"go.ytsaurus.tech/yt/go/schema"

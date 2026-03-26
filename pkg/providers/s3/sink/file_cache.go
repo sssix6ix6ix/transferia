@@ -5,7 +5,6 @@ import (
 
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	mathutil "github.com/transferia/transferia/pkg/util/math"
 )
 
 type FileCache struct {
@@ -22,8 +21,8 @@ func (f *FileCache) Add(item *abstract.ChangeItem) error {
 	}
 	f.items = append(f.items, item)
 	f.approximateSize += getSize(item)
-	f.minLSN = mathutil.MinT(item.LSN, f.minLSN)
-	f.maxLSN = mathutil.MaxT(item.LSN, f.maxLSN)
+	f.minLSN = min(item.LSN, f.minLSN)
+	f.maxLSN = max(item.LSN, f.maxLSN)
 	return nil
 }
 

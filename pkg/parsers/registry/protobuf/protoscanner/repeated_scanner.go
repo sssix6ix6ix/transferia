@@ -1,7 +1,7 @@
 package protoscanner
 
 import (
-	"golang.org/x/xerrors"
+	"github.com/transferia/transferia/library/go/core/xerrors"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/dynamicpb"

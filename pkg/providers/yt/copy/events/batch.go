@@ -4,7 +4,7 @@ import (
 	"encoding/binary"
 
 	"github.com/transferia/transferia/library/go/core/xerrors"
-	"github.com/transferia/transferia/pkg/base"
+	"github.com/transferia/transferia/pkg/abstract2"
 	"github.com/transferia/transferia/pkg/providers/yt/tablemeta"
 )
 
@@ -30,7 +30,7 @@ func (e *EventBatch) Size() int {
 	return binary.Size(e.tables)
 }
 
-func (e *EventBatch) Event() (base.Event, error) {
+func (e *EventBatch) Event() (abstract2.Event, error) {
 	if e.pos >= len(e.tables) {
 		return nil, xerrors.New("no more events in batch")
 	}
@@ -41,9 +41,9 @@ func (e *EventBatch) Event() (base.Event, error) {
 	return newTableEvent(e.tables[e.pos]), nil
 }
 
-func (e *EventBatch) Progress() base.EventSourceProgress {
+func (e *EventBatch) Progress() abstract2.EventSourceProgress {
 	total := uint64(len(e.tables))
-	return base.NewDefaultEventSourceProgress(e.doneCnt == total, e.doneCnt, total)
+	return abstract2.NewDefaultEventSourceProgress(e.doneCnt == total, e.doneCnt, total)
 }
 
 func (e *EventBatch) TableProcessed() {

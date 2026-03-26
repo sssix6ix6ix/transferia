@@ -6,7 +6,7 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
 	dp_model "github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/middlewares/async/bufferer"
+	"github.com/transferia/transferia/pkg/middlewares/synchronizer/bufferer"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/model"
 	"github.com/transferia/transferia/pkg/providers/postgres/utils"
 	"go.uber.org/zap/zapcore"

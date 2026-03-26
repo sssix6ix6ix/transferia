@@ -9,7 +9,7 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	dp_model "github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/config/env"
-	"github.com/transferia/transferia/pkg/middlewares/async/bufferer"
+	"github.com/transferia/transferia/pkg/middlewares/synchronizer/bufferer"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/model"
 	"github.com/transferia/transferia/pkg/providers/yt/yt_client"
 	"go.uber.org/zap/zapcore"

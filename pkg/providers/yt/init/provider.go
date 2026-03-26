@@ -8,7 +8,7 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/base"
+	"github.com/transferia/transferia/pkg/abstract2"
 	"github.com/transferia/transferia/pkg/middlewares"
 	"github.com/transferia/transferia/pkg/providers"
 	yt_provider "github.com/transferia/transferia/pkg/providers/yt"
@@ -53,7 +53,7 @@ type Provider struct {
 	provider abstract.ProviderType
 }
 
-func (p *Provider) Target(...abstract.SinkOption) (base.EventTarget, error) {
+func (p *Provider) Target(...abstract.SinkOption) (abstract2.EventTarget, error) {
 	dst, ok := p.transfer.Dst.(*yt_provider.YtCopyDestination)
 	if !ok {
 		return nil, targets.UnknownTargetError
@@ -87,7 +87,7 @@ func (p *Provider) Storage() (abstract.Storage, error) {
 	})
 }
 
-func (p *Provider) DataProvider() (provider base.DataProvider, err error) {
+func (p *Provider) DataProvider() (provider abstract2.DataProvider, err error) {
 	specificConfig, ok := p.transfer.Src.(yt_provider.YtSourceModel)
 	if !ok {
 		return nil, xerrors.Errorf("Unexpected source type: %T", p.transfer.Src)

@@ -9,9 +9,9 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/changeitem"
-	"github.com/transferia/transferia/pkg/base"
-	"github.com/transferia/transferia/pkg/base/adapter"
-	"github.com/transferia/transferia/pkg/base/events"
+	"github.com/transferia/transferia/pkg/abstract2"
+	"github.com/transferia/transferia/pkg/abstract2/adapter"
+	"github.com/transferia/transferia/pkg/abstract2/events"
 )
 
 type CSVEvent struct {
@@ -74,7 +74,7 @@ func (e *CSVEvent) ToOldChangeItem() (*abstract.ChangeItem, error) {
 	}, nil
 }
 
-func (e *CSVEvent) Table() base.Table {
+func (e *CSVEvent) Table() abstract2.Table {
 	return adapter.NewTableFromLegacy(e.cols, e.table)
 }
 
@@ -82,7 +82,7 @@ func (e *CSVEvent) NewValuesCount() int {
 	return len(e.cols.Columns())
 }
 
-func (e *CSVEvent) NewValue(i int) (base.Value, error) {
+func (e *CSVEvent) NewValue(i int) (abstract2.Value, error) {
 	return nil, xerrors.New("compact json event NewValue not implemented")
 }
 

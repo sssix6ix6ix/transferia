@@ -3,13 +3,13 @@ package sink
 import (
 	"bytes"
 	"context"
-	"errors"
 	"io"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 )
 
@@ -142,7 +142,7 @@ func TestSnapshotWriter_WriteError(t *testing.T) {
 	ctx := context.Background()
 	mockWriter := newMockWriteCloser()
 
-	expectedErr := errors.New("serialization error")
+	expectedErr := xerrors.New("serialization error")
 	mockSer := &mockSerializer{
 		serializeAndWriteFunc: func(ctx context.Context, items []*abstract.ChangeItem, writer io.Writer) (int, error) {
 			return 0, expectedErr
@@ -200,7 +200,7 @@ func TestSnapshotWriter_CloseWithUploadError(t *testing.T) {
 	writer, err := NewsnapshotWriter(ctx, mockSer, mockWriter, "test-key")
 	require.NoError(t, err)
 
-	uploadErr := errors.New("upload failed")
+	uploadErr := xerrors.New("upload failed")
 
 	// Simulate upload failure in goroutine
 	go func() {
@@ -220,7 +220,7 @@ func TestSnapshotWriter_CloseWithSerializerError(t *testing.T) {
 	ctx := context.Background()
 	mockWriter := newMockWriteCloser()
 
-	serializerErr := errors.New("serializer close error")
+	serializerErr := xerrors.New("serializer close error")
 	mockSer := &mockSerializer{
 		closeFunc: func() ([]byte, error) {
 			return nil, serializerErr
@@ -240,7 +240,7 @@ func TestSnapshotWriter_CloseWithSerializerError(t *testing.T) {
 func TestSnapshotWriter_CloseWithWriterError(t *testing.T) {
 	ctx := context.Background()
 
-	writerErr := errors.New("writer close error")
+	writerErr := xerrors.New("writer close error")
 	mockWriter := &mockWriteCloser{
 		buf: &bytes.Buffer{},
 		closeFunc: func() error {
@@ -275,7 +275,7 @@ func TestSnapshotWriter_FinishUpload(t *testing.T) {
 	writer, err := NewsnapshotWriter(ctx, mockSer, mockWriter, "test-key")
 	require.NoError(t, err)
 
-	uploadErr := errors.New("test upload error")
+	uploadErr := xerrors.New("test upload error")
 
 	// Call finishUpload in goroutine
 	go func() {
@@ -299,8 +299,8 @@ func TestSnapshotWriter_FinishUploadMultipleCalls(t *testing.T) {
 	writer, err := NewsnapshotWriter(ctx, mockSer, mockWriter, "test-key")
 	require.NoError(t, err)
 
-	firstErr := errors.New("first error")
-	secondErr := errors.New("second error")
+	firstErr := xerrors.New("first error")
+	secondErr := xerrors.New("second error")
 
 	// Call finishUpload multiple times
 	go writer.FinishUpload(firstErr)

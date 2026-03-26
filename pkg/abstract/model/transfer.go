@@ -2,11 +2,11 @@ package model
 
 import (
 	"encoding/json"
+	"errors"
 
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	transformers_registry "github.com/transferia/transferia/pkg/transformer"
-	"github.com/transferia/transferia/pkg/util"
 	"go.uber.org/zap/zapcore"
 )
 
@@ -433,7 +433,7 @@ func (f *Transfer) FilterObjects(result abstract.TableMap) (abstract.TableMap, e
 	if f.DataObjects == nil || len(f.DataObjects.IncludeObjects) == 0 {
 		return result, nil
 	}
-	var errs util.Errors
+	var errs []error
 	res := map[abstract.TableID]abstract.TableInfo{}
 	for _, obj := range f.DataObjects.IncludeObjects {
 		tid, err := abstract.ParseTableIDForProvider(obj, f.SrcType())
@@ -448,8 +448,8 @@ func (f *Transfer) FilterObjects(result abstract.TableMap) (abstract.TableMap, e
 		}
 		res[*tid] = info
 	}
-	if len(errs) > 0 {
-		return nil, xerrors.Errorf("unable to filter transfer objects: %w", errs)
+	if err := errors.Join(errs...); err != nil {
+		return nil, xerrors.Errorf("unable to filter transfer objects: %w", err)
 	}
 	return res, nil
 }

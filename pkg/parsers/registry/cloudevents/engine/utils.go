@@ -1,12 +1,13 @@
 package engine
 
 import (
-	"log"
 	"net/url"
 	"regexp"
 	"strconv"
 
+	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/library/go/core/xerrors"
+	"go.ytsaurus.tech/library/go/core/log"
 )
 
 var extractSubjectAndVersion = regexp.MustCompile(`.*/schemas/ids/(.*)`)
@@ -14,7 +15,8 @@ var extractSubjectAndVersion = regexp.MustCompile(`.*/schemas/ids/(.*)`)
 func extractSchemaIDAndURL(in string) (hostPort string, schemaID uint32, err error) {
 	u, err := url.Parse(in)
 	if err != nil {
-		log.Fatal(err)
+		logger.Log.Error("extractSchemaIDAndURL: invalid URL", log.Error(err))
+		return "", 0, xerrors.Errorf("parse url: %w", err)
 	}
 
 	hostPort = u.Scheme + "://" + u.Hostname()

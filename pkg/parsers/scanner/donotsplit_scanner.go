@@ -1,6 +1,6 @@
 package scanner
 
-import "golang.org/x/xerrors"
+import "github.com/transferia/transferia/library/go/core/xerrors"
 
 type DoNotSplitScanner struct {
 	data  []byte

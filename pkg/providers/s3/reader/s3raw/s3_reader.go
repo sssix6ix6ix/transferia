@@ -1,7 +1,6 @@
 package s3raw
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"time"
@@ -59,7 +58,7 @@ func (r *s3RawReader) ReadAt(p []byte, off int64) (int, error) {
 	n, err := io.ReadFull(resp.Body, p)
 
 	r.stats.Size.Add(int64(n))
-	if errors.Is(err, io.ErrUnexpectedEOF) {
+	if xerrors.Is(err, io.ErrUnexpectedEOF) {
 		return n, io.EOF
 	}
 

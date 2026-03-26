@@ -5,8 +5,8 @@ import (
 	"database/sql"
 	"database/sql/driver"
 
+	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/util/jsonx"
-	"golang.org/x/xerrors"
 )
 
 type JSON struct {
