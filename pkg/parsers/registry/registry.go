@@ -10,6 +10,6 @@ import (
 	_ "github.com/transferia/transferia/pkg/parsers/registry/json"
 	_ "github.com/transferia/transferia/pkg/parsers/registry/native"
 	_ "github.com/transferia/transferia/pkg/parsers/registry/protobuf"
-	_ "github.com/transferia/transferia/pkg/parsers/registry/raw2table"
+	_ "github.com/transferia/transferia/pkg/parsers/registry/raw_to_table"
 	_ "github.com/transferia/transferia/pkg/parsers/registry/tskv"
 )

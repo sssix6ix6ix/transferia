@@ -1,0 +1,55 @@
+package engine
+
+import (
+	"testing"
+
+	"github.com/stretchr/testify/require"
+	"github.com/transferia/transferia/pkg/parsers/registry/raw_to_table/raw_to_table_model"
+)
+
+func TestCommonConfigValidate(t *testing.T) {
+	testCases := []struct {
+		name    string
+		cfg     CommonConfig
+		wantErr bool
+	}{
+		{
+			name: "ValidConfig",
+			cfg: CommonConfig{
+				IsKeyEnabled: true,
+				KeyType:      raw_to_table_model.Bytes,
+				ValueType:    raw_to_table_model.String,
+			},
+			wantErr: false,
+		},
+		{
+			name: "InvalidKeyType",
+			cfg: CommonConfig{
+				IsKeyEnabled: true,
+				KeyType:      raw_to_table_model.DataType("blablabla"),
+				ValueType:    raw_to_table_model.Bytes,
+			},
+			wantErr: true,
+		},
+		{
+			name: "InvalidValueType",
+			cfg: CommonConfig{
+				IsKeyEnabled: true,
+				KeyType:      raw_to_table_model.Bytes,
+				ValueType:    raw_to_table_model.DataType("blablabla"),
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.cfg.Validate()
+			if tc.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}

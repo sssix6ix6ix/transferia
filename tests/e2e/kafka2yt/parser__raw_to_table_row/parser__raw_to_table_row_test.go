@@ -17,7 +17,8 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/parsers"
-	"github.com/transferia/transferia/pkg/parsers/registry/raw2table"
+	"github.com/transferia/transferia/pkg/parsers/registry/raw_to_table"
+	"github.com/transferia/transferia/pkg/parsers/registry/raw_to_table/raw_to_table_model"
 	"github.com/transferia/transferia/pkg/providers/kafka"
 	ytStorage "github.com/transferia/transferia/pkg/providers/yt/storage"
 	replaceprimarykey "github.com/transferia/transferia/pkg/transformer/registry/replace_primary_key"
@@ -68,13 +69,14 @@ func TestSchemaRegistryJSONtoYT(t *testing.T) {
 	defer schemaRegistryMock.Close()
 
 	// prepare currSource
-	parserConfigMap, err := parsers.ParserConfigStructToMap(&raw2table.ParserConfigRawToTableCommon{
-		IsAddTimestamp: true,
-		IsAddHeaders:   true,
-		IsAddKey:       true,
-		IsKeyString:    false,
-		IsValueString:  false,
-		TableName:      "my_table",
+	parserConfigMap, err := parsers.ParserConfigStructToMap(&raw_to_table.ParserConfigRawToTableCommon{
+		IsTimestampEnabled: true,
+		IsHeadersEnabled:   true,
+		IsKeyEnabled:       true,
+		KeyType:            raw_to_table_model.Bytes,
+		ValueType:          raw_to_table_model.Bytes,
+		TableName:          "my_table",
+		DLQSuffix:          "", // use default
 	})
 	require.NoError(t, err)
 	currSource.ParserConfig = parserConfigMap
