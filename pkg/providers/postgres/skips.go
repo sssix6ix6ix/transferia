@@ -11,10 +11,6 @@ func skipChildrenIfCollapseInheritTables(collapseInheritTables bool, isChild boo
 	return collapseInheritTables && isChild
 }
 
-func skipParentIfNotCollapseInheritTables(collapseInheritTables bool, isParent bool) bool {
-	return (!collapseInheritTables) && isParent
-}
-
 func skipViewIfHomogeneous(isHomo bool, isView bool) bool {
 	return isHomo && isView
 }
@@ -33,6 +29,5 @@ func (s *Storage) Skipped(tableID abstract.TableID) (bool, error) {
 
 	collapseInheritTables := s.collapseInheritTablesEnabled()
 	return skipChildrenIfCollapseInheritTables(collapseInheritTables, tinfo.tableInfo.IsInherited) ||
-		skipParentIfNotCollapseInheritTables(collapseInheritTables, tinfo.tableInfo.HasSubclass) ||
 		skipViewIfHomogeneous(s.IsHomo, tinfo.tableInfo.IsView), nil
 }

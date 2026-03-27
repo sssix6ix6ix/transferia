@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
+	"go.ytsaurus.tech/library/go/core/log"
 )
 
 func (s *Storage) getChildTables(ctx context.Context, table abstract.TableDescription) ([]abstract.TableDescription, error) {
@@ -43,5 +45,24 @@ WHERE
 		})
 	}
 
+	if len(res) > 0 {
+		// Include parent table itself as shard (that reads with ONLY semantics). Needed when parent has its own data.
+		parentEtaRow := uint64(0)
+		err := conn.QueryRow(ctx, `
+SELECT GREATEST(reltuples, 0)::bigint
+FROM pg_class
+WHERE oid = $1::regclass`,
+			table.Fqtn()).Scan(&parentEtaRow)
+		if err != nil {
+			logger.Log.Warn("unable to estimate parent table rows count", log.Error(err))
+		}
+		res = append(res, abstract.TableDescription{
+			Name:   table.Name,
+			Schema: table.Schema,
+			Filter: abstract.WhereStatement(fmt.Sprintf("%s%s|%s", ParentOnlyFilterPrefix, table.Fqtn(), string(table.Filter))),
+			EtaRow: parentEtaRow,
+			Offset: 0,
+		})
+	}
 	return res, nil
 }

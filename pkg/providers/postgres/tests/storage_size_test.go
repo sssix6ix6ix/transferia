@@ -42,7 +42,7 @@ func TestInheritTableSharding(t *testing.T) {
 		Offset: 0,
 	})
 	require.NoError(t, err)
-	require.Len(t, tables, 2)
+	require.Len(t, tables, 3) // 2 children + 1 parent-only shard
 	var res []abstract.ChangeItem
 	for _, tbl := range tables {
 		require.NoError(t, storage.LoadTable(ctx, tbl, func(input []abstract.ChangeItem) error {

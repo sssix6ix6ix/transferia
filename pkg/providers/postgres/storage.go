@@ -35,6 +35,10 @@ const (
 	All DuplicatesPolicy = "all"
 
 	PartitionsFilterPrefix = "__dt_resolved_hard:"
+	// ParentOnlyFilterPrefix marks a shard that reads directly from a parent table using ONLY semantics.
+	// This is used when the parent itself has data alongside its child tables.
+	// Format: "__dt_parent_only:<schema>.<table>|<optional_filter>"
+	ParentOnlyFilterPrefix = "__dt_parent_only:"
 )
 
 type SnapshotKey string
@@ -128,12 +132,19 @@ func isFilterEmpty(filter abstract.WhereStatement) bool {
 
 func WhereClause(filter abstract.WhereStatement) string {
 	if partitionFilterTableName(filter) != "" {
-		partitionFilter := partitionFilterTableFilter(filter)
+		partitionFilter := extractSeparatedTableFilter(filter)
 		if partitionFilter != "" {
 			return partitionFilter
 		} else {
 			return "1 = 1"
 		}
+	}
+	if parentOnlyFilterTableName(filter) != "" {
+		innerFilter := extractSeparatedTableFilter(filter)
+		if innerFilter != "" {
+			return innerFilter
+		}
+		return "1 = 1"
 	}
 	if !isFilterEmpty(filter) {
 		return string(filter)
@@ -142,33 +153,44 @@ func WhereClause(filter abstract.WhereStatement) string {
 	return "1 = 1"
 }
 
-func partitionFilterTableFilter(filter abstract.WhereStatement) string {
+func extractSeparatedTableFilter(filter abstract.WhereStatement) string {
 	index := strings.Index(string(filter), "|")
 	return string(filter)[index+1:]
 }
 
-func partitionFilterTableName(filter abstract.WhereStatement) string {
-	if strings.HasPrefix(string(filter), PartitionsFilterPrefix) {
-		result := strings.ReplaceAll(string(filter), PartitionsFilterPrefix, "")
+func extractPrefixedFilterTableName(filter abstract.WhereStatement, prefix string) string {
+	if strings.HasPrefix(string(filter), prefix) {
+		result := strings.TrimPrefix(string(filter), prefix)
 		index := strings.Index(result, "|")
 		return result[0:index]
 	}
 	return ""
 }
 
+func partitionFilterTableName(filter abstract.WhereStatement) string {
+	return extractPrefixedFilterTableName(filter, PartitionsFilterPrefix)
+}
+
+func parentOnlyFilterTableName(filter abstract.WhereStatement) string {
+	return extractPrefixedFilterTableName(filter, ParentOnlyFilterPrefix)
+}
+
 func exactCountQuery(t *abstract.TableDescription) string {
-	return fmt.Sprintf("select count(1) from %s where %s", TableName(t), WhereClause(t.Filter))
+	return fmt.Sprintf("select count(1) from %s where %s", makeFromStatement(t, false), WhereClause(t.Filter))
 }
 
 func TableName(t *abstract.TableDescription) string {
 	if partitionFilterTableName(t.Filter) != "" {
 		return partitionFilterTableName(t.Filter)
 	}
+	if parentOnlyFilterTableName(t.Filter) != "" {
+		return parentOnlyFilterTableName(t.Filter)
+	}
 	return t.Fqtn()
 }
 
 func ReadQuery(t *abstract.TableDescription, columns string) string {
-	return fmt.Sprintf("select %s from %s where %s", columns, TableName(t), WhereClause(t.Filter))
+	return fmt.Sprintf("select %s from %s where %s", columns, makeFromStatement(t, false), WhereClause(t.Filter))
 }
 
 func checkAccessibilityQuery(t *abstract.TableDescription) string {
@@ -215,7 +237,7 @@ const (
 )
 
 func makeFromStatement(t *abstract.TableDescription, excludeDescendants bool) string {
-	if excludeDescendants {
+	if excludeDescendants || parentOnlyFilterTableName(t.Filter) != "" {
 		return fmt.Sprintf("only %v", TableName(t))
 	}
 	return TableName(t)

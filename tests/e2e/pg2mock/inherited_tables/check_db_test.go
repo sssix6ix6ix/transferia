@@ -145,16 +145,16 @@ func TestSnapshotAndIncrement(t *testing.T) {
 	worker1 := helpers.Activate(t, transferNoCollapse)
 	defer worker1.Close(t)
 
-	waitForLoaded(t, &changeItemsNoCollapse, &sinkerNoCollapseMutex, 36, 30*time.Second)
+	waitForLoaded(t, &changeItemsNoCollapse, &sinkerNoCollapseMutex, 46, 30*time.Second)
 	fmt.Printf("Transfer without collapse: snapshot changeItem dump(%v): %v\n", len(changeItemsNoCollapse), changeItemsNoCollapse)
 
 	tableItemsNoCollapse := splitByTables(changeItemsNoCollapse)
-	require.Equal(t, 4, len(tableItemsNoCollapse))                   // [log_table_descendant_y2022m01,log_table_descendant_y2022m02,log_table_partition_y2022m01,log_table_partition_y2022m02] - other skipped
-	require.Equal(t, 36, len(changeItemsNoCollapse))                 // for every from these 4 tables: [drop_table, init_sharded_table_load, init_load_table, 4xinsert, done_load_table, done_sharded_table_load]
-	require.Equal(t, 0, len(tableItemsNoCollapse[partitionedTable])) // partitionedTable not present in dst
+	require.Equal(t, 6, len(tableItemsNoCollapse))                   // 4 children + 2 parent tables (parents read with ONLY, 0 data rows)
+	require.Equal(t, 46, len(changeItemsNoCollapse))                 // 4 children × 9 + 2 parents × 5 (lifecycle only, no data rows via ONLY)
+	require.Equal(t, 5, len(tableItemsNoCollapse[partitionedTable])) // parent table: drop + init_sharded + init_load + done_load + done_sharded (0 data rows via ONLY)
 	require.Equal(t, 9, len(tableItemsNoCollapse[part01Table]))
 	require.Equal(t, 9, len(tableItemsNoCollapse[part02Table]))
-	require.Equal(t, 0, len(tableItemsNoCollapse[parentTable])) // partitionedTable not present in dst
+	require.Equal(t, 5, len(tableItemsNoCollapse[parentTable])) // parent table: drop + init_sharded + init_load + done_load + done_sharded (0 data rows via ONLY)
 	require.Equal(t, 9, len(tableItemsNoCollapse[child01Table]))
 	require.Equal(t, 9, len(tableItemsNoCollapse[child02Table]))
 
@@ -194,7 +194,7 @@ func TestSnapshotAndIncrement(t *testing.T) {
 	worker2 := helpers.Activate(t, transferCollapse)
 	defer worker2.Close(t)
 
-	waitForLoaded(t, &changeItemsCollapse, &sinkerCollapseMutex, 30, 30*time.Second)
+	waitForLoaded(t, &changeItemsCollapse, &sinkerCollapseMutex, 34, 30*time.Second)
 	fmt.Printf("Transfer with collapse: snapshot changeItem dump(%v): %v\n", len(changeItemsCollapse), changeItemsCollapse)
 	for _, v := range changeItemsCollapse {
 		logger.Log.Infof("    snapshot changeItem dump item: %s", v.ToJSONString())
@@ -202,16 +202,16 @@ func TestSnapshotAndIncrement(t *testing.T) {
 
 	tableItemsCollapse := splitByTables(changeItemsCollapse)
 	require.Equal(t, 2, len(tableItemsCollapse))
-	require.Equal(t, 30, len(changeItemsCollapse)) // 2 drop_table, 2 init_sharded_table_load, 4 init_load_table, 4 done_load_table, 2 done_sharded_table_load, 16 data events
-	require.Equal(t, 15, len(tableItemsCollapse[partitionedTable]))
-	require.Equal(t, 15, len(tableItemsCollapse[parentTable]))
+	require.Equal(t, 34, len(changeItemsCollapse)) // 2 drop_table, 2 init_sharded_table_load, 6 init_load_table (3 shards each), 6 done_load_table, 2 done_sharded_table_load, 16 data events
+	require.Equal(t, 17, len(tableItemsCollapse[partitionedTable]))
+	require.Equal(t, 17, len(tableItemsCollapse[parentTable]))
 
 	parentKindsCollapse := splitByKind(tableItemsCollapse[parentTable])
 	require.Equal(t, 6, len(parentKindsCollapse))
 	require.Equal(t, 1, len(parentKindsCollapse[abstract.DropTableKind]))
 	require.Equal(t, 1, len(parentKindsCollapse[abstract.InitShardedTableLoad]))
-	require.Equal(t, 2, len(parentKindsCollapse[abstract.InitTableLoad]))
-	require.Equal(t, 2, len(parentKindsCollapse[abstract.DoneTableLoad]))
+	require.Equal(t, 3, len(parentKindsCollapse[abstract.InitTableLoad]))
+	require.Equal(t, 3, len(parentKindsCollapse[abstract.DoneTableLoad]))
 	require.Equal(t, 1, len(parentKindsCollapse[abstract.DoneShardedTableLoad]))
 	require.Equal(t, 8, len(parentKindsCollapse[abstract.InsertKind]))
 
@@ -236,15 +236,15 @@ func TestSnapshotAndIncrement(t *testing.T) {
 	require.NoError(t, sinkToSource.Push(changeItemBuilderPartitioned.Inserts(t, valuesForPartitions)))
 	require.NoError(t, sinkToSource.Push(changeItemBuilderParent.Inserts(t, valuesForPartitions)))
 
-	waitForLoaded(t, &changeItemsNoCollapse, &sinkerNoCollapseMutex, 36+6, 30*time.Second)
+	waitForLoaded(t, &changeItemsNoCollapse, &sinkerNoCollapseMutex, 46+6, 30*time.Second)
 	fmt.Println("Replication without collapse is synced")
-	tableItemsNoCollapse = splitByTables(changeItemsNoCollapse[36:])
+	tableItemsNoCollapse = splitByTables(changeItemsNoCollapse[46:])
 	require.Equal(t, 4, len(tableItemsNoCollapse))
 
-	waitForLoaded(t, &changeItemsCollapse, &sinkerCollapseMutex, 30+6, 30*time.Second)
+	waitForLoaded(t, &changeItemsCollapse, &sinkerCollapseMutex, 34+6, 30*time.Second)
 	fmt.Println("Replication with collapse is synced")
 
-	tableItemsCollapse = splitByTables(changeItemsCollapse[30:])
+	tableItemsCollapse = splitByTables(changeItemsCollapse[34:])
 	require.Equal(t, 2, len(tableItemsCollapse))
 
 	// check new partition replication

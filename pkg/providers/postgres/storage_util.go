@@ -89,17 +89,8 @@ func handleNotPartitionedTables(
 
 	result := map[abstract.TableID]abstract.TableInfo{}
 	for tableID, tableInfo := range foundTables {
-		_, childrenFound := parentToChildren[tableID]
-		if isHomo && childrenFound {
-			// In homogeneous pg->pg mode we preserve explicitly selected parent tables
-			// even when descendants exist, so parent data is copied with ONLY semantics.
-			result[tableID] = tableInfo
-			continue
-		}
-		if skipParentIfNotCollapseInheritTables(false, childrenFound) {
-			lgr.Infof("skip partitioned table (bcs all data in child tables): %s", tableID.Fqtn())
-			continue // throw out parts
-		}
+		// Parent tables with children are always kept. During snapshot they are read with ONLY
+		// semantics so that only their direct rows are fetched (child rows come from child shards).
 		result[tableID] = tableInfo
 	}
 	return result, nil
