@@ -20,6 +20,7 @@ import (
 	"go.ytsaurus.tech/library/go/core/log"
 	"go.ytsaurus.tech/yt/go/ypath"
 	"go.ytsaurus.tech/yt/go/yt"
+	"golang.org/x/exp/maps"
 )
 
 var (
@@ -138,7 +139,7 @@ func (s *sink) initTableLoad(tablePath ypath.Path, schema abstract.TableColumns)
 			Schema:           schema,
 			Path:             tablePath,
 			OptimizeFor:      s.config.OptimizeFor(),
-			CustomAttributes: s.config.CustomAttributes(),
+			CustomAttributes: s.customAttributesWithCodecs(),
 			Logger:           s.logger,
 		}); err != nil {
 			return err
@@ -209,7 +210,7 @@ func (s *sink) commitTable(tablePath ypath.Path, scheme abstract.TableColumns) e
 			AllowedSorting:   s.config.SortedStatic(),
 			Pool:             s.config.Pool(),
 			OptimizeFor:      s.config.OptimizeFor(),
-			CustomAttributes: s.config.CustomAttributes(),
+			CustomAttributes: s.customAttributesWithCodecs(),
 			Logger:           s.logger,
 			IsDynamicSorted:  isDynamicSorted,
 			ReduceBinaryPath: reduceBinaryPath,
@@ -257,6 +258,26 @@ func dataplaneExecutablePath(cfg provider_yt.YtDestinationModel, ytClient yt.Cli
 		logger.Warn("dataplane version is not specified")
 		return "", nil
 	}
+}
+
+// customAttributesWithCodecs returns a copy of custom attributes with codec settings merged in.
+func (s *sink) customAttributesWithCodecs() map[string]any {
+	compressionCodec := s.config.TableCompressionCodec()
+	erasureCodec := s.config.TableErasureCodec()
+	if compressionCodec == "" && erasureCodec == "" {
+		return s.config.CustomAttributes()
+	}
+	attrs := maps.Clone(s.config.CustomAttributes())
+	if attrs == nil {
+		attrs = make(map[string]any)
+	}
+	if compressionCodec != "" {
+		attrs["compression_codec"] = compressionCodec
+	}
+	if erasureCodec != "" {
+		attrs["erasure_codec"] = erasureCodec
+	}
+	return attrs
 }
 
 func NewStaticSink(cfg provider_yt.YtDestinationModel, cp coordinator.Coordinator, transferID string, registry core_metrics.Registry, logger log.Logger) (abstract.Sinker, error) {

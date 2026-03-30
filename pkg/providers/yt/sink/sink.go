@@ -171,6 +171,9 @@ func (s *sinker) checkTable(schema []abstract.ColSchema, table string) error {
 		genericTable, createTableErr := s.newGenericTable(provider_yt.SafeChild(s.dir, table), schema)
 		if createTableErr != nil {
 			s.logger.Error("Create table error", log.Any("table", table), log.Error(createTableErr))
+			if wrapped := provider_yt.WrapCreateNodeCodecError(createTableErr); wrapped != createTableErr {
+				return wrapped
+			}
 			if isIncompatibleSchema(createTableErr) {
 				return xerrors.Errorf("incompatible schema changes in table %s: %w", table, createTableErr)
 			}

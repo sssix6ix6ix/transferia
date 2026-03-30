@@ -68,6 +68,10 @@ type YtDestinationModel interface {
 	LegacyModel() interface{}
 	CompressionCodec() yt.ClientCompressionCodec
 
+	// TableCompressionCodec is server-side codec, not client-side RPC compression (which is `CompressionCodec`).
+	TableCompressionCodec() string
+	TableErasureCodec() string
+
 	Static() bool
 	SortedStatic() bool
 	StaticChunkSize() int
@@ -120,6 +124,8 @@ type YtDestination struct {
 	BufferTriggingSize       uint64                    `log:"true"`
 	BufferTriggingInterval   time.Duration             `log:"true"`
 	CompressionCodec         yt.ClientCompressionCodec `log:"true"`
+	TableCompressionCodec    string                    `log:"true"`
+	TableErasureCodec        string                    `log:"true"`
 	DisableDatetimeHack      bool                      `log:"true"` // This disable old hack for inverting time.Time columns as int64 timestamp for LF>YT
 	Connection               ConnectionData
 	CustomAttributes         map[string]string `log:"true"`
@@ -202,6 +208,14 @@ func (d *YtDestinationWrapper) EnsureCustomTmpPolicySupported() error {
 
 func (d *YtDestinationWrapper) CompressionCodec() yt.ClientCompressionCodec {
 	return d.Model.CompressionCodec
+}
+
+func (d *YtDestinationWrapper) TableCompressionCodec() string {
+	return d.Model.TableCompressionCodec
+}
+
+func (d *YtDestinationWrapper) TableErasureCodec() string {
+	return d.Model.TableErasureCodec
 }
 
 func (d *YtDestinationWrapper) PreSnapshotHacks() {

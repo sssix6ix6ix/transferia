@@ -25,14 +25,16 @@ func proxy(clusterID string) string {
 }
 
 type YTSaurusStaticDestination struct {
-	TablePath             string            `log:"true"`
-	TableOptimizeFor      string            `log:"true"`
-	UserPool              string            `log:"true"` // pool for running merge and sort operations for static tables
-	DoDiscardBigValues    bool              `log:"true"`
-	TableCustomAttributes map[string]string `log:"true"`
-	Cleanup               model.CleanupType `log:"true"`
-	Connection            ConnectionData    `log:"true"`
-	IsSortedStatic        bool              `log:"true"` // true, if we need to sort static tables
+	TablePath               string            `log:"true"`
+	TableOptimizeFor        string            `log:"true"`
+	UserPool                string            `log:"true"` // pool for running merge and sort operations for static tables
+	DoDiscardBigValues      bool              `log:"true"`
+	TableCustomAttributes   map[string]string `log:"true"`
+	Cleanup                 model.CleanupType `log:"true"`
+	Connection              ConnectionData    `log:"true"`
+	IsSortedStatic          bool              `log:"true"` // true, if we need to sort static tables
+	StorageCompressionCodec string            `log:"true"`
+	StorageErasureCodec     string            `log:"true"`
 }
 
 var (
@@ -51,6 +53,14 @@ func (d *YTSaurusStaticDestination) DisableDatetimeHack() bool {
 
 func (d *YTSaurusStaticDestination) CompressionCodec() yt.ClientCompressionCodec {
 	return 0
+}
+
+func (d *YTSaurusStaticDestination) TableCompressionCodec() string {
+	return d.StorageCompressionCodec
+}
+
+func (d *YTSaurusStaticDestination) TableErasureCodec() string {
+	return d.StorageErasureCodec
 }
 
 func (d *YTSaurusStaticDestination) ServiceAccountIDs() []string {

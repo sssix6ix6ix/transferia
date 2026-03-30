@@ -7,6 +7,7 @@ import (
 	"github.com/cenkalti/backoff/v4"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
+	yt2 "github.com/transferia/transferia/pkg/providers/yt"
 	"go.ytsaurus.tech/library/go/core/log"
 	"go.ytsaurus.tech/yt/go/ypath"
 	"go.ytsaurus.tech/yt/go/yt"
@@ -47,6 +48,9 @@ func initTable(client yt.Client, opts *InitOptions) error {
 		tmpTablePath.String()), log.Any("options", createOptions))
 
 	if _, err := client.CreateNode(ctx, tmpTablePath, yt.NodeTable, &createOptions); err != nil {
+		if wrapped := yt2.WrapCreateNodeCodecError(err); wrapped != err {
+			return wrapped
+		}
 		return xerrors.Errorf("unable to create static table on init stage: %w", err)
 	}
 

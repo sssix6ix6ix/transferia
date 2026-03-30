@@ -28,8 +28,10 @@ type YTSaurusDynamicDestination struct {
 	DoUseStaticTableOnSnapshot bool              `log:"true"` // optional.Optional[bool] breaks compatibility
 	Cleanup                    model.CleanupType `log:"true"`
 
-	Connection            ConnectionData    `log:"true"`
-	TableCustomAttributes map[string]string `log:"true"`
+	Connection              ConnectionData    `log:"true"`
+	TableCustomAttributes   map[string]string `log:"true"`
+	StorageCompressionCodec string            `log:"true"`
+	StorageErasureCodec     string            `log:"true"`
 }
 
 var (
@@ -48,6 +50,14 @@ func (d *YTSaurusDynamicDestination) DisableDatetimeHack() bool {
 
 func (d *YTSaurusDynamicDestination) CompressionCodec() yt.ClientCompressionCodec {
 	return 0
+}
+
+func (d *YTSaurusDynamicDestination) TableCompressionCodec() string {
+	return d.StorageCompressionCodec
+}
+
+func (d *YTSaurusDynamicDestination) TableErasureCodec() string {
+	return d.StorageErasureCodec
 }
 
 func (d *YTSaurusDynamicDestination) ServiceAccountIDs() []string {

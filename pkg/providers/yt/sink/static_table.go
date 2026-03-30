@@ -351,6 +351,12 @@ func (t *StaticTable) addWriter(ctx context.Context, tID abstract.TableID, item 
 		}
 		if t.config != nil {
 			createOptions.Attributes["optimize_for"] = t.config.OptimizeFor()
+			if codec := t.config.TableCompressionCodec(); codec != "" {
+				createOptions.Attributes["compression_codec"] = codec
+			}
+			if codec := t.config.TableErasureCodec(); codec != "" {
+				createOptions.Attributes["erasure_codec"] = codec
+			}
 			createOptions.Attributes = t.config.MergeAttributes(createOptions.Attributes)
 		}
 		logger.Log.Info(
@@ -360,8 +366,7 @@ func (t *StaticTable) addWriter(ctx context.Context, tID abstract.TableID, item 
 		)
 
 		if _, err := tx.CreateNode(ctx, tmpTablePath, yt.NodeTable, &createOptions); err != nil {
-			//nolint:descriptiveerrors
-			return err
+			return provider_yt.WrapCreateNodeCodecError(err)
 		}
 		opts := &yt.WriteTableOptions{TableWriter: t.spec}
 		w, err := tx.WriteTable(ctx, tmpTablePath, opts)

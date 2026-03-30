@@ -154,6 +154,12 @@ func BuildDynamicAttrs(cols []abstract.ColSchema, config provider_yt.YtDestinati
 		attrs["pivot_keys"] = pivotKeys(cols, config)
 		attrs["backing_store_retention_time"] = 0
 	}
+	if codec := config.TableCompressionCodec(); codec != "" {
+		attrs["compression_codec"] = codec
+	}
+	if codec := config.TableErasureCodec(); codec != "" {
+		attrs["erasure_codec"] = codec
+	}
 
 	return config.MergeAttributes(attrs)
 }

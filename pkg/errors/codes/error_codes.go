@@ -75,7 +75,9 @@ var (
 	YDBOverloaded = coded.Register("ydb", "overloaded")
 
 	// ytsaurus
-	YTSaurusNotFound = coded.Register("yt", "not_found")
+	YTSaurusNotFound               = coded.Register("yt", "not_found")
+	YTInvalidTableCompressionCodec = coded.Register("yt", "invalid_table_compression_codec")
+	YTInvalidTableErasureCodec     = coded.Register("yt", "invalid_table_erasure_codec")
 
 	// greenplum
 	GreenplumExternalUrlsExceedSegments = coded.Register("greenplum", "external_urls_exceed_segments")

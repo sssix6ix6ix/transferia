@@ -205,7 +205,7 @@ func (c *commitClient) createTableForOperation(tablePath ypath.Path, scheme ytsc
 	defer cancel()
 	createOptions := createNodeOptions(scheme, c.OptimizedFor, c.CustomAttributes)
 	if _, err := c.Tx.CreateNode(ctx, tablePath, yt.NodeTable, &createOptions); err != nil {
-		return err
+		return provider_yt.WrapCreateNodeCodecError(err)
 	}
 
 	return nil

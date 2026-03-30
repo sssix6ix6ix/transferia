@@ -2100,6 +2100,8 @@
   "pkg/providers/yds/source/model_source_test.go":"transfer_manager/go/pkg/providers/yds/source/model_source_test.go",
   "pkg/providers/yds/source/source.go":"transfer_manager/go/pkg/providers/yds/source/source.go",
   "pkg/providers/yds/yds_type/provider.go":"transfer_manager/go/pkg/providers/yds/yds_type/provider.go",
+  "pkg/providers/yt/codec_errors.go":"transfer_manager/go/pkg/providers/yt/codec_errors.go",
+  "pkg/providers/yt/codec_errors_test.go":"transfer_manager/go/pkg/providers/yt/codec_errors_test.go",
   "pkg/providers/yt/copy/events/batch.go":"transfer_manager/go/pkg/providers/yt/copy/events/batch.go",
   "pkg/providers/yt/copy/events/tableevent.go":"transfer_manager/go/pkg/providers/yt/copy/events/tableevent.go",
   "pkg/providers/yt/copy/source/dataobjects.go":"transfer_manager/go/pkg/providers/yt/copy/source/dataobjects.go",
