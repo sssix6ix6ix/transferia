@@ -50,6 +50,7 @@ type ProviderType string
 var (
 	ProviderTypeMysql         = ProviderType("managed-mysql")
 	ProviderTypeKafka         = ProviderType("managed-kafka")
+	ProviderTypeMetastore     = ProviderType("managed-metastore")
 	ProviderTypePostgresql    = ProviderType("managed-postgresql")
 	ProviderTypeMongodb       = ProviderType("managed-mongodb")
 	ProviderTypeClickhouse    = ProviderType("managed-clickhouse")

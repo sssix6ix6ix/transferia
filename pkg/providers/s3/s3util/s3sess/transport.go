@@ -19,9 +19,9 @@ type withCredentialsRoundTripper struct {
 	wrapped     http.RoundTripper
 }
 
-// newCredentialsRoundTripper constructs a round-tripper which inserts a YC header with a YC token into each request.
+// NewCredentialsRoundTripper constructs a round-tripper which inserts a YC header with a YC token into each request.
 // This is against the requirement of http.RoundTripper, but it works.
-func newCredentialsRoundTripper(credentials credentials.Credentials, wrapped http.RoundTripper) *withCredentialsRoundTripper {
+func NewCredentialsRoundTripper(credentials credentials.Credentials, wrapped http.RoundTripper) *withCredentialsRoundTripper {
 	return &withCredentialsRoundTripper{
 		credentials: credentials,
 		wrapped:     wrapped,

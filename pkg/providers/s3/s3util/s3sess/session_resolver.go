@@ -61,7 +61,7 @@ func NewAWSSession(lgr log.Logger, bucket string, cfg s3_model.ConnectionConfig)
 			Region:           aws.String(cfg.Region),
 			S3ForcePathStyle: aws.Bool(cfg.S3ForcePathStyle),
 			Credentials:      aws_credentials.AnonymousCredentials,
-			HTTPClient:       &http.Client{Transport: newCredentialsRoundTripper(currCreds, http.DefaultTransport)},
+			HTTPClient:       &http.Client{Transport: NewCredentialsRoundTripper(currCreds, http.DefaultTransport)},
 		})
 		if err != nil {
 			return nil, xerrors.Errorf("unable to create session: %w", err)
