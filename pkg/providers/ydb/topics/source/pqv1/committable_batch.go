@@ -1,4 +1,4 @@
-package source
+package pqv1source
 
 import "github.com/transferia/transferia/pkg/parsers"
 

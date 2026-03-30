@@ -1,10 +1,6 @@
 package logbroker
 
 import (
-	"fmt"
-	"strings"
-	"unicode"
-
 	"github.com/dustin/go-humanize"
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/library/go/core/xerrors"
@@ -13,6 +9,7 @@ import (
 	debezium_parameters "github.com/transferia/transferia/pkg/debezium/parameters"
 	"github.com/transferia/transferia/pkg/middlewares/synchronizer/bufferer"
 	provider_ydb "github.com/transferia/transferia/pkg/providers/ydb"
+	topiccommon "github.com/transferia/transferia/pkg/providers/ydb/topics/common"
 	ydb_topics_sink "github.com/transferia/transferia/pkg/providers/ydb/topics/sink"
 	"github.com/transferia/transferia/pkg/util/queues/coherence_check"
 	"go.uber.org/zap/zapcore"
@@ -182,52 +179,24 @@ func (d *LbDestination) db() string {
 	return d.Database
 }
 
-func (d *LbDestination) instanceWithPort() string {
-	res := d.Instance
-	if instanceContainsPort(res) {
-		return res
-	}
-
-	port := 2135
-	if d.Port != 0 {
-		port = d.Port
-	}
-
-	return fmt.Sprintf("%s:%d", res, port)
-}
-
-func instanceContainsPort(instance string) bool {
-	parts := strings.Split(instance, ":")
-	if len(parts) < 2 {
-		return false
-	}
-
-	intendedPort := parts[len(parts)-1]
-	for _, c := range intendedPort {
-		if !unicode.IsDigit(c) {
-			return false
-		}
-	}
-
-	return true
-}
-
 func (d *LbDestination) TopicSinkConfig() *ydb_topics_sink.Config {
 	return &ydb_topics_sink.Config{
+		Connection: topiccommon.ConnectionConfig{
+			Endpoint:    topiccommon.FormatEndpoint(d.Instance, d.Port),
+			Database:    d.db(),
+			Credentials: d.Credentials,
+			TLSEnabled:  d.TLS == EnabledTLS,
+			RootCAFiles: d.RootCAFiles,
+		},
+
 		Topic:            d.Topic,
 		TopicPrefix:      d.TopicPrefix,
 		CompressionCodec: ydb_topics_sink.CompressionCodec(d.CompressionCodec),
 		FormatSettings:   d.FormatSettings,
 
+		Shard: d.Shard,
+
 		AddSystemTables: d.AddSystemTables,
 		SaveTxOrder:     d.SaveTxOrder,
-
-		Endpoint:    d.instanceWithPort(),
-		Database:    d.db(),
-		Shard:       d.Shard,
-		Credentials: d.Credentials,
-
-		TLS:         d.TLS,
-		RootCAFiles: d.RootCAFiles,
 	}
 }

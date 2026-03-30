@@ -2,26 +2,22 @@ package topicsink
 
 import (
 	"github.com/transferia/transferia/pkg/abstract/model"
-	provider_ydb "github.com/transferia/transferia/pkg/providers/ydb"
+	topiccommon "github.com/transferia/transferia/pkg/providers/ydb/topics/common"
 	"github.com/ydb-platform/ydb-go-sdk/v3/topic/topictypes"
 )
 
 type Config struct {
+	Connection topiccommon.ConnectionConfig
+
 	Topic            string
 	TopicPrefix      string
 	CompressionCodec CompressionCodec
 	FormatSettings   model.SerializationFormat
 
+	Shard string
+
 	AddSystemTables bool
 	SaveTxOrder     bool
-
-	Endpoint    string
-	Database    string
-	Shard       string
-	Credentials provider_ydb.TokenCredentials
-
-	TLS         model.TLSMode
-	RootCAFiles []string
 }
 
 type CompressionCodec string

@@ -20,6 +20,7 @@ import (
 	debeziumparameters "github.com/transferia/transferia/pkg/debezium/parameters"
 	"github.com/transferia/transferia/pkg/parsers/registry/blank"
 	"github.com/transferia/transferia/pkg/providers/ydb"
+	topiccommon "github.com/transferia/transferia/pkg/providers/ydb/topics/common"
 	serializer "github.com/transferia/transferia/pkg/serializer/queue"
 	"github.com/transferia/transferia/tests/helpers/lbenv"
 	ydbrecipe "github.com/transferia/transferia/tests/helpers/ydb_recipe"
@@ -100,7 +101,7 @@ func TestFormats(t *testing.T) {
 			})
 		}
 
-		lbenv.LoadMessages(t, lbEnv, dst.Database, topicFullPath, 1, handler)
+		lbenv.LoadMessages(t, lbEnv, dst.Connection.Database, topicFullPath, 1, handler)
 		canon.SaveJSON(t, toCanon)
 	})
 
@@ -133,7 +134,7 @@ func TestFormats(t *testing.T) {
 			})
 		}
 
-		lbenv.LoadMessages(t, lbEnv, dst.Database, expectedTopicFullPath, 1, handler)
+		lbenv.LoadMessages(t, lbEnv, dst.Connection.Database, expectedTopicFullPath, 1, handler)
 		canon.SaveJSON(t, toCanon)
 	})
 
@@ -160,7 +161,7 @@ func TestFormats(t *testing.T) {
 			})
 		}
 
-		lbenv.LoadMessages(t, lbEnv, dst.Database, topicFullPath, 1, handler)
+		lbenv.LoadMessages(t, lbEnv, dst.Connection.Database, topicFullPath, 1, handler)
 		canon.SaveJSON(t, toCanon)
 	})
 
@@ -184,7 +185,7 @@ func TestFormats(t *testing.T) {
 			require.Equal(t, "["+string(jsonBytes)+"]", string(msg.Data))
 		}
 
-		lbenv.LoadMessages(t, lbEnv, dst.Database, topicFullPath, 1, dataCmp)
+		lbenv.LoadMessages(t, lbEnv, dst.Connection.Database, topicFullPath, 1, dataCmp)
 	})
 }
 
@@ -267,7 +268,7 @@ func TestSimultaneouslyWriteTables(t *testing.T) {
 	require.NoError(t, testSink.Push([]abstract.ChangeItem{*sinkTestTypicalChangeItem}))
 	require.NoError(t, testSink.Close())
 
-	lbenv.LoadMessages(t, lbrecipe.New(t), dst.Database, topicPath, 2, nil)
+	lbenv.LoadMessages(t, lbrecipe.New(t), dst.Connection.Database, topicPath, 2, nil)
 }
 
 func TestResetWriters(t *testing.T) {
@@ -329,7 +330,7 @@ func TestSynchronizeEvents(t *testing.T) {
 			require.Equal(t, "["+string(jsonBytes)+"]", string(msg.Data))
 		}
 
-		lbenv.LoadMessages(t, lbEnv, dst.Database, topicFullPath, 1, dataCmp)
+		lbenv.LoadMessages(t, lbEnv, dst.Connection.Database, topicFullPath, 1, dataCmp)
 
 	})
 }
@@ -411,10 +412,12 @@ func TestSplitSerializedMessages(t *testing.T) {
 
 func newConfigForTest(instance string, port int, database string, creds ydb.TokenCredentials) Config {
 	return Config{
-		Endpoint:         fmt.Sprintf("%s:%d", instance, port),
-		Database:         database,
-		Credentials:      creds,
-		TLS:              model.DisabledTLS,
+		Connection: topiccommon.ConnectionConfig{
+			Endpoint:    fmt.Sprintf("%s:%d", instance, port),
+			Database:    database,
+			Credentials: creds,
+			TLSEnabled:  false,
+		},
 		CompressionCodec: CompressionCodecGzip,
 		FormatSettings:   newFormatSettings(model.SerializationFormatAuto, nil),
 	}

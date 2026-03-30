@@ -3,7 +3,6 @@ package lambda
 import (
 	"fmt"
 
-	"github.com/transferia/transferia/library/go/core/metrics/solomon"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
@@ -54,7 +53,7 @@ func (m *mapper) Suitable(table abstract.TableID, schema *abstract.TableSchema) 
 }
 
 func (m *mapper) ResultSchema(original *abstract.TableSchema) (*abstract.TableSchema, error) {
-	executor, err := functions.NewExecutor(m.cfg, m.cfg.CloudFunctionsBaseURL, functions.CDC, m.lgr, solomon.NewRegistry(solomon.NewRegistryOpts()))
+	executor, err := functions.NewExecutor(m.cfg, m.cfg.CloudFunctionsBaseURL, functions.CDC, m.lgr)
 	if err != nil {
 		return nil, xerrors.Errorf("unable to init functions transformer: %w", err)
 	}

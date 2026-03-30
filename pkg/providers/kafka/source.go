@@ -423,7 +423,7 @@ func newBaseSource(cfg *KafkaSource, inflightThrottler throttler.Throttler, logg
 	}
 
 	if cfg.Transformer != nil {
-		executor, err := functions.NewExecutor(cfg.Transformer, cfg.Transformer.CloudFunctionsBaseURL, functions.YDS, logger, registry)
+		executor, err := functions.NewExecutor(cfg.Transformer, cfg.Transformer.CloudFunctionsBaseURL, functions.YDS, logger)
 		if err != nil {
 			logger.Error("init function executor", log.Error(err))
 			cancel()

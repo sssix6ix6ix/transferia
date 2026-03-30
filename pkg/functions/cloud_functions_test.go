@@ -8,7 +8,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/internal/logger"
-	"github.com/transferia/transferia/library/go/core/metrics/solomon"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
 )
@@ -19,7 +18,7 @@ func TestRedirectsForbidden(t *testing.T) {
 	}))
 	opts := &model.DataTransformOptions{CloudFunction: "whatever"}
 	baseURL := "http://" + testServer.Listener.Addr().String()
-	executor, err := NewExecutor(opts, baseURL, YDS, logger.Log, solomon.NewRegistry(solomon.NewRegistryOpts()))
+	executor, err := NewExecutor(opts, baseURL, YDS, logger.Log)
 	require.NoError(t, err)
 
 	_, err = executor.Do([]abstract.ChangeItem{{

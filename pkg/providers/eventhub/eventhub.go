@@ -398,7 +398,7 @@ func NewSource(transferID string, cfg *EventHubSource, logger log.Logger, regist
 	}
 
 	if cfg.Transformer != nil {
-		executor, err := functions.NewExecutor(cfg.Transformer, cfg.Transformer.CloudFunctionsBaseURL, functions.YDS, logger, registry)
+		executor, err := functions.NewExecutor(cfg.Transformer, cfg.Transformer.CloudFunctionsBaseURL, functions.YDS, logger)
 		if err != nil {
 			logger.Error("init function executor", log.Error(err))
 			_ = source.consumerClient.Close(context.Background())

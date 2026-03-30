@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
-	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/changeitem"
@@ -26,7 +25,6 @@ type Executor struct {
 	eventSource EventSource
 	cfg         *model.DataTransformOptions
 	logger      log.Logger
-	registry    core_metrics.Registry
 	httpClient  *http.Client
 	url         string
 	creds       credentials.Credentials
@@ -313,7 +311,7 @@ func (e *Executor) Do(data []abstract.ChangeItem) ([]abstract.ChangeItem, error)
 	return processed, nil
 }
 
-func NewExecutor(cfg *model.DataTransformOptions, baseURL string, source EventSource, lgr log.Logger, registry core_metrics.Registry) (*Executor, error) {
+func NewExecutor(cfg *model.DataTransformOptions, baseURL string, source EventSource, lgr log.Logger) (*Executor, error) {
 	var creds credentials.Credentials
 	if cfg.ServiceAccountID != "" {
 		serviceAccountCreds, err := credentials.NewServiceAccountCreds(lgr, cfg.ServiceAccountID)
@@ -327,7 +325,6 @@ func NewExecutor(cfg *model.DataTransformOptions, baseURL string, source EventSo
 		url:         fmt.Sprintf("%v/%v?integration=raw", baseURL, cfg.CloudFunction),
 		eventSource: source,
 		logger:      lgr,
-		registry:    registry,
 		httpClient: &http.Client{
 			Timeout: cfg.InvocationTimeout,
 			CheckRedirect: func(req *http.Request, via []*http.Request) error {

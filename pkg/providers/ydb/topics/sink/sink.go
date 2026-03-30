@@ -331,13 +331,13 @@ func newDriver(cfg *Config, lgr log.Logger) (*ydb_go_sdk.Driver, error) {
 		),
 	}
 
-	if cfg.Credentials != nil {
-		opts = append(opts, ydb_go_sdk.WithCredentials(cfg.Credentials))
+	if cfg.Connection.Credentials != nil {
+		opts = append(opts, ydb_go_sdk.WithCredentials(cfg.Connection.Credentials))
 	}
 
-	if cfg.TLS == model.EnabledTLS {
+	if cfg.Connection.TLSEnabled {
 		isSecure = true
-		tlsConfig, err := xtls.FromPath(cfg.RootCAFiles)
+		tlsConfig, err := xtls.FromPath(cfg.Connection.RootCAFiles)
 		if err != nil {
 			return nil, xerrors.Errorf("cannot init driver without tls: %w", err)
 		}
@@ -347,7 +347,7 @@ func newDriver(cfg *Config, lgr log.Logger) (*ydb_go_sdk.Driver, error) {
 	driverCtx, cancel := context.WithTimeout(context.Background(), time.Second*15)
 	defer cancel()
 
-	return ydb_go_sdk.Open(driverCtx, sugar.DSN(cfg.Endpoint, cfg.Database, sugar.WithSecure(isSecure)), opts...)
+	return ydb_go_sdk.Open(driverCtx, sugar.DSN(cfg.Connection.Endpoint, cfg.Connection.Database, sugar.WithSecure(isSecure)), opts...)
 }
 
 func newSinkWithFactories(cfg *Config, registry core_metrics.Registry, lgr log.Logger,

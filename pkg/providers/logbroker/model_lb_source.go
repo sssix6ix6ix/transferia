@@ -1,8 +1,6 @@
 package logbroker
 
 import (
-	"strings"
-
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
@@ -68,10 +66,3 @@ func (s *LbSource) TransitionalWith(right model.TransitionalEndpoint) bool {
 }
 
 func (s *LbSource) MultiYtEnabled() {}
-
-func withoutLeadingSlash(str string) string {
-	if strings.HasPrefix(str, "/") {
-		return str[1:]
-	}
-	return str
-}
