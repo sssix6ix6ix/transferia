@@ -9,11 +9,11 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	yslices "github.com/transferia/transferia/library/go/slices"
 	"github.com/transferia/transferia/pkg/abstract"
-	"github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
-	ytcommon "github.com/transferia/transferia/pkg/providers/yt"
+	provider_yt "github.com/transferia/transferia/pkg/providers/yt"
 	"github.com/transferia/transferia/tests/helpers"
-	yt_helpers "github.com/transferia/transferia/tests/helpers/yt"
+	helpers_yt "github.com/transferia/transferia/tests/helpers/yt"
 	"go.ytsaurus.tech/yt/go/ypath"
 	"go.ytsaurus.tech/yt/go/yttest"
 )
@@ -23,7 +23,7 @@ var (
 		pgrecipe.WithDBTables("public.test"),
 		pgrecipe.WithInitDir("dump"),
 		pgrecipe.WithPrefix(""))
-	target = ytcommon.NewYtDestinationV1(*yt_helpers.SetRecipeYt(&ytcommon.YtDestination{
+	target = provider_yt.NewYtDestinationV1(*helpers_yt.SetRecipeYt(&provider_yt.YtDestination{
 		Path:    "//home/cdc/test/pg2yt_e2e_wal",
 		PushWal: true,
 	}))
@@ -82,7 +82,7 @@ func Load(t *testing.T) {
 	//------------------------------------------------------------------------------
 
 	ctx := context.Background()
-	srcConn, err := postgres.MakeConnPoolFromSrc(source, logger.Log)
+	srcConn, err := provider_postgres.MakeConnPoolFromSrc(source, logger.Log)
 	require.NoError(t, err)
 
 	_, err = srcConn.Exec(ctx, `INSERT INTO public.test (str, id, aid, da, enum_v, empty_arr, int4_arr, text_arr, enum_arr, json_arr, char_arr, udt_arr) VALUES ('badabums', 911,  1,'2011-09-11', 'happy', '{}', '{1, 2, 3}', '{"foo", "bar"}', '{"sad", "ok"}', ARRAY['{}', '{"foo": "bar"}', '{"arr": [1, 2, 3]}']::json[], '{"a", "b", "c"}', ARRAY['("city1","street1")'::full_address, '("city2","street2")'::full_address]) on conflict do nothing ;`)
@@ -100,5 +100,5 @@ func Load(t *testing.T) {
 	ytEnv, cancel := yttest.NewEnv(t)
 	defer cancel()
 
-	yt_helpers.CanonizeDynamicYtTable(t, ytEnv.YT, ypath.Path(target.Path()).Child("__wal"), "__wal.json")
+	helpers_yt.CanonizeDynamicYtTable(t, ytEnv.YT, ypath.Path(target.Path()).Child("__wal"), "__wal.json")
 }

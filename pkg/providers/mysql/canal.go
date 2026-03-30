@@ -13,11 +13,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/go-mysql-org/go-mysql/client"
-	"github.com/go-mysql-org/go-mysql/mysql"
-	"github.com/go-mysql-org/go-mysql/replication"
-	"github.com/go-mysql-org/go-mysql/schema"
-	mysql_driver "github.com/go-sql-driver/mysql"
+	mysql_client "github.com/go-mysql-org/go-mysql/client"
+	mysql_driver "github.com/go-mysql-org/go-mysql/mysql"
+	mysql_replication "github.com/go-mysql-org/go-mysql/replication"
+	mysql_schema "github.com/go-mysql-org/go-mysql/schema"
+	mysql_driver2 "github.com/go-sql-driver/mysql"
 	"github.com/pingcap/parser"
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/library/go/core/xerrors"
@@ -39,16 +39,16 @@ type Canal struct {
 
 	parser *parser.Parser
 	master *masterInfo
-	syncer *replication.BinlogSyncer
+	syncer *mysql_replication.BinlogSyncer
 	logger log.Logger
 
 	eventHandler EventHandler
 
 	connLock sync.Mutex
-	conn     *client.Conn
+	conn     *mysql_client.Conn
 
 	tableLock          sync.RWMutex
-	tables             map[string]*schema.Table
+	tables             map[string]*mysql_schema.Table
 	errorTablesGetTime map[string]time.Time
 
 	tableMatchCache map[string]bool
@@ -77,7 +77,7 @@ func NewCanal(cfg *Config) (*Canal, error) {
 
 	c.eventHandler = &DummyEventHandler{}
 	c.parser = parser.New()
-	c.tables = make(map[string]*schema.Table)
+	c.tables = make(map[string]*mysql_schema.Table)
 	if c.cfg.DiscardNoMetaRowEvent {
 		c.errorTablesGetTime = make(map[string]time.Time)
 	}
@@ -116,13 +116,13 @@ func (c *Canal) Run() error {
 }
 
 // RunFrom will sync from the binlog position directly, ignore mysqldump.
-func (c *Canal) RunFrom(pos mysql.Position) error {
+func (c *Canal) RunFrom(pos mysql_driver.Position) error {
 	c.master.Update(pos)
 
 	return c.Run()
 }
 
-func (c *Canal) StartFromGTID(set mysql.GTIDSet) error {
+func (c *Canal) StartFromGTID(set mysql_driver.GTIDSet) error {
 	c.master.UpdateGTIDSet(set)
 
 	return c.Run()
@@ -198,7 +198,7 @@ func (c *Canal) globalExcluded(key string) bool {
 	return false
 }
 
-func findDecimalColumn(table *schema.Table) int {
+func findDecimalColumn(table *mysql_schema.Table) int {
 	for i, column := range table.Columns {
 		if strings.HasPrefix(strings.ToLower(column.RawType), "decimal") {
 			return i
@@ -207,7 +207,7 @@ func findDecimalColumn(table *schema.Table) int {
 	return -1
 }
 
-func (c *Canal) GetTable(db string, table string) (*schema.Table, error) {
+func (c *Canal) GetTable(db string, table string) (*mysql_schema.Table, error) {
 	key := fmt.Sprintf("%s.%s", db, table)
 	// if table is excluded, return error and skip parsing event or dump
 	if !c.checkTableMatch(db, table) {
@@ -226,28 +226,28 @@ func (c *Canal) GetTable(db string, table string) (*schema.Table, error) {
 		lastTime, ok := c.errorTablesGetTime[key]
 		c.tableLock.RUnlock()
 		if ok && time.Since(lastTime) < UnknownTableRetryPeriod {
-			return nil, xerrors.Errorf("%w", schema.ErrMissingTableMeta)
+			return nil, xerrors.Errorf("%w", mysql_schema.ErrMissingTableMeta)
 		}
 	}
 
-	t, err := schema.NewTable(c, db, table)
+	t, err := mysql_schema.NewTable(c, db, table)
 	if err != nil {
 		// check table not exists
-		if ok, err1 := schema.IsTableExist(c, db, table); err1 == nil && !ok {
-			return nil, xerrors.Errorf("%w", schema.ErrTableNotExist)
+		if ok, err1 := mysql_schema.IsTableExist(c, db, table); err1 == nil && !ok {
+			return nil, xerrors.Errorf("%w", mysql_schema.ErrTableNotExist)
 		}
 		// work around : RDS HAHeartBeat
 		// ref : https://github.com/alibaba/canal/blob/master/parse/src/main/java/com/alibaba/otter/canal/parse/inbound/mysql/dbsync/LogEventConvert.java#L385
 		// issue : https://github.com/alibaba/canal/issues/222
 		// This is a common error in RDS that canal can't get HAHealthCheckSchema's meta, so we mock a table meta.
 		// If canal just skip and log error, as RDS HA heartbeat interval is very short, so too many HAHeartBeat errors will be logged.
-		if key == schema.HAHealthCheckSchema {
+		if key == mysql_schema.HAHealthCheckSchema {
 			// mock ha_health_check meta
-			ta := &schema.Table{
+			ta := &mysql_schema.Table{
 				Schema:  db,
 				Name:    table,
-				Columns: make([]schema.TableColumn, 0, 2),
-				Indexes: make([]*schema.Index, 0),
+				Columns: make([]mysql_schema.TableColumn, 0, 2),
+				Indexes: make([]*mysql_schema.Index, 0),
 			}
 			ta.AddColumn("id", "bigint(20)", "", "")
 			ta.AddColumn("type", "char(1)", "", "")
@@ -262,7 +262,7 @@ func (c *Canal) GetTable(db string, table string) (*schema.Table, error) {
 			c.errorTablesGetTime[key] = time.Now()
 			c.tableLock.Unlock()
 			c.logger.Errorf("canal get table meta err: %v", err)
-			return nil, xerrors.Errorf("%w", schema.ErrMissingTableMeta)
+			return nil, xerrors.Errorf("%w", mysql_schema.ErrMissingTableMeta)
 		}
 		return nil, xerrors.Errorf("failed to get table: %w", err)
 	}
@@ -338,13 +338,13 @@ func (c *Canal) GetTable(db string, table string) (*schema.Table, error) {
 	return t, nil
 }
 
-func (c *Canal) logTable(table *schema.Table) {
+func (c *Canal) logTable(table *mysql_schema.Table) {
 	marshaledTable, _ := json.Marshal(table)
 	c.logger.Info(fmt.Sprintf("got table schema, tableName: %s", table.String()), log.ByteString("table", marshaledTable))
 }
 
 func (c *Canal) loadTableConstraints(db, table string) (map[string][]string, []constraintColumn, error) {
-	connConf := mysql_driver.NewConfig()
+	connConf := mysql_driver2.NewConfig()
 	connConf.Addr = c.cfg.Addr
 	connConf.User = c.cfg.User
 	connConf.Passwd = c.cfg.Password
@@ -352,11 +352,11 @@ func (c *Canal) loadTableConstraints(db, table string) (map[string][]string, []c
 	connConf.Net = "tcp"
 	if c.cfg.TLSConfig != nil {
 		connConf.TLSConfig = "custom"
-		if err := mysql_driver.RegisterTLSConfig("custom", c.cfg.TLSConfig); err != nil {
+		if err := mysql_driver2.RegisterTLSConfig("custom", c.cfg.TLSConfig); err != nil {
 			return nil, nil, xerrors.Errorf("unable to set tls: %w", err)
 		}
 	}
-	connector, err := mysql_driver.NewConnector(connConf)
+	connector, err := mysql_driver2.NewConnector(connConf)
 	if err != nil {
 		return nil, nil, xerrors.Errorf("unable to init connector to source storage: %w", err)
 	}
@@ -385,7 +385,7 @@ func (c *Canal) ClearTableCache(db []byte, table []byte) {
 func (c *Canal) CheckBinlogRowImage(image string) error {
 	// need to check MySQL binlog row image? full, minimal or noblob?
 	// now only log
-	if c.cfg.Flavor == mysql.MySQLFlavor {
+	if c.cfg.Flavor == mysql_driver.MySQLFlavor {
 		if res, err := c.Execute(`SHOW GLOBAL VARIABLES LIKE "binlog_row_image"`); err != nil {
 			return xerrors.Errorf("failed to execute SQL SHOW GLOBAL VARIABLES: %w", err)
 		} else {
@@ -411,7 +411,7 @@ func (c *Canal) checkBinlogRowFormat() error {
 }
 
 func (c *Canal) prepareSyncer() error {
-	cfg := replication.BinlogSyncerConfig{
+	cfg := mysql_replication.BinlogSyncerConfig{
 		ServerID:                c.cfg.ServerID,
 		Flavor:                  c.cfg.Flavor,
 		User:                    c.cfg.User,
@@ -460,27 +460,27 @@ func (c *Canal) prepareSyncer() error {
 
 	logger.Log.Info("mysql canal config after", log.Any("cfg.host", cfg.Host), log.Any("cfg.port", cfg.Port))
 
-	c.syncer = replication.NewBinlogSyncer(cfg)
+	c.syncer = mysql_replication.NewBinlogSyncer(cfg)
 
 	return nil
 }
 
 // Execute a SQL
-func (c *Canal) Execute(cmd string, args ...interface{}) (*mysql.Result, error) {
+func (c *Canal) Execute(cmd string, args ...interface{}) (*mysql_driver.Result, error) {
 	c.connLock.Lock()
 	defer c.connLock.Unlock()
 
 	retryNum := 3
 	for i := 0; i < retryNum; i++ {
 		if c.conn == nil {
-			argF := make([]func(*client.Conn), 0)
+			argF := make([]func(*mysql_client.Conn), 0)
 			if c.cfg.TLSConfig != nil {
-				argF = append(argF, func(conn *client.Conn) {
+				argF = append(argF, func(conn *mysql_client.Conn) {
 					conn.SetTLSConfig(c.cfg.TLSConfig)
 				})
 			}
 			var err error
-			c.conn, err = client.Connect(c.cfg.Addr, c.cfg.User, c.cfg.Password, "", argF...)
+			c.conn, err = mysql_client.Connect(c.cfg.Addr, c.cfg.User, c.cfg.Password, "", argF...)
 			if err != nil {
 				return nil, xerrors.Errorf("failed to connect to the database: %w", err)
 			}
@@ -488,7 +488,7 @@ func (c *Canal) Execute(cmd string, args ...interface{}) (*mysql.Result, error) 
 
 		rr, err := c.conn.Execute(cmd, args...)
 		if err != nil {
-			if mysql.ErrorEqual(err, mysql.ErrBadConn) {
+			if mysql_driver.ErrorEqual(err, mysql_driver.ErrBadConn) {
 				_ = c.conn.Close()
 				c.conn = nil
 				continue
@@ -500,7 +500,7 @@ func (c *Canal) Execute(cmd string, args ...interface{}) (*mysql.Result, error) 
 	return nil, xerrors.Errorf("failed to execute SQL: bad connection, number of retries (%d) exceeded", retryNum)
 }
 
-func (c *Canal) SyncedPosition() mysql.Position {
+func (c *Canal) SyncedPosition() mysql_driver.Position {
 	return c.master.Position()
 }
 
@@ -508,6 +508,6 @@ func (c *Canal) SyncedTimestamp() uint32 {
 	return c.master.timestamp
 }
 
-func (c *Canal) SyncedGTIDSet() mysql.GTIDSet {
+func (c *Canal) SyncedGTIDSet() mysql_driver.GTIDSet {
 	return c.master.GTIDSet()
 }

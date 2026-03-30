@@ -11,15 +11,15 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/debezium"
-	debeziumparameters "github.com/transferia/transferia/pkg/debezium/parameters"
-	"github.com/transferia/transferia/pkg/debezium/testutil"
-	"github.com/transferia/transferia/pkg/providers/postgres"
+	debezium_parameters "github.com/transferia/transferia/pkg/debezium/parameters"
+	debezium_testutil "github.com/transferia/transferia/pkg/debezium/testutil"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/tests/helpers"
-	yt_helpers "github.com/transferia/transferia/tests/helpers/yt"
+	helpers_yt "github.com/transferia/transferia/tests/helpers/yt"
 )
 
 var (
-	Source = postgres.PgSource{
+	Source = provider_postgres.PgSource{
 		ClusterID: os.Getenv("PG_CLUSTER_ID"),
 		Host:      "localhost",
 		User:      os.Getenv("PG_LOCAL_USER"),
@@ -28,7 +28,7 @@ var (
 		Port:      helpers.GetIntFromEnv("PG_LOCAL_PORT"),
 		DBTables:  []string{"public.__test"},
 	}
-	Target = yt_helpers.RecipeYtTarget("//home/cdc/test/pg2yt_e2e")
+	Target = helpers_yt.RecipeYtTarget("//home/cdc/test/pg2yt_e2e")
 )
 
 func init() {
@@ -59,7 +59,7 @@ func makeDebeziumSerDeUdf(emitter *debezium.Emitter, receiver *debezium.Receiver
 					fmt.Printf("changeItem received dump: %s\n", changeItem.ToJSONString())
 					newChangeItems = append(newChangeItems, *changeItem)
 
-					testutil.CompareYTTypesOriginalAndRecovered(t, &items[i], changeItem)
+					debezium_testutil.CompareYTTypesOriginalAndRecovered(t, &items[i], changeItem)
 				}
 			} else {
 				newChangeItems = append(newChangeItems, items[i])
@@ -98,10 +98,10 @@ func Snapshot(t *testing.T) {
 	transfer := helpers.MakeTransfer(helpers.TransferID, &Source, Target, abstract.TransferTypeSnapshotOnly)
 
 	emitter, err := debezium.NewMessagesEmitter(map[string]string{
-		debeziumparameters.DatabaseDBName:   "public",
-		debeziumparameters.TopicPrefix:      "my_topic",
-		debeziumparameters.AddOriginalTypes: "true",
-		debeziumparameters.SourceType:       "pg",
+		debezium_parameters.DatabaseDBName:   "public",
+		debezium_parameters.TopicPrefix:      "my_topic",
+		debezium_parameters.AddOriginalTypes: "true",
+		debezium_parameters.SourceType:       "pg",
 	}, "1.1.2.Final", false, logger.Log)
 	require.NoError(t, err)
 	receiver := debezium.NewReceiver(nil, nil)

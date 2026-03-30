@@ -13,9 +13,9 @@ import (
 	yslices "github.com/transferia/transferia/library/go/slices"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/predicate"
-	"github.com/ydb-platform/ydb-go-sdk/v3/table"
-	"github.com/ydb-platform/ydb-go-sdk/v3/table/options"
-	"github.com/ydb-platform/ydb-go-sdk/v3/table/types"
+	ydb_table "github.com/ydb-platform/ydb-go-sdk/v3/table"
+	ydb_options "github.com/ydb-platform/ydb-go-sdk/v3/table/options"
+	ydb_table_types "github.com/ydb-platform/ydb-go-sdk/v3/table/types"
 )
 
 var _ abstract.IncrementalStorage = (*Storage)(nil)
@@ -24,7 +24,7 @@ func (s *Storage) GetNextIncrementalState(ctx context.Context, incremental []abs
 	res := make([]abstract.IncrementalState, 0, len(incremental))
 	for _, tbl := range incremental {
 		fullPath := path.Join(s.config.Database, tbl.Name)
-		ydbTableDesc, err := describeTable(ctx, s.db, fullPath, options.WithShardKeyBounds())
+		ydbTableDesc, err := describeTable(ctx, s.db, fullPath, ydb_options.WithShardKeyBounds())
 		if err != nil {
 			return nil, xerrors.Errorf("error describing table %s: %w", tbl.Name, err)
 		}
@@ -66,13 +66,13 @@ func (s *Storage) BuildArrTableDescriptionWithIncrementalState(tables []abstract
 	return result
 }
 
-func (s *Storage) getMaxKeyValue(ctx context.Context, path string, tbl *options.Description) (types.Value, error) {
+func (s *Storage) getMaxKeyValue(ctx context.Context, path string, tbl *ydb_options.Description) (ydb_table_types.Value, error) {
 	if l := len(tbl.PrimaryKey); l != 1 {
 		return nil, xerrors.Errorf("unexpected primary key length %d", l)
 	}
 	keyCol := tbl.PrimaryKey[0]
 
-	keyColDesc := yslices.Filter(tbl.Columns, func(col options.Column) bool {
+	keyColDesc := yslices.Filter(tbl.Columns, func(col ydb_options.Column) bool {
 		return col.Name == keyCol
 	})
 	if l := len(keyColDesc); l != 1 {
@@ -81,7 +81,7 @@ func (s *Storage) getMaxKeyValue(ctx context.Context, path string, tbl *options.
 
 	maxPartitionKey := tbl.KeyRanges[len(tbl.KeyRanges)-1].From
 
-	var queryParams *table.QueryParameters
+	var queryParams *ydb_table.QueryParameters
 	query := fmt.Sprintf("--!syntax_v1\nSELECT `%[2]s` FROM `%[1]s` ORDER BY `%[2]s` DESC LIMIT 1",
 		path, keyCol)
 
@@ -90,7 +90,7 @@ func (s *Storage) getMaxKeyValue(ctx context.Context, path string, tbl *options.
 	if maxPartitionKey != nil {
 		query = fmt.Sprintf("--!syntax_v1\nDECLARE $keyValue as %[3]s;\nSELECT `%[2]s` FROM `%[1]s` WHERE `%[2]s` >= $keyValue ORDER BY `%[2]s` DESC LIMIT 1",
 			path, keyCol, keyColDesc[0].Type.Yql())
-		queryParams = table.NewQueryParameters(table.ValueParam("keyValue", maxPartitionKey))
+		queryParams = ydb_table.NewQueryParameters(ydb_table.ValueParam("keyValue", maxPartitionKey))
 	}
 
 	return s.querySingleValue(ctx, query, keyCol, queryParams)
@@ -145,14 +145,14 @@ func extractParsedValue(op predicate.Operand) (string, error) {
 	return v, nil
 }
 
-func (s *Storage) resolveExprValue(ctx context.Context, yqlStr string, typ types.Type) (val types.Value, err error) {
+func (s *Storage) resolveExprValue(ctx context.Context, yqlStr string, typ ydb_table_types.Type) (val ydb_table_types.Value, err error) {
 	query := fmt.Sprintf("--!syntax_v1\nSELECT CAST(%[1]s AS %[2]s) AS `val`", yqlStr, typ.Yql())
 	return s.querySingleValue(ctx, query, "val", nil)
 }
 
-func (s *Storage) filterToKeyRange(ctx context.Context, filter abstract.WhereStatement, ydbTable options.Description) (keyTupleFrom, keyTupleTo types.Value, err error) {
+func (s *Storage) filterToKeyRange(ctx context.Context, filter abstract.WhereStatement, ydbTable ydb_options.Description) (keyTupleFrom, keyTupleTo ydb_table_types.Value, err error) {
 	keyColName := ydbTable.PrimaryKey[0]
-	keyCol := yslices.Filter(ydbTable.Columns, func(col options.Column) bool {
+	keyCol := yslices.Filter(ydbTable.Columns, func(col ydb_options.Column) bool {
 		return col.Name == keyColName
 	})[0]
 
@@ -165,7 +165,7 @@ func (s *Storage) filterToKeyRange(ctx context.Context, filter abstract.WhereSta
 	if err != nil {
 		return nil, nil, xerrors.Errorf("error resolving upper key %s to YDB value: %w", toStr, err)
 	}
-	toVal = types.TupleValue(toVal)
+	toVal = ydb_table_types.TupleValue(toVal)
 	if fromStr == "" {
 		return nil, toVal, nil
 	}
@@ -174,13 +174,13 @@ func (s *Storage) filterToKeyRange(ctx context.Context, filter abstract.WhereSta
 	if err != nil {
 		return nil, nil, xerrors.Errorf("error resolving lower key %s to YDB value: %w", fromStr, err)
 	}
-	return types.TupleValue(fromVal), toVal, nil
+	return ydb_table_types.TupleValue(fromVal), toVal, nil
 }
 
-func (s *Storage) querySingleValue(ctx context.Context, query string, colName string, params *table.QueryParameters) (types.Value, error) {
-	var val types.Value
+func (s *Storage) querySingleValue(ctx context.Context, query string, colName string, params *ydb_table.QueryParameters) (ydb_table_types.Value, error) {
+	var val ydb_table_types.Value
 	hasRows := false
-	err := s.db.Table().DoTx(ctx, func(ctx context.Context, tx table.TransactionActor) error {
+	err := s.db.Table().DoTx(ctx, func(ctx context.Context, tx ydb_table.TransactionActor) error {
 		res, err := tx.Execute(ctx, query, params)
 		if err != nil {
 			return xerrors.Errorf("error executing single value query: %w", err)

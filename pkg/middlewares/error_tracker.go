@@ -1,7 +1,7 @@
 package middlewares
 
 import (
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/errors"
 	"github.com/transferia/transferia/pkg/errors/categories"
@@ -9,7 +9,7 @@ import (
 )
 
 // ErrorTracker do nothing except tracking error / success pushes into metrics
-func ErrorTracker(mtrcs metrics.Registry) func(abstract.Sinker) abstract.Sinker {
+func ErrorTracker(mtrcs core_metrics.Registry) func(abstract.Sinker) abstract.Sinker {
 	return func(s abstract.Sinker) abstract.Sinker {
 		return newErrorTracker(s, mtrcs)
 	}
@@ -20,7 +20,7 @@ type errorTracker struct {
 	stats *stats.MiddlewareErrorTrackerStats
 }
 
-func newErrorTracker(s abstract.Sinker, mtrcs metrics.Registry) *errorTracker {
+func newErrorTracker(s abstract.Sinker, mtrcs core_metrics.Registry) *errorTracker {
 	return &errorTracker{
 		sink:  s,
 		stats: stats.NewMiddlewareErrorTrackerStats(mtrcs),

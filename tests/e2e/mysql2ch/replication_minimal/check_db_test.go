@@ -8,10 +8,10 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
-	cpclient "github.com/transferia/transferia/pkg/abstract/coordinator"
-	dp_model "github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/model"
-	"github.com/transferia/transferia/pkg/providers/mysql"
+	"github.com/transferia/transferia/pkg/abstract/coordinator"
+	"github.com/transferia/transferia/pkg/abstract/model"
+	clickhouse_model "github.com/transferia/transferia/pkg/providers/clickhouse/model"
+	provider_mysql "github.com/transferia/transferia/pkg/providers/mysql"
 	"github.com/transferia/transferia/pkg/runtime/local"
 	"github.com/transferia/transferia/tests/helpers"
 )
@@ -19,16 +19,16 @@ import (
 var (
 	databaseName = "source"
 	TransferType = abstract.TransferTypeSnapshotAndIncrement
-	Source       = mysql.MysqlSource{
+	Source       = provider_mysql.MysqlSource{
 		Host:     os.Getenv("RECIPE_MYSQL_HOST"),
 		User:     os.Getenv("RECIPE_MYSQL_USER"),
-		Password: dp_model.SecretString(os.Getenv("RECIPE_MYSQL_PASSWORD")),
+		Password: model.SecretString(os.Getenv("RECIPE_MYSQL_PASSWORD")),
 		Database: os.Getenv("RECIPE_MYSQL_SOURCE_DATABASE"),
 		Port:     helpers.GetIntFromEnv("RECIPE_MYSQL_PORT"),
 		ServerID: 1, // what is it?
 	}
-	Target = model.ChDestination{
-		ShardsList: []model.ClickHouseShard{
+	Target = clickhouse_model.ChDestination{
+		ShardsList: []clickhouse_model.ClickHouseShard{
 			{
 				Name: "_",
 				Hosts: []string{
@@ -58,18 +58,18 @@ func TestReplication(t *testing.T) {
 		))
 	}()
 
-	connParams, err := mysql.NewConnectionParams(Source.ToStorageParams())
+	connParams, err := provider_mysql.NewConnectionParams(Source.ToStorageParams())
 	require.NoError(t, err)
 
-	client, err := mysql.Connect(connParams, nil)
+	client, err := provider_mysql.Connect(connParams, nil)
 	require.NoError(t, err)
 
 	//------------------------------------------------------------------------------------
 	// start worker
 	transfer := helpers.MakeTransfer(helpers.TransferID, &Source, &Target, TransferType)
 
-	fakeClient := cpclient.NewStatefulFakeClient()
-	err = mysql.SyncBinlogPosition(&Source, transfer.ID, fakeClient)
+	fakeClient := coordinator.NewStatefulFakeClient()
+	err = provider_mysql.SyncBinlogPosition(&Source, transfer.ID, fakeClient)
 	require.NoError(t, err)
 
 	localWorker := local.NewLocalWorker(fakeClient, transfer, helpers.EmptyRegistry(), logger.Log)

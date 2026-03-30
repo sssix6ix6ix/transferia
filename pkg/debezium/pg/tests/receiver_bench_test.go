@@ -7,8 +7,8 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/debezium"
-	debeziumcommon "github.com/transferia/transferia/pkg/debezium/common"
-	debeziumparameters "github.com/transferia/transferia/pkg/debezium/parameters"
+	debezium_common "github.com/transferia/transferia/pkg/debezium/common"
+	debezium_parameters "github.com/transferia/transferia/pkg/debezium/parameters"
 	"go.uber.org/zap/zapcore"
 )
 
@@ -16,7 +16,7 @@ func BenchmarkReceiverTest(b *testing.B) {
 	b.Run("parse", func(b *testing.B) {
 		b.Run("tz", func(b *testing.B) {
 			canonDebeziumMsgWithoutSequence := wipeSequenceAndIncremental(debeziumMsg30)
-			receiver := debezium.NewReceiver(map[abstract.TableID]map[string]*debeziumcommon.OriginalTypeInfo{
+			receiver := debezium.NewReceiver(map[abstract.TableID]map[string]*debezium_common.OriginalTypeInfo{
 				{Namespace: "public", Name: "basic_types"}: {
 					"id":  {OriginalType: "pg:integer"},
 					"val": {OriginalType: `pg:timestamp without time zone`, Properties: map[string]string{"timezone": "Europe/Moscow"}},
@@ -33,7 +33,7 @@ func BenchmarkReceiverTest(b *testing.B) {
 		})
 		b.Run("no-tz", func(b *testing.B) {
 			canonDebeziumMsgWithoutSequence := wipeSequenceAndIncremental(debeziumMsg30)
-			receiver := debezium.NewReceiver(map[abstract.TableID]map[string]*debeziumcommon.OriginalTypeInfo{
+			receiver := debezium.NewReceiver(map[abstract.TableID]map[string]*debezium_common.OriginalTypeInfo{
 				{Namespace: "public", Name: "basic_types"}: {
 					"id":  {OriginalType: "pg:integer"},
 					"val": {OriginalType: `pg:timestamp without time zone`},
@@ -50,17 +50,17 @@ func BenchmarkReceiverTest(b *testing.B) {
 		})
 	})
 	b.Run("serialize", func(b *testing.B) {
-		changeItem := extractCI(b, debeziumMsg31, map[abstract.TableID]map[string]*debeziumcommon.OriginalTypeInfo{
+		changeItem := extractCI(b, debeziumMsg31, map[abstract.TableID]map[string]*debezium_common.OriginalTypeInfo{
 			{Namespace: "public", Name: "basic_types"}: {
 				"id":  {OriginalType: "pg:integer"},
 				"val": {OriginalType: `pg:timestamp with time zone`},
 			},
 		})
 		emitter, err := debezium.NewMessagesEmitter(map[string]string{
-			debeziumparameters.DatabaseDBName:   "pguser",
-			debeziumparameters.TopicPrefix:      "fullfillment",
-			debeziumparameters.AddOriginalTypes: "false",
-			debeziumparameters.SourceType:       "pg",
+			debezium_parameters.DatabaseDBName:   "pguser",
+			debezium_parameters.TopicPrefix:      "fullfillment",
+			debezium_parameters.AddOriginalTypes: "false",
+			debezium_parameters.SourceType:       "pg",
 		}, "1.8.0.Final", false, logger.LoggerWithLevel(zapcore.WarnLevel))
 		require.NoError(b, err)
 
@@ -78,7 +78,7 @@ func BenchmarkReceiverTest(b *testing.B) {
 func extractCI(
 	t require.TestingT,
 	debeziumMsg string,
-	originalTypes map[abstract.TableID]map[string]*debeziumcommon.OriginalTypeInfo,
+	originalTypes map[abstract.TableID]map[string]*debezium_common.OriginalTypeInfo,
 ) abstract.ChangeItem {
 	canonDebeziumMsgWithoutSequence := wipeSequenceAndIncremental(debeziumMsg)
 	receiver := debezium.NewReceiver(originalTypes, nil)

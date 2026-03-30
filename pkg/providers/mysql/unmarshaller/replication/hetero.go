@@ -12,11 +12,11 @@ import (
 	"github.com/spf13/cast"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	"github.com/transferia/transferia/pkg/providers/mysql/unmarshaller/types"
+	mysql_unmarshaller_types "github.com/transferia/transferia/pkg/providers/mysql/unmarshaller/types"
 	"github.com/transferia/transferia/pkg/util/castx"
 	"github.com/transferia/transferia/pkg/util/jsonx"
 	"github.com/transferia/transferia/pkg/util/strict"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 func UnmarshalHetero(value any, colSchema *abstract.ColSchema, location *time.Location) (any, error) {
@@ -27,27 +27,27 @@ func UnmarshalHetero(value any, colSchema *abstract.ColSchema, location *time.Lo
 	var result any
 	var err error
 
-	targetType := schema.Type(colSchema.DataType)
+	targetType := ytschema.Type(colSchema.DataType)
 	switch targetType {
-	case schema.TypeInt64:
+	case ytschema.TypeInt64:
 		result, err = strict.Expected[int64](value, cast.ToInt64E)
-	case schema.TypeInt32:
+	case ytschema.TypeInt32:
 		result, err = strict.Expected[int32](value, cast.ToInt32E)
-	case schema.TypeInt16:
+	case ytschema.TypeInt16:
 		result, err = strict.Expected[int16](value, cast.ToInt16E)
-	case schema.TypeInt8:
+	case ytschema.TypeInt8:
 		result, err = strict.Expected[int8](value, cast.ToInt8E)
-	case schema.TypeUint64:
+	case ytschema.TypeUint64:
 		result, err = strict.Expected[uint64](value, cast.ToUint64E)
-	case schema.TypeUint32:
+	case ytschema.TypeUint32:
 		result, err = strict.Expected[uint32](value, cast.ToUint32E)
-	case schema.TypeUint16:
+	case ytschema.TypeUint16:
 		result, err = strict.Expected[uint16](value, cast.ToUint16E)
-	case schema.TypeUint8:
+	case ytschema.TypeUint8:
 		result, err = strict.Expected[uint8](value, cast.ToUint8E)
-	case schema.TypeFloat32:
+	case ytschema.TypeFloat32:
 		result, err = strict.Unexpected(value, cast.ToFloat32E)
-	case schema.TypeFloat64:
+	case ytschema.TypeFloat64:
 		switch v := value.(type) {
 		case decimal.Decimal:
 			result, err = strict.Expected[decimal.Decimal](v, castx.ToJSONNumberE)
@@ -58,7 +58,7 @@ func UnmarshalHetero(value any, colSchema *abstract.ColSchema, location *time.Lo
 		default:
 			result, err = strict.Unexpected(v, castx.ToJSONNumberE)
 		}
-	case schema.TypeBytes:
+	case ytschema.TypeBytes:
 		switch v := value.(type) {
 		case []byte:
 			result, err = strict.Expected[[]byte](v, castx.ToByteSliceE)
@@ -67,19 +67,19 @@ func UnmarshalHetero(value any, colSchema *abstract.ColSchema, location *time.Lo
 		default:
 			result, err = strict.Unexpected(v, castx.ToByteSliceE)
 		}
-	case schema.TypeBoolean:
+	case ytschema.TypeBoolean:
 		result, err = strict.Unexpected(value, cast.ToBoolE)
-	case schema.TypeDate:
+	case ytschema.TypeDate:
 		castToTimeByTemporal := func(value any) (any, error) { return castToTimeByTemporalInLocation(value, time.UTC) }
 		result, err = strict.Expected[string](value, castToTimeByTemporal)
-	case schema.TypeDatetime:
+	case ytschema.TypeDatetime:
 		result, err = strict.Unexpected(value, cast.ToTimeE)
-	case schema.TypeTimestamp:
+	case ytschema.TypeTimestamp:
 		castToTimeByTemporal := func(value any) (any, error) { return castToTimeByTemporalInLocation(value, location) }
 		result, err = strict.Expected[string](value, castToTimeByTemporal)
-	case schema.TypeInterval:
+	case ytschema.TypeInterval:
 		result, err = strict.Unexpected(value, cast.ToDurationE)
-	case schema.TypeString:
+	case ytschema.TypeString:
 		switch v := value.(type) {
 		case string:
 			result, err = strict.Expected[string](v, castx.ToStringE)
@@ -88,7 +88,7 @@ func UnmarshalHetero(value any, colSchema *abstract.ColSchema, location *time.Lo
 		default:
 			result, err = strict.Unexpected(v, castx.ToStringE)
 		}
-	case schema.TypeAny:
+	case ytschema.TypeAny:
 		result, err = strict.Expected[string](value, castToAny)
 	default:
 		return nil, abstract.NewFatalError(xerrors.Errorf("unexpected target type %s (original type %q, value of type %T), unmarshalling is not implemented", colSchema.DataType, colSchema.OriginalType, value))
@@ -146,7 +146,7 @@ func castToTimeByTemporalInLocation(value any, location *time.Location) (any, er
 		return nil, xerrors.Errorf("failed to cast %T to []byte to convert it to temporal: %w", value, err)
 	}
 
-	temporal := types.NewTemporalInLocation(location)
+	temporal := mysql_unmarshaller_types.NewTemporalInLocation(location)
 	if err := temporal.Scan(vBytes); err != nil {
 		return nil, xerrors.Errorf("failed to Scan temporal: %w", err)
 	}

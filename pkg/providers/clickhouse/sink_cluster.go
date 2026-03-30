@@ -14,9 +14,9 @@ import (
 	"github.com/transferia/transferia/library/go/ptr"
 	yslices "github.com/transferia/transferia/library/go/slices"
 	"github.com/transferia/transferia/pkg/abstract"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/errors"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/model"
-	topology2 "github.com/transferia/transferia/pkg/providers/clickhouse/topology"
+	clickhouse_errors "github.com/transferia/transferia/pkg/providers/clickhouse/errors"
+	clickhouse_model "github.com/transferia/transferia/pkg/providers/clickhouse/model"
+	"github.com/transferia/transferia/pkg/providers/clickhouse/topology"
 	"github.com/transferia/transferia/pkg/stats"
 	"go.ytsaurus.tech/library/go/core/log"
 )
@@ -25,9 +25,9 @@ type sinkCluster struct {
 	sinkServers []*SinkServer
 	metrics     *stats.ChStats
 	logger      log.Logger
-	config      model.ChSinkClusterParams
+	config      clickhouse_model.ChSinkClusterParams
 	counter     int
-	topology    *topology2.Topology
+	topology    *topology.Topology
 
 	distributedDDLMu      sync.Mutex
 	distributedDDLEnabled *bool
@@ -131,14 +131,14 @@ func (c *sinkCluster) execDDL(executor func(distributed bool) error) error {
 		return nil
 	}
 
-	if !errors.IsDistributedDDLError(err) {
+	if !clickhouse_errors.IsDistributedDDLError(err) {
 		return xerrors.Errorf("error executing DDL: %w", err)
 	}
 	c.logger.Error("Got distributed DDL error", log.Error(err))
 
 	if !c.topology.SingleNode() {
 		c.logger.Error("cluster is not single node and distributed DDL is not available")
-		return errors.ForbiddenDistributedDDLError
+		return clickhouse_errors.ForbiddenDistributedDDLError
 	}
 
 	if err := executor(false); err != nil {
@@ -216,7 +216,7 @@ func (c *sinkCluster) RemoveOldParts(keepPartCount int, table string) error {
 	return nil
 }
 
-func newSinkCluster(config model.ChSinkClusterParams, lgr log.Logger, metrics *stats.ChStats, topology *topology2.Topology) (*sinkCluster, error) {
+func newSinkCluster(config clickhouse_model.ChSinkClusterParams, lgr log.Logger, metrics *stats.ChStats, topology *topology.Topology) (*sinkCluster, error) {
 	cl := new(sinkCluster)
 	cl.metrics = metrics
 	cl.logger = lgr

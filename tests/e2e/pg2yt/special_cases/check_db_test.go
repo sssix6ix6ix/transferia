@@ -7,13 +7,13 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/tests/helpers"
-	yt_helpers "github.com/transferia/transferia/tests/helpers/yt"
+	helpers_yt "github.com/transferia/transferia/tests/helpers/yt"
 )
 
 var (
-	Source = postgres.PgSource{
+	Source = provider_postgres.PgSource{
 		ClusterID: os.Getenv("PG_CLUSTER_ID"),
 		Hosts:     []string{"localhost"},
 		User:      os.Getenv("PG_LOCAL_USER"),
@@ -21,7 +21,7 @@ var (
 		Database:  os.Getenv("PG_LOCAL_DATABASE"),
 		Port:      helpers.GetIntFromEnv("PG_LOCAL_PORT"),
 	}
-	Target = yt_helpers.RecipeYtTarget("//home/cdc/test/pg2yt_e2e")
+	Target = helpers_yt.RecipeYtTarget("//home/cdc/test/pg2yt_e2e")
 )
 
 func init() {

@@ -11,7 +11,7 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/changeitem"
 	"github.com/transferia/transferia/pkg/errors/coded"
-	"github.com/transferia/transferia/pkg/errors/codes"
+	error_codes "github.com/transferia/transferia/pkg/errors/codes"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/columntypes"
 	"github.com/transferia/transferia/pkg/util"
 	"go.ytsaurus.tech/library/go/core/log"
@@ -157,7 +157,7 @@ func convertToastedToNormal(t *sinkTable, items []abstract.ChangeItem) ([]abstra
 				log.Any("table", items[0].TableID()))
 			return items, nil
 		}
-		return nil, coded.Errorf(codes.ClickHouseToastUpdate, "failed to extract previous versions for %d toasted items: %w", len(toastedItems), err)
+		return nil, coded.Errorf(error_codes.ClickHouseToastUpdate, "failed to extract previous versions for %d toasted items: %w", len(toastedItems), err)
 	}
 	t.logger.Info("previous versions of toasted items extracted successfully", log.Int("len", len(lastVersionFullRows)))
 

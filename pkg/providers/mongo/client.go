@@ -15,16 +15,16 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/dbaas"
 	"github.com/transferia/transferia/pkg/errors/coded"
-	"github.com/transferia/transferia/pkg/errors/codes"
+	error_codes "github.com/transferia/transferia/pkg/errors/codes"
 	"github.com/transferia/transferia/pkg/util"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	mongo_driver "go.mongodb.org/mongo-driver/mongo"
+	mongo_options "go.mongodb.org/mongo-driver/mongo/options"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
 type MongoClientWrapper struct {
-	*mongo.Client
+	*mongo_driver.Client
 	lgr log.Logger
 	id  int64
 
@@ -59,7 +59,7 @@ func Connect(ctx context.Context, opts MongoConnectionOptions, lgr log.Logger) (
 	}
 
 	miniCallstack := util.GetMiniCallstack(12)
-	var driverConnectionOptions *options.ClientOptions
+	var driverConnectionOptions *mongo_options.ClientOptions
 	var err error
 
 	if opts.ConnectionID != "" {
@@ -150,8 +150,8 @@ func Connect(ctx context.Context, opts MongoConnectionOptions, lgr log.Logger) (
 	}, nil
 }
 
-func newClient(ctx context.Context, connOpts *options.ClientOptions) (*mongo.Client, error) {
-	client, err := mongo.Connect(ctx, connOpts)
+func newClient(ctx context.Context, connOpts *mongo_options.ClientOptions) (*mongo_driver.Client, error) {
+	client, err := mongo_driver.Connect(ctx, connOpts)
 
 	isWithPassword := bool(connOpts != nil && connOpts.Auth != nil && len(connOpts.Auth.Password) > 0)
 	if err != nil && isWithPassword && strings.Contains(err.Error(), connOpts.Auth.Password) {
@@ -164,8 +164,8 @@ func newClient(ctx context.Context, connOpts *options.ClientOptions) (*mongo.Cli
 		// Network-level classification: prefer structural checks over string matching.
 		// We treat it as DNS failure when error chain contains net.DNSError and driver classifies it as network error.
 		var dnsErr *net.DNSError
-		if mongo.IsNetworkError(err) && xerrors.As(err, &dnsErr) {
-			return nil, coded.Errorf(codes.MongoDNSResolutionFailed, "unable to ping mongo db: %w", err)
+		if mongo_driver.IsNetworkError(err) && xerrors.As(err, &dnsErr) {
+			return nil, coded.Errorf(error_codes.MongoDNSResolutionFailed, "unable to ping mongo db: %w", err)
 		}
 		return nil, xerrors.Errorf("unable to ping mongo db: %w", err)
 	}
@@ -236,14 +236,14 @@ func getClusterInfo(endpoint *MongoConnectionOptions) (hosts []string, sharded b
 	return hosts, sharded, nil
 }
 
-func DriverConnectionSrvOptions(mongoConnectionOptions *MongoConnectionOptions) (*options.ClientOptions, error) {
+func DriverConnectionSrvOptions(mongoConnectionOptions *MongoConnectionOptions) (*mongo_options.ClientOptions, error) {
 	if len(mongoConnectionOptions.HostsWithPort) != 1 {
 		return nil, xerrors.Errorf("Cannot be empty or more than hosts in srv connection")
 	}
 
 	uri := fmt.Sprintf("mongodb+srv://%s:%s@%s", mongoConnectionOptions.User, mongoConnectionOptions.Password, mongoConnectionOptions.HostsWithPort[0].Host)
 
-	clientOptions := options.Client().ApplyURI(uri)
+	clientOptions := mongo_options.Client().ApplyURI(uri)
 	clientOptions.SetDirect(false)
 
 	authSource := mongoConnectionOptions.AuthSource
@@ -251,7 +251,7 @@ func DriverConnectionSrvOptions(mongoConnectionOptions *MongoConnectionOptions) 
 		authSource = DefaultAuthSource
 	}
 
-	clientOptions.SetAuth(options.Credential{
+	clientOptions.SetAuth(mongo_options.Credential{
 		AuthSource: authSource,
 		Username:   mongoConnectionOptions.User,
 		Password:   string(mongoConnectionOptions.Password),
@@ -272,8 +272,8 @@ func DriverConnectionSrvOptions(mongoConnectionOptions *MongoConnectionOptions) 
 	return clientOptions, nil
 }
 
-func DriverConnectionOptions(mongoConnectionOptions *MongoConnectionOptions) (*options.ClientOptions, error) {
-	opts := options.ClientOptions{}
+func DriverConnectionOptions(mongoConnectionOptions *MongoConnectionOptions) (*mongo_options.ClientOptions, error) {
+	opts := mongo_options.ClientOptions{}
 	hosts, sharded, err := getClusterInfo(mongoConnectionOptions)
 	if err != nil {
 		return nil, xerrors.Errorf("Cannot get hosts: %w", err)
@@ -285,7 +285,7 @@ func DriverConnectionOptions(mongoConnectionOptions *MongoConnectionOptions) (*o
 		authSource = DefaultAuthSource
 	}
 	opts.SetDirect(mongoConnectionOptions.Direct)
-	opts.SetAuth(options.Credential{
+	opts.SetAuth(mongo_options.Credential{
 		AuthSource: authSource,
 		// AuthMechanism: "SCRAM-SHA-256",
 		Username: mongoConnectionOptions.User,

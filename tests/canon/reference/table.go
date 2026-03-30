@@ -9,7 +9,7 @@ import (
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/tests/canon/validator"
 	"github.com/transferia/transferia/tests/helpers"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 type Struct struct {
@@ -55,32 +55,32 @@ type Row struct {
 func Table() []abstract.ChangeItem {
 	cols := abstract.NewTableSchema([]abstract.ColSchema{
 		// Primitives
-		{ColumnName: "t_int64_key", DataType: string(schema.TypeInt64), PrimaryKey: true},
-		{ColumnName: "t_int64_system_key", DataType: string(schema.TypeInt64)},
-		{ColumnName: "t_int8", DataType: string(schema.TypeInt8)},
-		{ColumnName: "t_int16", DataType: string(schema.TypeInt16)},
-		{ColumnName: "t_int32", DataType: string(schema.TypeInt32)},
-		{ColumnName: "t_int64", DataType: string(schema.TypeInt64)},
-		{ColumnName: "t_uint8", DataType: string(schema.TypeUint8)},
-		{ColumnName: "t_uint16", DataType: string(schema.TypeUint16)},
-		{ColumnName: "t_uint32", DataType: string(schema.TypeUint32)},
-		{ColumnName: "t_uint64", DataType: string(schema.TypeUint64)},
-		{ColumnName: "t_float", DataType: string(schema.TypeFloat32)},
-		{ColumnName: "t_double", DataType: string(schema.TypeFloat64)},
-		{ColumnName: "t_bool", DataType: string(schema.TypeBoolean)},
-		{ColumnName: "t_string", DataType: string(schema.TypeBytes)},
-		{ColumnName: "t_utf8", DataType: string(schema.TypeString)},
-		{ColumnName: "t_date", DataType: string(schema.TypeDate)},
-		{ColumnName: "t_datetime", DataType: string(schema.TypeDatetime)},
-		{ColumnName: "t_timestamp", DataType: string(schema.TypeTimestamp)},
+		{ColumnName: "t_int64_key", DataType: string(ytschema.TypeInt64), PrimaryKey: true},
+		{ColumnName: "t_int64_system_key", DataType: string(ytschema.TypeInt64)},
+		{ColumnName: "t_int8", DataType: string(ytschema.TypeInt8)},
+		{ColumnName: "t_int16", DataType: string(ytschema.TypeInt16)},
+		{ColumnName: "t_int32", DataType: string(ytschema.TypeInt32)},
+		{ColumnName: "t_int64", DataType: string(ytschema.TypeInt64)},
+		{ColumnName: "t_uint8", DataType: string(ytschema.TypeUint8)},
+		{ColumnName: "t_uint16", DataType: string(ytschema.TypeUint16)},
+		{ColumnName: "t_uint32", DataType: string(ytschema.TypeUint32)},
+		{ColumnName: "t_uint64", DataType: string(ytschema.TypeUint64)},
+		{ColumnName: "t_float", DataType: string(ytschema.TypeFloat32)},
+		{ColumnName: "t_double", DataType: string(ytschema.TypeFloat64)},
+		{ColumnName: "t_bool", DataType: string(ytschema.TypeBoolean)},
+		{ColumnName: "t_string", DataType: string(ytschema.TypeBytes)},
+		{ColumnName: "t_utf8", DataType: string(ytschema.TypeString)},
+		{ColumnName: "t_date", DataType: string(ytschema.TypeDate)},
+		{ColumnName: "t_datetime", DataType: string(ytschema.TypeDatetime)},
+		{ColumnName: "t_timestamp", DataType: string(ytschema.TypeTimestamp)},
 		//{ColumnName: "t_interval", DataType: schema.TypeInterval},
-		{ColumnName: "t_list", DataType: string(schema.TypeAny)},
-		{ColumnName: "t_struct", DataType: string(schema.TypeAny)},
-		{ColumnName: "t_tuple", DataType: string(schema.TypeAny)},
-		{ColumnName: "t_var_tuple", DataType: string(schema.TypeAny)},
-		{ColumnName: "t_var_struct", DataType: string(schema.TypeAny)},
-		{ColumnName: "t_dict", DataType: string(schema.TypeAny)},
-		{ColumnName: "t_tagged", DataType: string(schema.TypeAny)},
+		{ColumnName: "t_list", DataType: string(ytschema.TypeAny)},
+		{ColumnName: "t_struct", DataType: string(ytschema.TypeAny)},
+		{ColumnName: "t_tuple", DataType: string(ytschema.TypeAny)},
+		{ColumnName: "t_var_tuple", DataType: string(ytschema.TypeAny)},
+		{ColumnName: "t_var_struct", DataType: string(ytschema.TypeAny)},
+		{ColumnName: "t_dict", DataType: string(ytschema.TypeAny)},
+		{ColumnName: "t_tagged", DataType: string(ytschema.TypeAny)},
 		// Complex types
 		//{ColumnName: "t_yson", DataType: schema.Optional{Item: schema.TypeAny}},
 		//{ ColumnName: "t_decimal"},

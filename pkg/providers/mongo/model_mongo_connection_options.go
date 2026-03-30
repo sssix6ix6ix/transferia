@@ -6,7 +6,7 @@ import (
 
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/connection"
-	mongoConn "github.com/transferia/transferia/pkg/connection/mongo"
+	conn_mongo "github.com/transferia/transferia/pkg/connection/mongo"
 )
 
 type HostWithPort struct {
@@ -45,7 +45,7 @@ func (o *MongoConnectionOptions) ResolveCredsByConnectionID(ctx context.Context)
 	if err != nil {
 		return err
 	}
-	mongoConn, ok := conn.(*mongoConn.Connection)
+	mongoConn, ok := conn.(*conn_mongo.Connection)
 	if !ok {
 		return xerrors.Errorf("cannot cast connection %s to Mongo connection", o.ConnectionID)
 	}

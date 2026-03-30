@@ -7,19 +7,20 @@ import (
 
 	aws_s3 "github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/errors"
 	"github.com/transferia/transferia/pkg/errors/categories"
-	"github.com/transferia/transferia/pkg/providers/s3"
-	"github.com/transferia/transferia/pkg/providers/s3/pusher"
-	"github.com/transferia/transferia/pkg/providers/s3/reader"
-	reader_factory "github.com/transferia/transferia/pkg/providers/s3/reader/registry"
+	s3_model "github.com/transferia/transferia/pkg/providers/s3/model"
+	s3_pusher "github.com/transferia/transferia/pkg/providers/s3/pusher"
+	s3_reader "github.com/transferia/transferia/pkg/providers/s3/reader"
+	s3_reader_registry "github.com/transferia/transferia/pkg/providers/s3/reader/registry"
 	"github.com/transferia/transferia/pkg/providers/s3/s3util/coordinator_utils"
 	"github.com/transferia/transferia/pkg/providers/s3/s3util/effective_worker_num"
+	"github.com/transferia/transferia/pkg/providers/s3/s3util/s3sess"
 	"github.com/transferia/transferia/pkg/providers/s3/storage/s3_shared_memory"
 	"github.com/transferia/transferia/pkg/stats"
 	"go.ytsaurus.tech/library/go/core/log"
@@ -28,13 +29,13 @@ import (
 var _ abstract.Storage = (*Storage)(nil)
 
 type Storage struct {
-	cfg         *s3.S3Source
+	cfg         *s3_model.S3Source
 	transferID  string
 	client      s3iface.S3API
 	logger      log.Logger
 	tableSchema *abstract.TableSchema
-	reader      reader.Reader
-	registry    metrics.Registry
+	reader      s3_reader.Reader
+	registry    core_metrics.Registry
 
 	shardingContext []byte
 }
@@ -63,7 +64,7 @@ func (s *Storage) LoadTable(ctx context.Context, table abstract.TableDescription
 		return inPusher(items)
 	}
 
-	syncPusher := pusher.New(wrappedPusher, nil, s.logger, 0)
+	syncPusher := s3_pusher.New(wrappedPusher, nil, s.logger, 0)
 
 	// array here - to 'Metrika' source can batch many files into one 'abstract.TableDescription'
 	var fileList []string
@@ -105,7 +106,7 @@ func (s *Storage) EstimateTableRowsCount(table abstract.TableID) (uint64, error)
 		// we are in a replication, possible millions/billions of files in bucket, estimating rows expensive
 		return 0, nil
 	}
-	if rowCounter, ok := s.reader.(reader.RowsCountEstimator); ok {
+	if rowCounter, ok := s.reader.(s3_reader.RowsCountEstimator); ok {
 		return rowCounter.EstimateRowsCountAllObjects(context.Background())
 	}
 	return 0, nil
@@ -218,12 +219,12 @@ func (s *Storage) CheckSecondaryWorkersDone(startTime time.Time, cp any, transfe
 	}
 }
 
-func New(src *s3.S3Source, transferID string, lgr log.Logger, registry metrics.Registry) (*Storage, error) {
-	sess, err := s3.NewAWSSession(lgr, src.Bucket, src.ConnectionConfig)
+func New(src *s3_model.S3Source, transferID string, lgr log.Logger, registry core_metrics.Registry) (*Storage, error) {
+	sess, err := s3sess.NewAWSSession(lgr, src.Bucket, src.ConnectionConfig)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to create aws session: %w", err)
 	}
-	currReader, err := reader_factory.NewReader(src, lgr, sess, stats.NewSourceStats(registry))
+	currReader, err := s3_reader_registry.NewReader(src, lgr, sess, stats.NewSourceStats(registry))
 	if err != nil {
 		return nil, xerrors.Errorf("unable to create reader: %w", err)
 	}

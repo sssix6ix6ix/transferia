@@ -7,25 +7,25 @@ import (
 	"sync"
 
 	"github.com/cenkalti/backoff/v4"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/changeitem"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
-	yt2 "github.com/transferia/transferia/pkg/providers/yt"
-	dyn_sink "github.com/transferia/transferia/pkg/providers/yt/sink"
+	provider_yt "github.com/transferia/transferia/pkg/providers/yt"
+	yt_sink "github.com/transferia/transferia/pkg/providers/yt/sink"
 	"github.com/transferia/transferia/pkg/providers/yt/yt_client"
 	"github.com/transferia/transferia/pkg/util"
 	"go.ytsaurus.tech/library/go/core/log"
 	"go.ytsaurus.tech/yt/go/migrate"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 	"go.ytsaurus.tech/yt/go/ypath"
 	"go.ytsaurus.tech/yt/go/yt"
 )
 
 type sinker struct {
 	ytClient             yt.Client
-	config               yt2.YtDestinationModel
+	config               provider_yt.YtDestinationModel
 	staticSink           abstract.Sinker
 	stateStorage         *ytStateStorage
 	staticFinishedTables []ypath.Path
@@ -37,7 +37,7 @@ type sinker struct {
 
 const TabletCompressedSize = 5 * (1 << 30)
 
-func NewStaticSinkWrapper(cfg yt2.YtDestinationModel, cp coordinator.Coordinator, transferID string, registry metrics.Registry, logger log.Logger) (abstract.Sinker, error) {
+func NewStaticSinkWrapper(cfg provider_yt.YtDestinationModel, cp coordinator.Coordinator, transferID string, registry core_metrics.Registry, logger log.Logger) (abstract.Sinker, error) {
 	staticSink, err := NewStaticSink(cfg, cp, transferID, registry, logger)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to create YT (static) sinker: %w", err)
@@ -110,15 +110,15 @@ func (s *sinker) convertStaticToDynamic(ctx context.Context, tableYPath ypath.Pa
 		if err := s.ytClient.AlterTable(ctx, tableYPath, &alterOptions); err != nil {
 			return xerrors.Errorf("unable to alter destination table %q: %w", tableYPath, err)
 		}
-		if err := yt2.MountUnmountWrapper(ctx, s.ytClient, tableYPath, migrate.UnmountAndWait); err != nil {
+		if err := provider_yt.MountUnmountWrapper(ctx, s.ytClient, tableYPath, migrate.UnmountAndWait); err != nil {
 			return xerrors.Errorf("unable to unmount destination table %q: %w", tableYPath, err)
 		}
 
-		dstInfo, err := yt2.GetNodeInfo(ctx, s.ytClient, tableYPath)
+		dstInfo, err := provider_yt.GetNodeInfo(ctx, s.ytClient, tableYPath)
 		if err != nil {
 			return xerrors.Errorf("unable to get node info: %w", err)
 		}
-		attrs := dyn_sink.BuildDynamicAttrs(dyn_sink.GetCols(dstInfo.Attrs.Schema), s.config)
+		attrs := yt_sink.BuildDynamicAttrs(yt_sink.GetCols(dstInfo.Attrs.Schema), s.config)
 
 		// "pivot_keys" attribute cannot be set onto an existing table.
 		// reshard_table command should be used instead.
@@ -146,7 +146,7 @@ func (s *sinker) convertStaticToDynamic(ctx context.Context, tableYPath ypath.Pa
 			return xerrors.Errorf("unable to reshard destination table %q: %w", tableYPath, err)
 		}
 
-		if err := yt2.MountUnmountWrapper(ctx, s.ytClient, tableYPath, migrate.MountAndWait); err != nil {
+		if err := provider_yt.MountUnmountWrapper(ctx, s.ytClient, tableYPath, migrate.MountAndWait); err != nil {
 			return xerrors.Errorf("unable to mount destination table %q: %w", tableYPath, err)
 		}
 		return nil
@@ -168,14 +168,14 @@ func (s *sinker) push(input []abstract.ChangeItem, insertSink abstract.Sinker) e
 	switch item.Kind {
 	case abstract.DoneShardedTableLoad:
 		if item.TableSchema.Columns().KeysNum() == len(item.TableSchema.Columns()) {
-			newColumns := append(item.TableSchema.Columns(), abstract.NewColSchema(dyn_sink.DummyMainTable, schema.TypeAny, false))
+			newColumns := append(item.TableSchema.Columns(), abstract.NewColSchema(yt_sink.DummyMainTable, ytschema.TypeAny, false))
 			input[0].TableSchema = abstract.NewTableSchema(newColumns)
 		}
 		if err := s.staticSink.Push(input); err != nil {
 			return xerrors.Errorf("failed to process snapshot stage: %w", err)
 		}
 
-		tableYPath := yt2.SafeChild(s.dir, yt2.MakeTableName(item.TableID(), s.config.AltNames()))
+		tableYPath := provider_yt.SafeChild(s.dir, provider_yt.MakeTableName(item.TableID(), s.config.AltNames()))
 		s.staticFinishedTables = append(s.staticFinishedTables, tableYPath)
 		if err := s.stateStorage.SetState(s.staticFinishedTables); err != nil {
 			return xerrors.Errorf("unable to set finished tables: %w", err)
@@ -206,7 +206,7 @@ func buildIndexKeyValMap(input abstract.ChangeItem, indexCol string) map[string]
 			keyValMap[colName] = colValue
 		}
 	}
-	keyValMap[dyn_sink.DummyIndexTable] = nil
+	keyValMap[yt_sink.DummyIndexTable] = nil
 	return keyValMap
 
 }
@@ -222,7 +222,7 @@ func buildIndexSchema(input abstract.ChangeItem, indexCol string) *changeitem.Ta
 			newCols = append(newCols, column)
 		}
 	}
-	newCols = append(newCols, abstract.NewColSchema(dyn_sink.DummyIndexTable, schema.TypeAny, false))
+	newCols = append(newCols, abstract.NewColSchema(yt_sink.DummyIndexTable, ytschema.TypeAny, false))
 	return abstract.NewTableSchema(newCols)
 }
 
@@ -237,8 +237,8 @@ func (s *sinker) processIndexes(input []abstract.ChangeItem, indexCols []string)
 		wg.Add(1)
 		go func(colName string) {
 			defer wg.Done()
-			name := yt2.MakeTableName(input[0].TableID(), s.config.AltNames())
-			indexName := dyn_sink.MakeIndexTableName(name, indexCol)
+			name := provider_yt.MakeTableName(input[0].TableID(), s.config.AltNames())
+			indexName := yt_sink.MakeIndexTableName(name, indexCol)
 			indexChanges := make([]abstract.ChangeItem, 0)
 			for _, item := range input {
 				keyValMap := buildIndexKeyValMap(item, indexCol)

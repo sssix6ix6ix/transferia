@@ -8,7 +8,7 @@ import (
 
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/model"
+	clickhouse_model "github.com/transferia/transferia/pkg/providers/clickhouse/model"
 	"github.com/transferia/transferia/pkg/util"
 	"github.com/transferia/transferia/pkg/util/multibuf"
 	"github.com/transferia/transferia/pkg/util/worker_pool"
@@ -16,7 +16,7 @@ import (
 
 type query = *multibuf.PooledMultiBuffer
 
-func newInsertQuery(insertParams model.InsertParams, db string, table string, rowCount int, pool *sync.Pool) query {
+func newInsertQuery(insertParams clickhouse_model.InsertParams, db string, table string, rowCount int, pool *sync.Pool) query {
 	q := multibuf.NewPooledMultiBuffer(rowCount+1, pool)
 	buf := q.AcquireBuffer(0)
 

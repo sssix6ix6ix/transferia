@@ -6,11 +6,11 @@ import (
 
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	yt2 "github.com/transferia/transferia/pkg/providers/yt"
+	provider_yt "github.com/transferia/transferia/pkg/providers/yt"
 	ytmerge "github.com/transferia/transferia/pkg/providers/yt/mergejob"
 	"go.ytsaurus.tech/yt/go/mapreduce"
 	"go.ytsaurus.tech/yt/go/mapreduce/spec"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 	"go.ytsaurus.tech/yt/go/ypath"
 	"go.ytsaurus.tech/yt/go/yt"
 )
@@ -31,7 +31,7 @@ func init() {
 type commitClient struct {
 	Tx     yt.Tx
 	Client yt.Client
-	Scheme schema.Schema
+	Scheme ytschema.Schema
 
 	Pool             string
 	OptimizedFor     string
@@ -193,14 +193,14 @@ func (c *commitClient) moveTables(src ypath.Path, dst ypath.Path) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 
-	moveOptions := yt2.ResolveMoveOptions(c.Tx, src, false)
+	moveOptions := provider_yt.ResolveMoveOptions(c.Tx, src, false)
 	if _, err := c.Tx.MoveNode(ctx, src, dst, moveOptions); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (c *commitClient) createTableForOperation(tablePath ypath.Path, scheme schema.Schema) error {
+func (c *commitClient) createTableForOperation(tablePath ypath.Path, scheme ytschema.Schema) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	createOptions := createNodeOptions(scheme, c.OptimizedFor, c.CustomAttributes)

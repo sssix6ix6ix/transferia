@@ -12,7 +12,7 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	pgcommon "github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
 	"github.com/transferia/transferia/tests/helpers"
 	mocksink "github.com/transferia/transferia/tests/helpers/mock_sink"
@@ -51,9 +51,9 @@ func TestExcludeTablesWithEmptyWhitelist(t *testing.T) {
 	worker := helpers.Activate(t, transfer)
 	defer worker.Close(t)
 
-	connConfig, err := pgcommon.MakeConnConfigFromSrc(logger.Log, source)
+	connConfig, err := provider_postgres.MakeConnConfigFromSrc(logger.Log, source)
 	require.NoError(t, err)
-	srcConn, err := pgcommon.NewPgConnPool(connConfig, logger.Log)
+	srcConn, err := provider_postgres.NewPgConnPool(connConfig, logger.Log)
 	require.NoError(t, err)
 
 	inputRows := [][]any{

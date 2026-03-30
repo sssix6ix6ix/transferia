@@ -10,7 +10,7 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/postgres/dblog"
+	postgres_dblog "github.com/transferia/transferia/pkg/providers/postgres/dblog"
 	"github.com/transferia/transferia/pkg/stats"
 	"go.ytsaurus.tech/library/go/core/log"
 )
@@ -101,7 +101,7 @@ func addTablesList(config *PgSource, objects *model.DataObjects, dbLogSnapshot b
 
 	consumerKeeperID := *abstract.NewTableID(config.KeeperSchema, TableConsumerKeeper)
 	mustAddConsumerKeeper := true
-	signalTableID := *dblog.SignalTableTableID(config.KeeperSchema)
+	signalTableID := *postgres_dblog.SignalTableTableID(config.KeeperSchema)
 	mustAddsignalTable := dbLogSnapshot // the only case when we need to add signalTable into replication - snapshot stage when dblog turned-on
 
 	for _, t := range result {

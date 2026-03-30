@@ -11,17 +11,17 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/library/go/test/yatest"
 	"github.com/transferia/transferia/pkg/abstract"
-	debeziumcommon "github.com/transferia/transferia/pkg/debezium/common"
-	"github.com/transferia/transferia/pkg/debezium/testutil"
+	debezium_common "github.com/transferia/transferia/pkg/debezium/common"
+	debezium_testutil "github.com/transferia/transferia/pkg/debezium/testutil"
 	"github.com/transferia/transferia/tests/helpers"
 )
 
 func check(t *testing.T, changeItem abstract.ChangeItem, key []byte, val string, isSnapshot bool) {
-	testutil.CheckCanonizedDebeziumEvent(t, &changeItem, "fullfillment", "pguser", "pg", isSnapshot, []debeziumcommon.KeyValue{{DebeziumKey: string(key), DebeziumVal: &val}})
+	debezium_testutil.CheckCanonizedDebeziumEvent(t, &changeItem, "fullfillment", "pguser", "pg", isSnapshot, []debezium_common.KeyValue{{DebeziumKey: string(key), DebeziumVal: &val}})
 	changeItemBuf, err := json.Marshal(changeItem)
 	require.NoError(t, err)
 	changeItemDeserialized := helpers.UnmarshalChangeItem(t, changeItemBuf)
-	testutil.CheckCanonizedDebeziumEvent(t, changeItemDeserialized, "fullfillment", "pguser", "pg", isSnapshot, []debeziumcommon.KeyValue{{DebeziumKey: string(key), DebeziumVal: &val}})
+	debezium_testutil.CheckCanonizedDebeziumEvent(t, changeItemDeserialized, "fullfillment", "pguser", "pg", isSnapshot, []debezium_common.KeyValue{{DebeziumKey: string(key), DebeziumVal: &val}})
 }
 
 var insertStmt0 = `

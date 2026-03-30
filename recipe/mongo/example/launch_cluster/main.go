@@ -7,7 +7,7 @@ import (
 	"github.com/transferia/transferia/recipe/mongo/pkg/mongo_sharded_cluster"
 	"github.com/transferia/transferia/recipe/mongo/pkg/mongo_sharded_config"
 	"go.ytsaurus.tech/library/go/core/log"
-	"go.ytsaurus.tech/library/go/core/log/zap"
+	ya_zap "go.ytsaurus.tech/library/go/core/log/zap"
 )
 
 func main() {
@@ -15,7 +15,7 @@ func main() {
 }
 
 func launchCluster() {
-	lgr, err := zap.New(zap.CLIConfig(log.InfoLevel))
+	lgr, err := ya_zap.New(ya_zap.CLIConfig(log.InfoLevel))
 	if err != nil {
 		panic(err)
 	}

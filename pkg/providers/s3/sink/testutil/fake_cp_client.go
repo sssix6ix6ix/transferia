@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
-	"golang.org/x/exp/maps"
+	xmaps "golang.org/x/exp/maps"
 )
 
 // FakeClientWithTransferState is a fake controlplane client which stores sharded object transfer state
@@ -26,7 +26,7 @@ func (c *FakeClientWithTransferState) GetTransferState(transferID string) (map[s
 }
 
 func (c *FakeClientWithTransferState) StateKeys() []string {
-	stateKeys := maps.Keys(c.state)
+	stateKeys := xmaps.Keys(c.state)
 	sort.Strings(stateKeys)
 	return stateKeys
 }

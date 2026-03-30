@@ -11,30 +11,30 @@ import (
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/parsers"
-	"github.com/transferia/transferia/pkg/parsers/registry/blank"
-	"github.com/transferia/transferia/pkg/parsers/registry/json"
+	parser_blank "github.com/transferia/transferia/pkg/parsers/registry/blank"
+	parser_json "github.com/transferia/transferia/pkg/parsers/registry/json"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/chrecipe"
-	"github.com/transferia/transferia/pkg/providers/kafka"
-	"github.com/transferia/transferia/pkg/providers/kafka/client"
+	provider_kafka "github.com/transferia/transferia/pkg/providers/kafka"
+	kafka_client "github.com/transferia/transferia/pkg/providers/kafka/client"
 	"github.com/transferia/transferia/pkg/runtime/local"
 	"github.com/transferia/transferia/pkg/transformer"
-	"github.com/transferia/transferia/pkg/transformer/registry/jsonparser"
+	transformer_jsonparser "github.com/transferia/transferia/pkg/transformer/registry/jsonparser"
 	"github.com/transferia/transferia/tests/helpers"
 	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 func TestLogs(t *testing.T) {
-	src, err := kafka.SourceRecipe()
+	src, err := provider_kafka.SourceRecipe()
 	require.NoError(t, err)
 	src.Topic = "logs"
-	kafkaClient, err := client.NewClient(src.Connection.Brokers, nil, nil, nil)
+	kafkaClient, err := kafka_client.NewClient(src.Connection.Brokers, nil, nil, nil)
 	require.NoError(t, err)
 	require.NoError(t, kafkaClient.CreateTopicIfNotExist(logger.Log, src.Topic, nil))
 	dst, err := chrecipe.Target(chrecipe.WithInitFile("ch_init.sql"), chrecipe.WithDatabase("mtmobproxy"))
 	require.NoError(t, err)
 
 	src.Topic = "logs"
-	parserConfigMap, err := parsers.ParserConfigStructToMap(new(blank.ParserConfigBlankLb))
+	parserConfigMap, err := parsers.ParserConfigStructToMap(new(parser_blank.ParserConfigBlankLb))
 	require.NoError(t, err)
 	src.ParserConfig = parserConfigMap
 	require.NoError(t, err)
@@ -45,8 +45,8 @@ func TestLogs(t *testing.T) {
 	}
 	transfer.Transformation = &model.Transformation{
 		Transformers: &transformer.Transformers{Transformers: []transformer.Transformer{{
-			jsonparser.TransformerType: &jsonparser.Config{
-				Parser: &json.ParserConfigJSONCommon{
+			transformer_jsonparser.TransformerType: &transformer_jsonparser.Config{
+				Parser: &parser_json.ParserConfigJSONCommon{
 					Fields: []abstract.ColSchema{
 						{ColumnName: "msg", DataType: ytschema.TypeString.String()},
 					},

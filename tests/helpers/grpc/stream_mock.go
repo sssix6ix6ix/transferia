@@ -5,7 +5,7 @@ import (
 	"io"
 
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/metadata"
+	grpc_metadata "google.golang.org/grpc/metadata"
 )
 
 // MockServerStream is a mock implementation of grpc.ServerStream for testing.
@@ -47,12 +47,12 @@ func (m *MockServerStream[T]) RecvMsg(msg any) error {
 	return io.EOF
 }
 
-func (m *MockServerStream[T]) SetHeader(metadata.MD) error {
+func (m *MockServerStream[T]) SetHeader(grpc_metadata.MD) error {
 	return nil
 }
 
-func (m *MockServerStream[T]) SendHeader(metadata.MD) error {
+func (m *MockServerStream[T]) SendHeader(grpc_metadata.MD) error {
 	return nil
 }
 
-func (m *MockServerStream[T]) SetTrailer(metadata.MD) {}
+func (m *MockServerStream[T]) SetTrailer(grpc_metadata.MD) {}

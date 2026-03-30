@@ -5,33 +5,33 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/transferia/transferia/pkg/providers/mysql"
-	"github.com/transferia/transferia/pkg/providers/yt"
-	"github.com/transferia/transferia/pkg/providers/yt/storage"
+	provider_mysql "github.com/transferia/transferia/pkg/providers/mysql"
+	provider_yt "github.com/transferia/transferia/pkg/providers/yt"
+	yt_storage "github.com/transferia/transferia/pkg/providers/yt/storage"
 	"go.ytsaurus.tech/yt/go/ypath"
-	ytMain "go.ytsaurus.tech/yt/go/yt"
+	"go.ytsaurus.tech/yt/go/yt"
 	"go.ytsaurus.tech/yt/go/yttest"
 )
 
 type MySQL2YTTestFixture struct {
 	YTDir      ypath.Path
 	YTEnv      *yttest.Env
-	Src        *mysql.MysqlSource
-	Dst        yt.YtDestinationModel
-	SrcStorage *mysql.Storage
-	DstStorage *storage.Storage
+	Src        *provider_mysql.MysqlSource
+	Dst        provider_yt.YtDestinationModel
+	SrcStorage *provider_mysql.Storage
+	DstStorage *yt_storage.Storage
 
 	cancelYtEnv func()
 }
 
-func SetupMySQL2YTTest(t *testing.T, src *mysql.MysqlSource, dst yt.YtDestinationModel) *MySQL2YTTestFixture {
+func SetupMySQL2YTTest(t *testing.T, src *provider_mysql.MysqlSource, dst provider_yt.YtDestinationModel) *MySQL2YTTestFixture {
 	ytEnv, cancelYtEnv := yttest.NewEnv(t)
-	_, err := ytEnv.YT.CreateNode(context.Background(), ypath.Path(dst.Path()), ytMain.NodeMap, &ytMain.CreateNodeOptions{Recursive: true})
+	_, err := ytEnv.YT.CreateNode(context.Background(), ypath.Path(dst.Path()), yt.NodeMap, &yt.CreateNodeOptions{Recursive: true})
 	require.NoError(t, err)
 
-	mysqlStorage, err := mysql.NewStorage(src.ToStorageParams())
+	mysqlStorage, err := provider_mysql.NewStorage(src.ToStorageParams())
 	require.NoError(t, err)
-	ytStorage, err := storage.NewStorage(dst.ToStorageParams())
+	ytStorage, err := yt_storage.NewStorage(dst.ToStorageParams())
 	require.NoError(t, err)
 
 	return &MySQL2YTTestFixture{
@@ -46,7 +46,7 @@ func SetupMySQL2YTTest(t *testing.T, src *mysql.MysqlSource, dst yt.YtDestinatio
 }
 
 func (f *MySQL2YTTestFixture) Teardown(t *testing.T) {
-	err := f.YTEnv.YT.RemoveNode(context.Background(), f.YTDir, &ytMain.RemoveNodeOptions{Recursive: true, Force: true})
+	err := f.YTEnv.YT.RemoveNode(context.Background(), f.YTDir, &yt.RemoveNodeOptions{Recursive: true, Force: true})
 	require.NoError(t, err)
 	f.cancelYtEnv()
 }

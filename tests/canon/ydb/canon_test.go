@@ -11,10 +11,10 @@ import (
 	"github.com/transferia/transferia/library/go/core/metrics/solomon"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/ydb"
+	provider_ydb "github.com/transferia/transferia/pkg/providers/ydb"
 	"github.com/transferia/transferia/tests/canon/validator"
 	"github.com/transferia/transferia/tests/helpers"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 func init() {
@@ -22,7 +22,7 @@ func init() {
 }
 
 func TestCanonSource(t *testing.T) {
-	Source := &ydb.YdbSource{
+	Source := &provider_ydb.YdbSource{
 		Token:              model.SecretString(os.Getenv("YDB_TOKEN")),
 		Database:           helpers.GetEnvOfFail(t, "YDB_DATABASE"),
 		Instance:           helpers.GetEnvOfFail(t, "YDB_ENDPOINT"),
@@ -31,7 +31,7 @@ func TestCanonSource(t *testing.T) {
 		SubNetworkID:       "",
 		Underlay:           false,
 		ServiceAccountID:   "",
-		ChangeFeedMode:     ydb.ChangeFeedModeNewImage,
+		ChangeFeedMode:     provider_ydb.ChangeFeedModeNewImage,
 		UseFullPaths:       false,
 	}
 	Source.WithDefaults()
@@ -42,14 +42,14 @@ func TestCanonSource(t *testing.T) {
 		validator.InitDone(t),
 		validator.ValuesTypeChecker,
 		validator.Canonizator(t),
-		validator.TypesystemChecker(ydb.ProviderType, func(colSchema abstract.ColSchema) string {
+		validator.TypesystemChecker(provider_ydb.ProviderType, func(colSchema abstract.ColSchema) string {
 			return strings.TrimPrefix(colSchema.OriginalType, "ydb:")
 		}),
 	)
 }
 
 func TestCanonLongPathSource(t *testing.T) {
-	Source := &ydb.YdbSource{
+	Source := &provider_ydb.YdbSource{
 		Token:              model.SecretString(os.Getenv("YDB_TOKEN")),
 		Database:           helpers.GetEnvOfFail(t, "YDB_DATABASE"),
 		Instance:           helpers.GetEnvOfFail(t, "YDB_ENDPOINT"),
@@ -58,7 +58,7 @@ func TestCanonLongPathSource(t *testing.T) {
 		SubNetworkID:       "",
 		Underlay:           false,
 		ServiceAccountID:   "",
-		ChangeFeedMode:     ydb.ChangeFeedModeNewImage,
+		ChangeFeedMode:     provider_ydb.ChangeFeedModeNewImage,
 		UseFullPaths:       false,
 	}
 	Source.WithDefaults()
@@ -74,14 +74,14 @@ func TestCanonLongPathSource(t *testing.T) {
 	})
 }
 
-func runCanon(t *testing.T, Source *ydb.YdbSource, tablePath string, validators ...func() abstract.Sinker) {
-	Target := &ydb.YdbDestination{
+func runCanon(t *testing.T, Source *provider_ydb.YdbSource, tablePath string, validators ...func() abstract.Sinker) {
+	Target := &provider_ydb.YdbDestination{
 		Database: Source.Database,
 		Token:    Source.Token,
 		Instance: Source.Instance,
 	}
 	Target.WithDefaults()
-	sinker, err := ydb.NewSinker(logger.Log, Target, solomon.NewRegistry(solomon.NewRegistryOpts()))
+	sinker, err := provider_ydb.NewSinker(logger.Log, Target, solomon.NewRegistry(solomon.NewRegistryOpts()))
 	require.NoError(t, err)
 
 	currChangeItem := helpers.YDBInitChangeItem(tablePath)
@@ -92,9 +92,9 @@ func runCanon(t *testing.T, Source *ydb.YdbSource, tablePath string, validators 
 	require.Equal(t, "id", nullChangeItem.ColumnNames[0])
 	nullChangeItem.ColumnValues[0] = 801640048
 	for i := 1; i < len(nullChangeItem.ColumnValues); i++ {
-		if nullChangeItem.TableSchema.Columns()[i].DataType == string(schema.TypeDate) ||
-			nullChangeItem.TableSchema.Columns()[i].DataType == string(schema.TypeDatetime) ||
-			nullChangeItem.TableSchema.Columns()[i].DataType == string(schema.TypeTimestamp) {
+		if nullChangeItem.TableSchema.Columns()[i].DataType == string(ytschema.TypeDate) ||
+			nullChangeItem.TableSchema.Columns()[i].DataType == string(ytschema.TypeDatetime) ||
+			nullChangeItem.TableSchema.Columns()[i].DataType == string(ytschema.TypeTimestamp) {
 			continue
 		}
 		nullChangeItem.ColumnValues[i] = nil

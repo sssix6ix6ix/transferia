@@ -1,12 +1,12 @@
 package postgres
 
 import (
-	"database/sql/driver"
+	sql_driver "database/sql/driver"
 	"encoding/binary"
 	"encoding/json"
 	"net"
 
-	"github.com/gofrs/uuid"
+	gofrs_uuid "github.com/gofrs/uuid"
 	"github.com/jackc/pgio"
 	"github.com/jackc/pgtype"
 	"github.com/transferia/transferia/internal/logger"
@@ -105,7 +105,7 @@ func (ga *GenericArray) unpackTypes(val pgtype.Value, connInfo *pgtype.ConnInfo)
 			tmp := unpVal.([16]byte)
 			payload = tmp[:16]
 		}
-		return uuid.FromBytesOrNil(payload).String()
+		return gofrs_uuid.FromBytesOrNil(payload).String()
 	case *pgtype.Numeric:
 		if v.Status == pgtype.Null {
 			return nil
@@ -431,7 +431,7 @@ func (ga *GenericArray) Scan(_ interface{}) error {
 	return xerrors.New("unsupported")
 }
 
-func (ga *GenericArray) Value() (driver.Value, error) {
+func (ga *GenericArray) Value() (sql_driver.Value, error) {
 	return ga.GetValue(nil)
 }
 

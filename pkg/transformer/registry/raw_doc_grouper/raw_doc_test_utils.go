@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/pkg/abstract"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 const updateTime = uint64(1677510100000000000)
@@ -59,9 +59,9 @@ func dummyItemWithKindAndTable(params []colParams, kind abstract.Kind, table str
 		_, ok := param.Value.(int)
 		var dataType string
 		if ok {
-			dataType = schema.TypeInt32.String()
+			dataType = ytschema.TypeInt32.String()
 		} else {
-			dataType = schema.TypeBytes.String()
+			dataType = ytschema.TypeBytes.String()
 		}
 		colschema = append(colschema, abstract.ColSchema{
 			PrimaryKey:   param.IsPrimaryKey,

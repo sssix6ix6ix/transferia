@@ -9,7 +9,7 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/changeitem"
 	"github.com/transferia/transferia/pkg/util/jsonx"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 func (s *Storage) readRowsAndPushByChunks(
@@ -121,7 +121,7 @@ func extractColumnValues(schemaDescription *SchemaDescription, rawValues json.Ra
 		}
 
 		// possible array check for all non json fields
-		if column.DataType != schema.TypeAny.String() {
+		if column.DataType != ytschema.TypeAny.String() {
 			if reflect.TypeOf(value) != nil && ((reflect.TypeOf(value).Kind() == reflect.Slice) || (reflect.TypeOf(value).Kind() == reflect.Array)) {
 				return nil, nil, xerrors.Errorf("invalid field type array for single value field detected")
 			}

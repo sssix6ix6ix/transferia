@@ -13,12 +13,12 @@ import (
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/middlewares"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/chrecipe"
-	"github.com/transferia/transferia/pkg/sink"
-	clickhouse_transformer "github.com/transferia/transferia/pkg/transformer/registry/clickhouse"
-	"github.com/transferia/transferia/pkg/transformer/registry/filter"
-	"github.com/transferia/transferia/tests/canon/reference"
+	"github.com/transferia/transferia/pkg/sink_factory"
+	transformer_clickhouse "github.com/transferia/transferia/pkg/transformer/registry/clickhouse"
+	transformer_filter "github.com/transferia/transferia/pkg/transformer/registry/filter"
+	canon_reference "github.com/transferia/transferia/tests/canon/reference"
 	"github.com/transferia/transferia/tests/helpers"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 var (
@@ -39,13 +39,13 @@ func TestTransformerTypeInference(t *testing.T) {
 		{
 			TableName:  "table",
 			ColumnName: "_id",
-			DataType:   schema.TypeString.String(), // Downcast int32 -> int16
+			DataType:   ytschema.TypeString.String(), // Downcast int32 -> int16
 			PrimaryKey: true,
 		},
 		{
 			TableName:  "table",
 			ColumnName: "document",
-			DataType:   schema.TypeAny.String(), // Downcast int64 -> int32
+			DataType:   ytschema.TypeAny.String(), // Downcast int64 -> int32
 		},
 	})
 
@@ -93,16 +93,16 @@ FROM table
 			TableSchema:  sch,
 		},
 	}
-	transformer, err := clickhouse_transformer.New(clickhouse_transformer.Config{
-		Tables: filter.Tables{IncludeTables: []string{".*"}, ExcludeTables: nil},
+	transformer, err := transformer_clickhouse.New(transformer_clickhouse.Config{
+		Tables: transformer_filter.Tables{IncludeTables: []string{".*"}, ExcludeTables: nil},
 		Query:  query,
 	}, logger.Log)
 	require.NoError(t, err)
 
 	transfer := helpers.MakeTransfer(helpers.TransferID, &source, &target, abstract.TransferTypeSnapshotOnly)
 	require.NoError(t, transfer.AddExtraTransformer(transformer))
-	sinker, err := sink.MakeAsyncSink(transfer, &model.TransferOperation{}, logger.Log, solomon.NewRegistry(solomon.NewRegistryOpts()), coordinator.NewFakeClient(), middlewares.MakeConfig())
+	sinker, err := sink_factory.MakeAsyncSink(transfer, &model.TransferOperation{}, logger.Log, solomon.NewRegistry(solomon.NewRegistryOpts()), coordinator.NewFakeClient(), middlewares.MakeConfig())
 	require.NoError(t, err)
 	require.NoError(t, <-sinker.AsyncPush(items))
-	reference.Dump(t, &targetAsSource)
+	canon_reference.Dump(t, &targetAsSource)
 }

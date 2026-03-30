@@ -11,9 +11,9 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/chrecipe"
-	pgcommon "github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
-	"github.com/transferia/transferia/tests/canon/postgres"
+	postgres_canon "github.com/transferia/transferia/tests/canon/postgres"
 	"github.com/transferia/transferia/tests/e2e/pg2ch"
 	"github.com/transferia/transferia/tests/helpers"
 )
@@ -41,11 +41,11 @@ func TestSnapshotAndIncrement(t *testing.T) {
 		return func(t *testing.T) {
 			tid, err := abstract.ParseTableIDForProvider(tableName, abstract.ProviderType("pg"))
 			require.NoError(t, err)
-			conn, err := pgcommon.MakeConnPoolFromSrc(Source, logger.Log)
+			conn, err := provider_postgres.MakeConnPoolFromSrc(Source, logger.Log)
 			require.NoError(t, err)
 			_, err = conn.Exec(context.Background(), fmt.Sprintf(`drop table if exists %s`, tableName))
 			require.NoError(t, err)
-			_, err = conn.Exec(context.Background(), postgres.TableSQLs[tableName])
+			_, err = conn.Exec(context.Background(), postgres_canon.TableSQLs[tableName])
 			require.NoError(t, err)
 
 			transfer := helpers.MakeTransfer(
@@ -57,9 +57,9 @@ func TestSnapshotAndIncrement(t *testing.T) {
 			transfer.DataObjects = &model.DataObjects{IncludeObjects: []string{tableName}}
 			worker := helpers.Activate(t, transfer)
 
-			conn, err = pgcommon.MakeConnPoolFromSrc(Source, logger.Log)
+			conn, err = provider_postgres.MakeConnPoolFromSrc(Source, logger.Log)
 			require.NoError(t, err)
-			_, err = conn.Exec(context.Background(), postgres.TableSQLs[tableName])
+			_, err = conn.Exec(context.Background(), postgres_canon.TableSQLs[tableName])
 			require.NoError(t, err)
 			require.NoError(t, helpers.WaitEqualRowsCount(t, databaseName, tid.Name, helpers.GetSampleableStorageByModel(t, Source), helpers.GetSampleableStorageByModel(t, Target), 60*time.Second))
 			require.NoError(t, helpers.CompareStorages(t, Source, Target, helpers.NewCompareStorageParams().WithEqualDataTypes(pg2ch.PG2CHDataTypesComparator).WithPriorityComparators(pg2ch.ValueComparator)))

@@ -10,8 +10,8 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/util"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	mongo_driver "go.mongodb.org/mongo-driver/mongo"
+	mongo_options "go.mongodb.org/mongo-driver/mongo/options"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
@@ -19,8 +19,8 @@ import (
 // this is a default watcher (old behaviour)
 type databaseFullDocumentWatcher struct {
 	logger       log.Logger
-	database     *mongo.Database
-	changeStream *mongo.ChangeStream
+	database     *mongo_driver.Database
+	changeStream *mongo_driver.ChangeStream
 }
 
 func (f *databaseFullDocumentWatcher) GetResumeToken() bson.Raw {
@@ -69,7 +69,7 @@ func (f *databaseFullDocumentWatcher) Watch(ctx context.Context, pusher changeEv
 	return f.changeStream.Err()
 }
 
-func (s *mongoSource) pipelineToJSON(pipeline mongo.Pipeline) string {
+func (s *mongoSource) pipelineToJSON(pipeline mongo_driver.Pipeline) string {
 	canonical := true
 	escapeHTML := false
 	pipes := make([]string, len(pipeline))
@@ -124,11 +124,11 @@ func NewDatabaseFullDocumentWatcher(s *mongoSource, dbPu ParallelizationUnitData
 	})
 
 	// Build change stream options for full document mode
-	opts := &options.ChangeStreamOptions{}
+	opts := &mongo_options.ChangeStreamOptions{}
 	if rs == MongoReplicationSourcePerDatabaseFullDocument {
-		opts.SetFullDocument(options.UpdateLookup) // creates FullDocument field in change stream
+		opts.SetFullDocument(mongo_options.UpdateLookup) // creates FullDocument field in change stream
 	} else {
-		opts.SetFullDocument(options.Default)
+		opts.SetFullDocument(mongo_options.Default)
 	}
 
 	ts, err := dbPu.GetClusterTime(s.ctx, s.client)

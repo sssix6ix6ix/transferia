@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/transferia/transferia/kikimr/public/sdk/go/persqueue"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/stats"
@@ -45,7 +45,7 @@ type multiDcSource struct {
 	stats   map[string]*stats.SourceStats
 	errCh   chan error
 	logger  log.Logger
-	metrics metrics.Registry
+	metrics core_metrics.Registry
 	closeCh chan struct{}
 	lock    sync.Mutex
 	cfg     *LfSource
@@ -187,7 +187,7 @@ func (s *multiDcSource) Fetch() ([]abstract.ChangeItem, error) {
 	}
 }
 
-func NewMultiDCSource(cfg *LfSource, logger log.Logger, registry metrics.Registry) (abstract.Source, error) {
+func NewMultiDCSource(cfg *LfSource, logger log.Logger, registry core_metrics.Registry) (abstract.Source, error) {
 	sources := map[string]abstract.Source{}
 	configs := map[string]LfSource{}
 	statsM := map[string]*stats.SourceStats{}

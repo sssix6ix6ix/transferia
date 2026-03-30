@@ -5,22 +5,22 @@ import (
 	"time"
 
 	"github.com/dustin/go-humanize"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/pkg/abstract"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
 type WrapperStats struct {
-	registry          metrics.Registry
-	Lag               metrics.Timer
-	MaxLag            metrics.Gauge
-	Timer             metrics.Timer
-	RowEventsPushed   metrics.Counter
-	ChangeItemsPushed metrics.Counter
-	MaxReadLag        metrics.Gauge
+	registry          core_metrics.Registry
+	Lag               core_metrics.Timer
+	MaxLag            core_metrics.Gauge
+	Timer             core_metrics.Timer
+	RowEventsPushed   core_metrics.Counter
+	ChangeItemsPushed core_metrics.Counter
+	MaxReadLag        core_metrics.Gauge
 }
 
-var sinkerBuckets = metrics.NewDurationBuckets(
+var sinkerBuckets = core_metrics.NewDurationBuckets(
 	100*time.Millisecond,
 	500*time.Millisecond,
 	time.Second,
@@ -41,7 +41,7 @@ var sinkerBuckets = metrics.NewDurationBuckets(
 	48*time.Hour,
 )
 
-func NewWrapperStats(registry metrics.Registry) *WrapperStats {
+func NewWrapperStats(registry core_metrics.Registry) *WrapperStats {
 	return &WrapperStats{
 		registry:          registry,
 		Lag:               registry.DurationHistogram("sinker.pusher.time.row_lag_sec", sinkerBuckets),

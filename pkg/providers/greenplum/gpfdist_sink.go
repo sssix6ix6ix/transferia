@@ -8,12 +8,12 @@ import (
 
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/transferia/transferia/internal/logger"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/library/go/core/xerrors/multierr"
 	"github.com/transferia/transferia/pkg/abstract"
 	gpfdistbin "github.com/transferia/transferia/pkg/providers/greenplum/gpfdist/gpfdist_bin"
-	"github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/util"
 	"go.ytsaurus.tech/library/go/core/log"
 )
@@ -154,7 +154,7 @@ func (s *GpfdistSink) createTargetTable(ctx context.Context, ci *abstract.Change
 	}
 	rollbacks.Add(loggingRollbackTxFunc(ctx, tx))
 
-	if csq := postgres.CreateSchemaQueryOptional(ci.PgName()); len(csq) > 0 {
+	if csq := provider_postgres.CreateSchemaQueryOptional(ci.PgName()); len(csq) > 0 {
 		if _, err := tx.Exec(ctx, csq); err != nil {
 			logger.Log.Warn("Failed to execute CREATE SCHEMA IF NOT EXISTS query at table load initialization.", log.Error(err))
 		}
@@ -185,7 +185,7 @@ func (s *GpfdistSink) processCleanupChangeItem(_ context.Context, changeItem *ab
 	return nil
 }
 
-func NewGpfdistSink(dst *GpDestination, registry metrics.Registry, lgr log.Logger, transferID string, params gpfdistbin.GpfdistParams) (*GpfdistSink, error) {
+func NewGpfdistSink(dst *GpDestination, registry core_metrics.Registry, lgr log.Logger, transferID string, params gpfdistbin.GpfdistParams) (*GpfdistSink, error) {
 	storage := NewStorage(dst.ToGpSource(), registry)
 	conn, err := coordinatorConnFromStorage(storage)
 	if err != nil {

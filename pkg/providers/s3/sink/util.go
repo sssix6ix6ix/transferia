@@ -7,7 +7,7 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	s3_provider "github.com/transferia/transferia/pkg/providers/s3"
+	s3_model "github.com/transferia/transferia/pkg/providers/s3/model"
 	"github.com/transferia/transferia/pkg/serializer"
 	"github.com/transferia/transferia/pkg/util"
 	"github.com/transferia/transferia/pkg/util/xlocale"
@@ -35,7 +35,7 @@ func rowPart(row abstract.ChangeItem) string {
 	return res
 }
 
-func CreateSerializer(outputFormat model.ParsingFormat, anyAsString bool, parquetSetting *s3_provider.ParquetSerializerSettings) (serializer.BatchSerializer, error) {
+func CreateSerializer(outputFormat model.ParsingFormat, anyAsString bool, parquetSetting *s3_model.ParquetSerializerSettings) (serializer.BatchSerializer, error) {
 	var codecName string
 	if parquetSetting != nil {
 		codecName = parquetSetting.CompressionCodec

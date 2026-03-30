@@ -6,12 +6,12 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	aws_s3 "github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/logging/batching_logger"
-	"github.com/transferia/transferia/pkg/providers/s3"
-	"github.com/transferia/transferia/pkg/providers/s3/reader"
+	s3_model "github.com/transferia/transferia/pkg/providers/s3/model"
+	s3_reader "github.com/transferia/transferia/pkg/providers/s3/reader"
 	"github.com/transferia/transferia/pkg/providers/s3/s3util"
 	"github.com/transferia/transferia/pkg/providers/s3/s3util/dispatcher"
 	"github.com/transferia/transferia/pkg/providers/s3/s3util/effective_worker_num"
@@ -27,8 +27,8 @@ const listSize = 1000
 func ListNewMyFiles(
 	ctx context.Context,
 	logger log.Logger,
-	srcModel *s3.S3Source,
-	inReader reader.Reader,
+	srcModel *s3_model.S3Source,
+	inReader s3_reader.Reader,
 	s3client s3iface.S3API,
 	currDispatcher *dispatcher.Dispatcher,
 ) error {
@@ -112,8 +112,8 @@ func ListNewMyFiles(
 func ListAllReturnDispatcher(
 	ctx context.Context,
 	logger log.Logger,
-	registry metrics.Registry,
-	srcModel *s3.S3Source,
+	registry core_metrics.Registry,
+	srcModel *s3_model.S3Source,
 ) (*dispatcher.Dispatcher, error) {
 	_, s3client, currReader, _, err := s3sess.NewSessClientReaderMetrics(logger, srcModel, registry)
 	if err != nil {
@@ -151,8 +151,8 @@ func ListAllReturnDispatcher(
 func ListAll(
 	ctx context.Context,
 	logger log.Logger,
-	registry metrics.Registry,
-	srcModel *s3.S3Source,
+	registry core_metrics.Registry,
+	srcModel *s3_model.S3Source,
 ) ([]file.File, error) {
 	result, err := ListAllReturnDispatcher(ctx, logger, registry, srcModel)
 	if err != nil {

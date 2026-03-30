@@ -3,7 +3,7 @@ package ydb
 import (
 	"github.com/dustin/go-humanize"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	v3credential "github.com/ydb-platform/ydb-go-sdk/v3/credentials"
+	ydb_credentials "github.com/ydb-platform/ydb-go-sdk/v3/credentials"
 )
 
 const (
@@ -27,7 +27,7 @@ type YdbStorageParams struct {
 	UserdataAuth     bool   `log:"true"`
 	SAKeyContent     string
 	TokenServiceURL  string `log:"true"`
-	OAuth2Config     *v3credential.OAuth2Config
+	OAuth2Config     *ydb_credentials.OAuth2Config
 
 	RootCAFiles []string
 	TLSEnabled  bool `log:"true"`

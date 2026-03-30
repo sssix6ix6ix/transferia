@@ -1,15 +1,16 @@
-package s3
+package s3sess
 
 import (
 	"crypto/tls"
 	"net/http"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
+	aws_credentials "github.com/aws/aws-sdk-go/aws/credentials"
+	aws_session "github.com/aws/aws-sdk-go/aws/session"
 	aws_s3 "github.com/aws/aws-sdk-go/service/s3"
 	"github.com/transferia/transferia/library/go/core/xerrors"
-	creds "github.com/transferia/transferia/pkg/credentials"
+	"github.com/transferia/transferia/pkg/credentials"
+	s3_model "github.com/transferia/transferia/pkg/providers/s3/model"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
@@ -19,10 +20,10 @@ func findRegion(bucket, region string, s3ForcePathStyle bool) (string, error) {
 	}
 
 	// No region, assuming public bucket.
-	tmpSession, err := session.NewSession(&aws.Config{
+	tmpSession, err := aws_session.NewSession(&aws.Config{
 		Region:           aws.String("aws-global"),
 		S3ForcePathStyle: aws.Bool(s3ForcePathStyle),
-		Credentials:      credentials.AnonymousCredentials,
+		Credentials:      aws_credentials.AnonymousCredentials,
 	})
 	if err != nil {
 		return "", xerrors.Errorf("unable to init aws session: %w", err)
@@ -43,7 +44,7 @@ func findRegion(bucket, region string, s3ForcePathStyle bool) (string, error) {
 	return "", xerrors.NewSentinel("unknown region")
 }
 
-func NewAWSSession(lgr log.Logger, bucket string, cfg ConnectionConfig) (*session.Session, error) {
+func NewAWSSession(lgr log.Logger, bucket string, cfg s3_model.ConnectionConfig) (*aws_session.Session, error) {
 	region, err := findRegion(bucket, cfg.Region, cfg.S3ForcePathStyle)
 	if err != nil {
 		return nil, xerrors.Errorf("unable to find region: %w", err)
@@ -51,15 +52,15 @@ func NewAWSSession(lgr log.Logger, bucket string, cfg ConnectionConfig) (*sessio
 	cfg.Region = region
 
 	if cfg.ServiceAccountID != "" {
-		currCreds, err := creds.NewServiceAccountCreds(lgr, cfg.ServiceAccountID)
+		currCreds, err := credentials.NewServiceAccountCreds(lgr, cfg.ServiceAccountID)
 		if err != nil {
 			return nil, xerrors.Errorf("unable to get service account credentials: %w", err)
 		}
-		sess, err := session.NewSession(&aws.Config{
+		sess, err := aws_session.NewSession(&aws.Config{
 			Endpoint:         aws.String(cfg.Endpoint),
 			Region:           aws.String(cfg.Region),
 			S3ForcePathStyle: aws.Bool(cfg.S3ForcePathStyle),
-			Credentials:      credentials.AnonymousCredentials,
+			Credentials:      aws_credentials.AnonymousCredentials,
 			HTTPClient:       &http.Client{Transport: newCredentialsRoundTripper(currCreds, http.DefaultTransport)},
 		})
 		if err != nil {
@@ -68,11 +69,11 @@ func NewAWSSession(lgr log.Logger, bucket string, cfg ConnectionConfig) (*sessio
 		return sess, nil
 	}
 
-	cred := credentials.AnonymousCredentials
+	cred := aws_credentials.AnonymousCredentials
 	if cfg.AccessKey != "" {
-		cred = credentials.NewStaticCredentials(cfg.AccessKey, string(cfg.SecretKey), "")
+		cred = aws_credentials.NewStaticCredentials(cfg.AccessKey, string(cfg.SecretKey), "")
 	}
-	sess, err := session.NewSession(&aws.Config{
+	sess, err := aws_session.NewSession(&aws.Config{
 		Endpoint:         aws.String(cfg.Endpoint),
 		Region:           aws.String(cfg.Region),
 		S3ForcePathStyle: aws.Bool(cfg.S3ForcePathStyle),

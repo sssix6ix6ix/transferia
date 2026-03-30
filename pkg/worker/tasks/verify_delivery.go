@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
@@ -13,14 +13,14 @@ import (
 	"github.com/transferia/transferia/pkg/errors/categories"
 	"github.com/transferia/transferia/pkg/middlewares"
 	"github.com/transferia/transferia/pkg/providers"
-	"github.com/transferia/transferia/pkg/providers/postgres"
-	"github.com/transferia/transferia/pkg/sink"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
+	"github.com/transferia/transferia/pkg/sink_factory"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
-func VerifyDelivery(transfer model.Transfer, lgr log.Logger, registry metrics.Registry) error {
+func VerifyDelivery(transfer model.Transfer, lgr log.Logger, registry core_metrics.Registry) error {
 	switch dst := transfer.Dst.(type) {
-	case *postgres.PgDestination:
+	case *provider_postgres.PgDestination:
 		// _ping and other tables created if MaintainTables is set to true
 		dstMaintainTables := dst.MaintainTables
 		dst.MaintainTables = true
@@ -30,7 +30,7 @@ func VerifyDelivery(transfer model.Transfer, lgr log.Logger, registry metrics.Re
 			dst.MaintainTables = dstMaintainTables
 		}()
 	}
-	sink, err := sink.MakeAsyncSink(&transfer, new(model.TransferOperation), lgr, registry, coordinator.NewFakeClient(), middlewares.MakeConfig(middlewares.WithNoData))
+	sink, err := sink_factory.MakeAsyncSink(&transfer, new(model.TransferOperation), lgr, registry, coordinator.NewFakeClient(), middlewares.MakeConfig(middlewares.WithNoData))
 	if err != nil {
 		return xerrors.Errorf("unable to make sinker: %w", err)
 	}

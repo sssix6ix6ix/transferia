@@ -2,30 +2,30 @@ package delta
 
 import (
 	"github.com/transferia/transferia/pkg/abstract/typesystem"
-	"github.com/transferia/transferia/pkg/providers/delta/types"
-	"go.ytsaurus.tech/yt/go/schema"
+	delta_types "github.com/transferia/transferia/pkg/providers/delta/types"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 func init() {
-	typesystem.SourceRules(ProviderType, map[schema.Type][]string{
-		schema.TypeInt64:     new(types.LongType).Aliases(),
-		schema.TypeInt32:     new(types.IntegerType).Aliases(),
-		schema.TypeInt16:     new(types.ShortType).Aliases(),
-		schema.TypeInt8:      new(types.ByteType).Aliases(),
-		schema.TypeUint64:    {},
-		schema.TypeUint32:    {},
-		schema.TypeUint16:    {},
-		schema.TypeUint8:     {},
-		schema.TypeFloat32:   {new(types.DoubleType).Name()},
-		schema.TypeFloat64:   new(types.FloatType).Aliases(),
-		schema.TypeBytes:     {new(types.BinaryType).Name()},
-		schema.TypeString:    {new(types.StringType).Name()},
-		schema.TypeBoolean:   {new(types.BooleanType).Name()},
-		schema.TypeDate:      {new(types.DateType).Name()},
-		schema.TypeDatetime:  {},
-		schema.TypeTimestamp: {new(types.TimestampType).Name()},
-		schema.TypeInterval:  {},
-		schema.TypeAny: {
+	typesystem.SourceRules(ProviderType, map[ytschema.Type][]string{
+		ytschema.TypeInt64:     new(delta_types.LongType).Aliases(),
+		ytschema.TypeInt32:     new(delta_types.IntegerType).Aliases(),
+		ytschema.TypeInt16:     new(delta_types.ShortType).Aliases(),
+		ytschema.TypeInt8:      new(delta_types.ByteType).Aliases(),
+		ytschema.TypeUint64:    {},
+		ytschema.TypeUint32:    {},
+		ytschema.TypeUint16:    {},
+		ytschema.TypeUint8:     {},
+		ytschema.TypeFloat32:   {new(delta_types.DoubleType).Name()},
+		ytschema.TypeFloat64:   new(delta_types.FloatType).Aliases(),
+		ytschema.TypeBytes:     {new(delta_types.BinaryType).Name()},
+		ytschema.TypeString:    {new(delta_types.StringType).Name()},
+		ytschema.TypeBoolean:   {new(delta_types.BooleanType).Name()},
+		ytschema.TypeDate:      {new(delta_types.DateType).Name()},
+		ytschema.TypeDatetime:  {},
+		ytschema.TypeTimestamp: {new(delta_types.TimestampType).Name()},
+		ytschema.TypeInterval:  {},
+		ytschema.TypeAny: {
 			typesystem.RestPlaceholder,
 		},
 	})

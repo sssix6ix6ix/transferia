@@ -6,29 +6,29 @@ import (
 	"io"
 	"sync"
 
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	pgsink "github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
 type pgSinkWithPgStorage struct {
 	sink abstract.Sinker
-	pgs  *pgsink.Storage
+	pgs  *provider_postgres.Storage
 }
 
 type sinkConstructionOpts struct {
 	Lgr        log.Logger
 	TransferID string
-	Mtrcs      metrics.Registry
+	Mtrcs      core_metrics.Registry
 }
 
 type pgSinks interface {
 	io.Closer
 	PGSink(ctx context.Context, sp GPSegPointer, sinkParams PgSinkParamsRegulated) (abstract.Sinker, error)
 	TotalSegments(ctx context.Context) (int, error)
-	PGStorage(ctx context.Context, sp GPSegPointer) (*pgsink.Storage, error)
+	PGStorage(ctx context.Context, sp GPSegPointer) (*provider_postgres.Storage, error)
 }
 
 type pgSinksImpl struct {
@@ -39,7 +39,7 @@ type pgSinksImpl struct {
 	mutex               sync.Mutex
 }
 
-func newPgSinks(gps *Storage, lgr log.Logger, transferID string, mtrcs metrics.Registry) *pgSinksImpl {
+func newPgSinks(gps *Storage, lgr log.Logger, transferID string, mtrcs core_metrics.Registry) *pgSinksImpl {
 	return &pgSinksImpl{
 		sinks:   make(map[GPSegPointer]pgSinkWithPgStorage),
 		storage: gps,
@@ -70,7 +70,7 @@ func (s *pgSinksImpl) Close() error {
 }
 
 // PGStorage returns a PG Storage for the given segment. The resulting object MUST NOT be closed: it will be closed automatically when the sink itself is closed.
-func (s *pgSinksImpl) PGStorage(ctx context.Context, sp GPSegPointer) (*pgsink.Storage, error) {
+func (s *pgSinksImpl) PGStorage(ctx context.Context, sp GPSegPointer) (*provider_postgres.Storage, error) {
 	result, err := s.storage.PGStorage(ctx, sp)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to connect to Greenplum: %w", err)
@@ -97,7 +97,7 @@ func (s *pgSinksImpl) PGSink(ctx context.Context, sp GPSegPointer, sinkParams Pg
 	}
 
 	updatePGSPRegulatedForPGStorage(&sinkParams, actualStorage)
-	resultingSink, err := pgsink.NewSinkWithPool(ctx, s.opts.Lgr, s.opts.TransferID, sinkParams, s.opts.Mtrcs, actualStorage.Conn)
+	resultingSink, err := provider_postgres.NewSinkWithPool(ctx, s.opts.Lgr, s.opts.TransferID, sinkParams, s.opts.Mtrcs, actualStorage.Conn)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to create PostgreSQL sink object: %w", err)
 	}
@@ -121,7 +121,7 @@ func (s *pgSinksImpl) TotalSegments(ctx context.Context) (int, error) {
 	return s.totalSegmentsCached, nil
 }
 
-func updatePGSPRegulatedForPGStorage(params *PgSinkParamsRegulated, pgs *pgsink.Storage) {
+func updatePGSPRegulatedForPGStorage(params *PgSinkParamsRegulated, pgs *provider_postgres.Storage) {
 	params.FAllHosts = pgs.Config.AllHosts
 	params.FPort = pgs.Config.Port
 }

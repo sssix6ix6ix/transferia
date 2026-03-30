@@ -8,18 +8,18 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/mysql"
-	yt_provider "github.com/transferia/transferia/pkg/providers/yt"
+	provider_mysql "github.com/transferia/transferia/pkg/providers/mysql"
+	provider_yt "github.com/transferia/transferia/pkg/providers/yt"
 	"github.com/transferia/transferia/tests/e2e/mysql2ch"
 	"github.com/transferia/transferia/tests/helpers"
-	yt_helpers "github.com/transferia/transferia/tests/helpers/yt"
+	helpers_yt "github.com/transferia/transferia/tests/helpers/yt"
 	"go.ytsaurus.tech/yt/go/ypath"
-	yt_main "go.ytsaurus.tech/yt/go/yt"
+	"go.ytsaurus.tech/yt/go/yt"
 	"go.ytsaurus.tech/yt/go/yttest"
 )
 
 var (
-	Source = mysql.MysqlSource{
+	Source = provider_mysql.MysqlSource{
 		Host:                os.Getenv("RECIPE_MYSQL_HOST"),
 		User:                os.Getenv("RECIPE_MYSQL_USER"),
 		Password:            model.SecretString(os.Getenv("RECIPE_MYSQL_PASSWORD")),
@@ -27,7 +27,7 @@ var (
 		Port:                helpers.GetIntFromEnv("RECIPE_MYSQL_PORT"),
 		AllowDecimalAsFloat: true,
 	}
-	Target = yt_helpers.RecipeYtTarget("//home/cdc/test/mysql2yt_e2e_all_datatypes")
+	Target = helpers_yt.RecipeYtTarget("//home/cdc/test/mysql2yt_e2e_all_datatypes")
 )
 
 func init() {
@@ -49,14 +49,14 @@ func TestSnapshot(t *testing.T) {
 
 	ytEnv, cancel := yttest.NewEnv(t)
 	defer cancel()
-	_, err = ytEnv.YT.CreateNode(ctx, ypath.Path("//home/cdc/test/mysql2yt_e2e_all_datatypes"), yt_main.NodeMap, &yt_main.CreateNodeOptions{Recursive: true})
+	_, err = ytEnv.YT.CreateNode(ctx, ypath.Path("//home/cdc/test/mysql2yt_e2e_all_datatypes"), yt.NodeMap, &yt.CreateNodeOptions{Recursive: true})
 	defer func() {
-		err := ytEnv.YT.RemoveNode(ctx, ypath.Path("//home/cdc/test/mysql2yt_e2e_all_datatypes"), &yt_main.RemoveNodeOptions{Recursive: true})
+		err := ytEnv.YT.RemoveNode(ctx, ypath.Path("//home/cdc/test/mysql2yt_e2e_all_datatypes"), &yt.RemoveNodeOptions{Recursive: true})
 		require.NoError(t, err)
 	}()
 	require.NoError(t, err)
 
-	targetForCompare, ok := Target.(*yt_provider.YtDestinationWrapper)
+	targetForCompare, ok := Target.(*provider_yt.YtDestinationWrapper)
 	require.True(t, ok)
 
 	transfer := helpers.MakeTransfer(helpers.TransferID, &Source, Target, abstract.TransferTypeSnapshotOnly)

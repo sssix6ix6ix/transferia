@@ -3,7 +3,7 @@ package postgres
 import (
 	"time"
 
-	"github.com/gofrs/uuid"
+	gofrs_uuid "github.com/gofrs/uuid"
 	"github.com/jackc/pgproto3/v2"
 	"github.com/jackc/pgtype"
 	"github.com/jackc/pgx/v4"
@@ -151,12 +151,12 @@ func unmarshalFieldHomo(val any, schema *abstract.ColSchema) any {
 		vUUID := pgtype.UUID{}
 		if err := vUUID.Set(v); err != nil {
 			logger.Log.Info("failed to marshal (call Set) into UUID", log.Error(err))
-			return uuid.FromBytesOrNil(v[:16]).String()
+			return gofrs_uuid.FromBytesOrNil(v[:16]).String()
 		}
 		result, err := vUUID.Value()
 		if err != nil {
 			logger.Log.Info("failed to marshal (call Value) into UUID", log.Error(err))
-			return uuid.FromBytesOrNil(v[:16]).String()
+			return gofrs_uuid.FromBytesOrNil(v[:16]).String()
 		}
 		return result
 	case abstract.HomoValuer:

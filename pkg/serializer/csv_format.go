@@ -7,7 +7,7 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/util/castx"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 // toCsvValue converts a value to its CSV string representation based on the schema type.
@@ -40,56 +40,56 @@ func toCsvValue(value any, colSchema *abstract.ColSchema) (string, error) {
 
 	var err error
 	var csvValue string
-	switch schema.Type(colSchema.DataType) {
-	case schema.TypeBoolean:
+	switch ytschema.Type(colSchema.DataType) {
+	case ytschema.TypeBoolean:
 		// Boolean is stored as bool after strictify
 		csvValue, err = castx.ToStringE(value)
 
-	case schema.TypeInt8:
+	case ytschema.TypeInt8:
 		// Int8 is stored as int8 after strictify
 		csvValue, err = castx.ToStringE(value)
 
-	case schema.TypeInt16:
+	case ytschema.TypeInt16:
 		// Int16 is stored as int16 after strictify
 		csvValue, err = castx.ToStringE(value)
 
-	case schema.TypeInt32:
+	case ytschema.TypeInt32:
 		// Int32 is stored as int32 after strictify
 		csvValue, err = castx.ToStringE(value)
 
-	case schema.TypeInt64:
+	case ytschema.TypeInt64:
 		// Int64 is stored as int64 after strictify
 		csvValue, err = castx.ToStringE(value)
 
-	case schema.TypeUint8:
+	case ytschema.TypeUint8:
 		// Uint8 is stored as uint8 after strictify
 		csvValue, err = castx.ToStringE(value)
 
-	case schema.TypeUint16:
+	case ytschema.TypeUint16:
 		// Uint16 is stored as uint16 after strictify
 		csvValue, err = castx.ToStringE(value)
 
-	case schema.TypeUint32:
+	case ytschema.TypeUint32:
 		// Uint32 is stored as uint32 after strictify
 		csvValue, err = castx.ToStringE(value)
 
-	case schema.TypeUint64:
+	case ytschema.TypeUint64:
 		// Uint64 is stored as uint64 after strictify
 		csvValue, err = castx.ToStringE(value)
 
-	case schema.TypeFloat32:
+	case ytschema.TypeFloat32:
 		// Float32 is stored as float32 after strictify
 		csvValue, err = castx.ToStringE(value)
 
-	case schema.TypeFloat64:
+	case ytschema.TypeFloat64:
 		// Float64 is stored as json.Number after strictify
 		csvValue, err = castx.ToStringE(value)
 
-	case schema.TypeString:
+	case ytschema.TypeString:
 		// String is stored as string after strictify
 		csvValue, err = castx.ToStringE(value)
 
-	case schema.TypeBytes:
+	case ytschema.TypeBytes:
 		// Bytes is stored as []byte after strictify
 		// Encode bytes as base64 to safely represent arbitrary binary data in CSV.
 		// Direct string([]byte) conversion can corrupt data with invalid UTF-8 sequences.
@@ -99,15 +99,15 @@ func toCsvValue(value any, colSchema *abstract.ColSchema) (string, error) {
 		}
 		return base64.StdEncoding.EncodeToString(b), nil
 
-	case schema.TypeDate, schema.TypeDatetime, schema.TypeTimestamp:
+	case ytschema.TypeDate, ytschema.TypeDatetime, ytschema.TypeTimestamp:
 		// After strictify, value is always time.Time.
 		csvValue, err = castx.ToStringE(value)
 
-	case schema.TypeInterval:
+	case ytschema.TypeInterval:
 		// After strictify, value is always time.Duration.
 		csvValue, err = castx.ToStringE(value)
 
-	case schema.TypeAny:
+	case ytschema.TypeAny:
 		// Any is json.Marshalable after strictify
 		rawJSON, err := json.Marshal(value)
 		if err != nil {

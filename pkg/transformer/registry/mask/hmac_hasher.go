@@ -9,8 +9,8 @@ import (
 	"strings"
 
 	"github.com/transferia/transferia/pkg/abstract"
-	"github.com/transferia/transferia/pkg/transformer/registry/filter"
-	tostring "github.com/transferia/transferia/pkg/transformer/registry/to_string"
+	transformer_filter "github.com/transferia/transferia/pkg/transformer/registry/filter"
+	transformer_to_string "github.com/transferia/transferia/pkg/transformer/registry/to_string"
 	"github.com/transferia/transferia/pkg/util/set"
 	"go.ytsaurus.tech/library/go/core/log"
 	ytschema "go.ytsaurus.tech/yt/go/schema"
@@ -19,7 +19,7 @@ import (
 const MaskFieldTransformerType = abstract.TransformerType("mask_field")
 
 type HmacHasher struct {
-	Tables      filter.Filter
+	Tables      transformer_filter.Filter
 	Columns     *set.Set[string]
 	HashFactory func() hash.Hash
 	Salt        string
@@ -28,7 +28,7 @@ type HmacHasher struct {
 
 func (hh *HmacHasher) hash(columnValue any, columnType string) string {
 	sig := hmac.New(hh.HashFactory, []byte(hh.Salt))
-	sig.Write([]byte(tostring.SerializeToString(columnValue, columnType)))
+	sig.Write([]byte(transformer_to_string.SerializeToString(columnValue, columnType)))
 	return hex.EncodeToString(sig.Sum(nil))
 }
 
@@ -74,7 +74,7 @@ func (hh *HmacHasher) Apply(input []abstract.ChangeItem) abstract.TransformerRes
 }
 
 func (hh *HmacHasher) Suitable(table abstract.TableID, schema *abstract.TableSchema) bool {
-	if !filter.MatchAnyTableNameVariant(hh.Tables, table) {
+	if !transformer_filter.MatchAnyTableNameVariant(hh.Tables, table) {
 		return false
 	}
 	if hh.Columns.Empty() {
@@ -102,7 +102,7 @@ func (hh *HmacHasher) Description() string {
 		tablesIncluded, tablesExcluded)
 }
 
-func NewHmacHasherTransformer(config MaskFunctionHash, lgr log.Logger, tables filter.Filter, columns []string) (abstract.Transformer, error) {
+func NewHmacHasherTransformer(config MaskFunctionHash, lgr log.Logger, tables transformer_filter.Filter, columns []string) (abstract.Transformer, error) {
 	columnsSet := set.New(columns...)
 	return &HmacHasher{
 		Tables:      tables,

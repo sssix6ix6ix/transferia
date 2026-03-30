@@ -4,15 +4,15 @@ import (
 	"strings"
 
 	"github.com/transferia/transferia/internal/logger"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/errors/coded"
-	"github.com/transferia/transferia/pkg/errors/codes"
+	error_codes "github.com/transferia/transferia/pkg/errors/codes"
 	"github.com/transferia/transferia/pkg/middlewares"
-	"github.com/transferia/transferia/pkg/sink"
+	"github.com/transferia/transferia/pkg/sink_factory"
 )
 
 func CheckMySQLBinlogRowImageFormat(source *MysqlSource) error {
@@ -80,7 +80,7 @@ func RemoveTracker(src *MysqlSource, id string, cp coordinator.Coordinator) erro
 	return nil
 }
 
-func LoadMysqlSchema(transfer *model.Transfer, task *model.TransferOperation, registry metrics.Registry, isAfter bool) error {
+func LoadMysqlSchema(transfer *model.Transfer, task *model.TransferOperation, registry core_metrics.Registry, isAfter bool) error {
 	mysqlSource, ok := transfer.Src.(*MysqlSource)
 	if !ok {
 		return nil
@@ -88,7 +88,7 @@ func LoadMysqlSchema(transfer *model.Transfer, task *model.TransferOperation, re
 	if transfer.SrcType() != transfer.DstType() {
 		return nil
 	}
-	sink, err := sink.MakeAsyncSink(transfer, task, logger.Log, registry, coordinator.NewFakeClient(), middlewares.MakeConfig(middlewares.WithNoData))
+	sink, err := sink_factory.MakeAsyncSink(transfer, task, logger.Log, registry, coordinator.NewFakeClient(), middlewares.MakeConfig(middlewares.WithNoData))
 	if err != nil {
 		return xerrors.Errorf("unable to make sinker: %w", err)
 	}
@@ -131,7 +131,7 @@ func checkRestrictedColumnTypes(transfer *model.Transfer, tables abstract.TableM
 	for tableID, table := range tables {
 		for _, column := range table.Schema.Columns() {
 			if strings.HasPrefix(strings.ToLower(column.OriginalType), "mysql:decimal") {
-				return coded.Errorf(codes.MySQLDecimalNotAllowed, "table %s contains column %q of type %s. Columns of decimal types currently are not supported. Please exclude the table from the transfer", tableID.Fqtn(), column.ColumnName, column.OriginalType)
+				return coded.Errorf(error_codes.MySQLDecimalNotAllowed, "table %s contains column %q of type %s. Columns of decimal types currently are not supported. Please exclude the table from the transfer", tableID.Fqtn(), column.ColumnName, column.OriginalType)
 			}
 		}
 	}

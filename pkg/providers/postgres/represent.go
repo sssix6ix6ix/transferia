@@ -2,7 +2,7 @@ package postgres
 
 import (
 	"bytes"
-	"database/sql/driver"
+	sql_driver "database/sql/driver"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -13,7 +13,7 @@ import (
 	"github.com/jackc/pgtype"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 func appendEscapedSingleQuotesToWriter(w *bytes.Buffer, s string) {
@@ -105,13 +105,13 @@ func appendRepresentTimeToWriter(w *bytes.Buffer, v time.Time, colSchema abstrac
 	)
 
 	switch colSchema.DataType {
-	case schema.TypeDate.String():
+	case ytschema.TypeDate.String():
 		t = v.UTC()
 		layout = PgDateFormat
-	case schema.TypeDatetime.String():
+	case ytschema.TypeDatetime.String():
 		t = v.UTC()
 		layout = PgDatetimeFormat
-	case schema.TypeTimestamp.String():
+	case ytschema.TypeTimestamp.String():
 		// note `v` is not converted to UTC. As a result, when the target field is TIMESTAMP WITHOUT TIME ZONE, the incoming value of the timestamp will be preserved, but its timezone will be (automatically) set to the local time zone of the target database
 		t = v
 		layout = PgTimestampFormat
@@ -144,7 +144,7 @@ func recursiveRepresentToWriter(w *bytes.Buffer, val interface{}, colSchema abst
 		val = (*pgtype.Inet)(v)
 	}
 
-	if v, ok := val.(driver.Valuer); ok {
+	if v, ok := val.(sql_driver.Valuer); ok {
 		vv, _ := v.Value()
 
 		if strings.HasPrefix(colSchema.OriginalType, "pg:time") &&
@@ -186,7 +186,7 @@ func recursiveRepresentToWriter(w *bytes.Buffer, val interface{}, colSchema abst
 		return recursiveRepresentToWriter(w, vv, colSchema)
 	}
 
-	if colSchema.OriginalType == "" && colSchema.DataType == schema.TypeAny.String() { // no-homo json
+	if colSchema.OriginalType == "" && colSchema.DataType == ytschema.TypeAny.String() { // no-homo json
 		s, _ := json.Marshal(val)
 		_ = w.WriteByte('\'')
 		appendEscapedSingleQuotesBytesToWriter(w, s)
@@ -202,7 +202,7 @@ func recursiveRepresentToWriter(w *bytes.Buffer, val interface{}, colSchema abst
 	}
 
 	// handle pg:enum in homo cases, when it was fallback from COPY (if CopyUpload() allowed)
-	if strings.HasPrefix(colSchema.OriginalType, "pg:") && colSchema.DataType == schema.TypeAny.String() && GetPropertyEnumAllValues(&colSchema) != nil {
+	if strings.HasPrefix(colSchema.OriginalType, "pg:") && colSchema.DataType == ytschema.TypeAny.String() && GetPropertyEnumAllValues(&colSchema) != nil {
 		if bytes, ok := val.([]byte); ok {
 			_ = w.WriteByte('\'')
 			appendEscapedSingleQuotesBytesToWriter(w, bytes)
@@ -214,7 +214,7 @@ func recursiveRepresentToWriter(w *bytes.Buffer, val interface{}, colSchema abst
 	switch v := val.(type) {
 	case string:
 		switch colSchema.DataType {
-		case schema.TypeBytes.String():
+		case ytschema.TypeBytes.String():
 			_ = w.WriteByte('\'')
 			appendEscapedBackslashesAndSingleQuotesToWriter(w, v)
 			_ = w.WriteByte('\'')
@@ -264,7 +264,7 @@ func recursiveRepresentToWriter(w *bytes.Buffer, val interface{}, colSchema abst
 			writeQuotedInt64(w, int64(v))
 			return nil
 		}
-		if colSchema.DataType == schema.TypeFloat64.String() {
+		if colSchema.DataType == ytschema.TypeFloat64.String() {
 			// Will print all available float point numbers.
 			writeQuotedFloat64(w, v, 'g', -1)
 			return nil
@@ -356,11 +356,11 @@ func representTime(v time.Time, colSchema abstract.ColSchema) string {
 	var result string
 
 	switch colSchema.DataType {
-	case schema.TypeDate.String():
+	case ytschema.TypeDate.String():
 		result = v.UTC().Format(PgDateFormat)
-	case schema.TypeDatetime.String():
+	case ytschema.TypeDatetime.String():
 		result = v.UTC().Format(PgDatetimeFormat)
-	case schema.TypeTimestamp.String():
+	case ytschema.TypeTimestamp.String():
 		// note `v` is not converted to UTC. As a result, when the target field is TIMESTAMP WITHOUT TIME ZONE, the incoming value of the timestamp will be preserved, but its timezone will be (automatically) set to the local time zone of the target database
 		result = v.Format(PgTimestampFormat)
 	default:

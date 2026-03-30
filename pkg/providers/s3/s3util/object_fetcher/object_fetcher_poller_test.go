@@ -11,7 +11,7 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/s3"
+	s3_model "github.com/transferia/transferia/pkg/providers/s3/model"
 	reader_factory "github.com/transferia/transferia/pkg/providers/s3/reader/registry"
 	"github.com/transferia/transferia/pkg/providers/s3/s3util/coordinator_utils"
 	"github.com/transferia/transferia/pkg/providers/s3/s3util/effective_worker_num"
@@ -26,7 +26,7 @@ import (
 func TestObjectFetcherPoller(t *testing.T) {
 	fakeS3Client := fake_s3.NewFakeS3Client(t)
 
-	srcModel := &s3.S3Source{
+	srcModel := &s3_model.S3Source{
 		InputFormat: model.ParsingFormatCSV,
 		OutputSchema: []abstract.ColSchema{
 			{ColumnName: "my_col", DataType: ytschema.TypeUint64.String()},
@@ -170,7 +170,7 @@ func TestFlush(t *testing.T) {
 
 	fakeS3Client := fake_s3.NewFakeS3Client(t)
 
-	srcModel := &s3.S3Source{
+	srcModel := &s3_model.S3Source{
 		InputFormat: model.ParsingFormatCSV,
 		OutputSchema: []abstract.ColSchema{
 			{ColumnName: "my_col", DataType: ytschema.TypeUint64.String()},

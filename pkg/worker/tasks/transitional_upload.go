@@ -5,12 +5,12 @@ import (
 	"fmt"
 
 	"github.com/transferia/transferia/internal/logger"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/storage"
+	"github.com/transferia/transferia/pkg/storage_factory"
 	"github.com/transferia/transferia/pkg/terryid"
 	"github.com/transferia/transferia/pkg/util"
 	"go.ytsaurus.tech/library/go/core/log"
@@ -18,7 +18,7 @@ import (
 
 // TransitUpload is shitty method mainly for transfers with LB in the middle,
 // so we could make @lupach happy and isolate crappy code in separate func.
-func TransitUpload(ctx context.Context, cp coordinator.Coordinator, transfer model.Transfer, task *model.TransferOperation, spec UploadSpec, registry metrics.Registry) error {
+func TransitUpload(ctx context.Context, cp coordinator.Coordinator, transfer model.Transfer, task *model.TransferOperation, spec UploadSpec, registry core_metrics.Registry) error {
 	rollbacks := util.Rollbacks{}
 	defer rollbacks.Do()
 
@@ -140,7 +140,7 @@ func TransitUpload(ctx context.Context, cp coordinator.Coordinator, transfer mod
 }
 
 // TransitReupload is shitty method mainly for transfers with LB in the middle, same as TransitUpload
-func TransitReupload(ctx context.Context, cp coordinator.Coordinator, transfer model.Transfer, task model.TransferOperation, registry metrics.Registry) error {
+func TransitReupload(ctx context.Context, cp coordinator.Coordinator, transfer model.Transfer, task model.TransferOperation, registry core_metrics.Registry) error {
 	snapshotLoader := NewSnapshotLoader(cp, &task, &transfer, registry)
 	if !transfer.IsMain() {
 		if err := snapshotLoader.UploadTables(ctx, nil, false); err != nil {
@@ -200,7 +200,7 @@ func TransitReupload(ctx context.Context, cp coordinator.Coordinator, transfer m
 		if rut.Dst.CleanupMode() != model.DisabledCleanup {
 			tables, err := ObtainAllSrcTables(rut, registry)
 			if err != nil {
-				if xerrors.Is(err, storage.UnsupportedSourceErr) {
+				if xerrors.Is(err, storage_factory.UnsupportedSourceErr) {
 					continue
 				}
 				return xerrors.Errorf(tableListErrorText, err)
@@ -224,7 +224,7 @@ func TransitReupload(ctx context.Context, cp coordinator.Coordinator, transfer m
 }
 
 // TransitionalAddTables same as above
-func TransitionalAddTables(ctx context.Context, cp coordinator.Coordinator, transfer model.Transfer, task model.TransferOperation, tables []string, registry metrics.Registry) error {
+func TransitionalAddTables(ctx context.Context, cp coordinator.Coordinator, transfer model.Transfer, task model.TransferOperation, tables []string, registry core_metrics.Registry) error {
 	linkedTransfers, err := GetLeftTerminalTransfers(cp, transfer)
 	if err != nil {
 		return xerrors.Errorf("Unable to resolve left terminal transfer: %w", err)

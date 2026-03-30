@@ -7,10 +7,10 @@ import (
 	"github.com/spf13/cast"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	"github.com/transferia/transferia/pkg/providers/mysql/unmarshaller/types"
+	mysql_unmarshaller_types "github.com/transferia/transferia/pkg/providers/mysql/unmarshaller/types"
 	"github.com/transferia/transferia/pkg/util/castx"
 	"github.com/transferia/transferia/pkg/util/strict"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 func unmarshalHetero(value interface{}, colSchema *abstract.ColSchema) (any, error) {
@@ -23,26 +23,26 @@ func unmarshalHetero(value interface{}, colSchema *abstract.ColSchema) (any, err
 
 	// in the switch below, the usage of `UnexpectedSQL` indicates an unexpected or even impossible situation.
 	// However, in order for Data Transfer to remain resilient, "unexpected" casts must exist
-	switch schema.Type(colSchema.DataType) {
-	case schema.TypeInt64:
+	switch ytschema.Type(colSchema.DataType) {
+	case ytschema.TypeInt64:
 		result, err = strict.ExpectedSQL[*sql.NullInt64](value, cast.ToInt64E)
-	case schema.TypeInt32:
+	case ytschema.TypeInt32:
 		result, err = strict.UnexpectedSQL(value, cast.ToInt32E)
-	case schema.TypeInt16:
+	case ytschema.TypeInt16:
 		result, err = strict.ExpectedSQL[*sql.NullInt64](value, cast.ToInt16E)
-	case schema.TypeInt8:
+	case ytschema.TypeInt8:
 		result, err = strict.ExpectedSQL[*sql.NullInt64](value, cast.ToInt8E)
-	case schema.TypeUint64:
-		result, err = strict.ExpectedSQL[*types.NullUint64](value, cast.ToUint64E)
-	case schema.TypeUint32:
+	case ytschema.TypeUint64:
+		result, err = strict.ExpectedSQL[*mysql_unmarshaller_types.NullUint64](value, cast.ToUint64E)
+	case ytschema.TypeUint32:
 		result, err = strict.UnexpectedSQL(value, cast.ToUint32E)
-	case schema.TypeUint16:
+	case ytschema.TypeUint16:
 		result, err = strict.ExpectedSQL[*sql.NullInt64](value, cast.ToUint16E)
-	case schema.TypeUint8:
+	case ytschema.TypeUint8:
 		result, err = strict.ExpectedSQL[*sql.NullInt64](value, cast.ToUint8E)
-	case schema.TypeFloat32:
+	case ytschema.TypeFloat32:
 		result, err = strict.UnexpectedSQL(value, cast.ToFloat32E)
-	case schema.TypeFloat64:
+	case ytschema.TypeFloat64:
 		switch v := value.(type) {
 		case *sql.NullFloat64:
 			result, err = strict.ExpectedSQL[*sql.NullFloat64](v, castx.ToJSONNumberE)
@@ -51,24 +51,24 @@ func unmarshalHetero(value interface{}, colSchema *abstract.ColSchema) (any, err
 		default:
 			result, err = strict.UnexpectedSQL(v, castx.ToJSONNumberE)
 		}
-	case schema.TypeBytes:
+	case ytschema.TypeBytes:
 		switch v := value.(type) {
 		case *[]byte:
 			result, err = strict.Expected[[]byte](unwrapBytes(v), castx.ToByteSliceE)
 		default:
 			result, err = strict.UnexpectedSQL(v, castx.ToByteSliceE)
 		}
-	case schema.TypeBoolean:
+	case ytschema.TypeBoolean:
 		result, err = strict.UnexpectedSQL(value, cast.ToBoolE)
-	case schema.TypeDate:
-		result, err = strict.ExpectedSQL[*types.Temporal](value, cast.ToTimeE)
-	case schema.TypeDatetime:
+	case ytschema.TypeDate:
+		result, err = strict.ExpectedSQL[*mysql_unmarshaller_types.Temporal](value, cast.ToTimeE)
+	case ytschema.TypeDatetime:
 		result, err = strict.UnexpectedSQL(value, cast.ToTimeE)
-	case schema.TypeTimestamp:
-		result, err = strict.ExpectedSQL[*types.Temporal](value, cast.ToTimeE)
-	case schema.TypeInterval:
+	case ytschema.TypeTimestamp:
+		result, err = strict.ExpectedSQL[*mysql_unmarshaller_types.Temporal](value, cast.ToTimeE)
+	case ytschema.TypeInterval:
 		result, err = strict.UnexpectedSQL(value, cast.ToDurationE)
-	case schema.TypeString:
+	case ytschema.TypeString:
 		switch v := value.(type) {
 		case *sql.NullString:
 			result, err = strict.ExpectedSQL[*sql.NullString](v, castx.ToStringE)
@@ -79,14 +79,14 @@ func unmarshalHetero(value interface{}, colSchema *abstract.ColSchema) (any, err
 		default:
 			result, err = strict.UnexpectedSQL(v, castx.ToStringE)
 		}
-	case schema.TypeAny:
-		result, err = strict.ExpectedSQL[*types.JSON](value, castx.ToJSONMarshallableE[any])
+	case ytschema.TypeAny:
+		result, err = strict.ExpectedSQL[*mysql_unmarshaller_types.JSON](value, castx.ToJSONMarshallableE[any])
 	default:
 		return nil, abstract.NewFatalError(xerrors.Errorf("unexpected target type %s (original type %q, value of type %T), unmarshalling is not implemented", colSchema.DataType, colSchema.OriginalType, value))
 	}
 
 	if err != nil {
-		return nil, abstract.NewStrictifyError(colSchema, schema.Type(colSchema.DataType), err)
+		return nil, abstract.NewStrictifyError(colSchema, ytschema.Type(colSchema.DataType), err)
 	}
 	return result, nil
 }

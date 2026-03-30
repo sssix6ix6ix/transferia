@@ -6,7 +6,7 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/parsers"
-	debeziumengine "github.com/transferia/transferia/pkg/parsers/registry/debezium/engine"
+	debezium_engine "github.com/transferia/transferia/pkg/parsers/registry/debezium/engine"
 	"github.com/transferia/transferia/pkg/schemaregistry/confluent"
 	"github.com/transferia/transferia/pkg/stats"
 	"go.ytsaurus.tech/library/go/core/log"
@@ -35,7 +35,7 @@ func NewParserDebezium(inWrapped interface{}, _ bool, logger log.Logger, _ *stat
 			}
 			client.SetCredentials(username, password)
 		}
-		return debeziumengine.NewDebeziumImpl(logger, client, uint64(runtime.NumCPU()*4)), nil
+		return debezium_engine.NewDebeziumImpl(logger, client, uint64(runtime.NumCPU()*4)), nil
 	}
 
 	if namespaceID != "" {

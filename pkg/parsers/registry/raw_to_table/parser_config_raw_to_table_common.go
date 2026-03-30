@@ -1,7 +1,7 @@
 package raw_to_table
 
 import (
-	"github.com/transferia/transferia/pkg/parsers/registry/raw_to_table/engine"
+	raw_to_table_engine "github.com/transferia/transferia/pkg/parsers/registry/raw_to_table/engine"
 	"github.com/transferia/transferia/pkg/parsers/registry/raw_to_table/raw_to_table_model"
 )
 
@@ -30,8 +30,8 @@ func (c *ParserConfigRawToTableCommon) IsAppendOnly() bool {
 	return true
 }
 
-func (c *ParserConfigRawToTableCommon) toCommonConfig() *engine.CommonConfig {
-	return &engine.CommonConfig{
+func (c *ParserConfigRawToTableCommon) toCommonConfig() *raw_to_table_engine.CommonConfig {
+	return &raw_to_table_engine.CommonConfig{
 		TableName: c.TableName,
 
 		IsKeyEnabled: c.IsKeyEnabled,

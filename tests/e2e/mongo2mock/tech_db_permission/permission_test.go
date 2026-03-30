@@ -10,9 +10,9 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	cpclient "github.com/transferia/transferia/pkg/abstract/coordinator"
+	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	mongocommon "github.com/transferia/transferia/pkg/providers/mongo"
+	provider_mongo "github.com/transferia/transferia/pkg/providers/mongo"
 	"github.com/transferia/transferia/pkg/runtime/local"
 	"github.com/transferia/transferia/pkg/worker/tasks"
 	"github.com/transferia/transferia/tests/helpers"
@@ -33,8 +33,8 @@ var (
 	transferUserPassword = os.Getenv("TRANSFER_USER_PASSWORD")
 )
 
-func getSource(user, password string, collection ...mongocommon.MongoCollection) *mongocommon.MongoSource {
-	return &mongocommon.MongoSource{
+func getSource(user, password string, collection ...provider_mongo.MongoCollection) *provider_mongo.MongoSource {
+	return &provider_mongo.MongoSource{
 		Hosts:       []string{"localhost"},
 		Port:        port,
 		User:        user,
@@ -47,15 +47,15 @@ var (
 	adminUserSource = getSource(adminUserName, adminUserPassword)
 )
 
-func connect(source *mongocommon.MongoSource) (*mongocommon.MongoClientWrapper, error) {
-	client, err := mongocommon.Connect(context.Background(), source.ConnectionOptions([]string{}), nil)
+func connect(source *provider_mongo.MongoSource) (*provider_mongo.MongoClientWrapper, error) {
+	client, err := provider_mongo.Connect(context.Background(), source.ConnectionOptions([]string{}), nil)
 	if err != nil {
 		return nil, err
 	}
 	return client, nil
 }
 
-func makeReadOnlyUser(ctx context.Context, adminSource *mongocommon.MongoSource, userName, userPassword string) error {
+func makeReadOnlyUser(ctx context.Context, adminSource *provider_mongo.MongoSource, userName, userPassword string) error {
 	client, err := connect(adminSource)
 	if err != nil {
 		return err
@@ -93,7 +93,7 @@ func makeReadOnlyUser(ctx context.Context, adminSource *mongocommon.MongoSource,
 
 // TODO(@kry127) refactor doubles: https://github.com/transferia/transferia/arc_vcs/transfer_manager/go/pkg/worker/tasks/e2e/load_sharded_snapshot_test.go?rev=r9868991#L111
 type permissionSinker struct {
-	bannedCollections []mongocommon.MongoCollection
+	bannedCollections []provider_mongo.MongoCollection
 }
 
 func (d permissionSinker) Close() error { return nil }
@@ -110,13 +110,13 @@ func (d permissionSinker) Push(items []abstract.ChangeItem) error {
 	return nil
 }
 
-func makePermissionSinker(bannedCollections ...mongocommon.MongoCollection) *permissionSinker {
+func makePermissionSinker(bannedCollections ...provider_mongo.MongoCollection) *permissionSinker {
 	return &permissionSinker{
 		bannedCollections: bannedCollections,
 	}
 }
 
-func snapshotAndIncrement(t *testing.T, ctx context.Context, source *mongocommon.MongoSource, permissionSinker *permissionSinker,
+func snapshotAndIncrement(t *testing.T, ctx context.Context, source *provider_mongo.MongoSource, permissionSinker *permissionSinker,
 	sourceDB, collection string, expectError bool) {
 	adminClient, err := connect(adminUserSource)
 	require.NoError(t, err)
@@ -172,10 +172,10 @@ func snapshotAndIncrement(t *testing.T, ctx context.Context, source *mongocommon
 		}
 	}
 
-	err = tasks.ActivateDelivery(context.TODO(), nil, cpclient.NewFakeClient(), transfer, helpers.EmptyRegistry())
+	err = tasks.ActivateDelivery(context.TODO(), nil, coordinator.NewFakeClient(), transfer, helpers.EmptyRegistry())
 	accessErrorChecker(err)
 
-	localWorker := local.NewLocalWorker(cpclient.NewFakeClient(), &transfer, helpers.EmptyRegistry(), logger.Log)
+	localWorker := local.NewLocalWorker(coordinator.NewFakeClient(), &transfer, helpers.EmptyRegistry(), logger.Log)
 	defer localWorker.Stop() //nolint
 
 	//------------------------------------------------------------------------------------
@@ -199,7 +199,7 @@ func TestMongoPermissions(t *testing.T) {
 	t.Run("AttemptToWriteToReadonlyTest", func(t *testing.T) {
 		t.Skip("Skipped when fixing TM-4906, can be turned on again when auth will be working")
 		src := getSource(transferUserName, transferUserPassword,
-			mongocommon.MongoCollection{DatabaseName: readOnlyDatabase, CollectionName: collectionName},
+			provider_mongo.MongoCollection{DatabaseName: readOnlyDatabase, CollectionName: collectionName},
 		)
 		dst := makePermissionSinker()
 		snapshotAndIncrement(t, ctx, src, dst, readOnlyDatabase, collectionName, true)
@@ -207,27 +207,27 @@ func TestMongoPermissions(t *testing.T) {
 
 	t.Run("ReadFromReadOnlyWriteToTechnicalTest", func(t *testing.T) {
 		src := getSource(transferUserName, transferUserPassword,
-			mongocommon.MongoCollection{DatabaseName: readOnlyDatabase, CollectionName: collectionName},
+			provider_mongo.MongoCollection{DatabaseName: readOnlyDatabase, CollectionName: collectionName},
 		)
 		src.TechnicalDatabase = technicalDatabase
-		dst := makePermissionSinker(mongocommon.MongoCollection{DatabaseName: technicalDatabase, CollectionName: "*"})
+		dst := makePermissionSinker(provider_mongo.MongoCollection{DatabaseName: technicalDatabase, CollectionName: "*"})
 		snapshotAndIncrement(t, ctx, src, dst, readOnlyDatabase, collectionName, false)
 	})
 	t.Run("ReadFromLegacyOplog", func(t *testing.T) {
 		src := getSource(adminUserName, adminUserPassword,
-			mongocommon.MongoCollection{DatabaseName: readOnlyDatabase, CollectionName: collectionName},
+			provider_mongo.MongoCollection{DatabaseName: readOnlyDatabase, CollectionName: collectionName},
 		)
-		src.ReplicationSource = mongocommon.MongoReplicationSourceOplog
-		dst := makePermissionSinker(mongocommon.MongoCollection{DatabaseName: mongocommon.DataTransferSystemDatabase, CollectionName: "*"})
+		src.ReplicationSource = provider_mongo.MongoReplicationSourceOplog
+		dst := makePermissionSinker(provider_mongo.MongoCollection{DatabaseName: provider_mongo.DataTransferSystemDatabase, CollectionName: "*"})
 		snapshotAndIncrement(t, ctx, src, dst, readOnlyDatabase, collectionName, false)
 	})
 	t.Run("ReadFromLegacyOplogOverrideDB", func(t *testing.T) {
 		src := getSource(adminUserName, adminUserPassword,
-			mongocommon.MongoCollection{DatabaseName: readOnlyDatabase, CollectionName: collectionName},
+			provider_mongo.MongoCollection{DatabaseName: readOnlyDatabase, CollectionName: collectionName},
 		)
 		src.TechnicalDatabase = technicalDatabase
-		src.ReplicationSource = mongocommon.MongoReplicationSourceOplog
-		dst := makePermissionSinker(mongocommon.MongoCollection{DatabaseName: technicalDatabase, CollectionName: "*"})
+		src.ReplicationSource = provider_mongo.MongoReplicationSourceOplog
+		dst := makePermissionSinker(provider_mongo.MongoCollection{DatabaseName: technicalDatabase, CollectionName: "*"})
 		snapshotAndIncrement(t, ctx, src, dst, readOnlyDatabase, collectionName, false)
 	})
 }

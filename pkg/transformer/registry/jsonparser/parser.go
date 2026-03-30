@@ -13,9 +13,9 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/parsers"
-	"github.com/transferia/transferia/pkg/parsers/generic"
-	"github.com/transferia/transferia/pkg/parsers/registry/blank"
-	jsonparser "github.com/transferia/transferia/pkg/parsers/registry/json"
+	generic_parser "github.com/transferia/transferia/pkg/parsers/generic"
+	parser_blank "github.com/transferia/transferia/pkg/parsers/registry/blank"
+	parser_json "github.com/transferia/transferia/pkg/parsers/registry/json"
 	"github.com/transferia/transferia/pkg/stats"
 	"github.com/transferia/transferia/pkg/transformer"
 	"go.ytsaurus.tech/library/go/core/log"
@@ -33,33 +33,33 @@ func init() {
 }
 
 type Config struct {
-	Parser *jsonparser.ParserConfigJSONCommon
+	Parser *parser_json.ParserConfigJSONCommon
 	Topic  string
 }
 
 type parser struct {
 	topic  string
-	parser *generic.GenericParser
+	parser *generic_parser.GenericParser
 }
 
 func changeItemAsMessage(ci *abstract.ChangeItem) (msg parsers.Message, part abstract.Partition, err error) {
-	if ci.TableSchema != blank.BlankSchema {
+	if ci.TableSchema != parser_blank.BlankSchema {
 		return parsers.Message{}, abstract.Partition{}, xerrors.Errorf("unexpected schema: %v", ci.TableSchema.Columns())
 	}
 	var errs []error
-	xtras, err := blank.ExtractValue[map[string]string](ci, blank.ExtrasColumn)
+	xtras, err := parser_blank.ExtractValue[map[string]string](ci, parser_blank.ExtrasColumn)
 	errs = append(errs, err)
-	partition, err := blank.ExtractValue[string](ci, blank.PartitionColum)
+	partition, err := parser_blank.ExtractValue[string](ci, parser_blank.PartitionColum)
 	errs = append(errs, err)
-	seqNo, err := blank.ExtractValue[uint64](ci, blank.SeqNoColumn)
+	seqNo, err := parser_blank.ExtractValue[uint64](ci, parser_blank.SeqNoColumn)
 	errs = append(errs, err)
-	cTime, err := blank.ExtractValue[time.Time](ci, blank.CreateTimeColumn)
+	cTime, err := parser_blank.ExtractValue[time.Time](ci, parser_blank.CreateTimeColumn)
 	errs = append(errs, err)
-	wTime, err := blank.ExtractValue[time.Time](ci, blank.WriteTimeColumn)
+	wTime, err := parser_blank.ExtractValue[time.Time](ci, parser_blank.WriteTimeColumn)
 	errs = append(errs, err)
-	rawData, err := blank.ExtractValue[[]byte](ci, blank.RawMessageColumn)
+	rawData, err := parser_blank.ExtractValue[[]byte](ci, parser_blank.RawMessageColumn)
 	errs = append(errs, err)
-	sourceID, err := blank.ExtractValue[string](ci, blank.SourceIDColumn)
+	sourceID, err := parser_blank.ExtractValue[string](ci, parser_blank.SourceIDColumn)
 	errs = append(errs, err)
 	if err := errors.Join(errs...); err != nil {
 		return msg, part, xerrors.Errorf("format errors: %w", err)
@@ -115,7 +115,7 @@ func (r parser) Apply(input []abstract.ChangeItem) abstract.TransformerResult {
 }
 
 func (r parser) Suitable(table abstract.TableID, schema *abstract.TableSchema) bool {
-	if schema != blank.BlankSchema {
+	if schema != parser_blank.BlankSchema {
 		return false
 	}
 	var part abstract.Partition
@@ -157,7 +157,7 @@ func (r parser) columnsDescription() string {
 }
 
 func New(cfg Config, lgr log.Logger) (abstract.Transformer, error) {
-	p, err := jsonparser.NewParserJSON(cfg.Parser, false, lgr, stats.NewSourceStats(solomon.NewRegistry(solomon.NewRegistryOpts())))
+	p, err := parser_json.NewParserJSON(cfg.Parser, false, lgr, stats.NewSourceStats(solomon.NewRegistry(solomon.NewRegistryOpts())))
 	if err != nil {
 		return nil, xerrors.Errorf("unable to construct json parser: %w", err)
 	}
@@ -165,7 +165,7 @@ func New(cfg Config, lgr log.Logger) (abstract.Transformer, error) {
 	if !ok {
 		return nil, xerrors.Errorf("unknown parser: %T, must be wrapper", p)
 	}
-	genParser, ok := wrappedParser.Unwrap().(*generic.GenericParser)
+	genParser, ok := wrappedParser.Unwrap().(*generic_parser.GenericParser)
 	if !ok {
 		return nil, xerrors.Errorf("unknown parser: %T, must be generic parser", p)
 	}

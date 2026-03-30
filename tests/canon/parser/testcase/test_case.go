@@ -13,7 +13,7 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/parsers"
 	_ "github.com/transferia/transferia/pkg/parsers/registry"
-	"github.com/transferia/transferia/pkg/providers/kafka"
+	provider_kafka "github.com/transferia/transferia/pkg/providers/kafka"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
@@ -47,7 +47,7 @@ func LoadStaticTestCases(t *testing.T, samples embed.FS) map[string]TestCase {
 		if err != nil {
 			return err
 		}
-		var source kafka.KafkaSource
+		var source provider_kafka.KafkaSource
 		if err := json.Unmarshal(configData, &source); err != nil {
 			logger.Log.Warn("unable to unmarshal", log.Error(err))
 			return nil

@@ -1,7 +1,7 @@
 package stdout
 
 import (
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
@@ -42,7 +42,7 @@ var (
 
 type Provider struct {
 	logger   log.Logger
-	registry metrics.Registry
+	registry core_metrics.Registry
 	cp       coordinator.Coordinator
 	transfer *model.Transfer
 	provider abstract.ProviderType
@@ -60,8 +60,8 @@ func (p *Provider) Sink(middlewares.Config) (abstract.Sinker, error) {
 	return NewSinker(p.logger, dst, p.registry), nil
 }
 
-func New(provider abstract.ProviderType) func(lgr log.Logger, registry metrics.Registry, cp coordinator.Coordinator, transfer *model.Transfer, _ *model.TransferOperation) providers.Provider {
-	return func(lgr log.Logger, registry metrics.Registry, cp coordinator.Coordinator, transfer *model.Transfer, _ *model.TransferOperation) providers.Provider {
+func New(provider abstract.ProviderType) func(lgr log.Logger, registry core_metrics.Registry, cp coordinator.Coordinator, transfer *model.Transfer, _ *model.TransferOperation) providers.Provider {
+	return func(lgr log.Logger, registry core_metrics.Registry, cp coordinator.Coordinator, transfer *model.Transfer, _ *model.TransferOperation) providers.Provider {
 		return &Provider{
 			logger:   lgr,
 			registry: registry,

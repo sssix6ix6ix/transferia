@@ -3,11 +3,11 @@ package tasks
 import (
 	"context"
 
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/storage"
+	"github.com/transferia/transferia/pkg/storage_factory"
 )
 
 func checkReuploadAllowed(src model.Source) error {
@@ -17,7 +17,7 @@ func checkReuploadAllowed(src model.Source) error {
 	return nil
 }
 
-func Reupload(ctx context.Context, cp coordinator.Coordinator, transfer model.Transfer, task model.TransferOperation, registry metrics.Registry) error {
+func Reupload(ctx context.Context, cp coordinator.Coordinator, transfer model.Transfer, task model.TransferOperation, registry core_metrics.Registry) error {
 	if transfer.IsTransitional() {
 		if transfer.AsyncOperations {
 			return xerrors.New("Transitional reupload is not supported")
@@ -60,7 +60,7 @@ func Reupload(ctx context.Context, cp coordinator.Coordinator, transfer model.Tr
 		if transfer.Dst.CleanupMode() != model.DisabledCleanup {
 			tables, err := ObtainAllSrcTables(&transfer, registry)
 			if err != nil {
-				if !xerrors.Is(err, storage.UnsupportedSourceErr) {
+				if !xerrors.Is(err, storage_factory.UnsupportedSourceErr) {
 					return xerrors.Errorf(tableListErrorText, err)
 				}
 			}

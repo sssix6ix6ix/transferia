@@ -10,15 +10,15 @@ import (
 	"github.com/transferia/transferia/library/go/core/metrics/solomon"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/ydb"
-	yt_provider "github.com/transferia/transferia/pkg/providers/yt"
+	provider_ydb "github.com/transferia/transferia/pkg/providers/ydb"
+	provider_yt "github.com/transferia/transferia/pkg/providers/yt"
 	"github.com/transferia/transferia/tests/helpers"
 )
 
 func TestSnapshotAndReplication(t *testing.T) {
 	currTableName := "test_table"
 
-	source := &ydb.YdbSource{
+	source := &provider_ydb.YdbSource{
 		Token:              model.SecretString(os.Getenv("YDB_TOKEN")),
 		Database:           helpers.GetEnvOfFail(t, "YDB_DATABASE"),
 		Instance:           helpers.GetEnvOfFail(t, "YDB_ENDPOINT"),
@@ -27,9 +27,9 @@ func TestSnapshotAndReplication(t *testing.T) {
 		SubNetworkID:       "",
 		Underlay:           false,
 		ServiceAccountID:   "",
-		ChangeFeedMode:     ydb.ChangeFeedModeUpdates,
+		ChangeFeedMode:     provider_ydb.ChangeFeedModeUpdates,
 	}
-	target := yt_provider.NewYtDestinationV1(yt_provider.YtDestination{
+	target := provider_yt.NewYtDestinationV1(provider_yt.YtDestination{
 		Path:                     "//home/cdc/test/pg2yt_e2e",
 		Cluster:                  os.Getenv("YT_PROXY"),
 		CellBundle:               "default",
@@ -41,13 +41,13 @@ func TestSnapshotAndReplication(t *testing.T) {
 
 	//---
 
-	Target := &ydb.YdbDestination{
+	Target := &provider_ydb.YdbDestination{
 		Database: source.Database,
 		Token:    source.Token,
 		Instance: source.Instance,
 	}
 	Target.WithDefaults()
-	srcSink, err := ydb.NewSinker(logger.Log, Target, solomon.NewRegistry(solomon.NewRegistryOpts()))
+	srcSink, err := provider_ydb.NewSinker(logger.Log, Target, solomon.NewRegistry(solomon.NewRegistryOpts()))
 	require.NoError(t, err)
 
 	// insert one rec - for snapshot uploading

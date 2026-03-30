@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/transferia/transferia/internal/logger"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
@@ -22,7 +22,7 @@ type runTaskVisitor struct {
 	task     model.TransferOperation
 	cp       coordinator.Coordinator
 	transfer model.Transfer
-	registry metrics.Registry
+	registry core_metrics.Registry
 	ctx      context.Context
 }
 
@@ -200,7 +200,7 @@ func (v runTaskVisitor) PushOperationHealthMeta(t time.Time) {
 	}
 }
 
-func Run(ctx context.Context, task model.TransferOperation, command abstract.RunnableTask, cp coordinator.Coordinator, transfer model.Transfer, params interface{}, registry metrics.Registry) error {
+func Run(ctx context.Context, task model.TransferOperation, command abstract.RunnableTask, cp coordinator.Coordinator, transfer model.Transfer, params interface{}, registry core_metrics.Registry) error {
 	transfer.WithDefault()
 	transfer.FillDependentFields()
 	logger.Log.Info("Run task", log.Bool("async_operations", transfer.AsyncOperations))

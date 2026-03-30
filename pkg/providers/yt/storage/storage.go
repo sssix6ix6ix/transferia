@@ -10,11 +10,11 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/changeitem"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	ytprovider "github.com/transferia/transferia/pkg/providers/yt"
+	provider_yt "github.com/transferia/transferia/pkg/providers/yt"
 	"github.com/transferia/transferia/pkg/providers/yt/yt_client"
 	"github.com/transferia/transferia/pkg/util"
 	"go.ytsaurus.tech/library/go/core/log"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 	"go.ytsaurus.tech/yt/go/ypath"
 	"go.ytsaurus.tech/yt/go/yt"
 )
@@ -82,10 +82,10 @@ func getTableName(t abstract.TableDescription) string {
 func (s *Storage) LoadTable(ctx context.Context, t abstract.TableDescription, pusher abstract.Pusher) error {
 	st := util.GetTimestampFromContextOrNow(ctx)
 
-	tablePath := ytprovider.SafeChild(ypath.Path(s.path), getTableName(t))
+	tablePath := provider_yt.SafeChild(ypath.Path(s.path), getTableName(t))
 	partID := t.GeneratePartID()
 
-	var scheme schema.Schema
+	var scheme ytschema.Schema
 	if err := s.ytClient.GetNode(ctx, tablePath.Attr("schema"), &scheme, nil); err != nil {
 		return xerrors.Errorf("unable to get schema node: %s: %w", tablePath, err)
 	}
@@ -99,7 +99,7 @@ func (s *Storage) LoadTable(ctx context.Context, t abstract.TableDescription, pu
 		return xerrors.Errorf("unable to select: %s: %w", tablePath, err)
 	}
 
-	tableSchema := ytprovider.YTColumnToColSchema(scheme.Columns)
+	tableSchema := provider_yt.YTColumnToColSchema(scheme.Columns)
 
 	totalIdx := uint64(0)
 	wrapAroundIdx := uint64(0)
@@ -157,26 +157,26 @@ func (s *Storage) LoadTable(ctx context.Context, t abstract.TableDescription, pu
 	return nil
 }
 
-func restore(val interface{}, column schema.Column) interface{} {
+func restore(val interface{}, column ytschema.Column) interface{} {
 	switch column.Type {
-	case schema.TypeTimestamp:
+	case ytschema.TypeTimestamp:
 		switch v := val.(type) {
 		case uint64:
-			return schema.Timestamp(v).Time()
+			return ytschema.Timestamp(v).Time()
 		default:
 			return v
 		}
-	case schema.TypeDatetime:
+	case ytschema.TypeDatetime:
 		switch v := val.(type) {
 		case uint64:
-			return schema.Datetime(v).Time()
+			return ytschema.Datetime(v).Time()
 		default:
 			return v
 		}
-	case schema.TypeDate:
+	case ytschema.TypeDate:
 		switch v := val.(type) {
 		case uint64:
-			return schema.Date(v).Time()
+			return ytschema.Date(v).Time()
 		default:
 			return v
 		}
@@ -199,12 +199,12 @@ func (s *Storage) LoadSchema() (dbSchema abstract.DBSchema, err error) {
 
 	resultSchema := make(abstract.DBSchema)
 	for _, table := range tables {
-		var scheme schema.Schema
-		if err := s.ytClient.GetNode(ctx, ytprovider.SafeChild(ypath.Path(s.path), table.Name).Attr("schema"), &scheme, nil); err != nil {
+		var scheme ytschema.Schema
+		if err := s.ytClient.GetNode(ctx, provider_yt.SafeChild(ypath.Path(s.path), table.Name).Attr("schema"), &scheme, nil); err != nil {
 			return nil, xerrors.Errorf("unable to get schema not: %s: %w", table.Name, err)
 		}
 
-		tableSchema := ytprovider.YTColumnToColSchema(scheme.Columns)
+		tableSchema := provider_yt.YTColumnToColSchema(scheme.Columns)
 
 		for i := range tableSchema.Columns() {
 			tableSchema.Columns()[i].TableName = table.Name
@@ -228,7 +228,7 @@ func makeTableName(tableID abstract.TableID) string {
 }
 
 func (s *Storage) ExactTableRowsCount(table abstract.TableID) (uint64, error) {
-	pathToTable := ytprovider.SafeChild(ypath.Path(s.path), makeTableName(table))
+	pathToTable := provider_yt.SafeChild(ypath.Path(s.path), makeTableName(table))
 	return ExactYTTableRowsCount(s.ytClient, pathToTable)
 }
 
@@ -270,10 +270,10 @@ func ExactYTTableRowsCount(ytClient yt.Client, pathToTable ypath.Path) (uint64, 
 }
 
 func (s *Storage) TableExists(table abstract.TableID) (bool, error) {
-	return s.ytClient.NodeExists(context.Background(), ytprovider.SafeChild(ypath.Path(s.path), makeTableName(table)), nil)
+	return s.ytClient.NodeExists(context.Background(), provider_yt.SafeChild(ypath.Path(s.path), makeTableName(table)), nil)
 }
 
-func NewStorage(config *ytprovider.YtStorageParams) (*Storage, error) {
+func NewStorage(config *provider_yt.YtStorageParams) (*Storage, error) {
 	var ytClient yt.Client
 	var err error
 	if config.ConnParams != nil {

@@ -2,7 +2,7 @@ package abstract2
 
 import (
 	"github.com/transferia/transferia/pkg/abstract"
-	yt_schema "go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 type DataObjectFilter interface {
@@ -90,5 +90,5 @@ type Type interface {
 	Validate(value Value) error
 
 	// Support legacy
-	ToOldType() (yt_schema.Type, error)
+	ToOldType() (ytschema.Type, error)
 }

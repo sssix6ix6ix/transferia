@@ -8,14 +8,14 @@ import (
 	"sync"
 	"time"
 
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	dp_model "github.com/transferia/transferia/pkg/abstract/model"
+	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/middlewares"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/model"
+	clickhouse_model "github.com/transferia/transferia/pkg/providers/clickhouse/model"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/sharding"
-	topology2 "github.com/transferia/transferia/pkg/providers/clickhouse/topology"
+	"github.com/transferia/transferia/pkg/providers/clickhouse/topology"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
@@ -27,9 +27,9 @@ type sink struct {
 	closed                bool
 	onceClose             sync.Once
 	shardIndexUserMapping map[string]int
-	config                model.ChSinkParams
+	config                clickhouse_model.ChSinkParams
 	logger                log.Logger
-	metrics               metrics.Registry
+	metrics               core_metrics.Registry
 	transferID            string
 	sharder               sharding.Sharder
 	shardMap              sharding.ShardMap[*lazySinkShard]
@@ -144,12 +144,12 @@ func (s *sink) rotate() error {
 }
 
 func newSinkImpl(
-	transfer *dp_model.Transfer,
-	config model.ChSinkParams,
+	transfer *model.Transfer,
+	config clickhouse_model.ChSinkParams,
 	logger log.Logger,
-	metrics metrics.Registry,
+	metrics core_metrics.Registry,
 ) (*sink, error) {
-	topology, err := topology2.ResolveTopology(config, logger)
+	topology, err := topology.ResolveTopology(config, logger)
 	if err != nil {
 		return nil, xerrors.Errorf("error resolving cluster topology: %w", err)
 	}
@@ -198,12 +198,12 @@ func newSinkImpl(
 }
 
 func NewSink(
-	transfer *dp_model.Transfer,
+	transfer *model.Transfer,
 	logger log.Logger,
-	metrics metrics.Registry,
+	metrics core_metrics.Registry,
 	middlewaresConfig middlewares.Config,
 ) (abstract.Sinker, error) {
-	dst, ok := transfer.Dst.(*model.ChDestination)
+	dst, ok := transfer.Dst.(*clickhouse_model.ChDestination)
 	if !ok {
 		panic("expected ClickHouse destination in ClickHouse sink constructor")
 	}

@@ -13,16 +13,16 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/library/go/test/canon"
-	yt2 "github.com/transferia/transferia/pkg/providers/yt"
-	"go.ytsaurus.tech/yt/go/schema"
+	provider_yt "github.com/transferia/transferia/pkg/providers/yt"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 	"go.ytsaurus.tech/yt/go/ypath"
 	"go.ytsaurus.tech/yt/go/yson"
 	"go.ytsaurus.tech/yt/go/yt"
 	"go.ytsaurus.tech/yt/go/yttest"
 )
 
-func RecipeYtTarget(path string) yt2.YtDestinationModel {
-	ytDestination := yt2.NewYtDestinationV1(yt2.YtDestination{
+func RecipeYtTarget(path string) provider_yt.YtDestinationModel {
+	ytDestination := provider_yt.NewYtDestinationV1(provider_yt.YtDestination{
 		Cluster:       os.Getenv("YT_PROXY"),
 		CellBundle:    "default",
 		PrimaryMedium: "default",
@@ -32,7 +32,7 @@ func RecipeYtTarget(path string) yt2.YtDestinationModel {
 	return ytDestination
 }
 
-func SetRecipeYt(dst *yt2.YtDestination) *yt2.YtDestination {
+func SetRecipeYt(dst *provider_yt.YtDestination) *provider_yt.YtDestination {
 	dst.Cluster = os.Getenv("YT_PROXY")
 	dst.CellBundle = "default"
 	dst.PrimaryMedium = "default"
@@ -42,7 +42,7 @@ func SetRecipeYt(dst *yt2.YtDestination) *yt2.YtDestination {
 type ReferenceTable struct {
 	TableID     ypath.Path
 	Rows        []any
-	TableSchema schema.Schema
+	TableSchema ytschema.Schema
 }
 
 func DumpYtDirectoryToString(ytClient yt.Client, tablePath ypath.Path) (string, error) {
@@ -185,38 +185,38 @@ func YtReadAllRowsFromAllTables[OutRow any](t *testing.T, cluster string, path s
 	return resRows
 }
 
-func YtTypesTestData() ([]schema.Column, []map[string]any) {
-	members := []schema.StructMember{
-		{Name: "fieldInt16", Type: schema.TypeInt16},
-		{Name: "fieldFloat32", Type: schema.TypeFloat32},
-		{Name: "fieldString", Type: schema.TypeString},
+func YtTypesTestData() ([]ytschema.Column, []map[string]any) {
+	members := []ytschema.StructMember{
+		{Name: "fieldInt16", Type: ytschema.TypeInt16},
+		{Name: "fieldFloat32", Type: ytschema.TypeFloat32},
+		{Name: "fieldString", Type: ytschema.TypeString},
 	}
-	elements := []schema.TupleElement{
-		{Type: schema.TypeInt16},
-		{Type: schema.TypeFloat32},
-		{Type: schema.TypeString},
+	elements := []ytschema.TupleElement{
+		{Type: ytschema.TypeInt16},
+		{Type: ytschema.TypeFloat32},
+		{Type: ytschema.TypeString},
 	}
 
-	listSchema := schema.List{Item: schema.TypeFloat64}
-	structSchema := schema.Struct{Members: members}
-	tupleSchema := schema.Tuple{Elements: elements}
-	namedVariantSchema := schema.Variant{Members: members}
-	unnamedVariantSchema := schema.Variant{Elements: elements}
-	dictSchema := schema.Dict{Key: schema.TypeString, Value: schema.TypeInt64}
-	taggedSchema := schema.Tagged{Tag: "mytag", Item: schema.Tagged{Tag: "innerTag", Item: schema.TypeInt32}}
+	listSchema := ytschema.List{Item: ytschema.TypeFloat64}
+	structSchema := ytschema.Struct{Members: members}
+	tupleSchema := ytschema.Tuple{Elements: elements}
+	namedVariantSchema := ytschema.Variant{Members: members}
+	unnamedVariantSchema := ytschema.Variant{Elements: elements}
+	dictSchema := ytschema.Dict{Key: ytschema.TypeString, Value: ytschema.TypeInt64}
+	taggedSchema := ytschema.Tagged{Tag: "mytag", Item: ytschema.Tagged{Tag: "innerTag", Item: ytschema.TypeInt32}}
 
-	schema := []schema.Column{
-		{Name: "id", ComplexType: schema.TypeUint8, SortOrder: schema.SortAscending},
-		{Name: "date_str", ComplexType: schema.TypeBytes},
-		{Name: "datetime_str", ComplexType: schema.TypeBytes},
-		{Name: "datetime_str2", ComplexType: schema.TypeBytes},
-		{Name: "datetime_ts", ComplexType: schema.TypeInt64},
-		{Name: "datetime_ts2", ComplexType: schema.TypeInt64},
-		{Name: "intlist", ComplexType: schema.Optional{Item: schema.TypeAny}},
-		{Name: "num_to_str", ComplexType: schema.TypeInt32},
-		{Name: "decimal_as_float", ComplexType: schema.TypeFloat64},
-		{Name: "decimal_as_string", ComplexType: schema.TypeString},
-		{Name: "decimal_as_bytes", ComplexType: schema.TypeBytes},
+	schema := []ytschema.Column{
+		{Name: "id", ComplexType: ytschema.TypeUint8, SortOrder: ytschema.SortAscending},
+		{Name: "date_str", ComplexType: ytschema.TypeBytes},
+		{Name: "datetime_str", ComplexType: ytschema.TypeBytes},
+		{Name: "datetime_str2", ComplexType: ytschema.TypeBytes},
+		{Name: "datetime_ts", ComplexType: ytschema.TypeInt64},
+		{Name: "datetime_ts2", ComplexType: ytschema.TypeInt64},
+		{Name: "intlist", ComplexType: ytschema.Optional{Item: ytschema.TypeAny}},
+		{Name: "num_to_str", ComplexType: ytschema.TypeInt32},
+		{Name: "decimal_as_float", ComplexType: ytschema.TypeFloat64},
+		{Name: "decimal_as_string", ComplexType: ytschema.TypeString},
+		{Name: "decimal_as_bytes", ComplexType: ytschema.TypeBytes},
 
 		// Composite types below.
 		{Name: "list", ComplexType: listSchema},
@@ -225,25 +225,25 @@ func YtTypesTestData() ([]schema.Column, []map[string]any) {
 		{Name: "variant_named", ComplexType: namedVariantSchema},
 		{Name: "variant_unnamed", ComplexType: unnamedVariantSchema},
 		{Name: "dict", ComplexType: dictSchema},
-		{Name: "tagged", ComplexType: schema.Tagged{Tag: "mytag", Item: schema.Variant{Members: members}}},
+		{Name: "tagged", ComplexType: ytschema.Tagged{Tag: "mytag", Item: ytschema.Variant{Members: members}}},
 
 		// That test mostly here for YtDictTransformer.
 		// Iteration and transformation over all fields/elements/members of all complex types is tested by it.
-		{Name: "nested1", ComplexType: schema.Struct{Members: []schema.StructMember{
-			{Name: "list", Type: schema.List{
-				Item: schema.Tuple{Elements: []schema.TupleElement{{Type: dictSchema}, {Type: dictSchema}}}},
+		{Name: "nested1", ComplexType: ytschema.Struct{Members: []ytschema.StructMember{
+			{Name: "list", Type: ytschema.List{
+				Item: ytschema.Tuple{Elements: []ytschema.TupleElement{{Type: dictSchema}, {Type: dictSchema}}}},
 			},
-			{Name: "named", Type: schema.Variant{
-				Members: []schema.StructMember{{Name: "d1", Type: dictSchema}, {Name: "d2", Type: dictSchema}},
+			{Name: "named", Type: ytschema.Variant{
+				Members: []ytschema.StructMember{{Name: "d1", Type: dictSchema}, {Name: "d2", Type: dictSchema}},
 			}},
 		}}},
 
 		// Use two different structs to prevent extracting long line to different file from result.json.
-		{Name: "nested2", ComplexType: schema.Struct{Members: []schema.StructMember{
-			{Name: "unnamed", Type: schema.Variant{
-				Elements: []schema.TupleElement{{Type: dictSchema}, {Type: dictSchema}},
+		{Name: "nested2", ComplexType: ytschema.Struct{Members: []ytschema.StructMember{
+			{Name: "unnamed", Type: ytschema.Variant{
+				Elements: []ytschema.TupleElement{{Type: dictSchema}, {Type: dictSchema}},
 			}},
-			{Name: "dict", Type: schema.Dict{Key: taggedSchema, Value: dictSchema}},
+			{Name: "dict", Type: ytschema.Dict{Key: taggedSchema, Value: dictSchema}},
 		}}},
 	}
 

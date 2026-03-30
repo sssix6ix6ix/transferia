@@ -3,7 +3,7 @@ package protobuf
 import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/parsers/registry/protobuf/protoparser"
-	"github.com/transferia/transferia/pkg/parsers/resources"
+	parsers_resources "github.com/transferia/transferia/pkg/parsers/resources"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
@@ -40,7 +40,7 @@ func (c *ParserConfigProtoLb) ToProtoParserConfig(logger log.Logger) (*protopars
 
 	descFileContent := c.DescFile
 	if len(c.DescResourceName) > 0 {
-		resourcesObj, err := resources.NewResources(logger, []string{c.DescResourceName})
+		resourcesObj, err := parsers_resources.NewResources(logger, []string{c.DescResourceName})
 		if err != nil {
 			return nil, xerrors.Errorf("unable to get resources, err: %v", err)
 		}

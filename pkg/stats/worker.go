@@ -1,17 +1,17 @@
 package stats
 
-import "github.com/transferia/transferia/library/go/core/metrics"
+import core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 
 type WorkerStats struct {
-	OOMKilled            metrics.Gauge
-	OOMKills             metrics.Counter
-	RestartFailure       metrics.Gauge
-	RestartFailures      metrics.Counter
-	FatalRestartFailure  metrics.Gauge
-	FatalRestartFailures metrics.Counter
+	OOMKilled            core_metrics.Gauge
+	OOMKills             core_metrics.Counter
+	RestartFailure       core_metrics.Gauge
+	RestartFailures      core_metrics.Counter
+	FatalRestartFailure  core_metrics.Gauge
+	FatalRestartFailures core_metrics.Counter
 }
 
-func NewWorkerStats(cpRegistry metrics.Registry, dpRegistry metrics.Registry) *WorkerStats {
+func NewWorkerStats(cpRegistry core_metrics.Registry, dpRegistry core_metrics.Registry) *WorkerStats {
 	return &WorkerStats{
 		OOMKilled:            dpRegistry.Gauge("runtime.oom"),
 		OOMKills:             cpRegistry.Counter("runtime.oom"),

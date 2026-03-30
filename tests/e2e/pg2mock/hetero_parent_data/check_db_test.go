@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
 	"github.com/transferia/transferia/tests/helpers"
 	mocksink "github.com/transferia/transferia/tests/helpers/mock_sink"
@@ -26,7 +26,7 @@ const (
 )
 
 var Source = *pgrecipe.RecipeSource(pgrecipe.WithPrefix(""), pgrecipe.WithInitDir("dump"),
-	pgrecipe.WithEdit(func(pg *postgres.PgSource) { pg.UseFakePrimaryKey = true }),
+	pgrecipe.WithEdit(func(pg *provider_postgres.PgSource) { pg.UseFakePrimaryKey = true }),
 )
 
 func init() {

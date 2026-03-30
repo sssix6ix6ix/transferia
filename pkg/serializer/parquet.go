@@ -7,9 +7,9 @@ import (
 
 	"github.com/parquet-go/parquet-go"
 	"github.com/parquet-go/parquet-go/compress"
-	"github.com/parquet-go/parquet-go/compress/gzip"
-	"github.com/parquet-go/parquet-go/compress/snappy"
-	"github.com/parquet-go/parquet-go/compress/zstd"
+	parquet_gzip "github.com/parquet-go/parquet-go/compress/gzip"
+	parquet_snappy "github.com/parquet-go/parquet-go/compress/snappy"
+	parquet_zstd "github.com/parquet-go/parquet-go/compress/zstd"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 )
@@ -139,11 +139,11 @@ func (s *parquetStreamSerializer) Close() (err error) {
 func CodecFromString(codec string) compress.Codec {
 	switch codec {
 	case "SNAPPY":
-		return &snappy.Codec{}
+		return &parquet_snappy.Codec{}
 	case "GZIP":
-		return &gzip.Codec{}
+		return &parquet_gzip.Codec{}
 	case "ZSTD":
-		return &zstd.Codec{}
+		return &parquet_zstd.Codec{}
 	default:
 		return nil
 	}

@@ -6,7 +6,7 @@ import (
 	"sync"
 
 	"github.com/transferia/transferia/internal/logger"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
@@ -31,7 +31,7 @@ type segPointerOrError struct {
 	err     error
 }
 
-func newSink(dst *GpDestination, registry metrics.Registry, lgr log.Logger, transferID string, atReplication bool) *Sink {
+func newSink(dst *GpDestination, registry core_metrics.Registry, lgr log.Logger, transferID string, atReplication bool) *Sink {
 	accessor := NewStorage(dst.ToGpSource(), registry)
 	return &Sink{
 		sinks:          newPgSinks(accessor, lgr, transferID, registry),
@@ -44,7 +44,7 @@ func newSink(dst *GpDestination, registry metrics.Registry, lgr log.Logger, tran
 	}
 }
 
-func NewSink(transfer *model.Transfer, registry metrics.Registry, lgr log.Logger, config middlewares.Config) (abstract.Sinker, error) {
+func NewSink(transfer *model.Transfer, registry core_metrics.Registry, lgr log.Logger, config middlewares.Config) (abstract.Sinker, error) {
 	dst, ok := transfer.Dst.(*GpDestination)
 	if !ok {
 		return nil, abstract.NewFatalError(xerrors.Errorf("cannot construct GP sink from destination of type %T", transfer.Dst))

@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
-	"github.com/shirou/gopsutil/v3/net"
+	gopsutil_net "github.com/shirou/gopsutil/v3/net"
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"go.ytsaurus.tech/library/go/core/log"
@@ -22,7 +22,7 @@ func CheckConnections(labeledPorts ...LabeledPort) error {
 	visited := map[int]bool{}
 
 	if err := backoff.Retry(func() error {
-		connections, err := net.Connections("all")
+		connections, err := gopsutil_net.Connections("all")
 		if err != nil {
 			return xerrors.Errorf("Unable to get connections: %w", err)
 		}

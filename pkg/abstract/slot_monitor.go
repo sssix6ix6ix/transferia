@@ -3,7 +3,7 @@ package abstract
 import (
 	"context"
 
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 )
 
 type SlotKiller interface {
@@ -22,5 +22,5 @@ func MakeStubSlotKiller() SlotKiller {
 }
 
 type MonitorableSlot interface {
-	RunSlotMonitor(ctx context.Context, serverSource interface{}, registry metrics.Registry) (SlotKiller, <-chan error, error)
+	RunSlotMonitor(ctx context.Context, serverSource interface{}, registry core_metrics.Registry) (SlotKiller, <-chan error, error)
 }

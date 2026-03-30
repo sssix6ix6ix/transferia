@@ -19,7 +19,7 @@ import (
 	"github.com/transferia/transferia/pkg/parsers/registry/logfeller/lib"
 	"github.com/valyala/fastjson"
 	"go.ytsaurus.tech/library/go/core/log"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 	"go.ytsaurus.tech/yt/go/yson"
 	"golang.org/x/sync/semaphore"
 )
@@ -208,34 +208,34 @@ func (p *GenericParser) parseJSONLine(table abstract2.Table, line string) (event
 			// add to rest
 			rest[key] = wrapIntoEmptyInterface(v.Get(), p.auxOpts.UseNumbersInAny)
 		}
-		switch schema.Type(strings.ToLower(p.colTypeMap[key])) {
-		case schema.TypeDatetime, schema.TypeDate, schema.TypeTimestamp:
+		switch ytschema.Type(strings.ToLower(p.colTypeMap[key])) {
+		case ytschema.TypeDatetime, ytschema.TypeDate, ytschema.TypeTimestamp:
 			t, ok, err := p.extractTimeValue(string(v.GetStringBytes()), time.Now())
 			if !ok || err != nil {
 				blrd.Column(key, nil)
 			}
 			blrd.Column(key, t)
-		case schema.TypeString, schema.TypeBytes:
+		case ytschema.TypeString, ytschema.TypeBytes:
 			blrd.Column(key, string(v.GetStringBytes()))
-		case schema.TypeFloat64:
+		case ytschema.TypeFloat64:
 			blrd.Column(key, v.GetFloat64())
-		case schema.TypeBoolean:
+		case ytschema.TypeBoolean:
 			blrd.Column(key, v.GetBool())
-		case schema.TypeInt8:
+		case ytschema.TypeInt8:
 			blrd.Column(key, int8(v.GetInt()))
-		case schema.TypeInt16:
+		case ytschema.TypeInt16:
 			blrd.Column(key, int16(v.GetInt()))
-		case schema.TypeInt32:
+		case ytschema.TypeInt32:
 			blrd.Column(key, int32(v.GetInt()))
-		case schema.TypeInt64:
+		case ytschema.TypeInt64:
 			blrd.Column(key, int64(v.GetInt()))
-		case schema.TypeUint8:
+		case ytschema.TypeUint8:
 			blrd.Column(key, uint8(v.GetUint()))
-		case schema.TypeUint16:
+		case ytschema.TypeUint16:
 			blrd.Column(key, uint16(v.GetUint()))
-		case schema.TypeUint32:
+		case ytschema.TypeUint32:
 			blrd.Column(key, uint32(v.GetUint()))
-		case schema.TypeUint64:
+		case ytschema.TypeUint64:
 			blrd.Column(key, v.GetUint64())
 		default:
 			r := wrapIntoEmptyInterface(v.Get(), p.auxOpts.UseNumbersInAny)

@@ -13,11 +13,11 @@ import (
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/transferia/transferia/internal/logger"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/errors/coded"
-	"github.com/transferia/transferia/pkg/errors/codes"
+	error_codes "github.com/transferia/transferia/pkg/errors/codes"
 	"github.com/transferia/transferia/pkg/format"
 	"github.com/transferia/transferia/pkg/stats"
 	"github.com/transferia/transferia/pkg/util"
@@ -128,7 +128,7 @@ func (m *SlotMonitor) checkSlot(version PgVersion, maxSlotByteLag int64) error {
 	m.logger.Infof("replication slot %q WAL lag %s / %s", m.slotName, bytesToString(slotByteLag), format.SizeUInt64(uint64(maxSlotByteLag)))
 	m.metrics.Usage.Set(float64(slotByteLag))
 	if slotByteLag > maxSlotByteLag {
-		return abstract.NewFatalError(coded.Errorf(codes.PostgresSlotByteLagExceedsLimit, "byte lag for replication slot %q exceeds the limit: %d > %d", m.slotName, slotByteLag, maxSlotByteLag))
+		return abstract.NewFatalError(coded.Errorf(error_codes.PostgresSlotByteLagExceedsLimit, "byte lag for replication slot %q exceeds the limit: %d > %d", m.slotName, slotByteLag, maxSlotByteLag))
 	}
 
 	return nil
@@ -162,7 +162,7 @@ func (m *SlotMonitor) validateSlot(ctx context.Context) error {
 		}
 		if err := rows.Err(); err != nil {
 			if pgErr, ok := err.(*pgconn.PgError); ok && pgFatalCode[pgErr.Code] && strings.Contains(err.Error(), "has already been removed") {
-				return abstract.NewFatalError(coded.Errorf(codes.PostgresWalSegmentRemoved, "requested WAL segment has already been removed: %w", err))
+				return abstract.NewFatalError(coded.Errorf(error_codes.PostgresWalSegmentRemoved, "requested WAL segment has already been removed: %w", err))
 			}
 		}
 		rows.Close()
@@ -196,7 +196,7 @@ func (k *PostgresSlotKiller) KillSlot() error {
 	return k.Slot.Suicide()
 }
 
-func RunSlotMonitor(ctx context.Context, pgSrc *PgSource, registry metrics.Registry, tracker ...*Tracker) (abstract.SlotKiller, <-chan error, error) {
+func RunSlotMonitor(ctx context.Context, pgSrc *PgSource, registry core_metrics.Registry, tracker ...*Tracker) (abstract.SlotKiller, <-chan error, error) {
 	rb := util.Rollbacks{}
 	defer rb.Do()
 

@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
-	mysql_client "github.com/go-sql-driver/mysql"
+	mysql_driver2 "github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/pkg/abstract"
-	"github.com/transferia/transferia/pkg/providers/mysql"
+	provider_mysql "github.com/transferia/transferia/pkg/providers/mysql"
 	"github.com/transferia/transferia/pkg/providers/mysql/mysqlrecipe"
 	"github.com/transferia/transferia/tests/helpers"
 )
@@ -42,9 +42,9 @@ func TestGroup(t *testing.T) {
 }
 
 func Existence(t *testing.T) {
-	_, err := mysql.NewStorage(Source.ToStorageParams())
+	_, err := provider_mysql.NewStorage(Source.ToStorageParams())
 	require.NoError(t, err)
-	_, err = mysql.NewStorage(Target.ToStorageParams())
+	_, err = provider_mysql.NewStorage(Target.ToStorageParams())
 	require.NoError(t, err)
 }
 
@@ -53,14 +53,14 @@ func Snapshot(t *testing.T) {
 
 	wrkr := helpers.Activate(t, transfer)
 
-	cfg := mysql_client.NewConfig()
+	cfg := mysql_driver2.NewConfig()
 	cfg.Addr = fmt.Sprintf("%v:%v", Source.Host, Source.Port)
 	cfg.User = Source.User
 	cfg.Passwd = string(Source.Password)
 	cfg.DBName = Source.Database
 	cfg.Net = "tcp"
 
-	mysqlConnector, err := mysql_client.NewConnector(cfg)
+	mysqlConnector, err := mysql_driver2.NewConnector(cfg)
 	require.NoError(t, err)
 	db := sql.OpenDB(mysqlConnector)
 
@@ -84,13 +84,13 @@ func Snapshot(t *testing.T) {
 	time.Sleep(20 * time.Second)
 	require.NoError(t, helpers.CompareStorages(t, Source, Target, helpers.NewCompareStorageParams()))
 
-	dstCfg := mysql_client.NewConfig()
+	dstCfg := mysql_driver2.NewConfig()
 	dstCfg.Addr = fmt.Sprintf("%v:%v", Target.Host, Target.Port)
 	dstCfg.User = Target.User
 	dstCfg.Passwd = string(Target.Password)
 	dstCfg.DBName = Target.Database
 	dstCfg.Net = "tcp"
-	dstConnector, err := mysql_client.NewConnector(dstCfg)
+	dstConnector, err := mysql_driver2.NewConnector(dstCfg)
 	require.NoError(t, err)
 	dstConn, err := sql.OpenDB(dstConnector).Conn(context.Background())
 	require.NoError(t, err)

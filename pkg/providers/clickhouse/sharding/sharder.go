@@ -6,10 +6,10 @@ import (
 	"sort"
 
 	"github.com/transferia/transferia/pkg/abstract"
-	"github.com/transferia/transferia/pkg/connection/clickhouse"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/model"
-	"golang.org/x/exp/maps"
-	"golang.org/x/exp/slices"
+	conn_clickhouse "github.com/transferia/transferia/pkg/connection/clickhouse"
+	clickhouse_model "github.com/transferia/transferia/pkg/providers/clickhouse/model"
+	xmaps "golang.org/x/exp/maps"
+	xslices "golang.org/x/exp/slices"
 )
 
 func hash(val string) int {
@@ -35,11 +35,11 @@ func ColumnShardingKeyGen(col string) func(row abstract.ChangeItem) string {
 	}
 }
 
-func ShardsFromSinkParams(shards map[string][]*clickhouse.Host) ShardMap[[]*clickhouse.Host] {
-	names := maps.Keys(shards)
-	slices.Sort(names)
+func ShardsFromSinkParams(shards map[string][]*conn_clickhouse.Host) ShardMap[[]*conn_clickhouse.Host] {
+	names := xmaps.Keys(shards)
+	xslices.Sort(names)
 
-	res := make(ShardMap[[]*clickhouse.Host])
+	res := make(ShardMap[[]*conn_clickhouse.Host])
 	for idx, name := range names {
 		res[ShardID(idx)] = shards[name]
 	}
@@ -77,7 +77,7 @@ func KeyGenUserMappingHandler(keygen func(row abstract.ChangeItem) string, mappi
 	}
 }
 
-func GetShardIndexUserMapping(cfg model.ChSinkParams) map[string]int {
+func GetShardIndexUserMapping(cfg clickhouse_model.ChSinkParams) map[string]int {
 	shardNamesSorted := make([]string, 0)
 	for sName := range cfg.Shards() {
 		shardNamesSorted = append(shardNamesSorted, sName)
@@ -97,7 +97,7 @@ func GetShardIndexUserMapping(cfg model.ChSinkParams) map[string]int {
 	return shardIndexUserMapping
 }
 
-func CHSharder(cfg model.ChSinkParams, transferID string) Sharder {
+func CHSharder(cfg clickhouse_model.ChSinkParams, transferID string) Sharder {
 	var keyGen func(row abstract.ChangeItem) string
 	if cfg.ShardByTransferID() {
 		keyGen = func(row abstract.ChangeItem) string { return transferID }

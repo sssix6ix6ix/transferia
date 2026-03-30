@@ -5,11 +5,11 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/pkg/abstract"
-	"github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
 )
 
-func prepareSource() *postgres.PgSource {
+func prepareSource() *provider_postgres.PgSource {
 	source := pgrecipe.RecipeSource(pgrecipe.WithInitDir("dump"))
 	source.User = "test_user"
 	source.Password = "test_pass"
@@ -19,7 +19,7 @@ func prepareSource() *postgres.PgSource {
 func TestTableListStar(t *testing.T) {
 	source := prepareSource()
 
-	storage, err := postgres.NewStorage(source.ToStorageParams(nil))
+	storage, err := provider_postgres.NewStorage(source.ToStorageParams(nil))
 	require.NoError(t, err)
 
 	tl, err := storage.TableList(nil)
@@ -31,7 +31,7 @@ func TestTableListStar(t *testing.T) {
 func TestTableListFilter(t *testing.T) {
 	source := prepareSource()
 
-	storage, err := postgres.NewStorage(source.ToStorageParams(nil))
+	storage, err := provider_postgres.NewStorage(source.ToStorageParams(nil))
 	require.NoError(t, err)
 
 	tl, err := storage.TableList(nil)
@@ -45,7 +45,7 @@ func TestTableListFilterIncludeTables(t *testing.T) {
 	source := prepareSource()
 	source.DBTables = []string{"\"public\".\"does_not_exist\""}
 
-	storage, err := postgres.NewStorage(source.ToStorageParams(nil))
+	storage, err := provider_postgres.NewStorage(source.ToStorageParams(nil))
 	require.NoError(t, err)
 
 	_, err = storage.TableList(nil)

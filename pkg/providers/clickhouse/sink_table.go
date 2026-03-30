@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ClickHouse/clickhouse-go/v2"
+	clickhouse_go "github.com/ClickHouse/clickhouse-go/v2"
 	"github.com/ClickHouse/clickhouse-go/v2/lib/column"
 	"github.com/blang/semver/v4"
 	"github.com/dustin/go-humanize"
@@ -18,12 +18,12 @@ import (
 	yslices "github.com/transferia/transferia/library/go/slices"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/changeitem"
-	"github.com/transferia/transferia/pkg/errors/codes"
+	error_codes "github.com/transferia/transferia/pkg/errors/codes"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/columntypes"
-	cherrors "github.com/transferia/transferia/pkg/providers/clickhouse/errors"
-	httpuploader2 "github.com/transferia/transferia/pkg/providers/clickhouse/httpuploader"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/model"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/schema"
+	clickhouse_errors "github.com/transferia/transferia/pkg/providers/clickhouse/errors"
+	"github.com/transferia/transferia/pkg/providers/clickhouse/httpuploader"
+	clickhouse_model "github.com/transferia/transferia/pkg/providers/clickhouse/model"
+	clickhouse_schema "github.com/transferia/transferia/pkg/providers/clickhouse/schema"
 	"github.com/transferia/transferia/pkg/stats"
 	"github.com/transferia/transferia/pkg/util"
 	"go.ytsaurus.tech/library/go/core/log"
@@ -32,7 +32,7 @@ import (
 type sinkTable struct {
 	server     *SinkServer
 	tableName  string
-	config     model.ChSinkServerParams
+	config     clickhouse_model.ChSinkServerParams
 	logger     log.Logger
 	colTypes   columntypes.TypeMapping
 	cols       *abstract.TableSchema // warn: schema can be changed inflight
@@ -60,7 +60,7 @@ func (t *sinkTable) Init(cols *abstract.TableSchema) error {
 	}
 	if t.config.InferSchema() || exist {
 		if !t.config.GetIsSchemaMigrationDisabled() {
-			targetCols, err := schema.DescribeTable(t.server.db, t.config.Database(), t.tableName, nil)
+			targetCols, err := clickhouse_schema.DescribeTable(t.server.db, t.config.Database(), t.tableName, nil)
 			if err != nil {
 				return xerrors.Errorf("failed to discover existing schema of %s: %w", t.tableName, err)
 			}
@@ -80,7 +80,7 @@ func (t *sinkTable) Init(cols *abstract.TableSchema) error {
 		return t.createTable(sch.abstractCols(), distributed)
 	})
 	if err != nil {
-		if cherrors.IsFatalClickhouseError(err) {
+		if clickhouse_errors.IsFatalClickhouseError(err) {
 			return abstract.NewFatalError(err)
 		}
 		return xerrors.Errorf("failed to create table %s: %w", t.tableName, err)
@@ -259,7 +259,7 @@ func (t *sinkTable) ApplyChangeItems(rows []abstract.ChangeItem) error {
 	batches := splitRowsBySchema(rows)
 	for i, batch := range batches {
 		if err := t.applyBatch(batch); err != nil {
-			if codes.ClickHouseToastUpdate.Contains(err) && t.config.UpsertAbsentToastedRows() {
+			if error_codes.ClickHouseToastUpdate.Contains(err) && t.config.UpsertAbsentToastedRows() {
 				t.logger.Warnf("batch insertion fail, fallback to one-by-one pushing (batch #%d)", i)
 				for j, batchElem := range batch {
 					if err := t.applyBatch([]abstract.ChangeItem{batchElem}); err != nil {
@@ -316,14 +316,14 @@ func (t *sinkTable) applyBatch(items []abstract.ChangeItem) error {
 	defer txRollbacks.Do()
 
 	if err := doOperation(t, tx, items); err != nil {
-		if cherrors.IsFatalClickhouseError(err) {
+		if clickhouse_errors.IsFatalClickhouseError(err) {
 			return abstract.NewFatalError(err)
 		}
 		return xerrors.Errorf("failed to process change items: %w", err)
 	}
 
 	if err := tx.Commit(); err != nil {
-		if cherrors.IsFatalClickhouseError(err) {
+		if clickhouse_errors.IsFatalClickhouseError(err) {
 			return abstract.NewFatalError(err)
 		}
 		t.logger.Warn("Commit error", log.Any("ch_host", t.config.Host().HostName()), log.Error(err))
@@ -350,7 +350,7 @@ func (t *sinkTable) uploadAsJSON(rows []abstract.ChangeItem) error {
 		t.avgRowSize = int(float64(t.avgRowSize) * 1.5)
 	}
 
-	st, err := httpuploader2.UploadCIBatch(rows, httpuploader2.NewRules(
+	st, err := httpuploader.UploadCIBatch(rows, httpuploader.NewRules(
 		rows[0].ColumnNames,
 		currSchema,
 		abstract.MakeMapColNameToIndex(currSchema),
@@ -649,7 +649,7 @@ func doOperation(t *sinkTable, tx *sql.Tx, items []abstract.ChangeItem) (err err
 		strings.Join(colVals, ","),
 	)
 
-	insertCtx := clickhouse.Context(context.Background(), t.config.InsertSettings().ToQueryOption(t.version))
+	insertCtx := clickhouse_go.Context(context.Background(), t.config.InsertSettings().ToQueryOption(t.version))
 	insertQuery, err := tx.PrepareContext(insertCtx, q)
 	if err != nil {
 		if err.Error() == "Decimal128 is not supported" {
@@ -660,7 +660,7 @@ func doOperation(t *sinkTable, tx *sql.Tx, items []abstract.ChangeItem) (err err
 
 	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 	defer cancel()
-	fillRequiredColumn := t.version.LT(model.InsertNullAsDefaultExistedVersion)
+	fillRequiredColumn := t.version.LT(clickhouse_model.InsertNullAsDefaultExistedVersion)
 	for i := range items {
 		// TODO - handle AlterTable
 		argsArr := buildChangeItemArgs(&items[i], currSchema, t.config.IsUpdateable(), fillRequiredColumn)

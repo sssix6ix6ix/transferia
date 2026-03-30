@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
@@ -16,13 +16,13 @@ import (
 	serializer "github.com/transferia/transferia/pkg/serializer/queue"
 	"github.com/transferia/transferia/pkg/stats"
 	"github.com/transferia/transferia/pkg/util"
-	"github.com/transferia/transferia/pkg/util/queues"
+	util_queues "github.com/transferia/transferia/pkg/util/queues"
 	"github.com/transferia/transferia/pkg/xtls"
-	"github.com/ydb-platform/ydb-go-sdk/v3"
-	"github.com/ydb-platform/ydb-go-sdk/v3/config"
+	ydb_go_sdk "github.com/ydb-platform/ydb-go-sdk/v3"
+	ydb_config "github.com/ydb-platform/ydb-go-sdk/v3/config"
 	"github.com/ydb-platform/ydb-go-sdk/v3/sugar"
 	"github.com/ydb-platform/ydb-go-sdk/v3/topic/topicoptions"
-	"github.com/ydb-platform/ydb-go-sdk/v3/topic/topicwriter"
+	ydb_topicwriter "github.com/ydb-platform/ydb-go-sdk/v3/topic/topicwriter"
 	"github.com/ydb-platform/ydb-go-sdk/v3/trace"
 	"go.ytsaurus.tech/library/go/core/log"
 )
@@ -33,7 +33,7 @@ import (
 const writerQueueLenSize = 100000
 
 type cancelableWriter interface {
-	Write(ctx context.Context, messages ...topicwriter.Message) error
+	Write(ctx context.Context, messages ...ydb_topicwriter.Message) error
 	Close(ctx context.Context) error
 }
 
@@ -64,7 +64,7 @@ type sink struct {
 	// So, recommended to do it carefully - for example, after consumer read all available data.
 	shard string
 
-	driver *ydb.Driver
+	driver *ydb_go_sdk.Driver
 
 	// writers - map: groupID -> writer
 	// groupID is fqtn() for non-mirroring, and sourceID for mirroring
@@ -106,7 +106,7 @@ func (s *sink) Push(inputRaw []abstract.ChangeItem) error {
 
 	startSending := time.Now()
 
-	timings := queues.NewTimingsStatCollector()
+	timings := util_queues.NewTimingsStatCollector()
 
 	err = s.sendSerializedMessages(timings, tableToMessages, extras)
 	if err != nil {
@@ -161,7 +161,7 @@ func (s *sink) getInputWithoutSynchronizeEvent(input []abstract.ChangeItem) []ab
 }
 
 func (s *sink) sendSerializedMessages(
-	timings *queues.TimingsStatCollector,
+	timings *util_queues.TimingsStatCollector,
 	tableToMessages map[abstract.TablePartID][]serializer.SerializedMessage,
 	extras map[abstract.TablePartID]map[string]string,
 ) error {
@@ -170,7 +170,7 @@ func (s *sink) sendSerializedMessages(
 		if currTablePartID.IsSystemTable() && !s.config.AddSystemTables {
 			continue
 		}
-		topic := queues.GetTopicName(s.config.Topic, s.config.TopicPrefix, currTablePartID)
+		topic := util_queues.GetTopicName(s.config.Topic, s.config.TopicPrefix, currTablePartID)
 		_, err := s.findOrCreateWriter(currTablePartID.FqtnWithPartID(), topic, extras[currTablePartID])
 		if err != nil {
 			return xerrors.Errorf("unable to find or create writer, topic: %s, err: %w", topic, err)
@@ -185,7 +185,7 @@ func (s *sink) sendSerializedMessages(
 		timings.Started(tablePartID)
 
 		groupID := tablePartID.FqtnWithPartID()
-		currTopic := queues.GetTopicName(s.config.Topic, s.config.TopicPrefix, tablePartID)
+		currTopic := util_queues.GetTopicName(s.config.Topic, s.config.TopicPrefix, tablePartID)
 		currWriter, err := s.findOrCreateWriter(groupID, currTopic, extras[tablePartID])
 		if err != nil {
 			return xerrors.Errorf("unable to find or create writer, topic: %s, err: %w", currTopic, err)
@@ -276,20 +276,20 @@ func (s *sink) closeWriters() error {
 	return errors.Join(closeErrs...)
 }
 
-func splitSerializedMessages(maxSize int, serializedMessages []serializer.SerializedMessage) (int, [][]topicwriter.Message) {
+func splitSerializedMessages(maxSize int, serializedMessages []serializer.SerializedMessage) (int, [][]ydb_topicwriter.Message) {
 	var totalMessagesSize, currentBatchSize int
-	currentBatch := make([]topicwriter.Message, 0)
-	messageBatches := make([][]topicwriter.Message, 0)
+	currentBatch := make([]ydb_topicwriter.Message, 0)
+	messageBatches := make([][]ydb_topicwriter.Message, 0)
 	for idx, currSerializedMessage := range serializedMessages {
 		currentBatchSize += len(currSerializedMessage.Value)
-		currentBatch = append(currentBatch, topicwriter.Message{Data: bytes.NewReader(currSerializedMessage.Value)})
+		currentBatch = append(currentBatch, ydb_topicwriter.Message{Data: bytes.NewReader(currSerializedMessage.Value)})
 
 		if currentBatchSize >= maxSize || idx == len(serializedMessages)-1 {
 			totalMessagesSize += currentBatchSize
 			messageBatches = append(messageBatches, currentBatch)
 
 			currentBatchSize = 0
-			currentBatch = make([]topicwriter.Message, 0)
+			currentBatch = make([]ydb_topicwriter.Message, 0)
 		}
 	}
 
@@ -313,7 +313,7 @@ func rearrangeTableToMessagesForMirror(tableToMessages map[abstract.TablePartID]
 	return newTableToMessages
 }
 
-func newWriter(driver *ydb.Driver, topic string, opts []topicoptions.WriterOption) (cancelableWriter, error) {
+func newWriter(driver *ydb_go_sdk.Driver, topic string, opts []topicoptions.WriterOption) (cancelableWriter, error) {
 	writer, err := driver.Topic().StartWriter(topic, opts...)
 	if err != nil {
 		return nil, xerrors.Errorf("Failed to create topic writer: %w", err)
@@ -322,17 +322,17 @@ func newWriter(driver *ydb.Driver, topic string, opts []topicoptions.WriterOptio
 	return writer, nil
 }
 
-func newDriver(cfg *Config, lgr log.Logger) (*ydb.Driver, error) {
+func newDriver(cfg *Config, lgr log.Logger) (*ydb_go_sdk.Driver, error) {
 	isSecure := false
-	opts := []ydb.Option{
+	opts := []ydb_go_sdk.Option{
 		logadapter.WithTraces(lgr, trace.DetailsAll),
-		ydb.With(
-			config.WithOperationTimeout(60 * time.Second), // to prevent some hanging-on
+		ydb_go_sdk.With(
+			ydb_config.WithOperationTimeout(60 * time.Second), // to prevent some hanging-on
 		),
 	}
 
 	if cfg.Credentials != nil {
-		opts = append(opts, ydb.WithCredentials(cfg.Credentials))
+		opts = append(opts, ydb_go_sdk.WithCredentials(cfg.Credentials))
 	}
 
 	if cfg.TLS == model.EnabledTLS {
@@ -341,18 +341,18 @@ func newDriver(cfg *Config, lgr log.Logger) (*ydb.Driver, error) {
 		if err != nil {
 			return nil, xerrors.Errorf("cannot init driver without tls: %w", err)
 		}
-		opts = append(opts, ydb.WithTLSConfig(tlsConfig))
+		opts = append(opts, ydb_go_sdk.WithTLSConfig(tlsConfig))
 	}
 
 	driverCtx, cancel := context.WithTimeout(context.Background(), time.Second*15)
 	defer cancel()
 
-	return ydb.Open(driverCtx, sugar.DSN(cfg.Endpoint, cfg.Database, sugar.WithSecure(isSecure)), opts...)
+	return ydb_go_sdk.Open(driverCtx, sugar.DSN(cfg.Endpoint, cfg.Database, sugar.WithSecure(isSecure)), opts...)
 }
 
-func newSinkWithFactories(cfg *Config, registry metrics.Registry, lgr log.Logger,
+func newSinkWithFactories(cfg *Config, registry core_metrics.Registry, lgr log.Logger,
 	transferID string, isSnapshot bool) (abstract.Sinker, error) {
-	_, err := queues.NewTopicDefinition(cfg.Topic, cfg.TopicPrefix)
+	_, err := util_queues.NewTopicDefinition(cfg.Topic, cfg.TopicPrefix)
 	if err != nil {
 		return nil, xerrors.Errorf("unable to validate topic settings: %w", err)
 	}
@@ -388,10 +388,10 @@ func newSinkWithFactories(cfg *Config, registry metrics.Registry, lgr log.Logger
 	}, nil
 }
 
-func NewReplicationSink(cfg *Config, registry metrics.Registry, lgr log.Logger, transferID string) (abstract.Sinker, error) {
+func NewReplicationSink(cfg *Config, registry core_metrics.Registry, lgr log.Logger, transferID string) (abstract.Sinker, error) {
 	return newSinkWithFactories(cfg, registry, lgr, transferID, false)
 }
 
-func NewSnapshotSink(cfg *Config, registry metrics.Registry, lgr log.Logger, transferID string) (abstract.Sinker, error) {
+func NewSnapshotSink(cfg *Config, registry core_metrics.Registry, lgr log.Logger, transferID string) (abstract.Sinker, error) {
 	return newSinkWithFactories(cfg, registry, lgr, transferID, true)
 }

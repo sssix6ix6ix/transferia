@@ -7,12 +7,12 @@ import (
 
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	"github.com/ydb-platform/ydb-go-sdk/v3"
-	"github.com/ydb-platform/ydb-go-sdk/v3/table"
-	"github.com/ydb-platform/ydb-go-sdk/v3/table/options"
+	ydb_go_sdk "github.com/ydb-platform/ydb-go-sdk/v3"
+	ydb_table "github.com/ydb-platform/ydb-go-sdk/v3/table"
+	ydb_options "github.com/ydb-platform/ydb-go-sdk/v3/table/options"
 )
 
-func filterYdbTableColumns(filter []YdbColumnsFilter, description options.Description) ([]options.Column, error) {
+func filterYdbTableColumns(filter []YdbColumnsFilter, description ydb_options.Description) ([]ydb_options.Column, error) {
 	for _, filterRule := range filter {
 		tablesWithFilterRegExp, err := regexp.Compile(filterRule.TableNamesRegexp)
 		if err != nil {
@@ -29,7 +29,7 @@ func filterYdbTableColumns(filter []YdbColumnsFilter, description options.Descri
 		if err != nil {
 			return nil, xerrors.Errorf("unable to compile regexp: %s: %w", filterRule.ColumnNamesRegexp, err)
 		}
-		filteredColumns := make([]options.Column, 0)
+		filteredColumns := make([]ydb_options.Column, 0)
 		for _, column := range description.Columns {
 			hasMatch := columnsToFilterRegExp.MatchString(column.Name)
 			if (filterRule.Type == YdbColumnsWhiteList && hasMatch) ||
@@ -51,7 +51,7 @@ func filterYdbTableColumns(filter []YdbColumnsFilter, description options.Descri
 	return description.Columns, nil
 }
 
-func tableSchema(ctx context.Context, db *ydb.Driver, database string, tableID abstract.TableID) (*abstract.TableSchema, error) {
+func tableSchema(ctx context.Context, db *ydb_go_sdk.Driver, database string, tableID abstract.TableID) (*abstract.TableSchema, error) {
 	tablePath := path.Join(database, tableID.Namespace, tableID.Name)
 	desc, err := describeTable(ctx, db, tablePath)
 	if err != nil {
@@ -60,9 +60,9 @@ func tableSchema(ctx context.Context, db *ydb.Driver, database string, tableID a
 	return abstract.NewTableSchema(FromYdbSchema(desc.Columns, desc.PrimaryKey)), nil
 }
 
-func describeTable(ctx context.Context, db *ydb.Driver, tablePath string, opts ...options.DescribeTableOption) (*options.Description, error) {
-	var desc options.Description
-	err := db.Table().Do(ctx, func(ctx context.Context, session table.Session) (err error) {
+func describeTable(ctx context.Context, db *ydb_go_sdk.Driver, tablePath string, opts ...ydb_options.DescribeTableOption) (*ydb_options.Description, error) {
+	var desc ydb_options.Description
+	err := db.Table().Do(ctx, func(ctx context.Context, session ydb_table.Session) (err error) {
 		desc, err = session.DescribeTable(ctx, tablePath, opts...)
 		if err != nil {
 			return err

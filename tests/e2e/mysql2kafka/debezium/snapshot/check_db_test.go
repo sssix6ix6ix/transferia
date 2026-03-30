@@ -12,7 +12,7 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/changeitem"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	kafka_provider "github.com/transferia/transferia/pkg/providers/kafka"
+	provider_kafka "github.com/transferia/transferia/pkg/providers/kafka"
 	"github.com/transferia/transferia/pkg/util"
 	"github.com/transferia/transferia/tests/helpers"
 	mocksink "github.com/transferia/transferia/tests/helpers/mock_sink"
@@ -41,7 +41,7 @@ func TestSnapshot(t *testing.T) {
 	//------------------------------------------------------------------------------
 	//prepare dst
 
-	dst, err := kafka_provider.DestinationRecipe()
+	dst, err := provider_kafka.DestinationRecipe()
 	require.NoError(t, err)
 	dst.Topic = "dbserver1"
 	dst.FormatSettings = model.SerializationFormat{Name: model.SerializationFormatDebezium}
@@ -58,7 +58,7 @@ func TestSnapshot(t *testing.T) {
 		SinkerFactory: func() abstract.Sinker { return mockSink },
 		Cleanup:       model.DisabledCleanup,
 	}
-	additionalTransfer := helpers.MakeTransfer("additional", &kafka_provider.KafkaSource{
+	additionalTransfer := helpers.MakeTransfer("additional", &provider_kafka.KafkaSource{
 		Connection:  dst.Connection,
 		Auth:        dst.Auth,
 		GroupTopics: []string{dst.Topic},

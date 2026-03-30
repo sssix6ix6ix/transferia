@@ -2,7 +2,7 @@ package provider
 
 import (
 	"github.com/transferia/transferia/pkg/abstract2"
-	"github.com/transferia/transferia/pkg/providers/yt/provider/table"
+	yt_table "github.com/transferia/transferia/pkg/providers/yt/provider/table"
 )
 
 type lazyYSON struct {
@@ -23,7 +23,7 @@ func (l *lazyYSON) RawSize() int {
 type batch struct {
 	rows   []lazyYSON
 	idx    int
-	table  table.YtTable
+	table  yt_table.YtTable
 	part   string
 	idxCol string
 }
@@ -57,7 +57,7 @@ func (b *batch) Len() int {
 	return len(b.rows)
 }
 
-func newEmptyBatch(tbl table.YtTable, size int, part, idxCol string) *batch {
+func newEmptyBatch(tbl yt_table.YtTable, size int, part, idxCol string) *batch {
 	return &batch{
 		rows:   make([]lazyYSON, 0, size),
 		idx:    -1,

@@ -11,14 +11,14 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	mongo_driver "go.mongodb.org/mongo-driver/mongo"
+	mongo_options "go.mongodb.org/mongo-driver/mongo/options"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
 type localOplogRsWatcher struct {
 	logger               log.Logger
-	oplog                *mongo.Collection // local.oplog.rs collection
+	oplog                *mongo_driver.Collection // local.oplog.rs collection
 	client               *MongoClientWrapper
 	filterOplogWithRegex bool
 
@@ -109,8 +109,8 @@ func (w localOplogRsWatcher) getFullWhereStatement() *bson.D {
 	return w.fullWhereStatementCache
 }
 
-func (w localOplogRsWatcher) openOplogCursor(ctx context.Context, ts primitive.Timestamp) (oplogCursor *mongo.Cursor, withRegexp bool, err error) {
-	openCursorFunc := func(withRegex bool) (*mongo.Cursor, bool, error) {
+func (w localOplogRsWatcher) openOplogCursor(ctx context.Context, ts primitive.Timestamp) (oplogCursor *mongo_driver.Cursor, withRegexp bool, err error) {
+	openCursorFunc := func(withRegex bool) (*mongo_driver.Cursor, bool, error) {
 		var filter bson.D
 		if withRegex {
 			// filter out only interesting collections
@@ -118,7 +118,7 @@ func (w localOplogRsWatcher) openOplogCursor(ctx context.Context, ts primitive.T
 		}
 		filter = append(filter, bson.E{Key: "ts", Value: bson.D{{Key: "$gt", Value: ts}}})
 
-		findOptions := options.Find()
+		findOptions := mongo_options.Find()
 
 		// no cursor timeout is unavailable for lower price tiers in atlas
 		// https://www.mongodb.com/docs/atlas/reference/free-shared-limitations/

@@ -8,25 +8,25 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/transformer"
-	"github.com/transferia/transferia/pkg/transformer/registry/filter"
+	transformer_filter "github.com/transferia/transferia/pkg/transformer/registry/filter"
 	"go.ytsaurus.tech/library/go/core/log"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 const Type = abstract.TransformerType("convert_to_datetime")
 
 var supportedTypes map[string]bool = map[string]bool{
-	schema.TypeInt32.String():  true,
-	schema.TypeUint32.String(): true,
+	ytschema.TypeInt32.String():  true,
+	ytschema.TypeUint32.String(): true,
 }
 
 func init() {
 	transformer.Register[Config](Type, func(cfg Config, logger log.Logger, _ abstract.TransformationRuntimeOpts) (abstract.Transformer, error) {
-		clms, err := filter.NewFilter(cfg.Columns.IncludeColumns, cfg.Columns.ExcludeColumns)
+		clms, err := transformer_filter.NewFilter(cfg.Columns.IncludeColumns, cfg.Columns.ExcludeColumns)
 		if err != nil {
 			return nil, xerrors.Errorf("unable to create columns filter: %w", err)
 		}
-		tbls, err := filter.NewFilter(cfg.Tables.IncludeTables, cfg.Tables.ExcludeTables)
+		tbls, err := transformer_filter.NewFilter(cfg.Tables.IncludeTables, cfg.Tables.ExcludeTables)
 		if err != nil {
 			return nil, xerrors.Errorf("unable to create tables filter: %w", err)
 		}
@@ -39,13 +39,13 @@ func init() {
 }
 
 type Config struct {
-	Columns filter.Columns `json:"columns"`
-	Tables  filter.Tables  `json:"tables"`
+	Columns transformer_filter.Columns `json:"columns"`
+	Tables  transformer_filter.Tables  `json:"tables"`
 }
 
 type ToDateTimeTransformer struct {
-	Columns filter.Filter
-	Tables  filter.Filter
+	Columns transformer_filter.Filter
+	Tables  transformer_filter.Filter
 	Logger  log.Logger
 }
 
@@ -58,7 +58,7 @@ func (t *ToDateTimeTransformer) suitableColumn(columnName string, columnType str
 }
 
 func (t *ToDateTimeTransformer) Suitable(table abstract.TableID, tableSchema *abstract.TableSchema) bool {
-	if !filter.MatchAnyTableNameVariant(t.Tables, table) {
+	if !transformer_filter.MatchAnyTableNameVariant(t.Tables, table) {
 		return false
 	}
 	if t.Columns.Empty() {
@@ -97,7 +97,7 @@ func (t *ToDateTimeTransformer) Apply(input []abstract.ChangeItem) abstract.Tran
 			newTableSchema[i] = column
 			if t.suitableColumn(column.ColumnName, column.DataType) {
 				oldTypes[column.ColumnName] = column.DataType
-				newTableSchema[i].DataType = schema.TypeDatetime.String()
+				newTableSchema[i].DataType = ytschema.TypeDatetime.String()
 			}
 		}
 
@@ -126,7 +126,7 @@ func (t *ToDateTimeTransformer) ResultSchema(original *abstract.TableSchema) (*a
 	result := original.Columns().Copy()
 	for i, col := range result {
 		if t.suitableColumn(col.ColumnName, col.DataType) {
-			result[i].DataType = schema.TypeDatetime.String()
+			result[i].DataType = ytschema.TypeDatetime.String()
 		}
 	}
 	return abstract.NewTableSchema(result), nil
@@ -134,12 +134,12 @@ func (t *ToDateTimeTransformer) ResultSchema(original *abstract.TableSchema) (*a
 
 func SerializeToDateTime(value interface{}, valueType string) time.Time {
 	switch valueType {
-	case string(schema.TypeInt32):
+	case string(ytschema.TypeInt32):
 		out, ok := value.(int32)
 		if ok {
 			return time.Unix(int64(out), 0)
 		}
-	case string(schema.TypeUint32):
+	case string(ytschema.TypeUint32):
 		out, ok := value.(uint32)
 		if ok {
 			return time.Unix(int64(out), 0)

@@ -11,14 +11,14 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/postgres"
-	yt_provider "github.com/transferia/transferia/pkg/providers/yt"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
+	provider_yt "github.com/transferia/transferia/pkg/providers/yt"
 	"github.com/transferia/transferia/tests/helpers"
-	yt_helpers "github.com/transferia/transferia/tests/helpers/yt"
+	helpers_yt "github.com/transferia/transferia/tests/helpers/yt"
 )
 
 var (
-	Source = postgres.PgSource{
+	Source = provider_postgres.PgSource{
 		ClusterID: os.Getenv("PG_CLUSTER_ID"),
 		Hosts:     []string{"localhost"},
 		User:      os.Getenv("PG_LOCAL_USER"),
@@ -27,7 +27,7 @@ var (
 		Port:      helpers.GetIntFromEnv("PG_LOCAL_PORT"),
 		DBTables:  []string{"public.__test1"},
 	}
-	Target = yt_helpers.RecipeYtTarget("//home/cdc/test/pg2yt_e2e").(*yt_provider.YtDestinationWrapper)
+	Target = helpers_yt.RecipeYtTarget("//home/cdc/test/pg2yt_e2e").(*provider_yt.YtDestinationWrapper)
 )
 
 func init() {
@@ -75,7 +75,7 @@ func SnapshotAndIncrement(t *testing.T) {
 
 func makeIncrementActions(t *testing.T, table string) {
 	ctx := context.Background()
-	srcConn, err := postgres.MakeConnPoolFromSrc(&Source, logger.Log)
+	srcConn, err := provider_postgres.MakeConnPoolFromSrc(&Source, logger.Log)
 	require.NoError(t, err)
 
 	_, err = srcConn.Exec(ctx, fmt.Sprintf("INSERT INTO public.%s (id, name) VALUES (1000, 'test1test1') on conflict do nothing ;", table))

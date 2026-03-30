@@ -4,24 +4,24 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	dp_model "github.com/transferia/transferia/pkg/abstract/model"
+	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/abstract2"
-	"github.com/transferia/transferia/pkg/connection/clickhouse"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/model"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/schema"
+	conn_clickhouse "github.com/transferia/transferia/pkg/connection/clickhouse"
+	clickhouse_model "github.com/transferia/transferia/pkg/providers/clickhouse/model"
+	clickhouse_schema "github.com/transferia/transferia/pkg/providers/clickhouse/schema"
 	"github.com/transferia/transferia/pkg/stats"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
 type DataProvider struct {
 	logger     log.Logger
-	registry   metrics.Registry
-	config     *model.ChSource
+	registry   core_metrics.Registry
+	config     *clickhouse_model.ChSource
 	transferID string
-	shards     map[string][]*clickhouse.Host
+	shards     map[string][]*conn_clickhouse.Host
 	storage    ClickhouseStorage
 }
 
@@ -84,7 +84,7 @@ func (c *DataProvider) CreateSnapshotSource(part abstract2.DataObjectPart) (abst
 	}
 	return NewSourcesChain(
 		c.logger,
-		schema.NewDDLSource(
+		clickhouse_schema.NewDDLSource(
 			c.logger,
 			part,
 			c.storage,
@@ -136,7 +136,7 @@ func (c *DataProvider) TablePartToDataObjectPart(tableDescription *abstract.Tabl
 	return &part, nil
 }
 
-func NewClickhouseProvider(logger log.Logger, registry metrics.Registry, config *model.ChSource, transfer *dp_model.Transfer) (abstract2.SnapshotProvider, error) {
+func NewClickhouseProvider(logger log.Logger, registry core_metrics.Registry, config *clickhouse_model.ChSource, transfer *model.Transfer) (abstract2.SnapshotProvider, error) {
 	sinkParams, err := config.ToSinkParams()
 	if err != nil {
 		return nil, xerrors.Errorf("unable to get sink params: %w", err)

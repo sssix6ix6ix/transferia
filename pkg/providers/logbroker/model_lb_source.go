@@ -6,7 +6,7 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/ydb"
+	provider_ydb "github.com/transferia/transferia/pkg/providers/ydb"
 	"go.uber.org/zap/zapcore"
 )
 
@@ -17,7 +17,7 @@ type LbSource struct {
 	Consumer       string `log:"true"`
 	Database       string `log:"true"`
 	AllowTTLRewind bool   `log:"true"`
-	Credentials    ydb.TokenCredentials
+	Credentials    provider_ydb.TokenCredentials
 	Port           int `log:"true"`
 
 	IsLbSink bool `log:"true"` // it's like IsHomo

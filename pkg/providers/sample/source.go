@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/stats"
@@ -109,7 +109,7 @@ func (s *Source) Stop() {
 	s.cancel()
 }
 
-func NewSource(src *SampleSource, transferID string, logger log.Logger, registry metrics.Registry) (abstract.Source, error) {
+func NewSource(src *SampleSource, transferID string, logger log.Logger, registry core_metrics.Registry) (abstract.Source, error) {
 	metric := stats.NewSourceStats(registry)
 	ctx, cancel := context.WithCancel(context.Background())
 

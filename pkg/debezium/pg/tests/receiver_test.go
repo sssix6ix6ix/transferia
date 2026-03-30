@@ -11,15 +11,15 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/debezium"
-	debeziumcommon "github.com/transferia/transferia/pkg/debezium/common"
-	debeziumparameters "github.com/transferia/transferia/pkg/debezium/parameters"
+	debezium_common "github.com/transferia/transferia/pkg/debezium/common"
+	debezium_parameters "github.com/transferia/transferia/pkg/debezium/parameters"
 	"github.com/transferia/transferia/pkg/debezium/typeutil"
 )
 
 var debeziumMsg = `{"schema":{"type":"struct","fields":[{"type":"struct","fields":[{"type":"int32","optional":false,"field":"id"},{"type":"int64","optional":true,"field":"val"}],"optional":true,"name":"fullfillment.public.basic_types.Value","field":"before"},{"type":"struct","fields":[{"type":"int32","optional":false,"field":"id"},{"type":"int64","optional":true,"field":"val"}],"optional":true,"name":"fullfillment.public.basic_types.Value","field":"after"},{"type":"struct","fields":[{"type":"string","optional":false,"field":"version"},{"type":"string","optional":false,"field":"connector"},{"type":"string","optional":false,"field":"name"},{"type":"int64","optional":false,"field":"ts_ms"},{"type":"string","optional":true,"name":"io.debezium.data.Enum","version":1,"parameters":{"allowed":"true,last,false,incremental"},"default":"false","field":"snapshot"},{"type":"string","optional":false,"field":"db"},{"type":"string","optional":true,"field":"sequence"},{"type":"string","optional":false,"field":"schema"},{"type":"string","optional":false,"field":"table"},{"type":"int64","optional":true,"field":"txId"},{"type":"int64","optional":true,"field":"lsn"},{"type":"int64","optional":true,"field":"xmin"}],"optional":false,"name":"io.debezium.connector.postgresql.Source","field":"source"},{"type":"string","optional":false,"field":"op"},{"type":"int64","optional":true,"field":"ts_ms"},{"type":"struct","fields":[{"type":"string","optional":false,"field":"id"},{"type":"int64","optional":false,"field":"total_order"},{"type":"int64","optional":false,"field":"data_collection_order"}],"optional":true,"field":"transaction"}],"optional":false,"name":"fullfillment.public.basic_types.Envelope"},"payload":{"before":null,"after":{"id":1,"val":2},"source":{"version":"1.8.0.Final","connector":"postgresql","name":"fullfillment","ts_ms":1643471295802,"snapshot":"false","db":"pguser","sequence":"[\"23725184\",\"23725240\"]","schema":"public","table":"basic_types","txId":555,"lsn":23725240,"xmin":null},"op":"c","ts_ms":1643471296262,"transaction":null}}`
 
 func TestUnmarshalMessage(t *testing.T) {
-	result, err := debeziumcommon.UnmarshalMessage(debeziumMsg)
+	result, err := debezium_common.UnmarshalMessage(debeziumMsg)
 	require.NoError(t, err)
 	fmt.Println(result)
 }
@@ -29,10 +29,10 @@ func TestUnmarshalMessage(t *testing.T) {
 
 func synthesizeDebeziumMessage(t require.TestingT, changeItem *abstract.ChangeItem) string {
 	emitter, err := debezium.NewMessagesEmitter(map[string]string{
-		debeziumparameters.DatabaseDBName:   "pguser",
-		debeziumparameters.TopicPrefix:      "fullfillment",
-		debeziumparameters.AddOriginalTypes: "false",
-		debeziumparameters.SourceType:       "pg",
+		debezium_parameters.DatabaseDBName:   "pguser",
+		debezium_parameters.TopicPrefix:      "fullfillment",
+		debezium_parameters.AddOriginalTypes: "false",
+		debezium_parameters.SourceType:       "pg",
 	}, "1.8.0.Final", false, logger.Log)
 	require.NoError(t, err)
 	result, err := emitter.EmitKV(changeItem, debezium.GetPayloadTSMS(changeItem), false, nil)
@@ -73,7 +73,7 @@ func ReceiveStr(r *debezium.Receiver, in string) (string, error) {
 	return changeItem.ToJSONString(), err
 }
 
-func receiveWrapper(t require.TestingT, debeziumMsg, canonizedChangeItem string, originalTypes map[abstract.TableID]map[string]*debeziumcommon.OriginalTypeInfo) {
+func receiveWrapper(t require.TestingT, debeziumMsg, canonizedChangeItem string, originalTypes map[abstract.TableID]map[string]*debezium_common.OriginalTypeInfo) {
 	canonDebeziumMsgWithoutSequence := wipeSequenceAndIncremental(debeziumMsg)
 	receiver := debezium.NewReceiver(originalTypes, nil)
 	changeItemStr, err := ReceiveStr(receiver, canonDebeziumMsgWithoutSequence)
@@ -99,7 +99,7 @@ var debeziumMsg00 = `{"payload":{"after":{"id":1,"val":2},"before":null,"op":"c"
 var canonChangeItem00 = `{"id":555,"nextlsn":23725240,"commitTime":1643471295802000000,"txPosition":0,"kind":"insert","schema":"public","table":"basic_types00","columnnames":["id","val"],"columnvalues":[1,2],"table_schema":[{"table_schema":"public","table_name":"basic_types","path":"","name":"id","type":"int32","key":true,"fake_key":false,"required":false,"expression":"","original_type":"pg:integer"},{"table_schema":"public","table_name":"basic_types","path":"","name":"val","type":"int64","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:bigint"}],"oldkeys":{},"tx_id":"","query":""}`
 
 func TestReceive00(t *testing.T) {
-	receiveWrapper(t, debeziumMsg00, fixTableName(canonChangeItem00), map[abstract.TableID]map[string]*debeziumcommon.OriginalTypeInfo{
+	receiveWrapper(t, debeziumMsg00, fixTableName(canonChangeItem00), map[abstract.TableID]map[string]*debezium_common.OriginalTypeInfo{
 		{Namespace: "public", Name: "basic_types"}: {
 			"id":  {OriginalType: "pg:integer"},
 			"val": {OriginalType: "pg:bigint"},
@@ -113,7 +113,7 @@ var debeziumMsg01 = `{"payload":{"after":{"id":1,"val":true},"before":null,"op":
 var canonChangeItem01 = `{"id":558,"nextlsn":24522216,"commitTime":1643471788895334000,"txPosition":0,"kind":"insert","schema":"public","table":"basic_types01","columnnames":["id","val"],"columnvalues":[1,"1"],"table_schema":[{"table_schema":"public","table_name":"basic_types","path":"","name":"id","type":"int32","key":true,"fake_key":false,"required":false,"expression":"","original_type":"pg:integer"},{"table_schema":"public","table_name":"basic_types","path":"","name":"val","type":"string","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:bit(1)"}],"oldkeys":{},"tx_id":"","query":""}`
 
 func TestReceive01(t *testing.T) {
-	receiveWrapper(t, debeziumMsg01, fixTableName(canonChangeItem01), map[abstract.TableID]map[string]*debeziumcommon.OriginalTypeInfo{
+	receiveWrapper(t, debeziumMsg01, fixTableName(canonChangeItem01), map[abstract.TableID]map[string]*debezium_common.OriginalTypeInfo{
 		{Namespace: "public", Name: "basic_types"}: {
 			"id":  {OriginalType: "pg:integer"},
 			"val": {OriginalType: "pg:bit(1)"},
@@ -127,7 +127,7 @@ var debeziumMsg02 = `{"payload":{"after":{"id":1,"val":"uw=="},"before":null,"op
 var canonChangeItem02 = `{"id":561,"nextlsn":24522216,"commitTime":1643471788895579000,"txPosition":0,"kind":"insert","schema":"public","table":"basic_types02","columnnames":["id","val"],"columnvalues":[1,"10111011"],"table_schema":[{"table_schema":"public","table_name":"basic_types","path":"","name":"id","type":"int32","key":true,"fake_key":false,"required":false,"expression":"","original_type":"pg:integer"},{"table_schema":"public","table_name":"basic_types","path":"","name":"val","type":"string","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:bit(8)"}],"oldkeys":{},"tx_id":"","query":""}`
 
 func TestReceive02(t *testing.T) {
-	receiveWrapper(t, debeziumMsg02, fixTableName(canonChangeItem02), map[abstract.TableID]map[string]*debeziumcommon.OriginalTypeInfo{
+	receiveWrapper(t, debeziumMsg02, fixTableName(canonChangeItem02), map[abstract.TableID]map[string]*debezium_common.OriginalTypeInfo{
 		{Namespace: "public", Name: "basic_types"}: {
 			"id":  {OriginalType: "pg:integer"},
 			"val": {OriginalType: "pg:bit(8)"},
@@ -141,7 +141,7 @@ var debeziumMsg03 = `{"payload":{"after":{"id":1,"val":"uw=="},"before":null,"op
 var canonChangeItem03 = `{"id":564,"nextlsn":24531320,"commitTime":1643633963155601000,"txPosition":0,"kind":"insert","schema":"public","table":"basic_types03","columnnames":["id","val"],"columnvalues":[1,"10111011"],"table_schema":[{"table_schema":"public","table_name":"basic_types","path":"","name":"id","type":"int32","key":true,"fake_key":false,"required":false,"expression":"","original_type":"pg:integer"},{"table_schema":"public","table_name":"basic_types","path":"","name":"val","type":"string","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:bit varying(8)"}],"oldkeys":{},"tx_id":"","query":""}`
 
 func TestReceive03(t *testing.T) {
-	receiveWrapper(t, debeziumMsg03, fixTableName(canonChangeItem03), map[abstract.TableID]map[string]*debeziumcommon.OriginalTypeInfo{
+	receiveWrapper(t, debeziumMsg03, fixTableName(canonChangeItem03), map[abstract.TableID]map[string]*debezium_common.OriginalTypeInfo{
 		{Namespace: "public", Name: "basic_types"}: {
 			"id":  {OriginalType: "pg:integer"},
 			"val": {OriginalType: "pg:bit varying(8)"},
@@ -155,7 +155,7 @@ var debeziumMsg04 = `{"payload":{"after":{"id":1,"val":true},"before":null,"op":
 var canonChangeItem04 = `{"id":567,"nextlsn":24540344,"commitTime":1643634681324924000,"txPosition":0,"kind":"insert","schema":"public","table":"basic_types04","columnnames":["id","val"],"columnvalues":[1,true],"table_schema":[{"table_schema":"public","table_name":"basic_types","path":"","name":"id","type":"int32","key":true,"fake_key":false,"required":false,"expression":"","original_type":"pg:integer"},{"table_schema":"public","table_name":"basic_types","path":"","name":"val","type":"boolean","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:boolean"}],"oldkeys":{},"tx_id":"","query":""}`
 
 func TestReceive04(t *testing.T) {
-	receiveWrapper(t, debeziumMsg04, fixTableName(canonChangeItem04), map[abstract.TableID]map[string]*debeziumcommon.OriginalTypeInfo{
+	receiveWrapper(t, debeziumMsg04, fixTableName(canonChangeItem04), map[abstract.TableID]map[string]*debezium_common.OriginalTypeInfo{
 		{Namespace: "public", Name: "basic_types"}: {
 			"id":  {OriginalType: "pg:integer"},
 			"val": {OriginalType: "pg:boolean"},
@@ -169,7 +169,7 @@ var debeziumMsg05 = `{"payload":{"after":{"id":1,"val":"yv66vg=="},"before":null
 var canonChangeItem05 = `{"id":570,"nextlsn":24572984,"commitTime":1643634881019849000,"txPosition":0,"kind":"insert","schema":"public","table":"basic_types05","columnnames":["id","val"],"columnvalues":[1,"yv66vg=="],"table_schema":[{"table_schema":"public","table_name":"basic_types","path":"","name":"id","type":"int32","key":true,"fake_key":false,"required":false,"expression":"","original_type":"pg:integer"},{"table_schema":"public","table_name":"basic_types","path":"","name":"val","type":"string","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:bytea"}],"oldkeys":{},"tx_id":"","query":""}`
 
 func TestReceive05(t *testing.T) {
-	receiveWrapper(t, debeziumMsg05, fixTableName(canonChangeItem05), map[abstract.TableID]map[string]*debeziumcommon.OriginalTypeInfo{
+	receiveWrapper(t, debeziumMsg05, fixTableName(canonChangeItem05), map[abstract.TableID]map[string]*debezium_common.OriginalTypeInfo{
 		{Namespace: "public", Name: "basic_types"}: {
 			"id":  {OriginalType: "pg:integer"},
 			"val": {OriginalType: "pg:bytea"},
@@ -183,7 +183,7 @@ var debeziumMsg06 = `{"payload":{"after":{"id":1,"val":"z"},"before":null,"op":"
 var canonChangeItem06 = `{"id":573,"nextlsn":24582008,"commitTime":1643635514020408000,"txPosition":0,"kind":"insert","schema":"public","table":"basic_types06","columnnames":["id","val"],"columnvalues":[1,"z"],"table_schema":[{"table_schema":"public","table_name":"basic_types","path":"","name":"id","type":"int32","key":true,"fake_key":false,"required":false,"expression":"","original_type":"pg:integer"},{"table_schema":"public","table_name":"basic_types","path":"","name":"val","type":"utf8","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:character(1)"}],"oldkeys":{},"tx_id":"","query":""}`
 
 func TestReceive06(t *testing.T) {
-	receiveWrapper(t, debeziumMsg06, fixTableName(canonChangeItem06), map[abstract.TableID]map[string]*debeziumcommon.OriginalTypeInfo{
+	receiveWrapper(t, debeziumMsg06, fixTableName(canonChangeItem06), map[abstract.TableID]map[string]*debezium_common.OriginalTypeInfo{
 		{Namespace: "public", Name: "basic_types"}: {
 			"id":  {OriginalType: "pg:integer"},
 			"val": {OriginalType: "pg:character(1)"},
@@ -197,7 +197,7 @@ var debeziumMsg07 = `{"payload":{"after":{"id":1,"val":"abcd"},"before":null,"op
 var canonChangeItem07 = `{"id":576,"nextlsn":24591032,"commitTime":1643636872675869000,"txPosition":0,"kind":"insert","schema":"public","table":"basic_types07","columnnames":["id","val"],"columnvalues":[1,"abcd"],"table_schema":[{"table_schema":"public","table_name":"basic_types","path":"","name":"id","type":"int32","key":true,"fake_key":false,"required":false,"expression":"","original_type":"pg:integer"},{"table_schema":"public","table_name":"basic_types","path":"","name":"val","type":"utf8","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:character(4)"}],"oldkeys":{},"tx_id":"","query":""}`
 
 func TestReceive07(t *testing.T) {
-	receiveWrapper(t, debeziumMsg07, fixTableName(canonChangeItem07), map[abstract.TableID]map[string]*debeziumcommon.OriginalTypeInfo{
+	receiveWrapper(t, debeziumMsg07, fixTableName(canonChangeItem07), map[abstract.TableID]map[string]*debezium_common.OriginalTypeInfo{
 		{Namespace: "public", Name: "basic_types"}: {
 			"id":  {OriginalType: "pg:integer"},
 			"val": {OriginalType: "pg:character(4)"},
@@ -211,7 +211,7 @@ var debeziumMsg08 = `{"payload":{"after":{"id":1,"val":"blablabla"},"before":nul
 var canonChangeItem08 = `{"id":579,"nextlsn":24600872,"commitTime":1643637188079327000,"txPosition":0,"kind":"insert","schema":"public","table":"basic_types08","columnnames":["id","val"],"columnvalues":[1,"blablabla"],"table_schema":[{"table_schema":"public","table_name":"basic_types","path":"","name":"id","type":"int32","key":true,"fake_key":false,"required":false,"expression":"","original_type":"pg:integer"},{"table_schema":"public","table_name":"basic_types","path":"","name":"val","type":"utf8","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:character varying(256)"}],"oldkeys":{},"tx_id":"","query":""}`
 
 func TestReceive08(t *testing.T) {
-	receiveWrapper(t, debeziumMsg08, fixTableName(canonChangeItem08), map[abstract.TableID]map[string]*debeziumcommon.OriginalTypeInfo{
+	receiveWrapper(t, debeziumMsg08, fixTableName(canonChangeItem08), map[abstract.TableID]map[string]*debezium_common.OriginalTypeInfo{
 		{Namespace: "public", Name: "basic_types"}: {
 			"id":  {OriginalType: "pg:integer"},
 			"val": {OriginalType: "pg:character varying(256)"},
@@ -225,7 +225,7 @@ var debeziumMsg09 = `{"payload":{"after":{"id":1,"val":"10.1.0.0/16"},"before":n
 var canonChangeItem09 = `{"id":582,"nextlsn":24618528,"commitTime":1643637543329859000,"txPosition":0,"kind":"insert","schema":"public","table":"basic_types09","columnnames":["id","val"],"columnvalues":[1,"10.1.0.0/16"],"table_schema":[{"table_schema":"public","table_name":"basic_types","path":"","name":"id","type":"int32","key":true,"fake_key":false,"required":false,"expression":"","original_type":"pg:integer"},{"table_schema":"public","table_name":"basic_types","path":"","name":"val","type":"utf8","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:cidr"}],"oldkeys":{},"tx_id":"","query":""}`
 
 func TestReceive09(t *testing.T) {
-	receiveWrapper(t, debeziumMsg09, fixTableName(canonChangeItem09), map[abstract.TableID]map[string]*debeziumcommon.OriginalTypeInfo{
+	receiveWrapper(t, debeziumMsg09, fixTableName(canonChangeItem09), map[abstract.TableID]map[string]*debezium_common.OriginalTypeInfo{
 		{Namespace: "public", Name: "basic_types"}: {
 			"id":  {OriginalType: "pg:integer"},
 			"val": {OriginalType: "pg:cidr"},
@@ -239,7 +239,7 @@ var debeziumMsg10 = `{"payload":{"after":{"id":1,"val":10599},"before":null,"op"
 var canonChangeItem10 = `{"id":585,"nextlsn":24627552,"commitTime":1643659128505565000,"txPosition":0,"kind":"insert","schema":"public","table":"basic_types10","columnnames":["id","val"],"columnvalues":[1,"1999-01-08T00:00:00Z"],"table_schema":[{"table_schema":"public","table_name":"basic_types","path":"","name":"id","type":"int32","key":true,"fake_key":false,"required":false,"expression":"","original_type":"pg:integer"},{"table_schema":"public","table_name":"basic_types","path":"","name":"val","type":"utf8","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:date"}],"oldkeys":{},"tx_id":"","query":""}`
 
 func TestReceive10(t *testing.T) {
-	receiveWrapper(t, debeziumMsg10, fixTableName(canonChangeItem10), map[abstract.TableID]map[string]*debeziumcommon.OriginalTypeInfo{
+	receiveWrapper(t, debeziumMsg10, fixTableName(canonChangeItem10), map[abstract.TableID]map[string]*debezium_common.OriginalTypeInfo{
 		{Namespace: "public", Name: "basic_types"}: {
 			"id":  {OriginalType: "pg:integer"},
 			"val": {OriginalType: "pg:date"},
@@ -253,7 +253,7 @@ var debeziumMsg11 = `{"payload":{"after":{"id":1,"val":3.14e-100},"before":null,
 var canonChangeItem11 = `{"id":588,"nextlsn":25051056,"commitTime":1643660670442569000,"txPosition":0,"kind":"insert","schema":"public","table":"basic_types11","columnnames":["id","val"],"columnvalues":[1,3.14e-100],"table_schema":[{"table_schema":"public","table_name":"basic_types","path":"","name":"id","type":"int32","key":true,"fake_key":false,"required":false,"expression":"","original_type":"pg:integer"},{"table_schema":"public","table_name":"basic_types","path":"","name":"val","type":"double","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:double precision"}],"oldkeys":{},"tx_id":"","query":""}`
 
 func TestReceive11(t *testing.T) {
-	receiveWrapper(t, debeziumMsg11, fixTableName(canonChangeItem11), map[abstract.TableID]map[string]*debeziumcommon.OriginalTypeInfo{
+	receiveWrapper(t, debeziumMsg11, fixTableName(canonChangeItem11), map[abstract.TableID]map[string]*debezium_common.OriginalTypeInfo{
 		{Namespace: "public", Name: "basic_types"}: {
 			"id":  {OriginalType: "pg:integer"},
 			"val": {OriginalType: "pg:double precision"},
@@ -267,7 +267,7 @@ var debeziumMsg12 = `{"payload":{"after":{"id":1,"val":"192.168.1.5"},"before":n
 var canonChangeItem12 = `{"id":591,"nextlsn":25051056,"commitTime":1643660670210670000,"txPosition":0,"kind":"insert","schema":"public","table":"basic_types12","columnnames":["id","val"],"columnvalues":[1,"192.168.1.5/32"],"table_schema":[{"table_schema":"public","table_name":"basic_types","path":"","name":"id","type":"int32","key":true,"fake_key":false,"required":false,"expression":"","original_type":"pg:integer"},{"table_schema":"public","table_name":"basic_types","path":"","name":"val","type":"utf8","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:inet"}],"oldkeys":{},"tx_id":"","query":""}`
 
 func TestReceive12(t *testing.T) {
-	receiveWrapper(t, debeziumMsg12, fixTableName(canonChangeItem12), map[abstract.TableID]map[string]*debeziumcommon.OriginalTypeInfo{
+	receiveWrapper(t, debeziumMsg12, fixTableName(canonChangeItem12), map[abstract.TableID]map[string]*debezium_common.OriginalTypeInfo{
 		{Namespace: "public", Name: "basic_types"}: {
 			"id":  {OriginalType: "pg:integer"},
 			"val": {OriginalType: "pg:inet"},
@@ -281,7 +281,7 @@ var debeziumMsg13 = `{"payload":{"after":{"id":1,"val":"[3,7)"},"before":null,"o
 var canonChangeItem13 = `{"id":594,"nextlsn":25051056,"commitTime":1643660670248166000,"txPosition":0,"kind":"insert","schema":"public","table":"basic_types13","columnnames":["id","val"],"columnvalues":[1,"[3,7)"],"table_schema":[{"table_schema":"public","table_name":"basic_types","path":"","name":"id","type":"int32","key":true,"fake_key":false,"required":false,"expression":"","original_type":"pg:integer"},{"table_schema":"public","table_name":"basic_types","path":"","name":"val","type":"any","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:int4range"}],"oldkeys":{},"tx_id":"","query":""}`
 
 func TestReceive13(t *testing.T) {
-	receiveWrapper(t, debeziumMsg13, fixTableName(canonChangeItem13), map[abstract.TableID]map[string]*debeziumcommon.OriginalTypeInfo{
+	receiveWrapper(t, debeziumMsg13, fixTableName(canonChangeItem13), map[abstract.TableID]map[string]*debezium_common.OriginalTypeInfo{
 		{Namespace: "public", Name: "basic_types"}: {
 			"id":  {OriginalType: "pg:integer"},
 			"val": {OriginalType: "pg:int4range"},
@@ -295,7 +295,7 @@ var debeziumMsg14 = `{"payload":{"after":{"id":1,"val":"[3,7)"},"before":null,"o
 var canonChangeItem14 = `{"id":598,"nextlsn":25051056,"commitTime":1643660670399582000,"txPosition":0,"kind":"insert","schema":"public","table":"basic_types14","columnnames":["id","val"],"columnvalues":[1,"[3,7)"],"table_schema":[{"table_schema":"public","table_name":"basic_types","path":"","name":"id","type":"int32","key":true,"fake_key":false,"required":false,"expression":"","original_type":"pg:integer"},{"table_schema":"public","table_name":"basic_types","path":"","name":"val","type":"any","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:int8range"}],"oldkeys":{},"tx_id":"","query":""}`
 
 func TestReceive14(t *testing.T) {
-	receiveWrapper(t, debeziumMsg14, fixTableName(canonChangeItem14), map[abstract.TableID]map[string]*debeziumcommon.OriginalTypeInfo{
+	receiveWrapper(t, debeziumMsg14, fixTableName(canonChangeItem14), map[abstract.TableID]map[string]*debezium_common.OriginalTypeInfo{
 		{Namespace: "public", Name: "basic_types"}: {
 			"id":  {OriginalType: "pg:integer"},
 			"val": {OriginalType: "pg:int8range"},
@@ -309,7 +309,7 @@ var debeziumMsg15 = `{"payload":{"after":{"id":1,"val":-8388605},"before":null,"
 var canonChangeItem15 = `{"id":601,"nextlsn":25051056,"commitTime":1643660670333075000,"txPosition":0,"kind":"insert","schema":"public","table":"basic_types15","columnnames":["id","val"],"columnvalues":[1,-8388605],"table_schema":[{"table_schema":"public","table_name":"basic_types","path":"","name":"id","type":"int32","key":true,"fake_key":false,"required":false,"expression":"","original_type":"pg:integer"},{"table_schema":"public","table_name":"basic_types","path":"","name":"val","type":"int32","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:integer"}],"oldkeys":{},"tx_id":"","query":""}`
 
 func TestReceive15(t *testing.T) {
-	receiveWrapper(t, debeziumMsg15, fixTableName(canonChangeItem15), map[abstract.TableID]map[string]*debeziumcommon.OriginalTypeInfo{
+	receiveWrapper(t, debeziumMsg15, fixTableName(canonChangeItem15), map[abstract.TableID]map[string]*debezium_common.OriginalTypeInfo{
 		{Namespace: "public", Name: "basic_types"}: {
 			"id":  {OriginalType: "pg:integer"},
 			"val": {OriginalType: "pg:integer"},
@@ -323,7 +323,7 @@ var debeziumMsg16 = `{"payload":{"after":{"id":1,"val":90000000000},"before":nul
 var canonChangeItem16 = `{"id":605,"nextlsn":25051056,"commitTime":1643660670310867000,"txPosition":0,"kind":"insert","schema":"public","table":"basic_types16","columnnames":["id","val"],"columnvalues":[1,"1 day 01:00:00.000000"],"table_schema":[{"table_schema":"public","table_name":"basic_types","path":"","name":"id","type":"int32","key":true,"fake_key":false,"required":false,"expression":"","original_type":"pg:integer"},{"table_schema":"public","table_name":"basic_types","path":"","name":"val","type":"utf8","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:interval"}],"oldkeys":{},"tx_id":"","query":""}`
 
 func TestReceive16(t *testing.T) {
-	receiveWrapper(t, debeziumMsg16, fixTableName(canonChangeItem16), map[abstract.TableID]map[string]*debeziumcommon.OriginalTypeInfo{
+	receiveWrapper(t, debeziumMsg16, fixTableName(canonChangeItem16), map[abstract.TableID]map[string]*debezium_common.OriginalTypeInfo{
 		{Namespace: "public", Name: "basic_types"}: {
 			"id":  {OriginalType: "pg:integer"},
 			"val": {OriginalType: "pg:interval"},
@@ -337,7 +337,7 @@ var debeziumMsg17 = `{"payload":{"after":{"id":1,"val":"{\"k1\":\"v1\"}"},"befor
 var canonChangeItem17 = `{"id":610,"nextlsn":25051056,"commitTime":1643660670260338000,"txPosition":0,"kind":"insert","schema":"public","table":"basic_types17","columnnames":["id","val"],"columnvalues":[1,{"k1":"v1"}],"table_schema":[{"table_schema":"public","table_name":"basic_types","path":"","name":"id","type":"int32","key":true,"fake_key":false,"required":false,"expression":"","original_type":"pg:integer"},{"table_schema":"public","table_name":"basic_types","path":"","name":"val","type":"any","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:json"}],"oldkeys":{},"tx_id":"","query":""}`
 
 func TestReceive17(t *testing.T) {
-	receiveWrapper(t, debeziumMsg17, fixTableName(canonChangeItem17), map[abstract.TableID]map[string]*debeziumcommon.OriginalTypeInfo{
+	receiveWrapper(t, debeziumMsg17, fixTableName(canonChangeItem17), map[abstract.TableID]map[string]*debezium_common.OriginalTypeInfo{
 		{Namespace: "public", Name: "basic_types"}: {
 			"id":  {OriginalType: "pg:integer"},
 			"val": {OriginalType: "pg:json"},
@@ -351,7 +351,7 @@ var debeziumMsg18 = `{"payload":{"after":{"id":1,"val":"{\"k2\":\"v2\"}"},"befor
 var canonChangeItem18 = `{"id":616,"nextlsn":25051056,"commitTime":1643660670307562000,"txPosition":0,"kind":"insert","schema":"public","table":"basic_types18","columnnames":["id","val"],"columnvalues":[1,{"k2":"v2"}],"table_schema":[{"table_schema":"public","table_name":"basic_types","path":"","name":"id","type":"int32","key":true,"fake_key":false,"required":false,"expression":"","original_type":"pg:integer"},{"table_schema":"public","table_name":"basic_types","path":"","name":"val","type":"any","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:jsonb"}],"oldkeys":{},"tx_id":"","query":""}`
 
 func TestReceive18(t *testing.T) {
-	receiveWrapper(t, debeziumMsg18, fixTableName(canonChangeItem18), map[abstract.TableID]map[string]*debeziumcommon.OriginalTypeInfo{
+	receiveWrapper(t, debeziumMsg18, fixTableName(canonChangeItem18), map[abstract.TableID]map[string]*debezium_common.OriginalTypeInfo{
 		{Namespace: "public", Name: "basic_types"}: {
 			"id":  {OriginalType: "pg:integer"},
 			"val": {OriginalType: "pg:jsonb"},
@@ -365,7 +365,7 @@ var debeziumMsg19 = `{"payload":{"after":{"id":1,"val":"08:00:2b:01:02:03"},"bef
 var canonChangeItem19 = `{"id":620,"nextlsn":25051056,"commitTime":1643660670399509000,"txPosition":0,"kind":"insert","schema":"public","table":"basic_types19","columnnames":["id","val"],"columnvalues":[1,"08:00:2b:01:02:03"],"table_schema":[{"table_schema":"public","table_name":"basic_types","path":"","name":"id","type":"int32","key":true,"fake_key":false,"required":false,"expression":"","original_type":"pg:integer"},{"table_schema":"public","table_name":"basic_types","path":"","name":"val","type":"utf8","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:macaddr"}],"oldkeys":{},"tx_id":"","query":""}`
 
 func TestReceive19(t *testing.T) {
-	receiveWrapper(t, debeziumMsg19, fixTableName(canonChangeItem19), map[abstract.TableID]map[string]*debeziumcommon.OriginalTypeInfo{
+	receiveWrapper(t, debeziumMsg19, fixTableName(canonChangeItem19), map[abstract.TableID]map[string]*debezium_common.OriginalTypeInfo{
 		{Namespace: "public", Name: "basic_types"}: {
 			"id":  {OriginalType: "pg:integer"},
 			"val": {OriginalType: "pg:macaddr"},
@@ -379,7 +379,7 @@ var debeziumMsg20 = `{"payload":{"after":{"id":1,"val":"Jw4="},"before":null,"op
 var canonChangeItem20 = `{"id":623,"nextlsn":25051056,"commitTime":1643660670347491000,"txPosition":0,"kind":"insert","schema":"public","table":"basic_types20","columnnames":["id","val"],"columnvalues":[1,"$99.98"],"table_schema":[{"table_schema":"public","table_name":"basic_types","path":"","name":"id","type":"int32","key":true,"fake_key":false,"required":false,"expression":"","original_type":"pg:integer"},{"table_schema":"public","table_name":"basic_types","path":"","name":"val","type":"utf8","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:money"}],"oldkeys":{},"tx_id":"","query":""}`
 
 func TestReceive20(t *testing.T) {
-	receiveWrapper(t, debeziumMsg20, fixTableName(canonChangeItem20), map[abstract.TableID]map[string]*debeziumcommon.OriginalTypeInfo{
+	receiveWrapper(t, debeziumMsg20, fixTableName(canonChangeItem20), map[abstract.TableID]map[string]*debezium_common.OriginalTypeInfo{
 		{Namespace: "public", Name: "basic_types"}: {
 			"id":  {OriginalType: "pg:integer"},
 			"val": {OriginalType: "pg:money"},
@@ -393,7 +393,7 @@ var debeziumMsg202 = `{"payload":{"after":{"id":1,"val":"2PA="},"before":null,"o
 var canonChangeItem202 = `{"id":623,"nextlsn":25051056,"commitTime":1643660670347491000,"txPosition":0,"kind":"insert","schema":"public","table":"basic_types20","columnnames":["id","val"],"columnvalues":[1,-100.00],"table_schema":[{"table_schema":"public","table_name":"basic_types","path":"","name":"id","type":"int32","key":true,"fake_key":false,"required":false,"expression":"","original_type":"pg:integer"},{"table_schema":"public","table_name":"basic_types","path":"","name":"val","type":"double","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:numeric(18,2)"}],"oldkeys":{},"tx_id":"","query":""}`
 
 func TestReceive202(t *testing.T) {
-	receiveWrapper(t, debeziumMsg202, fixTableName(canonChangeItem202), map[abstract.TableID]map[string]*debeziumcommon.OriginalTypeInfo{
+	receiveWrapper(t, debeziumMsg202, fixTableName(canonChangeItem202), map[abstract.TableID]map[string]*debezium_common.OriginalTypeInfo{
 		{Namespace: "public", Name: "basic_types"}: {
 			"id":  {OriginalType: "pg:integer"},
 			"val": {OriginalType: "pg:numeric(18,2)"},
@@ -407,7 +407,7 @@ var debeziumMsg21 = `{"payload":{"after":{"id":1,"val":{"scale":0,"value":"EAAAA
 var canonChangeItem21 = `{"id":626,"nextlsn":25051056,"commitTime":1643749932407187000,"txPosition":0,"kind":"insert","schema":"public","table":"basic_types21","columnnames":["id","val"],"columnvalues":[1,1267650600228229401496703205376e0],"table_schema":[{"table_schema":"public","table_name":"basic_types","path":"","name":"id","type":"int32","key":true,"fake_key":false,"required":false,"expression":"","original_type":"pg:integer"},{"table_schema":"public","table_name":"basic_types","path":"","name":"val","type":"double","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:numeric"}],"oldkeys":{},"tx_id":"","query":""}`
 
 func TestReceive21(t *testing.T) {
-	receiveWrapper(t, debeziumMsg21, fixTableName(canonChangeItem21), map[abstract.TableID]map[string]*debeziumcommon.OriginalTypeInfo{
+	receiveWrapper(t, debeziumMsg21, fixTableName(canonChangeItem21), map[abstract.TableID]map[string]*debezium_common.OriginalTypeInfo{
 		{Namespace: "public", Name: "basic_types"}: {
 			"id":  {OriginalType: "pg:integer"},
 			"val": {OriginalType: "pg:numeric"},
@@ -421,7 +421,7 @@ var debeziumMsg22 = `{"payload":{"after":{"id":1,"val":"[1.9,1.91)"},"before":nu
 var canonChangeItem22 = `{"id":629,"nextlsn":25051056,"commitTime":1643749932437964000,"txPosition":0,"kind":"insert","schema":"public","table":"basic_types22","columnnames":["id","val"],"columnvalues":[1,"[19e-1,191e-2)"],"table_schema":[{"table_schema":"public","table_name":"basic_types","path":"","name":"id","type":"int32","key":true,"fake_key":false,"required":false,"expression":"","original_type":"pg:integer"},{"table_schema":"public","table_name":"basic_types","path":"","name":"val","type":"any","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:numrange"}],"oldkeys":{},"tx_id":"","query":""}`
 
 func TestReceive22(t *testing.T) {
-	receiveWrapper(t, debeziumMsg22, fixTableName(canonChangeItem22), map[abstract.TableID]map[string]*debeziumcommon.OriginalTypeInfo{
+	receiveWrapper(t, debeziumMsg22, fixTableName(canonChangeItem22), map[abstract.TableID]map[string]*debezium_common.OriginalTypeInfo{
 		{Namespace: "public", Name: "basic_types"}: {
 			"id":  {OriginalType: "pg:integer"},
 			"val": {OriginalType: "pg:numrange"},
@@ -435,7 +435,7 @@ var debeziumMsg23 = `{"payload":{"after":{"id":1,"val":2},"before":null,"op":"c"
 var canonChangeItem23 = `{"id":634,"nextlsn":25051056,"commitTime":1643752954350432000,"txPosition":0,"kind":"insert","schema":"public","table":"basic_types23","columnnames":["id","val"],"columnvalues":[1,2],"table_schema":[{"table_schema":"public","table_name":"basic_types","path":"","name":"id","type":"int32","key":true,"fake_key":false,"required":false,"expression":"","original_type":"pg:integer"},{"table_schema":"public","table_name":"basic_types","path":"","name":"val","type":"int32","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:oid"}],"oldkeys":{},"tx_id":"","query":""}`
 
 func TestReceive23(t *testing.T) {
-	receiveWrapper(t, debeziumMsg23, fixTableName(canonChangeItem23), map[abstract.TableID]map[string]*debeziumcommon.OriginalTypeInfo{
+	receiveWrapper(t, debeziumMsg23, fixTableName(canonChangeItem23), map[abstract.TableID]map[string]*debezium_common.OriginalTypeInfo{
 		{Namespace: "public", Name: "basic_types"}: {
 			"id":  {OriginalType: "pg:integer"},
 			"val": {OriginalType: "pg:oid"},
@@ -451,7 +451,7 @@ var debeziumMsg24 = `{"payload":{"after":{"id":1,"val":{"srid":null,"wkb":"","x"
 var canonChangeItem24 = `{"id":637,"nextlsn":25051056,"commitTime":1643752954586411000,"txPosition":0,"kind":"insert","schema":"public","table":"basic_types24","columnnames":["id","val"],"columnvalues":[1,"(23.4,-44.5)"],"table_schema":[{"table_schema":"public","table_name":"basic_types","path":"","name":"id","type":"int32","key":true,"fake_key":false,"required":false,"expression":"","original_type":"pg:integer"},{"table_schema":"public","table_name":"basic_types","path":"","name":"val","type":"utf8","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:point"}],"oldkeys":{},"tx_id":"","query":""}`
 
 func TestReceive24(t *testing.T) {
-	receiveWrapper(t, debeziumMsg24, fixTableName(canonChangeItem24), map[abstract.TableID]map[string]*debeziumcommon.OriginalTypeInfo{
+	receiveWrapper(t, debeziumMsg24, fixTableName(canonChangeItem24), map[abstract.TableID]map[string]*debezium_common.OriginalTypeInfo{
 		{Namespace: "public", Name: "basic_types"}: {
 			"id":  {OriginalType: "pg:integer"},
 			"val": {OriginalType: "pg:point"},
@@ -465,7 +465,7 @@ var debeziumMsg25 = `{"payload":{"after":{"id":1,"val":"Tom"},"before":null,"op"
 var canonChangeItem25 = `{"id":642,"nextlsn":25051056,"commitTime":1643752954420386000,"txPosition":0,"kind":"insert","schema":"public","table":"basic_types25","columnnames":["id","val"],"columnvalues":[1,"Tom"],"table_schema":[{"table_schema":"public","table_name":"basic_types","path":"","name":"id","type":"int32","key":true,"fake_key":false,"required":false,"expression":"","original_type":"pg:integer"},{"table_schema":"public","table_name":"basic_types","path":"","name":"val","type":"any","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:citext"}],"oldkeys":{},"tx_id":"","query":""}`
 
 func TestReceive25(t *testing.T) {
-	receiveWrapper(t, debeziumMsg25, fixTableName(canonChangeItem25), map[abstract.TableID]map[string]*debeziumcommon.OriginalTypeInfo{
+	receiveWrapper(t, debeziumMsg25, fixTableName(canonChangeItem25), map[abstract.TableID]map[string]*debezium_common.OriginalTypeInfo{
 		{Namespace: "public", Name: "basic_types"}: {
 			"id":  {OriginalType: "pg:integer"},
 			"val": {OriginalType: `pg:citext`},
@@ -479,7 +479,7 @@ var debeziumMsg26 = `{"payload":{"after":{"id":1,"val":"{\"a\":\"1\",\"b\":\"2\"
 var canonChangeItem26 = `{"id":647,"nextlsn":25051056,"commitTime":1643752954509425000,"txPosition":0,"kind":"insert","schema":"public","table":"basic_types26","columnnames":["id","val"],"columnvalues":[1,{"a":"1","b":"2"}],"table_schema":[{"table_schema":"public","table_name":"basic_types","path":"","name":"id","type":"int32","key":true,"fake_key":false,"required":false,"expression":"","original_type":"pg:integer"},{"table_schema":"public","table_name":"basic_types","path":"","name":"val","type":"any","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:hstore"}],"oldkeys":{},"tx_id":"","query":""}`
 
 func TestReceive26(t *testing.T) {
-	receiveWrapper(t, debeziumMsg26, fixTableName(canonChangeItem26), map[abstract.TableID]map[string]*debeziumcommon.OriginalTypeInfo{
+	receiveWrapper(t, debeziumMsg26, fixTableName(canonChangeItem26), map[abstract.TableID]map[string]*debezium_common.OriginalTypeInfo{
 		{Namespace: "public", Name: "basic_types"}: {
 			"id":  {OriginalType: "pg:integer"},
 			"val": {OriginalType: `pg:hstore`},
@@ -495,7 +495,7 @@ var debeziumMsg27 = `{"payload":{"after":{"id":1,"val":1.45e-10},"before":null,"
 var canonChangeItem27 = `{"id":650,"nextlsn":25051056,"commitTime":1643752954453055000,"txPosition":0,"kind":"insert","schema":"public","table":"basic_types27","columnnames":["id","val"],"columnvalues":[1,1.45e-10],"table_schema":[{"table_schema":"public","table_name":"basic_types","path":"","name":"id","type":"int32","key":true,"fake_key":false,"required":false,"expression":"","original_type":"pg:integer"},{"table_schema":"public","table_name":"basic_types","path":"","name":"val","type":"double","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:real"}],"oldkeys":{},"tx_id":"","query":""}`
 
 func TestReceive27(t *testing.T) {
-	receiveWrapper(t, debeziumMsg27, fixTableName(canonChangeItem27), map[abstract.TableID]map[string]*debeziumcommon.OriginalTypeInfo{
+	receiveWrapper(t, debeziumMsg27, fixTableName(canonChangeItem27), map[abstract.TableID]map[string]*debezium_common.OriginalTypeInfo{
 		{Namespace: "public", Name: "basic_types"}: {
 			"id":  {OriginalType: "pg:integer"},
 			"val": {OriginalType: `pg:real`},
@@ -509,7 +509,7 @@ var debeziumMsg28 = `{"payload":{"after":{"id":1,"val":-32768},"before":null,"op
 var canonChangeItem28 = `{"id":654,"nextlsn":25051056,"commitTime":1643752954579894000,"txPosition":0,"kind":"insert","schema":"public","table":"basic_types28","columnnames":["id","val"],"columnvalues":[1,-32768],"table_schema":[{"table_schema":"public","table_name":"basic_types","path":"","name":"id","type":"int32","key":true,"fake_key":false,"required":false,"expression":"","original_type":"pg:integer"},{"table_schema":"public","table_name":"basic_types","path":"","name":"val","type":"int16","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:smallint"}],"oldkeys":{},"tx_id":"","query":""}`
 
 func TestReceive28(t *testing.T) {
-	receiveWrapper(t, debeziumMsg28, fixTableName(canonChangeItem28), map[abstract.TableID]map[string]*debeziumcommon.OriginalTypeInfo{
+	receiveWrapper(t, debeziumMsg28, fixTableName(canonChangeItem28), map[abstract.TableID]map[string]*debezium_common.OriginalTypeInfo{
 		{Namespace: "public", Name: "basic_types"}: {
 			"id":  {OriginalType: "pg:integer"},
 			"val": {OriginalType: `pg:smallint`},
@@ -523,7 +523,7 @@ var debeziumMsg29 = `{"payload":{"after":{"id":1,"val":"text_example"},"before":
 var canonChangeItem29 = `{"id":657,"nextlsn":25051056,"commitTime":1643752954596446000,"txPosition":0,"kind":"insert","schema":"public","table":"basic_types29","columnnames":["id","val"],"columnvalues":[1,"text_example"],"table_schema":[{"table_schema":"public","table_name":"basic_types","path":"","name":"id","type":"int32","key":true,"fake_key":false,"required":false,"expression":"","original_type":"pg:integer"},{"table_schema":"public","table_name":"basic_types","path":"","name":"val","type":"utf8","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:text"}],"oldkeys":{},"tx_id":"","query":""}`
 
 func TestReceive29(t *testing.T) {
-	receiveWrapper(t, debeziumMsg29, fixTableName(canonChangeItem29), map[abstract.TableID]map[string]*debeziumcommon.OriginalTypeInfo{
+	receiveWrapper(t, debeziumMsg29, fixTableName(canonChangeItem29), map[abstract.TableID]map[string]*debezium_common.OriginalTypeInfo{
 		{Namespace: "public", Name: "basic_types"}: {
 			"id":  {OriginalType: "pg:integer"},
 			"val": {OriginalType: `pg:text`},
@@ -538,7 +538,7 @@ var canonChangeItem30 = `{"id":660,"nextlsn":24668192,"commitTime":1674573416677
 
 func TestReceive30(t *testing.T) {
 	z := strings.ReplaceAll(fixTableName(canonChangeItem30), `2004-10-19T10:23:54+04:00`, `2004-10-19T10:23:54Z`)
-	receiveWrapper(t, debeziumMsg30, z, map[abstract.TableID]map[string]*debeziumcommon.OriginalTypeInfo{
+	receiveWrapper(t, debeziumMsg30, z, map[abstract.TableID]map[string]*debezium_common.OriginalTypeInfo{
 		{Namespace: "public", Name: "basic_types"}: {
 			"id":  {OriginalType: "pg:integer"},
 			"val": {OriginalType: `pg:timestamp without time zone`},
@@ -554,7 +554,7 @@ var debeziumMsg31 = `{"payload":{"after":{"id":1,"val":"2004-10-19T09:23:54Z"},"
 var canonChangeItem31 = `{"id":663,"nextlsn":25051056,"commitTime":1643752954549072000,"txPosition":0,"kind":"insert","schema":"public","table":"basic_types31","columnnames":["id","val"],"columnvalues":[1,"2004-10-19T09:23:54Z"],"table_schema":[{"table_schema":"public","table_name":"basic_types","path":"","name":"id","type":"int32","key":true,"fake_key":false,"required":false,"expression":"","original_type":"pg:integer"},{"table_schema":"public","table_name":"basic_types","path":"","name":"val","type":"utf8","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:timestamp with time zone"}],"oldkeys":{},"tx_id":"","query":""}`
 
 func TestReceive31(t *testing.T) {
-	receiveWrapper(t, debeziumMsg31, fixTableName(canonChangeItem31), map[abstract.TableID]map[string]*debeziumcommon.OriginalTypeInfo{
+	receiveWrapper(t, debeziumMsg31, fixTableName(canonChangeItem31), map[abstract.TableID]map[string]*debezium_common.OriginalTypeInfo{
 		{Namespace: "public", Name: "basic_types"}: {
 			"id":  {OriginalType: "pg:integer"},
 			"val": {OriginalType: `pg:timestamp with time zone`},
@@ -568,7 +568,7 @@ var debeziumMsg32 = `{"payload":{"after":{"id":1,"val":14706000000},"before":nul
 var canonChangeItem32 = `{"id":666,"nextlsn":24586096,"commitTime":1674763072222677000,"txPosition":0,"kind":"insert","schema":"public","table":"basic_types","part":"","columnnames":["id","val"],"columnvalues":[1,"04:05:06"],"table_schema":[{"table_schema":"public","table_name":"basic_types","path":"","name":"id","type":"int32","key":true,"fake_key":false,"required":true,"expression":"","original_type":"pg:integer"},{"table_schema":"public","table_name":"basic_types","path":"","name":"val","type":"utf8","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:time without time zone"}],"oldkeys":{},"tx_id":"","query":""}`
 
 func TestReceive32(t *testing.T) {
-	receiveWrapper(t, debeziumMsg32, fixTableName(canonChangeItem32), map[abstract.TableID]map[string]*debeziumcommon.OriginalTypeInfo{
+	receiveWrapper(t, debeziumMsg32, fixTableName(canonChangeItem32), map[abstract.TableID]map[string]*debezium_common.OriginalTypeInfo{
 		{Namespace: "public", Name: "basic_types"}: {
 			"id":  {OriginalType: "pg:integer"},
 			"val": {OriginalType: `pg:time without time zone`},
@@ -584,7 +584,7 @@ var debeziumMsg33 = `{"payload":{"after":{"id":1,"val":"17:30:25Z"},"before":nul
 var canonChangeItem33 = `{"id":676,"nextlsn":25051056,"commitTime":1643752954618092000,"txPosition":0,"kind":"insert","schema":"public","table":"basic_types33","columnnames":["id","val"],"columnvalues":[1,"17:30:25Z"],"table_schema":[{"table_schema":"public","table_name":"basic_types","path":"","name":"id","type":"int32","key":true,"fake_key":false,"required":false,"expression":"","original_type":"pg:integer"},{"table_schema":"public","table_name":"basic_types","path":"","name":"val","type":"utf8","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:time with time zone"}],"oldkeys":{},"tx_id":"","query":""}`
 
 func TestReceive33(t *testing.T) {
-	receiveWrapper(t, debeziumMsg33, fixTableName(canonChangeItem33), map[abstract.TableID]map[string]*debeziumcommon.OriginalTypeInfo{
+	receiveWrapper(t, debeziumMsg33, fixTableName(canonChangeItem33), map[abstract.TableID]map[string]*debezium_common.OriginalTypeInfo{
 		{Namespace: "public", Name: "basic_types"}: {
 			"id":  {OriginalType: "pg:integer"},
 			"val": {OriginalType: `pg:time with time zone`},
@@ -598,7 +598,7 @@ var debeziumMsg34 = `{"payload":{"after":{"id":1,"val":"[\"2010-01-02 10:00:00\"
 var canonChangeItem34 = `{"id":680,"nextlsn":25051056,"commitTime":1643752954611655000,"txPosition":0,"kind":"insert","schema":"public","table":"basic_types34","columnnames":["id","val"],"columnvalues":[1,"[2010-01-02 10:00:00,2010-01-02 11:00:00)"],"table_schema":[{"table_schema":"public","table_name":"basic_types","path":"","name":"id","type":"int32","key":true,"fake_key":false,"required":false,"expression":"","original_type":"pg:integer"},{"table_schema":"public","table_name":"basic_types","path":"","name":"val","type":"any","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:tsrange"}],"oldkeys":{},"tx_id":"","query":""}`
 
 func TestReceive34(t *testing.T) {
-	receiveWrapper(t, debeziumMsg34, fixTableName(canonChangeItem34), map[abstract.TableID]map[string]*debeziumcommon.OriginalTypeInfo{
+	receiveWrapper(t, debeziumMsg34, fixTableName(canonChangeItem34), map[abstract.TableID]map[string]*debezium_common.OriginalTypeInfo{
 		{Namespace: "public", Name: "basic_types"}: {
 			"id":  {OriginalType: "pg:integer"},
 			"val": {OriginalType: `pg:tsrange`},
@@ -612,7 +612,7 @@ var debeziumMsg35 = `{"payload":{"after":{"id":1,"val":"[\"2010-01-01 06:00:00+0
 var canonChangeItem35 = `{"id":683,"nextlsn":25051056,"commitTime":1643752954463913000,"txPosition":0,"kind":"insert","schema":"public","table":"basic_types35","columnnames":["id","val"],"columnvalues":[1,"[2010-01-01 06:00:00Z,2010-01-01 10:00:00Z)"],"table_schema":[{"table_schema":"public","table_name":"basic_types","path":"","name":"id","type":"int32","key":true,"fake_key":false,"required":false,"expression":"","original_type":"pg:integer"},{"table_schema":"public","table_name":"basic_types","path":"","name":"val","type":"any","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:tstzrange"}],"oldkeys":{},"tx_id":"","query":""}`
 
 func TestReceive35(t *testing.T) {
-	receiveWrapper(t, debeziumMsg35, fixTableName(canonChangeItem35), map[abstract.TableID]map[string]*debeziumcommon.OriginalTypeInfo{
+	receiveWrapper(t, debeziumMsg35, fixTableName(canonChangeItem35), map[abstract.TableID]map[string]*debezium_common.OriginalTypeInfo{
 		{Namespace: "public", Name: "basic_types"}: {
 			"id":  {OriginalType: "pg:integer"},
 			"val": {OriginalType: `pg:tstzrange`},
@@ -626,7 +626,7 @@ var debeziumMsg36 = `{"payload":{"after":{"id":1,"val":"a0eebc99-9c0b-4ef8-bb6d-
 var canonChangeItem36 = `{"id":672,"nextlsn":25051056,"commitTime":1643752954296104000,"txPosition":0,"kind":"insert","schema":"public","table":"basic_types36","columnnames":["id","val"],"columnvalues":[1,"a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11"],"table_schema":[{"table_schema":"public","table_name":"basic_types","path":"","name":"id","type":"int32","key":true,"fake_key":false,"required":false,"expression":"","original_type":"pg:integer"},{"table_schema":"public","table_name":"basic_types","path":"","name":"val","type":"utf8","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:uuid"}],"oldkeys":{},"tx_id":"","query":""}`
 
 func TestReceive36(t *testing.T) {
-	receiveWrapper(t, debeziumMsg36, fixTableName(canonChangeItem36), map[abstract.TableID]map[string]*debeziumcommon.OriginalTypeInfo{
+	receiveWrapper(t, debeziumMsg36, fixTableName(canonChangeItem36), map[abstract.TableID]map[string]*debezium_common.OriginalTypeInfo{
 		{Namespace: "public", Name: "basic_types"}: {
 			"id":  {OriginalType: "pg:integer"},
 			"val": {OriginalType: `pg:uuid`},
@@ -640,7 +640,7 @@ var debeziumMsg37 = `{"payload":{"after":{"id":1,"val":"<foo>bar</foo>"},"before
 var canonChangeItem37 = `{"id":669,"nextlsn":25051056,"commitTime":1643752954400380000,"txPosition":0,"kind":"insert","schema":"public","table":"basic_types37","columnnames":["id","val"],"columnvalues":[1,"\u003cfoo\u003ebar\u003c/foo\u003e"],"table_schema":[{"table_schema":"public","table_name":"basic_types","path":"","name":"id","type":"int32","key":true,"fake_key":false,"required":false,"expression":"","original_type":"pg:integer"},{"table_schema":"public","table_name":"basic_types","path":"","name":"val","type":"any","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:xml"}],"oldkeys":{},"tx_id":"","query":""}`
 
 func TestReceive37(t *testing.T) {
-	receiveWrapper(t, debeziumMsg37, fixTableName(canonChangeItem37), map[abstract.TableID]map[string]*debeziumcommon.OriginalTypeInfo{
+	receiveWrapper(t, debeziumMsg37, fixTableName(canonChangeItem37), map[abstract.TableID]map[string]*debezium_common.OriginalTypeInfo{
 		{Namespace: "public", Name: "basic_types"}: {
 			"id":  {OriginalType: "pg:integer"},
 			"val": {OriginalType: `pg:xml`},
@@ -654,7 +654,7 @@ var debeziumMsg38 = `{"payload":{"after":{"id":1,"val":14706100},"before":null,"
 var canonChangeItem38 = `{"id":558,"nextlsn":24586096,"commitTime":1674764123764984000,"txPosition":0,"kind":"insert","schema":"public","table":"basic_types","part":"","columnnames":["id","val"],"columnvalues":[1,"04:05:06.1"],"table_schema":[{"table_schema":"public","table_name":"basic_types","path":"","name":"id","type":"int32","key":true,"fake_key":false,"required":true,"expression":"","original_type":"pg:integer"},{"table_schema":"public","table_name":"basic_types","path":"","name":"val","type":"utf8","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:time(1) without time zone"}],"oldkeys":{},"tx_id":"","query":""}`
 
 func TestReceive38(t *testing.T) {
-	receiveWrapper(t, debeziumMsg38, fixTableName(canonChangeItem38), map[abstract.TableID]map[string]*debeziumcommon.OriginalTypeInfo{
+	receiveWrapper(t, debeziumMsg38, fixTableName(canonChangeItem38), map[abstract.TableID]map[string]*debezium_common.OriginalTypeInfo{
 		{Namespace: "public", Name: "basic_types"}: {
 			"id":  {OriginalType: "pg:integer"},
 			"val": {OriginalType: `pg:time(1) without time zone`},
@@ -668,7 +668,7 @@ var debeziumMsg38_2 = `{"payload":{"after":{"id":1,"val":14706123456},"before":n
 var canonChangeItem38_2 = `{"id":766,"nextlsn":24586096,"commitTime":1674768915799271000,"txPosition":0,"kind":"insert","schema":"public","table":"basic_types33","part":"","columnnames":["id","val"],"columnvalues":[1,"04:05:06.123456"],"table_schema":[{"table_schema":"public","table_name":"basic_types33","path":"","name":"id","type":"int32","key":true,"fake_key":false,"required":true,"expression":"","original_type":"pg:integer"},{"table_schema":"public","table_name":"basic_types33","path":"","name":"val","type":"utf8","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:time(6) without time zone"}],"oldkeys":{},"tx_id":"","query":""}`
 
 func TestReceive38_2(t *testing.T) {
-	receiveWrapper(t, debeziumMsg38_2, fixTableName(canonChangeItem38_2), map[abstract.TableID]map[string]*debeziumcommon.OriginalTypeInfo{
+	receiveWrapper(t, debeziumMsg38_2, fixTableName(canonChangeItem38_2), map[abstract.TableID]map[string]*debezium_common.OriginalTypeInfo{
 		{Namespace: "public", Name: "basic_types"}: {
 			"id":  {OriginalType: "pg:integer"},
 			"val": {OriginalType: `pg:time(6) without time zone`},
@@ -683,7 +683,7 @@ var canonChangeItem39 = `{"id":555,"nextlsn":24586096,"commitTime":1674765249216
 
 func TestReceive39(t *testing.T) {
 	z := strings.ReplaceAll(fixTableName(canonChangeItem39), `2004-10-19T10:23:54.9+04:00`, `2004-10-19T10:23:54.9Z`)
-	receiveWrapper(t, debeziumMsg39, fixTableName(z), map[abstract.TableID]map[string]*debeziumcommon.OriginalTypeInfo{
+	receiveWrapper(t, debeziumMsg39, fixTableName(z), map[abstract.TableID]map[string]*debezium_common.OriginalTypeInfo{
 		{Namespace: "public", Name: "basic_types"}: {
 			"id":  {OriginalType: "pg:integer"},
 			"val": {OriginalType: `pg:timestamp(1) without time zone`},
@@ -700,7 +700,7 @@ var canonChangeItem41 = `{"id":579,"nextlsn":24586096,"commitTime":1674766325363
 
 func TestReceive41(t *testing.T) {
 	z := strings.ReplaceAll(fixTableName(canonChangeItem41), `2004-10-19T10:23:54.9+04:00`, `2004-10-19T10:23:54.9Z`)
-	receiveWrapper(t, debeziumMsg41, fixTableName(z), map[abstract.TableID]map[string]*debeziumcommon.OriginalTypeInfo{
+	receiveWrapper(t, debeziumMsg41, fixTableName(z), map[abstract.TableID]map[string]*debezium_common.OriginalTypeInfo{
 		{Namespace: "public", Name: "basic_types"}: {
 			"id":  {OriginalType: "pg:integer"},
 			"val": {OriginalType: `pg:timestamp(1) without time zone`},
@@ -715,7 +715,7 @@ var canonChangeItem42 = `{"id":582,"nextlsn":24586096,"commitTime":1674766436356
 
 func TestReceive42(t *testing.T) {
 	z := strings.ReplaceAll(fixTableName(canonChangeItem42), `2004-10-19T10:23:54.98+04:00`, `2004-10-19T10:23:54.98Z`)
-	receiveWrapper(t, debeziumMsg42, fixTableName(z), map[abstract.TableID]map[string]*debeziumcommon.OriginalTypeInfo{
+	receiveWrapper(t, debeziumMsg42, fixTableName(z), map[abstract.TableID]map[string]*debezium_common.OriginalTypeInfo{
 		{Namespace: "public", Name: "basic_types"}: {
 			"id":  {OriginalType: "pg:integer"},
 			"val": {OriginalType: `pg:timestamp(2) without time zone`},
@@ -730,7 +730,7 @@ var canonChangeItem43 = `{"id":585,"nextlsn":24586096,"commitTime":1674766569036
 
 func TestReceive43(t *testing.T) {
 	z := strings.ReplaceAll(fixTableName(canonChangeItem43), `2004-10-19T10:23:54.987+04:00`, `2004-10-19T10:23:54.987Z`)
-	receiveWrapper(t, debeziumMsg43, fixTableName(z), map[abstract.TableID]map[string]*debeziumcommon.OriginalTypeInfo{
+	receiveWrapper(t, debeziumMsg43, fixTableName(z), map[abstract.TableID]map[string]*debezium_common.OriginalTypeInfo{
 		{Namespace: "public", Name: "basic_types"}: {
 			"id":  {OriginalType: "pg:integer"},
 			"val": {OriginalType: `pg:timestamp(3) without time zone`},
@@ -745,7 +745,7 @@ var canonChangeItem44 = `{"id":588,"nextlsn":24586096,"commitTime":1674767015484
 
 func TestReceive44(t *testing.T) {
 	z := strings.ReplaceAll(fixTableName(canonChangeItem44), `2004-10-19T10:23:54.9+04:00`, `2004-10-19T10:23:54.9876Z`)
-	receiveWrapper(t, debeziumMsg44, fixTableName(z), map[abstract.TableID]map[string]*debeziumcommon.OriginalTypeInfo{
+	receiveWrapper(t, debeziumMsg44, fixTableName(z), map[abstract.TableID]map[string]*debezium_common.OriginalTypeInfo{
 		{Namespace: "public", Name: "basic_types"}: {
 			"id":  {OriginalType: "pg:integer"},
 			"val": {OriginalType: `pg:timestamp(4) without time zone`},
@@ -760,7 +760,7 @@ var canonChangeItem45 = `{"id":591,"nextlsn":24586096,"commitTime":1674767128031
 
 func TestReceive45(t *testing.T) {
 	z := strings.ReplaceAll(fixTableName(canonChangeItem45), `2004-10-19T10:23:54.98765+04:00`, `2004-10-19T10:23:54.98765Z`)
-	receiveWrapper(t, debeziumMsg45, fixTableName(z), map[abstract.TableID]map[string]*debeziumcommon.OriginalTypeInfo{
+	receiveWrapper(t, debeziumMsg45, fixTableName(z), map[abstract.TableID]map[string]*debezium_common.OriginalTypeInfo{
 		{Namespace: "public", Name: "basic_types"}: {
 			"id":  {OriginalType: "pg:integer"},
 			"val": {OriginalType: `pg:timestamp(5) without time zone`},
@@ -775,7 +775,7 @@ var canonChangeItem46 = `{"id":594,"nextlsn":24586096,"commitTime":1674767224153
 
 func TestReceive46(t *testing.T) {
 	z := strings.ReplaceAll(fixTableName(canonChangeItem46), `2004-10-19T10:23:54.987654+04:00`, `2004-10-19T10:23:54.987654Z`)
-	receiveWrapper(t, debeziumMsg46, fixTableName(z), map[abstract.TableID]map[string]*debeziumcommon.OriginalTypeInfo{
+	receiveWrapper(t, debeziumMsg46, fixTableName(z), map[abstract.TableID]map[string]*debezium_common.OriginalTypeInfo{
 		{Namespace: "public", Name: "basic_types"}: {
 			"id":  {OriginalType: "pg:integer"},
 			"val": {OriginalType: `pg:timestamp(6) without time zone`},
@@ -789,7 +789,7 @@ var debeziumMsg47 = `{"payload":{"after":{"id":1,"val":"AP8="},"before":null,"op
 var canonChangeItem47 = `{"id":564,"nextlsn":24531320,"commitTime":1643633963155601000,"txPosition":0,"kind":"insert","schema":"public","table":"basic_types03","columnnames":["id","val"],"columnvalues":[1,"1111111100000000"],"table_schema":[{"table_schema":"public","table_name":"basic_types","path":"","name":"id","type":"int32","key":true,"fake_key":false,"required":false,"expression":"","original_type":"pg:integer"},{"table_schema":"public","table_name":"basic_types","path":"","name":"val","type":"string","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:bit varying(16)"}],"oldkeys":{},"tx_id":"","query":""}`
 
 func TestReceive47(t *testing.T) {
-	receiveWrapper(t, debeziumMsg47, fixTableName(canonChangeItem47), map[abstract.TableID]map[string]*debeziumcommon.OriginalTypeInfo{
+	receiveWrapper(t, debeziumMsg47, fixTableName(canonChangeItem47), map[abstract.TableID]map[string]*debezium_common.OriginalTypeInfo{
 		{Namespace: "public", Name: "basic_types"}: {
 			"id":  {OriginalType: "pg:integer"},
 			"val": {OriginalType: "pg:bit varying(16)"},
@@ -804,7 +804,7 @@ var debeziumMsgArr = `{"payload":{"after":{"arr_bl":[true,true],"arr_c":["1","1"
 var canonChangeItemArr = `{"id":0,"nextlsn":0,"commitTime":0,"txPosition":0,"kind":"insert","schema":"public","table":"basic_types","columnnames":["i","arr_bl","arr_si","arr_int","arr_id","arr_oid_","arr_real_","arr_d","arr_c","arr_str","arr_character_varying_","arr_timestamptz_","arr_tst","arr_timetz_","arr_time_with_time_zone_","arr_uid","arr_it","arr_f","arr_i","arr_t","arr_date_","arr_time_","arr_time1","arr_time6","arr_timetz__","arr_timetz1","arr_timetz6","arr_timestamp1","arr_timestamp6","arr_timestamp","arr_numeric_","arr_numeric_5","arr_numeric_5_2","arr_decimal_","arr_decimal_5","arr_decimal_5_2"],"columnvalues":[1,[true,true],[1,2],[1,2],[1,2],[1,2],[1.45e-10,1.45e-10],[3.14e-100,3.14e-100],["1","1"],["varchar_example","varchar_example"],["varc","varc"],["2004-10-19T08:23:54Z","2004-10-19T08:23:54Z"],["2004-10-19T09:23:54Z","2004-10-19T09:23:54Z"],["08:51:02Z","08:51:02Z"],["08:51:02Z","08:51:02Z"],["a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11","a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11"],["192.168.100.128/25","192.168.100.128/25"],[1.45e-10,1.45e-10],[1,1],["text_example","text_example"],["1999-01-08T00:00:00Z","1999-01-08T00:00:00Z"],["04:05:06.000000","04:05:06.000000"],["04:05:06.100000","04:05:06.100000"],["04:05:06.123000","04:05:06.123000"],["17:30:25Z","17:30:25Z"],["17:30:25Z","17:30:25Z"],["17:30:25Z","17:30:25Z"],["2004-10-19T10:23:54.900000Z","2004-10-19T10:23:54.900000Z"],["2004-10-19T10:23:54.987654Z","2004-10-19T10:23:54.987654Z"],["2004-10-19T10:23:54.000000Z","2004-10-19T10:23:54.000000Z"],[1267650600228229401496703205376e0,12676506002282294.01496703205376e0],["12345","12345"],["123.67","123.67"],[123456e0,123456e0],["12345","12345"],["123.67","123.67"]],"table_schema":[{"table_schema":"public","table_name":"basic_types","path":"","name":"i","type":"int32","key":true,"fake_key":false,"required":false,"expression":"","original_type":"pg:integer"},{"table_schema":"public","table_name":"basic_types","path":"","name":"arr_bl","type":"any","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:boolean[]"},{"table_schema":"public","table_name":"basic_types","path":"","name":"arr_si","type":"any","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:smallint[]"},{"table_schema":"public","table_name":"basic_types","path":"","name":"arr_int","type":"any","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:integer[]"},{"table_schema":"public","table_name":"basic_types","path":"","name":"arr_id","type":"any","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:bigint[]"},{"table_schema":"public","table_name":"basic_types","path":"","name":"arr_oid_","type":"any","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:oid[]"},{"table_schema":"public","table_name":"basic_types","path":"","name":"arr_real_","type":"any","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:real[]"},{"table_schema":"public","table_name":"basic_types","path":"","name":"arr_d","type":"any","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:double precision[]"},{"table_schema":"public","table_name":"basic_types","path":"","name":"arr_c","type":"any","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:character(1)[]"},{"table_schema":"public","table_name":"basic_types","path":"","name":"arr_str","type":"any","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:character varying(256)[]"},{"table_schema":"public","table_name":"basic_types","path":"","name":"arr_character_varying_","type":"any","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:character varying(5)[]"},{"table_schema":"public","table_name":"basic_types","path":"","name":"arr_timestamptz_","type":"any","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:timestamp with time zone[]"},{"table_schema":"public","table_name":"basic_types","path":"","name":"arr_tst","type":"any","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:timestamp with time zone[]"},{"table_schema":"public","table_name":"basic_types","path":"","name":"arr_timetz_","type":"any","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:time with time zone[]"},{"table_schema":"public","table_name":"basic_types","path":"","name":"arr_time_with_time_zone_","type":"any","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:time with time zone[]"},{"table_schema":"public","table_name":"basic_types","path":"","name":"arr_uid","type":"any","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:uuid[]"},{"table_schema":"public","table_name":"basic_types","path":"","name":"arr_it","type":"any","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:inet[]"},{"table_schema":"public","table_name":"basic_types","path":"","name":"arr_f","type":"any","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:double precision[]"},{"table_schema":"public","table_name":"basic_types","path":"","name":"arr_i","type":"any","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:integer[]"},{"table_schema":"public","table_name":"basic_types","path":"","name":"arr_t","type":"any","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:text[]"},{"table_schema":"public","table_name":"basic_types","path":"","name":"arr_date_","type":"any","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:date[]"},{"table_schema":"public","table_name":"basic_types","path":"","name":"arr_time_","type":"any","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:time without time zone[]"},{"table_schema":"public","table_name":"basic_types","path":"","name":"arr_time1","type":"any","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:time(1) without time zone[]"},{"table_schema":"public","table_name":"basic_types","path":"","name":"arr_time6","type":"any","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:time(6) without time zone[]"},{"table_schema":"public","table_name":"basic_types","path":"","name":"arr_timetz__","type":"any","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:time with time zone[]"},{"table_schema":"public","table_name":"basic_types","path":"","name":"arr_timetz1","type":"any","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:time(1) with time zone[]"},{"table_schema":"public","table_name":"basic_types","path":"","name":"arr_timetz6","type":"any","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:time(6) with time zone[]"},{"table_schema":"public","table_name":"basic_types","path":"","name":"arr_timestamp1","type":"any","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:timestamp(1) without time zone[]"},{"table_schema":"public","table_name":"basic_types","path":"","name":"arr_timestamp6","type":"any","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:timestamp(6) without time zone[]"},{"table_schema":"public","table_name":"basic_types","path":"","name":"arr_timestamp","type":"any","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:timestamp without time zone[]"},{"table_schema":"public","table_name":"basic_types","path":"","name":"arr_numeric_","type":"any","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:numeric[]"},{"table_schema":"public","table_name":"basic_types","path":"","name":"arr_numeric_5","type":"any","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:numeric(5,0)[]"},{"table_schema":"public","table_name":"basic_types","path":"","name":"arr_numeric_5_2","type":"any","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:numeric(5,2)[]"},{"table_schema":"public","table_name":"basic_types","path":"","name":"arr_decimal_","type":"any","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:numeric[]"},{"table_schema":"public","table_name":"basic_types","path":"","name":"arr_decimal_5","type":"any","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:numeric(5,0)[]"},{"table_schema":"public","table_name":"basic_types","path":"","name":"arr_decimal_5_2","type":"any","key":false,"fake_key":false,"required":false,"expression":"","original_type":"pg:numeric(5,2)[]"}],"oldkeys":{},"tx_id":"","query":""}`
 
 func TestReceiveArr(t *testing.T) {
-	receiveWrapper(t, debeziumMsgArr, fixTableName(canonChangeItemArr), map[abstract.TableID]map[string]*debeziumcommon.OriginalTypeInfo{
+	receiveWrapper(t, debeziumMsgArr, fixTableName(canonChangeItemArr), map[abstract.TableID]map[string]*debezium_common.OriginalTypeInfo{
 		{Namespace: "public", Name: "basic_types"}: {
 			"i":                        {OriginalType: "pg:integer"},
 			"arr_bl":                   {OriginalType: "pg:boolean[]"},

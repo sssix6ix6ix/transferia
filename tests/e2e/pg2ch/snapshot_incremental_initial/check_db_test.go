@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/chrecipe"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/model"
-	"github.com/transferia/transferia/pkg/providers/postgres"
+	clickhouse_model "github.com/transferia/transferia/pkg/providers/clickhouse/model"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
 	"github.com/transferia/transferia/tests/helpers"
 )
@@ -26,7 +26,7 @@ func init() {
 	helpers.InitSrcDst(helpers.TransferID, Source, &Target, TransferType) // to WithDefaults() & FillDependentFields(): IsHomo, helpers.TransferID, IsUpdateable
 }
 
-func testSnapshot(t *testing.T, source *postgres.PgSource, target model.ChDestination) {
+func testSnapshot(t *testing.T, source *provider_postgres.PgSource, target clickhouse_model.ChDestination) {
 	defer func() {
 		require.NoError(t, helpers.CheckConnections(
 			helpers.LabeledPort{Label: "PG source", Port: source.Port},

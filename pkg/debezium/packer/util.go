@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/transferia/transferia/pkg/abstract"
-	debeziumparameters "github.com/transferia/transferia/pkg/debezium/parameters"
+	debezium_parameters "github.com/transferia/transferia/pkg/debezium/parameters"
 )
 
 func makeSubjectName(
@@ -31,11 +31,11 @@ func makeSubjectName(
 		recordName += ".Envelope"
 	}
 	switch subjectNameStrategy {
-	case debeziumparameters.SubjectTopicRecordNameStrategy:
+	case debezium_parameters.SubjectTopicRecordNameStrategy:
 		return topicName + "-" + recordName
-	case debeziumparameters.SubjectRecordNameStrategy:
+	case debezium_parameters.SubjectRecordNameStrategy:
 		return recordName
-	case debeziumparameters.SubjectTopicNameStrategy:
+	case debezium_parameters.SubjectTopicNameStrategy:
 		fallthrough
 	default:
 		if isKeyProcessor {

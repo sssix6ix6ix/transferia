@@ -7,7 +7,7 @@ import (
 
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/providers/s3/s3util/ordered_multimap"
-	"golang.org/x/exp/maps"
+	xmaps "golang.org/x/exp/maps"
 )
 
 type serde struct {
@@ -75,7 +75,7 @@ func deserialize(in []byte) (*ordered_multimap.OrderedMultimap, *ordered_multima
 			}
 		}
 		return ordered_multimap.NewOrderedMultimap(), handled, nil
-	} else if allKeysNumbers(maps.Keys(rawMap)) {
+	} else if allKeysNumbers(xmaps.Keys(rawMap)) {
 		// second version -- 'handled':
 		//  map[int64][]string
 

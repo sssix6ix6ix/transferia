@@ -10,7 +10,7 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/chrecipe"
-	pgcommon "github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
 	"github.com/transferia/transferia/tests/e2e/pg2ch"
 	"github.com/transferia/transferia/tests/helpers"
@@ -38,9 +38,9 @@ func TestSnapshotAndIncrementPK(t *testing.T) {
 		))
 	}()
 
-	connConfig, err := pgcommon.MakeConnConfigFromSrc(logger.Log, &SourcePK)
+	connConfig, err := provider_postgres.MakeConnConfigFromSrc(logger.Log, &SourcePK)
 	require.NoError(t, err)
-	conn, err := pgcommon.NewPgConnPool(connConfig, logger.Log)
+	conn, err := provider_postgres.NewPgConnPool(connConfig, logger.Log)
 	require.NoError(t, err)
 
 	transfer := helpers.MakeTransfer(helpers.TransferID, &SourcePK, &Target, TransferType)

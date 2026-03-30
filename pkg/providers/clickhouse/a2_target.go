@@ -13,28 +13,28 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/library/go/ptr"
-	dp_model "github.com/transferia/transferia/pkg/abstract/model"
+	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/abstract2"
 	"github.com/transferia/transferia/pkg/abstract2/events"
-	"github.com/transferia/transferia/pkg/connection/clickhouse"
+	conn_clickhouse "github.com/transferia/transferia/pkg/connection/clickhouse"
 	"github.com/transferia/transferia/pkg/format"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/errors"
+	clickhouse_errors "github.com/transferia/transferia/pkg/providers/clickhouse/errors"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/httpclient"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/model"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/schema"
+	clickhouse_model "github.com/transferia/transferia/pkg/providers/clickhouse/model"
+	clickhouse_schema "github.com/transferia/transferia/pkg/providers/clickhouse/schema"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/topology"
 	"github.com/transferia/transferia/pkg/stats"
 	"github.com/transferia/transferia/pkg/util"
 	"go.ytsaurus.tech/library/go/core/log"
-	"golang.org/x/exp/maps"
+	xmaps "golang.org/x/exp/maps"
 )
 
 type HTTPTarget struct {
 	client         httpclient.HTTPClient
-	config         model.ChSinkParams
+	config         clickhouse_model.ChSinkParams
 	logger         log.Logger
 	cluster        *topology.Cluster
 	altNames       map[string]string
@@ -122,7 +122,7 @@ func (c *HTTPTarget) AsyncPush(input abstract2.EventBatch) chan error {
 		c.wrapperMetrics.RowEventsPushed.Add(int64(batch.RowCount))
 		c.metrics.Table(batch.Part.Name(), "rows", batch.RowCount)
 		return util.MakeChanWithError(nil)
-	case *schema.DDLBatch:
+	case *clickhouse_schema.DDLBatch:
 		for _, ddl := range batch.DDLs {
 			err := c.execDDL(func(distributed bool) error {
 				query, err := c.adjustDDLToTarget(ddl, distributed)
@@ -150,11 +150,11 @@ func (c *HTTPTarget) AsyncPush(input abstract2.EventBatch) chan error {
 			switch event := ev.(type) {
 			case events.CleanupEvent:
 				switch c.config.Cleanup() {
-				case dp_model.DisabledCleanup:
+				case model.DisabledCleanup:
 					continue
-				case dp_model.Truncate:
+				case model.Truncate:
 					ddl = "TRUNCATE TABLE IF EXISTS %s"
-				case dp_model.Drop:
+				case model.Drop:
 					ddl = "DROP TABLE IF EXISTS %s NO DELAY"
 				}
 
@@ -181,8 +181,8 @@ func (c *HTTPTarget) Close() error {
 	return nil
 }
 
-func (c *HTTPTarget) adjustDDLToTarget(ddl *schema.TableDDL, distributed bool) (string, error) {
-	return schema.BuildDDLForHomoSink(
+func (c *HTTPTarget) adjustDDLToTarget(ddl *clickhouse_schema.TableDDL, distributed bool) (string, error) {
+	return clickhouse_schema.BuildDDLForHomoSink(
 		ddl,
 		distributed,
 		c.cluster.Name(),
@@ -191,8 +191,8 @@ func (c *HTTPTarget) adjustDDLToTarget(ddl *schema.TableDDL, distributed bool) (
 	)
 }
 
-func (c *HTTPTarget) HostByPart(part *TablePartA2) *clickhouse.Host {
-	host := new(clickhouse.Host)
+func (c *HTTPTarget) HostByPart(part *TablePartA2) *conn_clickhouse.Host {
+	host := new(conn_clickhouse.Host)
 	if c.config.Host() != nil {
 		host = c.config.Host()
 	}
@@ -241,7 +241,7 @@ func (c *HTTPTarget) resolveCluster() error {
 	}
 
 	shardMap := make(topology.ShardHostMap)
-	shardNames := maps.Keys(c.config.Shards())
+	shardNames := xmaps.Keys(c.config.Shards())
 	sort.Strings(shardNames)
 	for i, shardName := range shardNames {
 		shardMap[i+1] = c.config.Shards()[shardName] // shard indexing start with 1
@@ -281,14 +281,14 @@ func (c *HTTPTarget) execDDL(executor func(distributed bool) error) error {
 		return nil
 	}
 
-	if !errors.IsDistributedDDLError(err) {
+	if !clickhouse_errors.IsDistributedDDLError(err) {
 		return xerrors.Errorf("error executing DDL: %w", err)
 	}
 	c.logger.Error("Got distributed DDL error", log.Error(err))
 
 	if !c.cluster.SingleNode() {
 		c.logger.Error("cluster is not single node and distributed DDL is not available")
-		return errors.ForbiddenDistributedDDLError
+		return clickhouse_errors.ForbiddenDistributedDDLError
 	}
 
 	if err := executor(false); err != nil {
@@ -299,7 +299,7 @@ func (c *HTTPTarget) execDDL(executor func(distributed bool) error) error {
 	return nil
 }
 
-func newHTTPTargetImpl(transfer *dp_model.Transfer, config model.ChSinkParams, mtrc metrics.Registry, logger log.Logger) (*HTTPTarget, error) {
+func newHTTPTargetImpl(transfer *model.Transfer, config clickhouse_model.ChSinkParams, mtrc core_metrics.Registry, logger log.Logger) (*HTTPTarget, error) {
 	client, err := httpclient.NewHTTPClientImpl(config)
 	if err != nil {
 		return nil, xerrors.Errorf("error creating CH HTTP client: %w", err)
@@ -325,8 +325,8 @@ func newHTTPTargetImpl(transfer *dp_model.Transfer, config model.ChSinkParams, m
 	return target, nil
 }
 
-func NewHTTPTarget(transfer *dp_model.Transfer, mtrc metrics.Registry, logger log.Logger) (*HTTPTarget, error) {
-	dst, ok := transfer.Dst.(*model.ChDestination)
+func NewHTTPTarget(transfer *model.Transfer, mtrc core_metrics.Registry, logger log.Logger) (*HTTPTarget, error) {
+	dst, ok := transfer.Dst.(*clickhouse_model.ChDestination)
 	if !ok {
 		panic("expected ClickHouse destination in ClickHouse sink constructor")
 	}

@@ -12,14 +12,14 @@ import (
 	"github.com/transferia/transferia/library/go/core/metrics/solomon"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	dp_model "github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/connection/clickhouse"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/model"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/schema"
+	"github.com/transferia/transferia/pkg/abstract/model"
+	conn_clickhouse "github.com/transferia/transferia/pkg/connection/clickhouse"
+	clickhouse_model "github.com/transferia/transferia/pkg/providers/clickhouse/model"
+	clickhouse_schema "github.com/transferia/transferia/pkg/providers/clickhouse/schema"
 	"github.com/transferia/transferia/pkg/stats"
 	"go.ytsaurus.tech/library/go/core/log"
-	"golang.org/x/exp/maps"
-	"golang.org/x/exp/slices"
+	xmaps "golang.org/x/exp/maps"
+	xslices "golang.org/x/exp/slices"
 )
 
 type ShardStorage struct {
@@ -52,7 +52,7 @@ func (s *ShardStorage) Version() semver.Version {
 	return s.defaultShard().Version()
 }
 
-func (s *ShardStorage) LoadTablesDDL(tables []abstract.TableID) ([]*schema.TableDDL, error) {
+func (s *ShardStorage) LoadTablesDDL(tables []abstract.TableID) ([]*clickhouse_schema.TableDDL, error) {
 	return s.defaultShard().LoadTablesDDL(tables)
 }
 
@@ -322,10 +322,10 @@ func NewShardedStorage(shards map[string]*Storage) ClickhouseStorage {
 	return &ShardStorage{shards: shards, logger: logger.Log}
 }
 
-func NewShardedFromUrls(config *model.ChStorageParams, transfer *dp_model.Transfer, opts ...StorageOpt) (ClickhouseStorage, error) {
+func NewShardedFromUrls(config *clickhouse_model.ChStorageParams, transfer *model.Transfer, opts ...StorageOpt) (ClickhouseStorage, error) {
 	shards := map[string]*Storage{}
-	allShardsAreSingleHost := slices.IndexFunc(maps.Values(config.ConnectionParams.Shards),
-		func(hosts []*clickhouse.Host) bool { return len(hosts) > 1 }) == -1
+	allShardsAreSingleHost := xslices.IndexFunc(xmaps.Values(config.ConnectionParams.Shards),
+		func(hosts []*conn_clickhouse.Host) bool { return len(hosts) > 1 }) == -1
 	for name := range config.ConnectionParams.Shards {
 		db, err := makeShardConnection(config, name)
 		if err != nil {

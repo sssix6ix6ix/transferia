@@ -13,28 +13,28 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract2"
-	"github.com/transferia/transferia/pkg/connection/clickhouse"
+	conn_clickhouse "github.com/transferia/transferia/pkg/connection/clickhouse"
 	"github.com/transferia/transferia/pkg/middlewares"
 	"github.com/transferia/transferia/pkg/middlewares/asynchronizer"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/format"
+	clickhouse_format "github.com/transferia/transferia/pkg/providers/clickhouse/format"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/httpclient"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/model"
+	clickhouse_model "github.com/transferia/transferia/pkg/providers/clickhouse/model"
 	"github.com/transferia/transferia/pkg/stats"
 	"github.com/transferia/transferia/pkg/util"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
 const (
-	defaultIOFormat = model.ClickhouseIOFormatCSV
+	defaultIOFormat = clickhouse_model.ClickhouseIOFormatCSV
 )
 
 type HTTPSource struct {
 	client httpclient.HTTPClient
 
-	config  *model.ChStorageParams
+	config  *clickhouse_model.ChStorageParams
 	query   string
 	metrics *stats.SourceStats
-	hosts   []*clickhouse.Host
+	hosts   []*conn_clickhouse.Host
 	part    *TablePartA2
 	cols    *abstract.TableSchema
 
@@ -58,7 +58,7 @@ func (s *HTTPSource) Running() bool {
 	return s.state.Running
 }
 
-func (s *HTTPSource) IOFormat() model.ClickhouseIOFormat {
+func (s *HTTPSource) IOFormat() clickhouse_model.ClickhouseIOFormat {
 	if s.config.IOHomoFormat != "" {
 		return s.config.IOHomoFormat
 	}
@@ -141,7 +141,7 @@ func (s *HTTPSource) rowsByHTTP(ctx context.Context, syncTarget asynchronizer.As
 	// at the first filling up to s.config.BufferSize + a little more
 	validBuffer := bytes.NewBuffer(make([]byte, 0, s.config.BufferSize+s.config.BufferSize/10))
 	teeReader := io.TeeReader(body, validBuffer)
-	validator, err := format.NewValidator(teeReader, s.IOFormat(), len(s.cols.Columns()))
+	validator, err := clickhouse_format.NewValidator(teeReader, s.IOFormat(), len(s.cols.Columns()))
 	if err != nil {
 		return xerrors.Errorf("unable to build validator, err: %w", err)
 	}
@@ -229,8 +229,8 @@ func NewHTTPSourceImpl(
 	query string,
 	countQuery string,
 	cols *abstract.TableSchema,
-	hosts []*clickhouse.Host,
-	config *model.ChStorageParams,
+	hosts []*conn_clickhouse.Host,
+	config *clickhouse_model.ChStorageParams,
 	part *TablePartA2,
 	sourceStats *stats.SourceStats,
 	client httpclient.HTTPClient,
@@ -263,8 +263,8 @@ func NewHTTPSource(
 	query string,
 	countQuery string,
 	cols *abstract.TableSchema,
-	hosts []*clickhouse.Host,
-	config *model.ChSource,
+	hosts []*conn_clickhouse.Host,
+	config *clickhouse_model.ChSource,
 	part *TablePartA2,
 	sourceStats *stats.SourceStats,
 ) (*HTTPSource, error) {

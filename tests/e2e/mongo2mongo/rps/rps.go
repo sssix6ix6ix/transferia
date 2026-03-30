@@ -14,7 +14,7 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/randutil"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
+	mongo_driver "go.mongodb.org/mongo-driver/mongo"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
@@ -139,7 +139,7 @@ func (r *RpsModel) SetSpec(spec *RpsSpec) {
 	r.timer.Reset(r.specification.Delay)
 }
 
-func (r *RpsModel) CheckValid(t *testing.T, ctx context.Context, label string, coll *mongo.Collection) {
+func (r *RpsModel) CheckValid(t *testing.T, ctx context.Context, label string, coll *mongo_driver.Collection) {
 	cursor, err := coll.Find(ctx, bson.D{})
 	require.NoError(t, err)
 	hasInCursor := map[string]struct{}{}

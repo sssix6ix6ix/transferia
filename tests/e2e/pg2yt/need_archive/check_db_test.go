@@ -11,18 +11,18 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/postgres"
-	yt_provider "github.com/transferia/transferia/pkg/providers/yt"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
+	provider_yt "github.com/transferia/transferia/pkg/providers/yt"
 	"github.com/transferia/transferia/tests/helpers"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 	"go.ytsaurus.tech/yt/go/ypath"
-	yt_main "go.ytsaurus.tech/yt/go/yt"
+	"go.ytsaurus.tech/yt/go/yt"
 	"go.ytsaurus.tech/yt/go/yttest"
 )
 
 var (
 	srcPort = helpers.GetIntFromEnv("PG_LOCAL_PORT")
-	Source  = postgres.PgSource{
+	Source  = provider_postgres.PgSource{
 		ClusterID: os.Getenv("PG_CLUSTER_ID"),
 		Hosts:     []string{"localhost"},
 		User:      os.Getenv("PG_LOCAL_USER"),
@@ -32,7 +32,7 @@ var (
 		DBTables:  []string{"public.__test"},
 		SlotID:    "test_slot_id",
 	}
-	Target = yt_provider.NewYtDestinationV1(yt_provider.YtDestination{
+	Target = provider_yt.NewYtDestinationV1(provider_yt.YtDestination{
 		Path:          "//home/cdc/test/pg2yt_e2e_replication",
 		Cluster:       os.Getenv("YT_PROXY"),
 		CellBundle:    "default",
@@ -61,9 +61,9 @@ func TestGroup(t *testing.T) {
 	ytEnv, cancel := yttest.NewEnv(t)
 	defer cancel()
 
-	_, err = ytEnv.YT.CreateNode(ctx, ypath.Path("//home/cdc/test/pg2yt_e2e_replication"), yt_main.NodeMap, &yt_main.CreateNodeOptions{Recursive: true})
+	_, err = ytEnv.YT.CreateNode(ctx, ypath.Path("//home/cdc/test/pg2yt_e2e_replication"), yt.NodeMap, &yt.CreateNodeOptions{Recursive: true})
 	defer func() {
-		err := ytEnv.YT.RemoveNode(ctx, ypath.Path("//home/cdc/test/pg2yt_e2e_replication"), &yt_main.RemoveNodeOptions{Recursive: true})
+		err := ytEnv.YT.RemoveNode(ctx, ypath.Path("//home/cdc/test/pg2yt_e2e_replication"), &yt.RemoveNodeOptions{Recursive: true})
 		require.NoError(t, err)
 	}()
 	require.NoError(t, err)
@@ -78,7 +78,7 @@ func Load(t *testing.T) {
 
 	//------------------------------------------------------------------------------
 
-	conn, err := postgres.MakeConnPoolFromSrc(&Source, logger.Log)
+	conn, err := provider_postgres.MakeConnPoolFromSrc(&Source, logger.Log)
 	require.NoError(t, err)
 
 	_, err = conn.Exec(context.Background(), "alter table __test drop column astr")
@@ -100,12 +100,12 @@ func Load(t *testing.T) {
 	archiveTablePath := ypath.Path(Target.Path()).Child("__test_archive")
 	waitForRows(t, ytEnv.YT, []ypath.Path{archiveTablePath}, 1)
 
-	var unparsedSchema schema.Schema
+	var unparsedSchema ytschema.Schema
 	require.NoError(t, ytEnv.YT.GetNode(context.Background(), archiveTablePath.Attr("schema"), &unparsedSchema, nil))
 	require.True(t, schemaContainsColumn(unparsedSchema, "astr"))
 }
 
-func schemaContainsColumn(sch schema.Schema, colName string) bool {
+func schemaContainsColumn(sch ytschema.Schema, colName string) bool {
 	for _, c := range sch.Columns {
 		if c.Name == colName {
 			return true
@@ -114,15 +114,15 @@ func schemaContainsColumn(sch schema.Schema, colName string) bool {
 	return false
 }
 
-func closeReader(reader yt_main.TableReader) {
+func closeReader(reader yt.TableReader) {
 	err := reader.Close()
 	if err != nil {
 		logger.Log.Warn("Could not close table reader")
 	}
 }
 
-func checkRowCount(client yt_main.Client, tablePath ypath.Path, rowsNumber int) (bool, error) {
-	reader, err := client.SelectRows(context.Background(), fmt.Sprintf("SUM(1) AS row_count FROM [%s] GROUP BY 1", tablePath), &yt_main.SelectRowsOptions{})
+func checkRowCount(client yt.Client, tablePath ypath.Path, rowsNumber int) (bool, error) {
+	reader, err := client.SelectRows(context.Background(), fmt.Sprintf("SUM(1) AS row_count FROM [%s] GROUP BY 1", tablePath), &yt.SelectRowsOptions{})
 	if err != nil {
 		return false, err
 	}
@@ -144,7 +144,7 @@ func checkRowCount(client yt_main.Client, tablePath ypath.Path, rowsNumber int) 
 	return false, nil
 }
 
-func waitForRows(t *testing.T, client yt_main.Client, tablePaths []ypath.Path, rowsNumber int) {
+func waitForRows(t *testing.T, client yt.Client, tablePaths []ypath.Path, rowsNumber int) {
 	finished := make([]bool, len(tablePaths))
 
 	for {

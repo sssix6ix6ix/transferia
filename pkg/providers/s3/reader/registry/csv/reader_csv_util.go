@@ -5,9 +5,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/transferia/transferia/library/go/slices"
+	yslices "github.com/transferia/transferia/library/go/slices"
 	"github.com/transferia/transferia/pkg/abstract"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 // getCorrespondingValue performs a check/transformation with the original value against the user provided configuration
@@ -16,13 +16,13 @@ func (r *CSVReader) getCorrespondingValue(originalValue string, col abstract.Col
 	var resultingValue interface{}
 
 	switch col.DataType {
-	case schema.TypeBoolean.String():
+	case ytschema.TypeBoolean.String():
 		resultingValue = r.parseBooleanValue(originalValue)
-	case schema.TypeDate.String(), schema.TypeDatetime.String():
+	case ytschema.TypeDate.String(), ytschema.TypeDatetime.String():
 		resultingValue = r.parseDateValue(originalValue)
-	case schema.TypeTimestamp.String():
+	case ytschema.TypeTimestamp.String():
 		resultingValue = r.parseTimestampValue(originalValue)
-	case schema.TypeFloat32.String(), schema.TypeFloat64.String():
+	case ytschema.TypeFloat32.String(), ytschema.TypeFloat64.String():
 		resultingValue = r.parseFloatValue(originalValue)
 	default:
 		resultingValue = r.parseNullValues(originalValue, col)
@@ -61,12 +61,12 @@ func (r *CSVReader) parseNullValues(originalValue string, col abstract.ColSchema
 		} else if strings.HasPrefix(originalValue, "'") && strings.HasSuffix(originalValue, "'") {
 			trimmedContent = strings.TrimSuffix(strings.TrimPrefix(originalValue, "'"), "'")
 		}
-		if slices.Contains(r.additionalReaderOptions.NullValues, trimmedContent) {
+		if yslices.Contains(r.additionalReaderOptions.NullValues, trimmedContent) {
 			return abstract.DefaultValue(&col)
 		}
 	} else {
 		if r.additionalReaderOptions.StringsCanBeNull {
-			if slices.Contains(r.additionalReaderOptions.NullValues, originalValue) {
+			if yslices.Contains(r.additionalReaderOptions.NullValues, originalValue) {
 				return abstract.DefaultValue(&col)
 			}
 		}
@@ -103,13 +103,13 @@ func (r *CSVReader) parseTimestampValue(originalValue string) interface{} {
 // then a false boolean value is returned for this value. It defaults to the original value if no matches are found.
 func (r *CSVReader) parseBooleanValue(originalValue string) interface{} {
 	if r.additionalReaderOptions.StringsCanBeNull {
-		if slices.Contains(r.additionalReaderOptions.NullValues, originalValue) {
+		if yslices.Contains(r.additionalReaderOptions.NullValues, originalValue) {
 			return false
 		}
 	}
-	if slices.Contains(r.additionalReaderOptions.TrueValues, originalValue) {
+	if yslices.Contains(r.additionalReaderOptions.TrueValues, originalValue) {
 		return true
-	} else if slices.Contains(r.additionalReaderOptions.FalseValues, originalValue) {
+	} else if yslices.Contains(r.additionalReaderOptions.FalseValues, originalValue) {
 		return false
 	} else {
 		// last ditch attempt, try string conversion

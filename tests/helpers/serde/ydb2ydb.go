@@ -8,10 +8,10 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/debezium"
-	simple_transformer "github.com/transferia/transferia/tests/helpers/transformer"
+	helpers_transformer "github.com/transferia/transferia/tests/helpers/transformer"
 )
 
-func MakeYdb2YdbDebeziumSerDeUdf(pathOut string, outLastInsert *abstract.ChangeItem, emitter *debezium.Emitter, receiver *debezium.Receiver) simple_transformer.SimpleTransformerApplyUDF {
+func MakeYdb2YdbDebeziumSerDeUdf(pathOut string, outLastInsert *abstract.ChangeItem, emitter *debezium.Emitter, receiver *debezium.Receiver) helpers_transformer.SimpleTransformerApplyUDF {
 	return func(t *testing.T, items []abstract.ChangeItem) abstract.TransformerResult {
 		newChangeItems := make([]abstract.ChangeItem, 0)
 		for i := range items {

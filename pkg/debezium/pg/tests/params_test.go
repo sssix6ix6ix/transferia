@@ -11,16 +11,16 @@ import (
 	"github.com/transferia/transferia/library/go/test/yatest"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/debezium"
-	debeziumcommon "github.com/transferia/transferia/pkg/debezium/common"
-	debeziumparameters "github.com/transferia/transferia/pkg/debezium/parameters"
+	debezium_common "github.com/transferia/transferia/pkg/debezium/common"
+	debezium_parameters "github.com/transferia/transferia/pkg/debezium/parameters"
 )
 
 func getParams(additional map[string]string) map[string]string {
 	result := map[string]string{
-		debeziumparameters.DatabaseDBName:   "public",
-		debeziumparameters.TopicPrefix:      "fullfillment",
-		debeziumparameters.AddOriginalTypes: "false",
-		debeziumparameters.SourceType:       "pg",
+		debezium_parameters.DatabaseDBName:   "public",
+		debezium_parameters.TopicPrefix:      "fullfillment",
+		debezium_parameters.AddOriginalTypes: "false",
+		debezium_parameters.SourceType:       "pg",
 	}
 	for k, v := range additional {
 		result[k] = v
@@ -28,7 +28,7 @@ func getParams(additional map[string]string) map[string]string {
 	return result
 }
 
-func getAfterVal(t *testing.T, msg *debeziumcommon.Message, fieldName string) interface{} {
+func getAfterVal(t *testing.T, msg *debezium_common.Message, fieldName string) interface{} {
 	for k, v := range msg.Payload.After {
 		if k == fieldName {
 			return v
@@ -38,7 +38,7 @@ func getAfterVal(t *testing.T, msg *debeziumcommon.Message, fieldName string) in
 	return nil
 }
 
-func checkNameAndType(t *testing.T, schema *debeziumcommon.Schema, expectedName, expectedType string) {
+func checkNameAndType(t *testing.T, schema *debezium_common.Schema, expectedName, expectedType string) {
 	require.Equal(t, expectedName, schema.Name)
 	require.Equal(t, expectedType, schema.Type)
 }
@@ -55,7 +55,7 @@ func TestDecimalHandlingMode(t *testing.T) {
 		currDebeziumKV, err := emitter.EmitKV(changeItem, time.Time{}, true, nil)
 		require.NoError(t, err)
 		require.Equal(t, 1, len(currDebeziumKV))
-		msg, err := debeziumcommon.UnmarshalMessage(*currDebeziumKV[0].DebeziumVal)
+		msg, err := debezium_common.UnmarshalMessage(*currDebeziumKV[0].DebeziumVal)
 		require.NoError(t, err)
 		afterSchema := msg.Schema.FindAfterSchema()
 		checkNameAndType(t, afterSchema.FindSchemaDescr("numeric_"), "io.debezium.data.VariableScaleDecimal", "struct")
@@ -82,16 +82,16 @@ func TestDecimalHandlingMode(t *testing.T) {
 	})
 
 	t.Run("decimal.handling.mode=precise(explicit)", func(t *testing.T) {
-		checkPrecise(t, map[string]string{debeziumparameters.DecimalHandlingMode: "precise"})
+		checkPrecise(t, map[string]string{debezium_parameters.DecimalHandlingMode: "precise"})
 	})
 
 	t.Run("decimal.handling.mode=double", func(t *testing.T) {
-		emitter, err := debezium.NewMessagesEmitter(getParams(map[string]string{debeziumparameters.DecimalHandlingMode: "double"}), "1.1.2.Final", false, logger.Log)
+		emitter, err := debezium.NewMessagesEmitter(getParams(map[string]string{debezium_parameters.DecimalHandlingMode: "double"}), "1.1.2.Final", false, logger.Log)
 		require.NoError(t, err)
 		currDebeziumKV, err := emitter.EmitKV(changeItem, time.Time{}, true, nil)
 		require.NoError(t, err)
 		require.Equal(t, 1, len(currDebeziumKV))
-		msg, err := debeziumcommon.UnmarshalMessage(*currDebeziumKV[0].DebeziumVal)
+		msg, err := debezium_common.UnmarshalMessage(*currDebeziumKV[0].DebeziumVal)
 		require.NoError(t, err)
 
 		afterSchema := msg.Schema.FindAfterSchema()
@@ -113,12 +113,12 @@ func TestDecimalHandlingMode(t *testing.T) {
 	})
 
 	t.Run("decimal.handling.mode=string", func(t *testing.T) {
-		emitter, err := debezium.NewMessagesEmitter(getParams(map[string]string{debeziumparameters.DecimalHandlingMode: "string"}), "1.1.2.Final", false, logger.Log)
+		emitter, err := debezium.NewMessagesEmitter(getParams(map[string]string{debezium_parameters.DecimalHandlingMode: "string"}), "1.1.2.Final", false, logger.Log)
 		require.NoError(t, err)
 		currDebeziumKV, err := emitter.EmitKV(changeItem, time.Time{}, true, nil)
 		require.NoError(t, err)
 		require.Equal(t, 1, len(currDebeziumKV))
-		msg, err := debeziumcommon.UnmarshalMessage(*currDebeziumKV[0].DebeziumVal)
+		msg, err := debezium_common.UnmarshalMessage(*currDebeziumKV[0].DebeziumVal)
 		require.NoError(t, err)
 
 		afterSchema := msg.Schema.FindAfterSchema()

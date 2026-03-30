@@ -7,9 +7,9 @@ import (
 
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/transformer"
-	"github.com/transferia/transferia/pkg/transformer/registry/filter"
+	transformer_filter "github.com/transferia/transferia/pkg/transformer/registry/filter"
 	"go.ytsaurus.tech/library/go/core/log"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 const Type = abstract.TransformerType("regex_replace_transformer")
@@ -21,12 +21,12 @@ func init() {
 			return nil, fmt.Errorf("unable to compile match regexp: %w", err)
 		}
 
-		clms, err := filter.NewFilter(cfg.Columns.IncludeColumns, cfg.Columns.ExcludeColumns)
+		clms, err := transformer_filter.NewFilter(cfg.Columns.IncludeColumns, cfg.Columns.ExcludeColumns)
 		if err != nil {
 			return nil, fmt.Errorf("unable to create columns filter: %w", err)
 		}
 
-		tbls, err := filter.NewFilter(cfg.Tables.IncludeTables, cfg.Tables.ExcludeTables)
+		tbls, err := transformer_filter.NewFilter(cfg.Tables.IncludeTables, cfg.Tables.ExcludeTables)
 		if err != nil {
 			return nil, fmt.Errorf("unable to create tables filter: %w", err)
 		}
@@ -42,18 +42,18 @@ func init() {
 }
 
 type Config struct {
-	RegexMatch  string         `json:"regexMatch"`
-	ReplaceRule string         `json:"replaceRule"`
-	Columns     filter.Columns `json:"columns"`
-	Tables      filter.Tables  `json:"tables"`
+	RegexMatch  string                     `json:"regexMatch"`
+	ReplaceRule string                     `json:"replaceRule"`
+	Columns     transformer_filter.Columns `json:"columns"`
+	Tables      transformer_filter.Tables  `json:"tables"`
 }
 
 type Transformer struct {
 	MatchRegex  *regexp.Regexp
 	ReplaceRule string
 
-	Columns filter.Filter
-	Tables  filter.Filter
+	Columns transformer_filter.Filter
+	Tables  transformer_filter.Filter
 	Logger  log.Logger
 }
 
@@ -126,12 +126,12 @@ func (t *Transformer) Apply(input []abstract.ChangeItem) abstract.TransformerRes
 // It only works for YT types `string` and `utf8`
 func replace(value any, typ string, match *regexp.Regexp, replace string) any {
 	switch typ {
-	case schema.TypeString.String():
+	case ytschema.TypeString.String():
 		out, ok := value.(string)
 		if ok {
 			return match.ReplaceAllString(out, replace)
 		}
-	case schema.TypeBytes.String():
+	case ytschema.TypeBytes.String():
 		out, ok := value.([]byte)
 		if ok {
 			return match.ReplaceAll(out, []byte(replace))

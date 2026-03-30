@@ -1,6 +1,6 @@
 package size
 
-import "github.com/transferia/transferia/library/go/core/metrics"
+import core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 
 const (
 	KiB = 1024
@@ -8,8 +8,8 @@ const (
 	GiB = 1024 * MiB
 )
 
-func DefaultBuckets() metrics.Buckets {
-	return metrics.NewBuckets(
+func DefaultBuckets() core_metrics.Buckets {
+	return core_metrics.NewBuckets(
 		KiB,
 		5*KiB,
 		10*KiB,

@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
 	"github.com/transferia/transferia/tests/helpers"
 	mocksink "github.com/transferia/transferia/tests/helpers/mock_sink"
@@ -22,7 +22,7 @@ func TestConnLimitReplication(t *testing.T) {
 	source := *pgrecipe.RecipeSource(
 		pgrecipe.WithPrefix(""),
 		pgrecipe.WithInitDir("init_source"),
-		pgrecipe.WithEdit(func(pg *postgres.PgSource) {
+		pgrecipe.WithEdit(func(pg *provider_postgres.PgSource) {
 			pg.User = "conn_test"
 			pg.Password = "aA_12345"
 		}),

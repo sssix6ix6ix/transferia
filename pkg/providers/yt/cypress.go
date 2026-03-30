@@ -6,18 +6,18 @@ import (
 
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	yslices "github.com/transferia/transferia/library/go/slices"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 	"go.ytsaurus.tech/yt/go/ypath"
 	"go.ytsaurus.tech/yt/go/yt"
 )
 
 type NodeAttrs struct {
-	Type        yt.NodeType   `yson:"type"`
-	Dynamic     bool          `yson:"dynamic"`
-	TabletState string        `yson:"tablet_state"`
-	Schema      schema.Schema `yson:"schema"`
-	OptimizeFor string        `yson:"optimize_for"`
-	Atomicity   string        `yson:"atomicity"`
+	Type        yt.NodeType     `yson:"type"`
+	Dynamic     bool            `yson:"dynamic"`
+	TabletState string          `yson:"tablet_state"`
+	Schema      ytschema.Schema `yson:"schema"`
+	OptimizeFor string          `yson:"optimize_for"`
+	Atomicity   string          `yson:"atomicity"`
 }
 
 type NodeInfo struct {

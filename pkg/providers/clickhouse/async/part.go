@@ -12,7 +12,7 @@ import (
 	"github.com/transferia/transferia/pkg/providers/clickhouse/async/dao"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/async/model/parts"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/columntypes"
-	chsink "github.com/transferia/transferia/pkg/providers/clickhouse/errors"
+	clickhouse_errors "github.com/transferia/transferia/pkg/providers/clickhouse/errors"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/sharding"
 	"go.ytsaurus.tech/library/go/core/log"
 )
@@ -127,7 +127,7 @@ func (p *part) getOrCreateShardPart(shardID sharding.ShardID) (*shardPart, error
 	if err := backoff.Retry(func() error {
 		s, err := p.createShardPart(shardID)
 		if err != nil {
-			if chsink.IsFatalClickhouseError(err) {
+			if clickhouse_errors.IsFatalClickhouseError(err) {
 				err = backoff.Permanent(err)
 			}
 			return err

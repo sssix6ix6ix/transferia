@@ -7,7 +7,7 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
+	mongo_driver "go.mongodb.org/mongo-driver/mongo"
 )
 
 var keyExistsFilter = bson.E{
@@ -83,7 +83,7 @@ func GetShardingKey(ctx context.Context, client *MongoClientWrapper, ns Namespac
 		{Key: "_id", Value: ns.GetFullName()},
 		keyExistsFilter,
 	}).Decode(&result)
-	if err == mongo.ErrNoDocuments {
+	if err == mongo_driver.ErrNoDocuments {
 		return nil, nil
 	}
 	if err != nil {

@@ -5,17 +5,17 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ClickHouse/clickhouse-go/v2"
+	clickhouse_go "github.com/ClickHouse/clickhouse-go/v2"
 	"github.com/ClickHouse/clickhouse-go/v2/lib/column"
-	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
-	"github.com/ClickHouse/clickhouse-go/v2/lib/proto"
+	ch_driver "github.com/ClickHouse/clickhouse-go/v2/lib/driver"
+	clickhouse_proto "github.com/ClickHouse/clickhouse-go/v2/lib/proto"
 	"github.com/dustin/go-humanize"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/library/go/core/xerrors/multierr"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/errors/coded"
-	"github.com/transferia/transferia/pkg/errors/codes"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/async/model/db"
+	error_codes "github.com/transferia/transferia/pkg/errors/codes"
+	ch_db_model "github.com/transferia/transferia/pkg/providers/clickhouse/async/model/db"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
@@ -26,14 +26,14 @@ const (
 )
 
 type chV2Streamer struct {
-	conn           clickhouse.Conn
-	batch          driver.Batch
+	conn           clickhouse_go.Conn
+	batch          ch_driver.Batch
 	batchQueryID   string
 	query          string
 	memSize        uint64
 	batchSize      uint64
 	rowsInBatch    uint64
-	marshaller     db.ChangeItemMarshaller
+	marshaller     ch_db_model.ChangeItemMarshaller
 	lgr            log.Logger
 	isClosed       bool
 	err            error
@@ -46,7 +46,7 @@ type chV2Streamer struct {
 // *proto.BlockError occurs if the driver failed to build clickhouse native proto block.
 // Usually it happens due to incorrect input types or values
 type BlockMarshallingError struct {
-	err  *proto.BlockError
+	err  *clickhouse_proto.BlockError
 	code coded.Code
 }
 
@@ -86,14 +86,14 @@ func (c *chV2Streamer) Append(row abstract.ChangeItem) error {
 		c.lgr.Error("Error appending row to batch", log.Error(err))
 		c.lgr.Errorf("ChangeItem is %v", row.AsMap())
 		c.lgr.Errorf("Values is %v", vals)
-		var blockErr *proto.BlockError
+		var blockErr *clickhouse_proto.BlockError
 		if xerrors.As(err, &blockErr) {
 			var code coded.Code
 			switch blockErr.Err.(type) {
 			case *column.ColumnConverterError:
-				code = codes.UnsupportedConversion
+				code = error_codes.UnsupportedConversion
 			case *column.UnsupportedColumnTypeError:
-				code = codes.UnsupportedConversion
+				code = error_codes.UnsupportedConversion
 			default:
 			}
 			err = BlockMarshallingError{blockErr, code}
@@ -214,7 +214,7 @@ func (c *chV2Streamer) restart() error {
 				c.batchQueryID, time.Since(beforeSend).String(), err)
 		}
 		queryID := generateQueryID()
-		ctx := clickhouse.Context(context.Background(), clickhouse.WithQueryID(queryID))
+		ctx := clickhouse_go.Context(context.Background(), clickhouse_go.WithQueryID(queryID))
 		b, err := c.conn.PrepareBatch(ctx, c.query)
 		if err != nil {
 			return xerrors.Errorf("error preparing streaming batch (query_id=%s): %w", queryID, err)
@@ -234,14 +234,14 @@ func generateQueryID() string {
 	return newQueryID("chv2-streamer")
 }
 
-func newCHV2Streamer(opts *clickhouse.Options, query string, marshaller db.ChangeItemMarshaller, lgr log.Logger) (db.Streamer, error) {
+func newCHV2Streamer(opts *clickhouse_go.Options, query string, marshaller ch_db_model.ChangeItemMarshaller, lgr log.Logger) (ch_db_model.Streamer, error) {
 	lgr.Info("Preparing new streaming batch", log.String("query", query))
-	conn, err := clickhouse.Open(opts)
+	conn, err := clickhouse_go.Open(opts)
 	if err != nil {
 		return nil, xerrors.Errorf("error getting native Clickhouse connection: %w", err)
 	}
 	queryID := generateQueryID()
-	ctx := clickhouse.Context(context.Background(), clickhouse.WithQueryID(queryID))
+	ctx := clickhouse_go.Context(context.Background(), clickhouse_go.WithQueryID(queryID))
 	batch, err := conn.PrepareBatch(ctx, query)
 	if err != nil {
 		return nil, xerrors.Errorf("error preparing streaming batch (query_id=%s): %w", queryID, err)

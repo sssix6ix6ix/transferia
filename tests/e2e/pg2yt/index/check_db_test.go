@@ -8,13 +8,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/go-cmp/cmp"
+	google_cmp "github.com/google/go-cmp/cmp"
 	"github.com/jackc/pgx/v4"
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/postgres"
-	yt_provider "github.com/transferia/transferia/pkg/providers/yt"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
+	provider_yt "github.com/transferia/transferia/pkg/providers/yt"
 	yt_sink "github.com/transferia/transferia/pkg/providers/yt/sink"
 	"github.com/transferia/transferia/pkg/util"
 	"github.com/transferia/transferia/tests/helpers"
@@ -46,7 +46,7 @@ func init() {
 }
 
 func makeSource() model.Source {
-	src := &postgres.PgSource{
+	src := &provider_postgres.PgSource{
 		Hosts:    []string{"localhost"},
 		User:     os.Getenv("SOURCE_PG_LOCAL_USER"),
 		Password: model.SecretString(os.Getenv("SOURCE_PG_LOCAL_PASSWORD")),
@@ -59,7 +59,7 @@ func makeSource() model.Source {
 }
 
 func makeTarget(idxs []string) model.Destination {
-	target := yt_provider.NewYtDestinationV1(yt_provider.YtDestination{
+	target := provider_yt.NewYtDestinationV1(provider_yt.YtDestination{
 		Path:                     "//home/cdc/pg2yt_e2e_index",
 		Cluster:                  os.Getenv("YT_PROXY"),
 		CellBundle:               "default",
@@ -222,8 +222,8 @@ func (f *fixture) waitMarker() {
 }
 
 func srcAndDstPorts(fxt *fixture) (int, int, error) {
-	sourcePort := fxt.transfer.Src.(*postgres.PgSource).Port
-	ytCluster := fxt.transfer.Dst.(yt_provider.YtDestinationModel).Cluster()
+	sourcePort := fxt.transfer.Src.(*provider_postgres.PgSource).Port
+	ytCluster := fxt.transfer.Dst.(provider_yt.YtDestinationModel).Cluster()
 	targetPort, err := helpers.GetPortFromStr(ytCluster)
 	if err != nil {
 		return 1, 1, err
@@ -249,7 +249,7 @@ func TestIndexBasic(t *testing.T) {
 	currFixture.insertMarker()
 	currFixture.waitMarker()
 
-	currFixture.requireEmptyDiff(cmp.Diff(
+	currFixture.requireEmptyDiff(google_cmp.Diff(
 		[]row{
 			{ID: 2, IdxCol: "TWO", Value: "The two"},
 			{ID: 3, IdxCol: "three", Value: "The three"},
@@ -258,7 +258,7 @@ func TestIndexBasic(t *testing.T) {
 		},
 		currFixture.readAll(),
 	))
-	currFixture.requireEmptyDiff(cmp.Diff(
+	currFixture.requireEmptyDiff(google_cmp.Diff(
 		[]any{
 			map[string]any{"_dummy": nil, "id": int64(2), "idxcol": "TWO"},
 			map[string]any{"_dummy": nil, "id": int64(3), "idxcol": "three"},
@@ -287,7 +287,7 @@ func TestIndexMany(t *testing.T) {
 	currFixture.insertMarker()
 	currFixture.waitMarker()
 
-	currFixture.requireEmptyDiff(cmp.Diff(
+	currFixture.requireEmptyDiff(google_cmp.Diff(
 		[]row{
 			{ID: 2, IdxCol: "TWO", Value: "The two"},
 			{ID: 3, IdxCol: "three", Value: "The three"},
@@ -296,7 +296,7 @@ func TestIndexMany(t *testing.T) {
 		},
 		currFixture.readAll(),
 	))
-	currFixture.requireEmptyDiff(cmp.Diff(
+	currFixture.requireEmptyDiff(google_cmp.Diff(
 		[]any{
 			map[string]any{"_dummy": nil, "id": int64(2), "idxcol": "TWO"},
 			map[string]any{"_dummy": nil, "id": int64(3), "idxcol": "three"},
@@ -305,7 +305,7 @@ func TestIndexMany(t *testing.T) {
 		},
 		currFixture.readAllIndex("idxcol"),
 	))
-	currFixture.requireEmptyDiff(cmp.Diff(
+	currFixture.requireEmptyDiff(google_cmp.Diff(
 		[]any{
 			map[string]any{"_dummy": nil, "id": int64(2), "value": "The two"},
 			map[string]any{"_dummy": nil, "id": int64(3), "value": "The three"},
@@ -341,14 +341,14 @@ func TestIndexToast(t *testing.T) {
 		helpers.WaitDestinationEqualRowsCount(
 			"",
 			"test__idx_idxcol",
-			helpers.GetSampleableStorageByModel(t, currFixture.transfer.Dst.(yt_provider.YtDestinationModel).LegacyModel()),
+			helpers.GetSampleableStorageByModel(t, currFixture.transfer.Dst.(provider_yt.YtDestinationModel).LegacyModel()),
 			60*time.Second,
 			4, // 3 rows + MARKER
 		),
 		"somewhy index table not reached desired rows count",
 	)
 
-	currFixture.requireEmptyDiff(cmp.Diff(
+	currFixture.requireEmptyDiff(google_cmp.Diff(
 		[]any{
 			map[string]any{"_dummy": nil, "id": int64(1), "idxcol": "one"},
 			map[string]any{"_dummy": nil, "id": int64(2), "idxcol": strings.Repeat("x", 64*1024)},
@@ -376,7 +376,7 @@ func TestIndexPrimaryKey(t *testing.T) {
 	currFixture.insertMarker()
 	currFixture.waitMarker()
 
-	currFixture.requireEmptyDiff(cmp.Diff(
+	currFixture.requireEmptyDiff(google_cmp.Diff(
 		[]any{
 			map[string]any{"_dummy": nil, "id": int64(1), "idxcol": "ONE"},
 			map[string]any{"_dummy": nil, "id": int64(2), "idxcol": "two"},
@@ -391,7 +391,7 @@ func TestSkipLongStrings(t *testing.T) {
 	currFixture := setup(t, "TestSkipLongStrings", map[string]interface{}{"id": markerID}, []string{"idxcol"})
 	defer currFixture.teardown()
 
-	currFixture.transfer.Dst.(*yt_provider.YtDestinationWrapper).Model.DiscardBigValues = true
+	currFixture.transfer.Dst.(*provider_yt.YtDestinationWrapper).Model.DiscardBigValues = true
 
 	sourcePort, targetPort, err := srcAndDstPorts(currFixture)
 	require.NoError(t, err)
@@ -406,7 +406,7 @@ func TestSkipLongStrings(t *testing.T) {
 	currFixture.insertMarker()
 	currFixture.waitMarker()
 
-	currFixture.requireEmptyDiff(cmp.Diff(
+	currFixture.requireEmptyDiff(google_cmp.Diff(
 		[]any{
 			map[string]any{"_dummy": nil, "id": int64(1), "idxcol": "one"},
 			map[string]any{"_dummy": nil, "id": int64(2), "idxcol": "two"},
@@ -417,7 +417,7 @@ func TestSkipLongStrings(t *testing.T) {
 		currFixture.readAllIndex("idxcol"),
 	))
 
-	currFixture.requireEmptyDiff(cmp.Diff(
+	currFixture.requireEmptyDiff(google_cmp.Diff(
 		[]row{
 			{IdxCol: "one", ID: 1, Value: "The one"},
 			{IdxCol: "two", ID: 2, Value: "The two"},
@@ -446,7 +446,7 @@ func TestDelete(t *testing.T) {
 	currFixture.insertMarker()
 	currFixture.waitMarker()
 
-	currFixture.requireEmptyDiff(cmp.Diff(
+	currFixture.requireEmptyDiff(google_cmp.Diff(
 		[]any{
 			map[string]any{"_dummy": nil, "id": int64(3), "idxcol": "three"},
 			map[string]any{"_dummy": nil, "id": int64(markerID), "idxcol": markerIdx},

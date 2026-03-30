@@ -11,12 +11,12 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/yt"
-	"github.com/transferia/transferia/pkg/providers/yt/recipe"
-	"github.com/transferia/transferia/pkg/providers/yt/sink"
-	ytstorage "github.com/transferia/transferia/pkg/providers/yt/storage"
+	provider_yt "github.com/transferia/transferia/pkg/providers/yt"
+	yt_recipe "github.com/transferia/transferia/pkg/providers/yt/recipe"
+	yt_sink "github.com/transferia/transferia/pkg/providers/yt/sink"
+	yt_storage "github.com/transferia/transferia/pkg/providers/yt/storage"
 	"github.com/transferia/transferia/tests/helpers"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 	"go.ytsaurus.tech/yt/go/ypath"
 )
 
@@ -24,19 +24,19 @@ var (
 	TestTableName = "test_table"
 
 	TestDstSchema = abstract.NewTableSchema(abstract.TableColumns{
-		abstract.ColSchema{ColumnName: "author_id", DataType: string(schema.TypeString)},
-		abstract.ColSchema{ColumnName: "id", DataType: string(schema.TypeString), PrimaryKey: true},
-		abstract.ColSchema{ColumnName: "is_deleted", DataType: string(schema.TypeBoolean)},
+		abstract.ColSchema{ColumnName: "author_id", DataType: string(ytschema.TypeString)},
+		abstract.ColSchema{ColumnName: "id", DataType: string(ytschema.TypeString), PrimaryKey: true},
+		abstract.ColSchema{ColumnName: "is_deleted", DataType: string(ytschema.TypeBoolean)},
 	})
 
 	TestSrcSchema = abstract.NewTableSchema(abstract.TableColumns{
-		abstract.ColSchema{ColumnName: "author", DataType: string(schema.TypeString)}, // update
-		abstract.ColSchema{ColumnName: "author_id", DataType: string(schema.TypeString)},
-		abstract.ColSchema{ColumnName: "id", DataType: string(schema.TypeString), PrimaryKey: true},
-		abstract.ColSchema{ColumnName: "is_deleted", DataType: string(schema.TypeBoolean)},
+		abstract.ColSchema{ColumnName: "author", DataType: string(ytschema.TypeString)}, // update
+		abstract.ColSchema{ColumnName: "author_id", DataType: string(ytschema.TypeString)},
+		abstract.ColSchema{ColumnName: "id", DataType: string(ytschema.TypeString), PrimaryKey: true},
+		abstract.ColSchema{ColumnName: "is_deleted", DataType: string(ytschema.TypeBoolean)},
 	})
 
-	Dst = yt.NewYtDestinationV1(yt.YtDestination{
+	Dst = provider_yt.NewYtDestinationV1(provider_yt.YtDestination{
 		Path:                     "//home/cdc/test/mock2yt_e2e",
 		Cluster:                  os.Getenv("YT_PROXY"),
 		CellBundle:               "default",
@@ -54,7 +54,7 @@ func TestYTSnapshotWithShuffledColumns(t *testing.T) {
 			helpers.LabeledPort{Label: "YT DST", Port: targetPort}))
 	}()
 
-	ytEnv, cancel := recipe.NewEnv(t)
+	ytEnv, cancel := yt_recipe.NewEnv(t)
 	defer cancel()
 
 	ok, err := ytEnv.YT.NodeExists(context.Background(), ypath.Path(fmt.Sprintf("%s/%s", Dst.Path(), TestTableName)), nil)
@@ -69,7 +69,7 @@ func TestYTSnapshotWithShuffledColumns(t *testing.T) {
 }
 
 func prepareDst(t *testing.T) {
-	currentSink, err := sink.NewSinker(Dst, helpers.TransferID, logger.Log, helpers.EmptyRegistry(), coordinator.NewStatefulFakeClient(), nil)
+	currentSink, err := yt_sink.NewSinker(Dst, helpers.TransferID, logger.Log, helpers.EmptyRegistry(), coordinator.NewStatefulFakeClient(), nil)
 	require.NoError(t, err)
 
 	require.NoError(t, currentSink.Push([]abstract.ChangeItem{{
@@ -83,7 +83,7 @@ func prepareDst(t *testing.T) {
 }
 
 func fillDestination(t *testing.T) {
-	currentSink, err := sink.NewSinker(Dst, helpers.TransferID, logger.Log, helpers.EmptyRegistry(), coordinator.NewStatefulFakeClient(), nil)
+	currentSink, err := yt_sink.NewSinker(Dst, helpers.TransferID, logger.Log, helpers.EmptyRegistry(), coordinator.NewStatefulFakeClient(), nil)
 	require.NoError(t, err)
 	defer require.NoError(t, currentSink.Close())
 
@@ -110,13 +110,13 @@ func fillDestination(t *testing.T) {
 }
 
 func checkData(t *testing.T) {
-	ytStorageParams := yt.YtStorageParams{
+	ytStorageParams := provider_yt.YtStorageParams{
 		Token:   Dst.Token(),
 		Cluster: os.Getenv("YT_PROXY"),
 		Path:    Dst.Path(),
 		Spec:    nil,
 	}
-	st, err := ytstorage.NewStorage(&ytStorageParams)
+	st, err := yt_storage.NewStorage(&ytStorageParams)
 	require.NoError(t, err)
 
 	td := abstract.TableDescription{

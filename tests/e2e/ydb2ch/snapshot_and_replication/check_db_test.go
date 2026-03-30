@@ -11,19 +11,19 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/library/go/core/metrics/solomon"
 	"github.com/transferia/transferia/pkg/abstract"
-	dp_model "github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/model"
-	"github.com/transferia/transferia/pkg/providers/ydb"
+	"github.com/transferia/transferia/pkg/abstract/model"
+	clickhouse_model "github.com/transferia/transferia/pkg/providers/clickhouse/model"
+	provider_ydb "github.com/transferia/transferia/pkg/providers/ydb"
 	"github.com/transferia/transferia/tests/helpers"
 	ydbrecipe "github.com/transferia/transferia/tests/helpers/ydb_recipe"
-	"github.com/ydb-platform/ydb-go-sdk/v3/table"
-	"go.ytsaurus.tech/yt/go/schema"
+	ydb_table "github.com/ydb-platform/ydb-go-sdk/v3/table"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 func customYDBInsertItem(t *testing.T, tablePath string, id int) *abstract.ChangeItem {
 	res := helpers.YDBStmtInsert(t, tablePath, id)
 	res.TableSchema = abstract.NewTableSchema(append(res.TableSchema.Columns(),
-		abstract.ColSchema{PrimaryKey: false, Required: false, ColumnName: "brand_new_text_column", DataType: string(schema.TypeString), OriginalType: "ydb:Utf8"},
+		abstract.ColSchema{PrimaryKey: false, Required: false, ColumnName: "brand_new_text_column", DataType: string(ytschema.TypeString), OriginalType: "ydb:Utf8"},
 	))
 	res.ColumnNames = append(res.ColumnNames, "brand_new_text_column")
 	res.ColumnValues = append(res.ColumnValues, "POOOWEEEER")
@@ -31,10 +31,10 @@ func customYDBInsertItem(t *testing.T, tablePath string, id int) *abstract.Chang
 }
 
 func TestSnapshotAndReplication(t *testing.T) {
-	for testName, changeFeedMode := range map[string]ydb.ChangeFeedModeType{
-		"ModeUpdate":      ydb.ChangeFeedModeUpdates,
-		"ModeNewImage":    ydb.ChangeFeedModeNewImage,
-		"ModeOldNewImage": ydb.ChangeFeedModeNewAndOldImages,
+	for testName, changeFeedMode := range map[string]provider_ydb.ChangeFeedModeType{
+		"ModeUpdate":      provider_ydb.ChangeFeedModeUpdates,
+		"ModeNewImage":    provider_ydb.ChangeFeedModeNewImage,
+		"ModeOldNewImage": provider_ydb.ChangeFeedModeNewAndOldImages,
 	} {
 		t.Run(testName, func(t *testing.T) {
 			testSnapshotAndReplicationWithChangeFeedMode(t, testName, changeFeedMode)
@@ -42,11 +42,11 @@ func TestSnapshotAndReplication(t *testing.T) {
 	}
 }
 
-func testSnapshotAndReplicationWithChangeFeedMode(t *testing.T, tableName string, mode ydb.ChangeFeedModeType) {
+func testSnapshotAndReplicationWithChangeFeedMode(t *testing.T, tableName string, mode provider_ydb.ChangeFeedModeType) {
 	currTableName := fmt.Sprintf("test_table_%v", tableName)
 
-	source := &ydb.YdbSource{
-		Token:              dp_model.SecretString(os.Getenv("YDB_TOKEN")),
+	source := &provider_ydb.YdbSource{
+		Token:              model.SecretString(os.Getenv("YDB_TOKEN")),
 		Database:           helpers.GetEnvOfFail(t, "YDB_DATABASE"),
 		Instance:           helpers.GetEnvOfFail(t, "YDB_ENDPOINT"),
 		Tables:             []string{currTableName},
@@ -56,8 +56,8 @@ func testSnapshotAndReplicationWithChangeFeedMode(t *testing.T, tableName string
 		ServiceAccountID:   "",
 		ChangeFeedMode:     mode,
 	}
-	target := model.ChDestination{
-		ShardsList: []model.ClickHouseShard{
+	target := clickhouse_model.ChDestination{
+		ShardsList: []clickhouse_model.ClickHouseShard{
 			{
 				Name: "_",
 				Hosts: []string{
@@ -71,7 +71,7 @@ func testSnapshotAndReplicationWithChangeFeedMode(t *testing.T, tableName string
 		HTTPPort:            helpers.GetIntFromEnv("RECIPE_CLICKHOUSE_HTTP_PORT"),
 		NativePort:          helpers.GetIntFromEnv("RECIPE_CLICKHOUSE_NATIVE_PORT"),
 		ProtocolUnspecified: true,
-		Cleanup:             dp_model.Drop,
+		Cleanup:             model.Drop,
 	}
 	transferType := abstract.TransferTypeSnapshotAndIncrement
 	helpers.InitSrcDst(helpers.TransferID, source, &target, transferType) // to WithDefaults() & FillDependentFields(): IsHomo, helpers.TransferID, IsUpdateable
@@ -87,13 +87,13 @@ func testSnapshotAndReplicationWithChangeFeedMode(t *testing.T, tableName string
 
 	//---
 
-	Target := &ydb.YdbDestination{
+	Target := &provider_ydb.YdbDestination{
 		Database: source.Database,
 		Token:    source.Token,
 		Instance: source.Instance,
 	}
 	Target.WithDefaults()
-	srcSink, err := ydb.NewSinker(logger.Log, Target, solomon.NewRegistry(solomon.NewRegistryOpts()))
+	srcSink, err := provider_ydb.NewSinker(logger.Log, Target, solomon.NewRegistry(solomon.NewRegistryOpts()))
 	require.NoError(t, err)
 
 	// insert one rec - for snapshot uploading
@@ -118,9 +118,9 @@ func testSnapshotAndReplicationWithChangeFeedMode(t *testing.T, tableName string
 		*helpers.YDBStmtInsert(t, currTableName, 4),
 	}))
 
-	if mode == ydb.ChangeFeedModeNewImage || mode == ydb.ChangeFeedModeNewAndOldImages {
+	if mode == provider_ydb.ChangeFeedModeNewImage || mode == provider_ydb.ChangeFeedModeNewAndOldImages {
 		ydbConn := ydbrecipe.Driver(t)
-		err = ydbConn.Table().Do(context.Background(), func(ctx context.Context, session table.Session) (err error) {
+		err = ydbConn.Table().Do(context.Background(), func(ctx context.Context, session ydb_table.Session) (err error) {
 			return session.ExecuteSchemeQuery(ctx, fmt.Sprintf(`
 --!syntax_v1
 ALTER TABLE %s ADD COLUMN brand_new_text_column Text;
@@ -128,12 +128,12 @@ ALTER TABLE %s ADD COLUMN brand_new_text_column Text;
 		})
 		require.NoError(t, err)
 
-		err = ydbConn.Table().Do(context.Background(), func(ctx context.Context, session table.Session) (err error) {
-			writeTx := table.TxControl(
-				table.BeginTx(
-					table.WithSerializableReadWrite(),
+		err = ydbConn.Table().Do(context.Background(), func(ctx context.Context, session ydb_table.Session) (err error) {
+			writeTx := ydb_table.TxControl(
+				ydb_table.BeginTx(
+					ydb_table.WithSerializableReadWrite(),
 				),
-				table.CommitTx(),
+				ydb_table.CommitTx(),
 			)
 
 			_, _, err = session.Execute(ctx, writeTx, fmt.Sprintf(`
@@ -173,7 +173,7 @@ ALTER TABLE %s ADD COLUMN brand_new_text_column Text;
 
 	// check
 
-	if mode == ydb.ChangeFeedModeNewImage || mode == ydb.ChangeFeedModeNewAndOldImages {
+	if mode == provider_ydb.ChangeFeedModeNewImage || mode == provider_ydb.ChangeFeedModeNewAndOldImages {
 		require.NoError(t, helpers.WaitDestinationEqualRowsCount(target.Database, currTableName, helpers.GetSampleableStorageByModel(t, target), 60*time.Second, 5))
 	} else {
 		require.NoError(t, helpers.WaitDestinationEqualRowsCount(target.Database, currTableName, helpers.GetSampleableStorageByModel(t, target), 60*time.Second, 3))

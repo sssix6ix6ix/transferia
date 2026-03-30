@@ -9,14 +9,14 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
-	cpclient "github.com/transferia/transferia/pkg/abstract/coordinator"
-	server "github.com/transferia/transferia/pkg/abstract/model"
+	"github.com/transferia/transferia/pkg/abstract/coordinator"
+	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/chrecipe"
-	pgcommon "github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
 	"github.com/transferia/transferia/pkg/runtime/local"
-	"github.com/transferia/transferia/pkg/transformer/registry/filter"
-	"github.com/transferia/transferia/pkg/transformer/registry/rename"
+	transformer_filter "github.com/transferia/transferia/pkg/transformer/registry/filter"
+	transformer_rename "github.com/transferia/transferia/pkg/transformer/registry/rename"
 	"github.com/transferia/transferia/pkg/worker/tasks"
 	"github.com/transferia/transferia/tests/helpers"
 )
@@ -41,47 +41,47 @@ func TestSnapshotAndIncrement(t *testing.T) {
 		))
 	}()
 
-	connConfig, err := pgcommon.MakeConnConfigFromSrc(logger.Log, &Source)
+	connConfig, err := provider_postgres.MakeConnConfigFromSrc(logger.Log, &Source)
 	require.NoError(t, err)
-	conn, err := pgcommon.NewPgConnPool(connConfig, logger.Log)
+	conn, err := provider_postgres.NewPgConnPool(connConfig, logger.Log)
 	require.NoError(t, err)
 
 	//------------------------------------------------------------------------------------
 	// start worker
 
 	Source.DBTables = []string{"public.customers_customerprofile"}
-	Target.Cleanup = server.DisabledCleanup
+	Target.Cleanup = model.DisabledCleanup
 	transfer := helpers.MakeTransfer(helpers.TransferID, &Source, &Target, TransferType)
-	require.NoError(t, transfer.AddExtraTransformer(rename.NewRenameTableTransformer(rename.Config{
-		RenameTables: []rename.RenameTable{
+	require.NoError(t, transfer.AddExtraTransformer(transformer_rename.NewRenameTableTransformer(transformer_rename.Config{
+		RenameTables: []transformer_rename.RenameTable{
 			{
-				OriginalName: rename.Table{
+				OriginalName: transformer_rename.Table{
 					Namespace: "public",
 					Name:      "customers_customerprofile",
 				},
-				NewName: rename.Table{
+				NewName: transformer_rename.Table{
 					Namespace: "public",
 					Name:      "clickhouse_chcustomerprofile",
 				},
 			},
 		},
 	})))
-	tables, err := filter.NewFilter(
+	tables, err := transformer_filter.NewFilter(
 		[]string{"^public\\.customers_customerprofile$"}, // IncludeRegexp
 		[]string{}, // ExcludeRegexp
 	)
 	require.NoError(t, err)
-	columns, err := filter.NewFilter(
+	columns, err := transformer_filter.NewFilter(
 		[]string{"^id$", "^uuid$", "^bot_id$", "^full_name$", "^phone_number$"}, // IncludeRegexp
 		[]string{}, // ExcludeRegexp
 	)
 	require.NoError(t, err)
-	require.NoError(t, transfer.AddExtraTransformer(filter.NewCustomFilterColumnsTransformer(tables, columns, logger.Log)))
+	require.NoError(t, transfer.AddExtraTransformer(transformer_filter.NewCustomFilterColumnsTransformer(tables, columns, logger.Log)))
 
-	err = tasks.ActivateDelivery(context.Background(), nil, cpclient.NewFakeClient(), *transfer, helpers.EmptyRegistry())
+	err = tasks.ActivateDelivery(context.Background(), nil, coordinator.NewFakeClient(), *transfer, helpers.EmptyRegistry())
 	require.NoError(t, err)
 
-	localWorker := local.NewLocalWorker(cpclient.NewFakeClient(), transfer, helpers.EmptyRegistry(), logger.Log)
+	localWorker := local.NewLocalWorker(coordinator.NewFakeClient(), transfer, helpers.EmptyRegistry(), logger.Log)
 	localWorker.Start()
 	defer localWorker.Stop() //nolint
 

@@ -7,7 +7,7 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/providers/s3/s3util/file"
 	"github.com/transferia/transferia/pkg/providers/s3/s3util/synthetic_partition"
-	"golang.org/x/exp/maps"
+	xmaps "golang.org/x/exp/maps"
 )
 
 type Task struct {
@@ -16,7 +16,7 @@ type Task struct {
 }
 
 func (t *Task) MySyntheticPartitionNums() []int {
-	result := maps.Keys(t.syntheticPartitionNumToSyntheticPartition)
+	result := xmaps.Keys(t.syntheticPartitionNumToSyntheticPartition)
 	sort.Ints(result)
 	return result
 }

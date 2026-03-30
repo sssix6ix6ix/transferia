@@ -12,9 +12,9 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/connection"
-	"github.com/transferia/transferia/pkg/connection/greenplum"
-	"github.com/transferia/transferia/pkg/providers/postgres"
-	"github.com/transferia/transferia/pkg/providers/postgres/utils"
+	conn_greenplum "github.com/transferia/transferia/pkg/connection/greenplum"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
+	postgres_utils "github.com/transferia/transferia/pkg/providers/postgres/utils"
 	"go.uber.org/zap/zapcore"
 )
 
@@ -173,7 +173,7 @@ func (c *GpConnection) ResolveCredsFromConnectionID() error {
 	if err != nil {
 		return xerrors.Errorf("failed to resolve greenplum connection %s: %w", c.ConnectionID, err)
 	}
-	greenplumConnection, ok := connmanConnection.(*greenplum.Connection)
+	greenplumConnection, ok := connmanConnection.(*conn_greenplum.Connection)
 	if !ok {
 		return xerrors.Errorf("unable to cast connection to GreenplumConnection, err: %w", err)
 	}
@@ -339,10 +339,10 @@ func (s *GpSource) Validate() error {
 	if err := s.AdvancedProps.Validate(); err != nil {
 		return xerrors.Errorf("invalid advanced connection parameters: %w", err)
 	}
-	if err := utils.ValidatePGTables(s.IncludeTables); err != nil {
+	if err := postgres_utils.ValidatePGTables(s.IncludeTables); err != nil {
 		return xerrors.Errorf("validate include tables error: %w", err)
 	}
-	if err := utils.ValidatePGTables(s.ExcludeTables); err != nil {
+	if err := postgres_utils.ValidatePGTables(s.ExcludeTables); err != nil {
 		return xerrors.Errorf("validate exclude tables error: %w", err)
 	}
 	return nil
@@ -358,7 +358,7 @@ func (s *GpSource) fulfilledIncludesImpl(tID abstract.TableID, firstIncludeOnly 
 	}
 	tIDNameVariant := strings.Join([]string{"\"", tID.Name, "\""}, "")
 
-	for _, table := range postgres.PGGlobalExclude {
+	for _, table := range provider_postgres.PGGlobalExclude {
 		if table == tID {
 			return result
 		}

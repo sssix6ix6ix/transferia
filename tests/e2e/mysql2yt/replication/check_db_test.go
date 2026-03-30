@@ -8,25 +8,25 @@ import (
 	"testing"
 	"time"
 
-	mysqlDriver "github.com/go-sql-driver/mysql"
+	mysql_driver2 "github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/mysql"
+	provider_mysql "github.com/transferia/transferia/pkg/providers/mysql"
 	"github.com/transferia/transferia/pkg/runtime/local"
 	"github.com/transferia/transferia/pkg/worker/tasks"
 	"github.com/transferia/transferia/tests/helpers"
-	yt_helpers "github.com/transferia/transferia/tests/helpers/yt"
+	helpers_yt "github.com/transferia/transferia/tests/helpers/yt"
 	"go.ytsaurus.tech/yt/go/ypath"
-	ytMain "go.ytsaurus.tech/yt/go/yt"
+	"go.ytsaurus.tech/yt/go/yt"
 	"go.ytsaurus.tech/yt/go/yttest"
 )
 
 var (
 	source = *helpers.WithMysqlInclude(helpers.RecipeMysqlSource(), []string{"__test", "__test_composite_pkey"})
-	target = yt_helpers.RecipeYtTarget("//home/cdc/test/mysql2yt_e2e_replication")
+	target = helpers_yt.RecipeYtTarget("//home/cdc/test/mysql2yt_e2e_replication")
 
 	sourceDatabase        = os.Getenv("RECIPE_MYSQL_SOURCE_DATABASE")
 	tablePath             = ypath.Path(fmt.Sprintf("//home/cdc/test/mysql2yt_e2e_replication/%s___test", sourceDatabase))
@@ -37,8 +37,8 @@ func init() {
 	source.WithDefaults()
 }
 
-func makeConnConfig() *mysqlDriver.Config {
-	cfg := mysqlDriver.NewConfig()
+func makeConnConfig() *mysql_driver2.Config {
+	cfg := mysql_driver2.NewConfig()
 	cfg.Addr = fmt.Sprintf("%v:%v", source.Host, source.Port)
 	cfg.User = source.User
 	cfg.Passwd = string(source.Password)
@@ -62,9 +62,9 @@ func TestGroup(t *testing.T) {
 	ytEnv, cancel := yttest.NewEnv(t)
 	defer cancel()
 
-	_, err = ytEnv.YT.CreateNode(ctx, ypath.Path("//home/cdc/test/mysql2yt_e2e_replication"), ytMain.NodeMap, &ytMain.CreateNodeOptions{Recursive: true})
+	_, err = ytEnv.YT.CreateNode(ctx, ypath.Path("//home/cdc/test/mysql2yt_e2e_replication"), yt.NodeMap, &yt.CreateNodeOptions{Recursive: true})
 	defer func() {
-		err := ytEnv.YT.RemoveNode(ctx, ypath.Path("//home/cdc/test/mysql2yt_e2e_replication"), &ytMain.RemoveNodeOptions{Recursive: true})
+		err := ytEnv.YT.RemoveNode(ctx, ypath.Path("//home/cdc/test/mysql2yt_e2e_replication"), &yt.RemoveNodeOptions{Recursive: true})
 		require.NoError(t, err)
 	}()
 	require.NoError(t, err)
@@ -72,7 +72,7 @@ func TestGroup(t *testing.T) {
 	t.Run("Load", Load)
 }
 
-func closeReader(reader ytMain.TableReader) {
+func closeReader(reader yt.TableReader) {
 	err := reader.Close()
 	if err != nil {
 		logger.Log.Warn("Could not close table reader")
@@ -91,7 +91,7 @@ func Load(t *testing.T) {
 	ytEnv, cancel := yttest.NewEnv(t)
 	defer cancel()
 
-	initialReader, err := ytEnv.YT.ReadTable(ctx, tablePath, &ytMain.ReadTableOptions{})
+	initialReader, err := ytEnv.YT.ReadTable(ctx, tablePath, &yt.ReadTableOptions{})
 	require.NoError(t, err)
 	defer closeReader(initialReader)
 
@@ -118,7 +118,7 @@ func Load(t *testing.T) {
 	}
 	require.Equal(t, 2, i)
 
-	compositeTableReader, err := ytEnv.YT.ReadTable(ctx, tableCompositeKeyPath, &ytMain.ReadTableOptions{})
+	compositeTableReader, err := ytEnv.YT.ReadTable(ctx, tableCompositeKeyPath, &yt.ReadTableOptions{})
 	require.NoError(t, err)
 	defer closeReader(compositeTableReader)
 
@@ -149,14 +149,14 @@ func Load(t *testing.T) {
 	require.Equal(t, 2, j)
 
 	fakeClient := coordinator.NewStatefulFakeClient()
-	err = mysql.SyncBinlogPosition(&source, transfer.ID, fakeClient)
+	err = provider_mysql.SyncBinlogPosition(&source, transfer.ID, fakeClient)
 	require.NoError(t, err)
 
 	localWorker := local.NewLocalWorker(fakeClient, transfer, helpers.EmptyRegistry(), logger.Log)
 	localWorker.Start()
 	defer localWorker.Stop() //nolint
 
-	conn, err := mysqlDriver.NewConnector(makeConnConfig())
+	conn, err := mysql_driver2.NewConnector(makeConnConfig())
 	require.NoError(t, err)
 	db := sql.OpenDB(conn)
 	_, err = db.Exec("INSERT INTO `__test` (`id`, `value`) VALUES (3, 'stereo')")
@@ -175,7 +175,7 @@ func Load(t *testing.T) {
 
 	a := map[string]int{"id": 3}
 	b := map[string]int{"id": 4}
-	changesReader, err := ytEnv.YT.LookupRows(ctx, tablePath, []interface{}{a, b}, &ytMain.LookupRowsOptions{})
+	changesReader, err := ytEnv.YT.LookupRows(ctx, tablePath, []interface{}{a, b}, &yt.LookupRowsOptions{})
 	require.NoError(t, err)
 	defer closeReader(changesReader)
 

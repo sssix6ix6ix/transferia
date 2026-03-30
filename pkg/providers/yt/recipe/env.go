@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/testcontainers/testcontainers-go"
+	testcontainers_go "github.com/testcontainers/testcontainers-go"
 	"go.ytsaurus.tech/yt/go/mapreduce"
 	"go.ytsaurus.tech/yt/go/yttest"
 )
@@ -16,7 +16,7 @@ func NewEnv(t *testing.T, opts ...yttest.Option) (*yttest.Env, func()) {
 		return yttest.NewEnv(t, opts...)
 	}
 	ctx := context.Background()
-	container, err := RunContainer(ctx, testcontainers.WithImage("ytsaurus/local:stable"))
+	container, err := RunContainer(ctx, testcontainers_go.WithImage("ytsaurus/local:stable"))
 	require.NoError(t, err)
 	f := func() {
 		require.NoError(t, container.Terminate(ctx))

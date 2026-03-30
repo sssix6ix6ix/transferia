@@ -8,10 +8,10 @@ import (
 	"strings"
 	"testing"
 
-	mysqldriver "github.com/go-sql-driver/mysql"
+	mysql_driver2 "github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/internal/logger"
-	"github.com/transferia/transferia/pkg/providers/mysql"
+	provider_mysql "github.com/transferia/transferia/pkg/providers/mysql"
 	"github.com/transferia/transferia/pkg/providers/mysql/mysqlrecipe"
 	"go.ytsaurus.tech/library/go/core/log"
 )
@@ -22,12 +22,12 @@ var RecipeMysqlSourceWithConnection = mysqlrecipe.RecipeMysqlSourceWithConnectio
 var RecipeMysqlTargetWithConnection = mysqlrecipe.RecipeMysqlTargetWithConnection
 var WithMysqlInclude = mysqlrecipe.WithMysqlInclude
 
-func ExecuteMySQLStatement(t *testing.T, statement string, connectionParams *mysql.ConnectionParams) {
+func ExecuteMySQLStatement(t *testing.T, statement string, connectionParams *provider_mysql.ConnectionParams) {
 	require.NoError(t, mysqlrecipe.Exec(statement, connectionParams))
 }
 
-func ExecuteMySQLStatementsLineByLine(t *testing.T, statements string, connectionParams *mysql.ConnectionParams) {
-	conn, err := mysql.Connect(connectionParams, nil)
+func ExecuteMySQLStatementsLineByLine(t *testing.T, statements string, connectionParams *provider_mysql.ConnectionParams) {
+	conn, err := provider_mysql.Connect(connectionParams, nil)
 	require.NoError(t, err)
 	defer conn.Close()
 
@@ -40,7 +40,7 @@ func ExecuteMySQLStatementsLineByLine(t *testing.T, statements string, connectio
 }
 
 func isEmptyQueryError(err error) bool {
-	driverError, ok := err.(*mysqldriver.MySQLError)
+	driverError, ok := err.(*mysql_driver2.MySQLError)
 	if !ok {
 		return false
 	}
@@ -48,7 +48,7 @@ func isEmptyQueryError(err error) bool {
 	return driverError.Number == emptyQueryErrorNumber
 }
 
-func MySQLDump(t *testing.T, storageParams *mysql.MysqlStorageParams) string {
+func MySQLDump(t *testing.T, storageParams *provider_mysql.MysqlStorageParams) string {
 	mysqlDumpPath := os.Getenv("RECIPE_MYSQLDUMP_BINARY")
 	args := []string{
 		"--host", storageParams.Host,
@@ -74,20 +74,20 @@ func MySQLDump(t *testing.T, storageParams *mysql.MysqlStorageParams) string {
 	return stdout.String()
 }
 
-func NewMySQLConnectionParams(t *testing.T, storageParams *mysql.MysqlStorageParams) *mysql.ConnectionParams {
-	connParams, err := mysql.NewConnectionParams(storageParams)
+func NewMySQLConnectionParams(t *testing.T, storageParams *provider_mysql.MysqlStorageParams) *provider_mysql.ConnectionParams {
+	connParams, err := provider_mysql.NewConnectionParams(storageParams)
 	require.NoError(t, err)
 	return connParams
 }
 
-func NewMySQLStorageFromSource(t *testing.T, src *mysql.MysqlSource) *mysql.Storage {
-	storage, err := mysql.NewStorage(src.ToStorageParams())
+func NewMySQLStorageFromSource(t *testing.T, src *provider_mysql.MysqlSource) *provider_mysql.Storage {
+	storage, err := provider_mysql.NewStorage(src.ToStorageParams())
 	require.NoError(t, err)
 	return storage
 }
 
-func NewMySQLStorageFromTarget(t *testing.T, dst *mysql.MysqlDestination) *mysql.Storage {
-	storage, err := mysql.NewStorage(dst.ToStorageParams())
+func NewMySQLStorageFromTarget(t *testing.T, dst *provider_mysql.MysqlDestination) *provider_mysql.Storage {
+	storage, err := provider_mysql.NewStorage(dst.ToStorageParams())
 	require.NoError(t, err)
 	return storage
 }

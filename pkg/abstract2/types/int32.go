@@ -3,7 +3,7 @@ package types
 import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract2"
-	yt_schema "go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 type Int32Value interface {
@@ -32,8 +32,8 @@ func (typ *Int32Type) Validate(value abstract2.Value) error {
 	return err
 }
 
-func (typ *Int32Type) ToOldType() (yt_schema.Type, error) {
-	return yt_schema.TypeInt32, nil
+func (typ *Int32Type) ToOldType() (ytschema.Type, error) {
+	return ytschema.TypeInt32, nil
 }
 
 type DefaultInt32Value struct {

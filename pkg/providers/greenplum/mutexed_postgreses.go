@@ -8,18 +8,18 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/dbaas"
-	"github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 )
 
 type mutexedPostgreses struct {
 	// storages MUST NOT be accessed from outside directly. It is protected by the mutex
-	storages map[GPSegPointer]*postgres.Storage
+	storages map[GPSegPointer]*provider_postgres.Storage
 	mutex    sync.Mutex
 }
 
 func newMutexedPostgreses() mutexedPostgreses {
 	return mutexedPostgreses{
-		storages: make(map[GPSegPointer]*postgres.Storage),
+		storages: make(map[GPSegPointer]*provider_postgres.Storage),
 		mutex:    sync.Mutex{},
 	}
 }
@@ -41,7 +41,7 @@ func (s *mutexedPostgreses) Close() {
 }
 
 // PGStorage returns a live PG storage or an error
-func (s *Storage) PGStorage(ctx context.Context, sp GPSegPointer) (*postgres.Storage, error) {
+func (s *Storage) PGStorage(ctx context.Context, sp GPSegPointer) (*provider_postgres.Storage, error) {
 	s.postgreses.mutex.Lock()
 	defer s.postgreses.mutex.Unlock()
 	if err := s.EnsureAvailability(ctx, sp); err != nil {

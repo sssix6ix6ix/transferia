@@ -12,8 +12,8 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/mysql"
-	yt_provider "github.com/transferia/transferia/pkg/providers/yt"
+	provider_mysql "github.com/transferia/transferia/pkg/providers/mysql"
+	provider_yt "github.com/transferia/transferia/pkg/providers/yt"
 	"github.com/transferia/transferia/pkg/runtime/local"
 	"github.com/transferia/transferia/pkg/worker/tasks"
 	"github.com/transferia/transferia/tests/helpers"
@@ -71,7 +71,7 @@ func (f *fixture) readAll() (result []string) {
 }
 
 func makeTarget() model.Destination {
-	target := yt_provider.NewYtDestinationV1(yt_provider.YtDestination{
+	target := provider_yt.NewYtDestinationV1(provider_yt.YtDestination{
 		Path:          "//home/cdc/mysql2yt_e2e_no_pkey",
 		Cluster:       os.Getenv("YT_PROXY"),
 		CellBundle:    "default",
@@ -97,8 +97,8 @@ func setup(t *testing.T) *fixture {
 }
 
 func srcAndDstPorts(fxt *fixture) (int, int, error) {
-	sourcePort := fxt.transfer.Src.(*mysql.MysqlSource).Port
-	ytCluster := fxt.transfer.Dst.(yt_provider.YtDestinationModel).Cluster()
+	sourcePort := fxt.transfer.Src.(*provider_mysql.MysqlSource).Port
+	ytCluster := fxt.transfer.Dst.(provider_yt.YtDestinationModel).Cluster()
 	targetPort, err := helpers.GetPortFromStr(ytCluster)
 	if err != nil {
 		return 1, 1, err
@@ -119,7 +119,7 @@ func TestSnapshotOnlyWorksWithStaticTables(t *testing.T) {
 	}()
 
 	defer fixture.teardown()
-	fixture.transfer.Dst.(*yt_provider.YtDestinationWrapper).Model.Static = true
+	fixture.transfer.Dst.(*provider_yt.YtDestinationWrapper).Model.Static = true
 	fixture.transfer.Type = abstract.TransferTypeSnapshotOnly
 
 	err = tasks.ActivateDelivery(context.TODO(), nil, coordinator.NewStatefulFakeClient(), fixture.transfer, helpers.EmptyRegistry())

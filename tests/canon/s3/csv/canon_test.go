@@ -10,11 +10,12 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/s3"
+	provider_s3 "github.com/transferia/transferia/pkg/providers/s3"
+	s3_model "github.com/transferia/transferia/pkg/providers/s3/model"
 	"github.com/transferia/transferia/pkg/providers/s3/s3recipe"
 	"github.com/transferia/transferia/tests/canon/validator"
 	"github.com/transferia/transferia/tests/helpers"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 func TestCanonSource(t *testing.T) {
@@ -31,7 +32,7 @@ func TestCanonSource(t *testing.T) {
 	}
 	src.TableNamespace = "test"
 	src.TableName = "types"
-	src.Format.CSVSetting = new(s3.CSVSetting)
+	src.Format.CSVSetting = new(s3_model.CSVSetting)
 	src.Format.CSVSetting.BlockSize = 1 * 1024 * 1024
 	src.Format.CSVSetting.QuoteChar = "\""
 	src.InputFormat = model.ParsingFormatCSV
@@ -42,126 +43,126 @@ func TestCanonSource(t *testing.T) {
 			TableSchema: src.TableNamespace,
 			TableName:   src.TableName,
 			Path:        "0",
-			DataType:    schema.TypeBoolean.String(),
+			DataType:    ytschema.TypeBoolean.String(),
 			ColumnName:  "boolean",
 		},
 		{
 			TableSchema: src.TableNamespace,
 			TableName:   src.TableName,
 			Path:        "1",
-			DataType:    schema.TypeUint8.String(),
+			DataType:    ytschema.TypeUint8.String(),
 			ColumnName:  "uint8",
 		},
 		{
 			TableSchema: src.TableNamespace,
 			TableName:   src.TableName,
 			Path:        "2",
-			DataType:    schema.TypeUint16.String(),
+			DataType:    ytschema.TypeUint16.String(),
 			ColumnName:  "uint16",
 		},
 		{
 			TableSchema: src.TableNamespace,
 			TableName:   src.TableName,
 			Path:        "3",
-			DataType:    schema.TypeUint32.String(),
+			DataType:    ytschema.TypeUint32.String(),
 			ColumnName:  "uint32",
 		},
 		{
 			TableSchema: src.TableNamespace,
 			TableName:   src.TableName,
 			Path:        "4",
-			DataType:    schema.TypeUint64.String(),
+			DataType:    ytschema.TypeUint64.String(),
 			ColumnName:  "uint64",
 		},
 		{
 			TableSchema: src.TableNamespace,
 			TableName:   src.TableName,
 			Path:        "5",
-			DataType:    schema.TypeInt8.String(),
+			DataType:    ytschema.TypeInt8.String(),
 			ColumnName:  "int8",
 		},
 		{
 			TableSchema: src.TableNamespace,
 			TableName:   src.TableName,
 			Path:        "6",
-			DataType:    schema.TypeInt16.String(),
+			DataType:    ytschema.TypeInt16.String(),
 			ColumnName:  "int16",
 		},
 		{
 			TableSchema: src.TableNamespace,
 			TableName:   src.TableName,
 			Path:        "7",
-			DataType:    schema.TypeInt32.String(),
+			DataType:    ytschema.TypeInt32.String(),
 			ColumnName:  "int32",
 		},
 		{
 			TableSchema: src.TableNamespace,
 			TableName:   src.TableName,
 			Path:        "8",
-			DataType:    schema.TypeInt64.String(),
+			DataType:    ytschema.TypeInt64.String(),
 			ColumnName:  "int64",
 		},
 		{
 			TableSchema: src.TableNamespace,
 			TableName:   src.TableName,
 			Path:        "9",
-			DataType:    schema.TypeFloat32.String(),
+			DataType:    ytschema.TypeFloat32.String(),
 			ColumnName:  "float32",
 		},
 		{
 			TableSchema: src.TableNamespace,
 			TableName:   src.TableName,
 			Path:        "10",
-			DataType:    schema.TypeFloat64.String(),
+			DataType:    ytschema.TypeFloat64.String(),
 			ColumnName:  "float64",
 		},
 		{
 			TableSchema: src.TableNamespace,
 			TableName:   src.TableName,
 			Path:        "11",
-			DataType:    schema.TypeBytes.String(),
+			DataType:    ytschema.TypeBytes.String(),
 			ColumnName:  "bytes",
 		},
 		{
 			TableSchema: src.TableNamespace,
 			TableName:   src.TableName,
 			Path:        "12",
-			DataType:    schema.TypeString.String(),
+			DataType:    ytschema.TypeString.String(),
 			ColumnName:  "string",
 		},
 		{
 			TableSchema: src.TableNamespace,
 			TableName:   src.TableName,
 			Path:        "13",
-			DataType:    schema.TypeDate.String(),
+			DataType:    ytschema.TypeDate.String(),
 			ColumnName:  "date",
 		},
 		{
 			TableSchema: src.TableNamespace,
 			TableName:   src.TableName,
 			Path:        "14",
-			DataType:    schema.TypeDatetime.String(),
+			DataType:    ytschema.TypeDatetime.String(),
 			ColumnName:  "dateTime",
 		},
 		{
 			TableSchema: src.TableNamespace,
 			TableName:   src.TableName,
 			Path:        "15",
-			DataType:    schema.TypeTimestamp.String(),
+			DataType:    ytschema.TypeTimestamp.String(),
 			ColumnName:  "timestamp",
 		},
 		{
 			TableSchema: src.TableNamespace,
 			TableName:   src.TableName,
 			Path:        "16",
-			DataType:    schema.TypeInterval.String(),
+			DataType:    ytschema.TypeInterval.String(),
 			ColumnName:  "interval",
 		},
 		{
 			TableSchema: src.TableNamespace,
 			TableName:   src.TableName,
 			Path:        "17",
-			DataType:    schema.TypeAny.String(),
+			DataType:    ytschema.TypeAny.String(),
 			ColumnName:  "any",
 		},
 	}
@@ -173,7 +174,7 @@ func TestCanonSource(t *testing.T) {
 				model.IsStrictSource(src),
 				validator.InitDone(t),
 				validator.Referencer(t),
-				validator.TypesystemChecker(s3.ProviderType, func(colSchema abstract.ColSchema) string {
+				validator.TypesystemChecker(provider_s3.ProviderType, func(colSchema abstract.ColSchema) string {
 					return colSchema.OriginalType
 				}),
 			),
@@ -204,7 +205,7 @@ func TestNativeS3WithProvidedSchemaAndSystemCols(t *testing.T) {
 	}
 	src.TableNamespace = "test"
 	src.TableName = "types"
-	src.Format.CSVSetting = new(s3.CSVSetting)
+	src.Format.CSVSetting = new(s3_model.CSVSetting)
 	src.Format.CSVSetting.QuoteChar = "\""
 	src.InputFormat = model.ParsingFormatCSV
 	src.WithDefaults()
@@ -216,21 +217,21 @@ func TestNativeS3WithProvidedSchemaAndSystemCols(t *testing.T) {
 			TableSchema: src.TableNamespace,
 			TableName:   src.TableName,
 			Path:        "0",
-			DataType:    schema.TypeBoolean.String(),
+			DataType:    ytschema.TypeBoolean.String(),
 			ColumnName:  "boolean",
 		},
 		{
 			TableSchema: src.TableNamespace,
 			TableName:   src.TableName,
 			Path:        "1",
-			DataType:    schema.TypeUint8.String(),
+			DataType:    ytschema.TypeUint8.String(),
 			ColumnName:  "uint8",
 		},
 		{
 			TableSchema: src.TableNamespace,
 			TableName:   src.TableName,
 			Path:        "2",
-			DataType:    schema.TypeUint16.String(),
+			DataType:    ytschema.TypeUint16.String(),
 			ColumnName:  "uint16",
 		},
 	}
@@ -273,7 +274,7 @@ func TestNativeS3MissingColumnsAreFilled(t *testing.T) {
 	}
 	src.TableNamespace = "test"
 	src.TableName = "types"
-	src.Format.CSVSetting = new(s3.CSVSetting)
+	src.Format.CSVSetting = new(s3_model.CSVSetting)
 
 	src.InputFormat = model.ParsingFormatCSV
 	src.WithDefaults()
@@ -286,35 +287,35 @@ func TestNativeS3MissingColumnsAreFilled(t *testing.T) {
 			TableSchema: src.TableNamespace,
 			TableName:   src.TableName,
 			Path:        "0",
-			DataType:    schema.TypeBoolean.String(),
+			DataType:    ytschema.TypeBoolean.String(),
 			ColumnName:  "boolean",
 		},
 		{
 			TableSchema: src.TableNamespace,
 			TableName:   src.TableName,
 			Path:        "1",
-			DataType:    schema.TypeUint8.String(),
+			DataType:    ytschema.TypeUint8.String(),
 			ColumnName:  "uint8",
 		},
 		{
 			TableSchema: src.TableNamespace,
 			TableName:   src.TableName,
 			Path:        "20",
-			DataType:    schema.TypeString.String(),
+			DataType:    ytschema.TypeString.String(),
 			ColumnName:  "test_missing_column_string",
 		},
 		{
 			TableSchema: src.TableNamespace,
 			TableName:   src.TableName,
 			Path:        "21",
-			DataType:    schema.TypeInt8.String(),
+			DataType:    ytschema.TypeInt8.String(),
 			ColumnName:  "test_missing_column_int",
 		},
 		{
 			TableSchema: src.TableNamespace,
 			TableName:   src.TableName,
 			Path:        "22",
-			DataType:    schema.TypeBoolean.String(),
+			DataType:    ytschema.TypeBoolean.String(),
 			ColumnName:  "test_missing_column_bool",
 		},
 	}

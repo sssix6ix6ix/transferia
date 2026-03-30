@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
 	"github.com/transferia/transferia/tests/helpers"
 	"github.com/transferia/transferia/tests/helpers/yatestx"
@@ -36,11 +36,11 @@ const (
 var (
 	Tables     = []string{tableSchema + "." + partitionedTable}
 	SrcWholeDB = *pgrecipe.RecipeSource(pgrecipe.WithPrefix(""), pgrecipe.WithInitDir(yatestx.ProjectSource("dump")),
-		pgrecipe.WithEdit(func(pg *postgres.PgSource) { pg.UseFakePrimaryKey = true }),
+		pgrecipe.WithEdit(func(pg *provider_postgres.PgSource) { pg.UseFakePrimaryKey = true }),
 	)
 	SrcOnlyPartitionedTable = *pgrecipe.RecipeSource(pgrecipe.WithPrefix(""), pgrecipe.WithInitDir(yatestx.ProjectSource("dump")),
 		pgrecipe.WithDBTables(Tables...),
-		pgrecipe.WithEdit(func(pg *postgres.PgSource) { pg.UseFakePrimaryKey = true }),
+		pgrecipe.WithEdit(func(pg *provider_postgres.PgSource) { pg.UseFakePrimaryKey = true }),
 	)
 	Dst = *pgrecipe.RecipeTarget(pgrecipe.WithPrefix("DB0_"))
 )
@@ -65,9 +65,9 @@ func TestGroup(t *testing.T) {
 }
 
 func Existence(t *testing.T) {
-	configs := []*postgres.PgStorageParams{SrcOnlyPartitionedTable.ToStorageParams(nil), Dst.ToStorageParams()}
+	configs := []*provider_postgres.PgStorageParams{SrcOnlyPartitionedTable.ToStorageParams(nil), Dst.ToStorageParams()}
 	for _, config := range configs {
-		storage, err := postgres.NewStorage(config)
+		storage, err := provider_postgres.NewStorage(config)
 		require.NoError(t, err)
 		storage.Close()
 	}
@@ -91,7 +91,7 @@ func TransferParentWithAllChildrenCollapseIgnoredForHomo(t *testing.T) {
 
 func transferParentWithAllChildren(t *testing.T, collapseInheritTables bool) {
 	transfer := helpers.MakeTransfer(helpers.TransferID, &SrcOnlyPartitionedTable, &Dst, transferType)
-	src := transfer.Src.(*postgres.PgSource)
+	src := transfer.Src.(*provider_postgres.PgSource)
 	require.True(t, src.IsHomo, "this test validates homo pg->pg behavior")
 	src.CollapseInheritTables = collapseInheritTables
 	resetTargetPartitionedTables(t, transfer.Dst)
@@ -106,7 +106,7 @@ func transferParentWithAllChildren(t *testing.T, collapseInheritTables bool) {
 	helpers.CheckRowsCount(t, transfer.Dst, tableSchema, partName4, rowsPartitionY2006m04)
 	helpers.CheckRowsCount(t, transfer.Dst, tableSchema, partName5, rowsPartitionY2006m05)
 
-	storage, ok := helpers.GetSampleableStorageByModel(t, transfer.Dst).(*postgres.Storage)
+	storage, ok := helpers.GetSampleableStorageByModel(t, transfer.Dst).(*provider_postgres.Storage)
 	require.True(t, ok)
 
 	var exists bool
@@ -121,7 +121,7 @@ func transferParentWithAllChildren(t *testing.T, collapseInheritTables bool) {
 // TransferParentAndDataTables checks that selecting parent together with some leaf partitions transfers only selected parts.
 func TransferParentAndDataTables(t *testing.T) {
 	transfer := helpers.MakeTransfer(helpers.TransferID, &SrcWholeDB, &Dst, transferType)
-	src := transfer.Src.(*postgres.PgSource)
+	src := transfer.Src.(*provider_postgres.PgSource)
 	src.CollapseInheritTables = false
 	resetTargetPartitionedTables(t, transfer.Dst)
 	transfer.DataObjects = &model.DataObjects{
@@ -142,7 +142,7 @@ func TransferParentAndDataTables(t *testing.T) {
 }
 
 func resetTargetPartitionedTables(t *testing.T, dst model.Destination) {
-	storage, ok := helpers.GetSampleableStorageByModel(t, dst).(*postgres.Storage)
+	storage, ok := helpers.GetSampleableStorageByModel(t, dst).(*provider_postgres.Storage)
 	require.True(t, ok)
 	_, err := storage.Conn.Exec(context.Background(), `
 		DROP TABLE IF EXISTS public.partitioned_table CASCADE;

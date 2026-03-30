@@ -13,8 +13,8 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/serializer"
-	e2e "github.com/transferia/transferia/tests/canon"
-	"golang.org/x/exp/slices"
+	canon_test "github.com/transferia/transferia/tests/canon"
+	xslices "golang.org/x/exp/slices"
 )
 
 func TestSerialize(t *testing.T) {
@@ -229,13 +229,13 @@ func TestStreamSerializer(t *testing.T) {
 }
 
 func ReadChangeItems(n int) []*abstract.ChangeItem {
-	types := make([]abstract.ProviderType, 0, len(e2e.AllCanon))
-	for typ := range e2e.AllCanon {
+	types := make([]abstract.ProviderType, 0, len(canon_test.AllCanon))
+	for typ := range canon_test.AllCanon {
 		types = append(types, typ)
 	}
-	slices.Sort(types)
+	xslices.Sort(types)
 
-	all := e2e.All(
+	all := canon_test.All(
 		types...,
 	)
 

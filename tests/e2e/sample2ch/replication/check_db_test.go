@@ -9,7 +9,7 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/chrecipe"
-	"github.com/transferia/transferia/pkg/providers/sample"
+	provider_sample "github.com/transferia/transferia/pkg/providers/sample"
 	"github.com/transferia/transferia/tests/helpers"
 )
 
@@ -18,7 +18,7 @@ const minNumberOfRows = 400
 var (
 	schemaName   = "mtmobproxy"
 	TransferType = abstract.TransferTypeIncrementOnly
-	Source       = *sample.RecipeSource()
+	Source       = *provider_sample.RecipeSource()
 	Target       = *chrecipe.MustTarget(chrecipe.WithInitFile("dump/dst.sql"), chrecipe.WithDatabase(schemaName), chrecipe.WithPrefix("DB0_"))
 )
 

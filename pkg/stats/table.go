@@ -3,21 +3,21 @@ package stats
 import (
 	"sync"
 
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 )
 
 var cache = map[string]*TableStat{}
 var tableStatLock = sync.Mutex{}
 
 type TableStat struct {
-	Source   metrics.Gauge
-	Target   metrics.Gauge
-	Diff     metrics.Gauge
-	Metrics  map[string]metrics.Counter
-	registry metrics.Registry
+	Source   core_metrics.Gauge
+	Target   core_metrics.Gauge
+	Diff     core_metrics.Gauge
+	Metrics  map[string]core_metrics.Counter
+	registry core_metrics.Registry
 }
 
-func NewTableMetrics(registry metrics.Registry, table string) *TableStat {
+func NewTableMetrics(registry core_metrics.Registry, table string) *TableStat {
 	tableStatLock.Lock()
 	defer tableStatLock.Unlock()
 	if t, ok := cache[table]; ok {
@@ -28,7 +28,7 @@ func NewTableMetrics(registry metrics.Registry, table string) *TableStat {
 		Source:   subRegistry.Gauge("storage.source_rows"),
 		Target:   subRegistry.Gauge("storage.target_rows"),
 		Diff:     subRegistry.Gauge("storage.diff_perc"),
-		Metrics:  map[string]metrics.Counter{},
+		Metrics:  map[string]core_metrics.Counter{},
 		registry: registry,
 	}
 	return cache[table]

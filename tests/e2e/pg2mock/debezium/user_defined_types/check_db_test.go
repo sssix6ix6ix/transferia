@@ -14,8 +14,8 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/debezium"
-	debeziumparameters "github.com/transferia/transferia/pkg/debezium/parameters"
-	pgcommon "github.com/transferia/transferia/pkg/providers/postgres"
+	debezium_parameters "github.com/transferia/transferia/pkg/debezium/parameters"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
 	"github.com/transferia/transferia/tests/helpers"
 	mocksink "github.com/transferia/transferia/tests/helpers/mock_sink"
@@ -32,10 +32,10 @@ func init() {
 
 func getMessage(t *testing.T, changeItem *abstract.ChangeItem, additionalParamKey, additionalParamVal string) (string, error) {
 	params := map[string]string{
-		debeziumparameters.DatabaseDBName:   "database",
-		debeziumparameters.TopicPrefix:      "databaseServerName",
-		debeziumparameters.AddOriginalTypes: "false",
-		debeziumparameters.SourceType:       "pg",
+		debezium_parameters.DatabaseDBName:   "database",
+		debezium_parameters.TopicPrefix:      "databaseServerName",
+		debezium_parameters.AddOriginalTypes: "false",
+		debezium_parameters.SourceType:       "pg",
 	}
 	if additionalParamKey != "" {
 		params[additionalParamKey] = additionalParamVal
@@ -85,7 +85,7 @@ func TestSnapshotAndReplication(t *testing.T) {
 	worker := helpers.Activate(t, transfer)
 	defer worker.Close(t)
 
-	srcConn, err := pgcommon.MakeConnPoolFromSrc(&Source, logger.Log)
+	srcConn, err := provider_postgres.MakeConnPoolFromSrc(&Source, logger.Log)
 	require.NoError(t, err)
 	defer srcConn.Close()
 
@@ -118,25 +118,25 @@ func TestSnapshotAndReplication(t *testing.T) {
 		require.Error(t, err)
 	})
 	t.Run("fail", func(t *testing.T) {
-		_, err := getMessage(t, &myMap["events"][0], debeziumparameters.UnknownTypesPolicy, "fail")
+		_, err := getMessage(t, &myMap["events"][0], debezium_parameters.UnknownTypesPolicy, "fail")
 		require.Error(t, err)
-		_, err = getMessage(t, &myMap["events"][1], debeziumparameters.UnknownTypesPolicy, "fail")
+		_, err = getMessage(t, &myMap["events"][1], debezium_parameters.UnknownTypesPolicy, "fail")
 		require.Error(t, err)
 	})
 	var canonData []interface{}
 	t.Run("skip", func(t *testing.T) {
-		msgS, err := getMessage(t, &myMap["events"][0], debeziumparameters.UnknownTypesPolicy, "skip")
+		msgS, err := getMessage(t, &myMap["events"][0], debezium_parameters.UnknownTypesPolicy, "skip")
 		require.NoError(t, err)
 		canonData = append(canonData, msgS)
-		msgR, err := getMessage(t, &myMap["events"][1], debeziumparameters.UnknownTypesPolicy, "skip")
+		msgR, err := getMessage(t, &myMap["events"][1], debezium_parameters.UnknownTypesPolicy, "skip")
 		require.NoError(t, err)
 		canonData = append(canonData, msgR)
 	})
 	t.Run("to_string", func(t *testing.T) {
-		msgS, err := getMessage(t, &myMap["events"][0], debeziumparameters.UnknownTypesPolicy, "to_string")
+		msgS, err := getMessage(t, &myMap["events"][0], debezium_parameters.UnknownTypesPolicy, "to_string")
 		require.NoError(t, err)
 		canonData = append(canonData, msgS)
-		msgR, err := getMessage(t, &myMap["events"][1], debeziumparameters.UnknownTypesPolicy, "to_string")
+		msgR, err := getMessage(t, &myMap["events"][1], debezium_parameters.UnknownTypesPolicy, "to_string")
 		require.NoError(t, err)
 		canonData = append(canonData, msgR)
 	})

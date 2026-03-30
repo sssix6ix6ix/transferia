@@ -10,8 +10,8 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/changeitem"
 	"github.com/transferia/transferia/pkg/parsers"
-	genericparser "github.com/transferia/transferia/pkg/parsers/generic"
-	confluentschemaregistryengine "github.com/transferia/transferia/pkg/parsers/registry/confluentschemaregistry/engine"
+	generic_parser "github.com/transferia/transferia/pkg/parsers/generic"
+	confluentschemaregistry_engine "github.com/transferia/transferia/pkg/parsers/registry/confluentschemaregistry/engine"
 	"github.com/transferia/transferia/pkg/parsers/registry/confluentschemaregistry/table_name_policy"
 	"github.com/transferia/transferia/pkg/util"
 	"go.ytsaurus.tech/library/go/core/log"
@@ -28,7 +28,7 @@ type CloudEventsImpl struct {
 	urlConverter             func(in string) string
 
 	hostPortToClientMutex sync.Mutex
-	hostPortToClient      map[string]*confluentschemaregistryengine.ConfluentSrImpl
+	hostPortToClient      map[string]*confluentschemaregistry_engine.ConfluentSrImpl
 }
 
 var tableSchema *abstract.TableSchema
@@ -93,7 +93,7 @@ func buildChangeItem(
 	}
 }
 
-func (p *CloudEventsImpl) getConfluentSRParserImpl(hostPort string) (*confluentschemaregistryengine.ConfluentSrImpl, error) {
+func (p *CloudEventsImpl) getConfluentSRParserImpl(hostPort string) (*confluentschemaregistry_engine.ConfluentSrImpl, error) {
 	p.hostPortToClientMutex.Lock()
 	defer p.hostPortToClientMutex.Unlock()
 
@@ -105,7 +105,7 @@ func (p *CloudEventsImpl) getConfluentSRParserImpl(hostPort string) (*confluents
 
 	p.logger.Infof("try to create confluentSRParser for host/port:%s, username:%s", hostPort, p.username)
 
-	confluentSRParser := confluentschemaregistryengine.NewConfluentSchemaRegistryImpl(hostPort, p.caCert, p.username, p.password, false, tableNamePolicy, p.SendSrNotFoundToUnparsed, p.logger)
+	confluentSRParser := confluentschemaregistry_engine.NewConfluentSchemaRegistryImpl(hostPort, p.caCert, p.username, p.password, false, tableNamePolicy, p.SendSrNotFoundToUnparsed, p.logger)
 	isAuthorizedPrimaryPass, err := confluentSRParser.SchemaRegistryClient.IsAuthorized()
 	if err != nil {
 		return nil, xerrors.Errorf("unable to check if authorized with primary password, err: %w", err)
@@ -117,7 +117,7 @@ func (p *CloudEventsImpl) getConfluentSRParserImpl(hostPort string) (*confluents
 	}
 	p.logger.Info("tested original password, didn't work. Try fallback password")
 
-	confluentSRParser = confluentschemaregistryengine.NewConfluentSchemaRegistryImpl(hostPort, p.caCert, p.username, p.passwordFallback, false, tableNamePolicy, p.SendSrNotFoundToUnparsed, p.logger)
+	confluentSRParser = confluentschemaregistry_engine.NewConfluentSchemaRegistryImpl(hostPort, p.caCert, p.username, p.passwordFallback, false, tableNamePolicy, p.SendSrNotFoundToUnparsed, p.logger)
 	isAuthorizedFallbackPass, err := confluentSRParser.SchemaRegistryClient.IsAuthorized()
 	if err != nil {
 		return nil, xerrors.Errorf("unable to check if authorized with fallback password, err: %w", err)
@@ -132,8 +132,8 @@ func (p *CloudEventsImpl) getConfluentSRParserImpl(hostPort string) (*confluents
 	return nil, xerrors.New("unable to authorize on primary & fallback password")
 }
 
-func (p *CloudEventsImpl) getConfluentSRParser(hostPort string) *confluentschemaregistryengine.ConfluentSrImpl {
-	var confluentSRParser *confluentschemaregistryengine.ConfluentSrImpl
+func (p *CloudEventsImpl) getConfluentSRParser(hostPort string) *confluentschemaregistry_engine.ConfluentSrImpl {
+	var confluentSRParser *confluentschemaregistry_engine.ConfluentSrImpl
 	_ = backoff.RetryNotify(func() error {
 		var err error
 		confluentSRParser, err = p.getConfluentSRParserImpl(hostPort)
@@ -146,14 +146,14 @@ func (p *CloudEventsImpl) Do(msg parsers.Message, partition abstract.Partition) 
 	cloudEventsFields, body, protoPath, err := unpackCloudEventsProtoMessage(msg.Value)
 	if err != nil {
 		err := xerrors.Errorf("unable to unpack cloudEvents proto message, err: %w", err)
-		changeItems := []abstract.ChangeItem{genericparser.NewUnparsed(partition, partition.Topic, msg.Value, err.Error(), 0, msg.Offset, msg.WriteTime)}
+		changeItems := []abstract.ChangeItem{generic_parser.NewUnparsed(partition, partition.Topic, msg.Value, err.Error(), 0, msg.Offset, msg.WriteTime)}
 		return changeItems
 	}
 
 	hostPort, schemaID, err := extractSchemaIDAndURL(cloudEventsFields.dataschema)
 	if err != nil {
 		err := xerrors.Errorf("unable to break URL into subject&version, err: %w", err)
-		changeItems := []abstract.ChangeItem{genericparser.NewUnparsed(partition, partition.Topic, msg.Value, err.Error(), 0, msg.Offset, msg.WriteTime)}
+		changeItems := []abstract.ChangeItem{generic_parser.NewUnparsed(partition, partition.Topic, msg.Value, err.Error(), 0, msg.Offset, msg.WriteTime)}
 		return changeItems
 	}
 
@@ -201,6 +201,6 @@ func NewCloudEventsImpl(caCert string, username string, password string, passwor
 		logger:                   logger,
 		urlConverter:             urlConverter,
 		hostPortToClientMutex:    sync.Mutex{},
-		hostPortToClient:         make(map[string]*confluentschemaregistryengine.ConfluentSrImpl),
+		hostPortToClient:         make(map[string]*confluentschemaregistry_engine.ConfluentSrImpl),
 	}
 }

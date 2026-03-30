@@ -12,14 +12,14 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3"
+	aws_credentials "github.com/aws/aws-sdk-go/aws/credentials"
+	aws_session "github.com/aws/aws-sdk-go/aws/session"
+	aws_s3 "github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	s3provider "github.com/transferia/transferia/pkg/providers/s3"
+	s3_model "github.com/transferia/transferia/pkg/providers/s3/model"
 	"github.com/transferia/transferia/tests/tcrecipes"
 	"github.com/transferia/transferia/tests/tcrecipes/objectstorage"
 	"go.ytsaurus.tech/library/go/core/log"
@@ -31,17 +31,17 @@ var (
 	testSecret    = EnvOrDefault("TEST_SECRET_ACCESS_KEY", "abcdefabcdef")
 )
 
-func createBucket(t *testing.T, cfg *s3provider.S3Destination) {
-	sess, err := session.NewSession(&aws.Config{
+func createBucket(t *testing.T, cfg *s3_model.S3Destination) {
+	sess, err := aws_session.NewSession(&aws.Config{
 		Endpoint:         aws.String(cfg.Endpoint),
 		Region:           aws.String(cfg.Region),
 		S3ForcePathStyle: aws.Bool(cfg.S3ForcePathStyle),
-		Credentials: credentials.NewStaticCredentials(
+		Credentials: aws_credentials.NewStaticCredentials(
 			cfg.AccessKey, cfg.Secret, "",
 		),
 	})
 	require.NoError(t, err)
-	res, err := s3.New(sess).CreateBucket(&s3.CreateBucketInput{
+	res, err := aws_s3.New(sess).CreateBucket(&aws_s3.CreateBucketInput{
 		Bucket: aws.String(cfg.Bucket),
 	})
 	require.NoError(t, err)
@@ -49,12 +49,12 @@ func createBucket(t *testing.T, cfg *s3provider.S3Destination) {
 	logger.Log.Info("create bucket result", log.Any("res", res))
 }
 
-func PrepareS3(t *testing.T, bucket string, format model.ParsingFormat, encoding s3provider.Encoding) *s3provider.S3Destination {
+func PrepareS3(t *testing.T, bucket string, format model.ParsingFormat, encoding s3_model.Encoding) *s3_model.S3Destination {
 	if tcrecipes.Enabled() {
 		_, err := objectstorage.Prepare(context.Background())
 		require.NoError(t, err)
 	}
-	cfg := &s3provider.S3Destination{
+	cfg := &s3_model.S3Destination{
 		OutputFormat:     format,
 		OutputEncoding:   encoding,
 		BufferSize:       1 * 1024 * 1024,
@@ -78,8 +78,8 @@ func PrepareS3(t *testing.T, bucket string, format model.ParsingFormat, encoding
 		MaxBytesPerFile:  0,
 		SerializerSet:    false,
 		Rotator:          nil,
-		Partitioner:      s3provider.DefaultPartitionerType,
-		SerializerSettings: s3provider.SerializerSettings{
+		Partitioner:      s3_model.DefaultPartitionerType,
+		SerializerSettings: s3_model.SerializerSettings{
 			Parquet: nil,
 		},
 	}
@@ -107,12 +107,12 @@ func EnvOrDefault(key string, def string) string {
 	return def
 }
 
-func PrepareCfg(t *testing.T, bucket string, format model.ParsingFormat) *s3provider.S3Source {
+func PrepareCfg(t *testing.T, bucket string, format model.ParsingFormat) *s3_model.S3Source {
 	if tcrecipes.Enabled() {
 		_, err := objectstorage.Prepare(context.Background())
 		require.NoError(t, err)
 	}
-	cfg := new(s3provider.S3Source)
+	cfg := new(s3_model.S3Source)
 	if bucket != "" {
 		cfg.Bucket = bucket
 	} else {
@@ -149,7 +149,7 @@ func PrepareCfg(t *testing.T, bucket string, format model.ParsingFormat) *s3prov
 	return cfg
 }
 
-func PrepareTestCase(t *testing.T, cfg *s3provider.S3Source, casePath string) {
+func PrepareTestCase(t *testing.T, cfg *s3_model.S3Source, casePath string) {
 	absPath, err := filepath.Abs(casePath)
 	require.NoError(t, err)
 	files, err := os.ReadDir(absPath)
@@ -158,7 +158,7 @@ func PrepareTestCase(t *testing.T, cfg *s3provider.S3Source, casePath string) {
 	uploadDir(t, cfg, cfg.PathPrefix, files)
 }
 
-func uploadDir(t *testing.T, cfg *s3provider.S3Source, prefix string, files []os.DirEntry) {
+func uploadDir(t *testing.T, cfg *s3_model.S3Source, prefix string, files []os.DirEntry) {
 	for _, file := range files {
 		fullName := fmt.Sprintf("%s/%s", prefix, file.Name())
 		if file.IsDir() {
@@ -173,12 +173,12 @@ func uploadDir(t *testing.T, cfg *s3provider.S3Source, prefix string, files []os
 	}
 }
 
-func UploadOneFromMemoryImpl(t *testing.T, cfg *s3provider.S3Source, fileName string, ioReader io.Reader) {
-	sess, err := session.NewSession(&aws.Config{
+func UploadOneFromMemoryImpl(t *testing.T, cfg *s3_model.S3Source, fileName string, ioReader io.Reader) {
+	sess, err := aws_session.NewSession(&aws.Config{
 		Endpoint:         aws.String(cfg.ConnectionConfig.Endpoint),
 		Region:           aws.String(cfg.ConnectionConfig.Region),
 		S3ForcePathStyle: aws.Bool(cfg.ConnectionConfig.S3ForcePathStyle),
-		Credentials: credentials.NewStaticCredentials(
+		Credentials: aws_credentials.NewStaticCredentials(
 			cfg.ConnectionConfig.AccessKey, string(cfg.ConnectionConfig.SecretKey), "",
 		),
 	})
@@ -193,12 +193,12 @@ func UploadOneFromMemoryImpl(t *testing.T, cfg *s3provider.S3Source, fileName st
 	require.NoError(t, err)
 }
 
-func UploadOneFromMemory(t *testing.T, cfg *s3provider.S3Source, fileName string, buf []byte) {
+func UploadOneFromMemory(t *testing.T, cfg *s3_model.S3Source, fileName string, buf []byte) {
 	ioReader := bytes.NewBuffer(buf)
 	UploadOneFromMemoryImpl(t, cfg, fileName, ioReader)
 }
 
-func UploadOne(t *testing.T, cfg *s3provider.S3Source, fname string) {
+func UploadOne(t *testing.T, cfg *s3_model.S3Source, fname string) {
 	absPath, err := filepath.Abs(fname)
 	require.NoError(t, err)
 	buff, err := os.Open(absPath)
@@ -207,17 +207,17 @@ func UploadOne(t *testing.T, cfg *s3provider.S3Source, fname string) {
 	UploadOneFromMemoryImpl(t, cfg, fname, buff)
 }
 
-func CreateBucket(t *testing.T, cfg *s3provider.S3Source) {
-	sess, err := session.NewSession(&aws.Config{
+func CreateBucket(t *testing.T, cfg *s3_model.S3Source) {
+	sess, err := aws_session.NewSession(&aws.Config{
 		Endpoint:         aws.String(cfg.ConnectionConfig.Endpoint),
 		Region:           aws.String(cfg.ConnectionConfig.Region),
 		S3ForcePathStyle: aws.Bool(cfg.ConnectionConfig.S3ForcePathStyle),
-		Credentials: credentials.NewStaticCredentials(
+		Credentials: aws_credentials.NewStaticCredentials(
 			cfg.ConnectionConfig.AccessKey, string(cfg.ConnectionConfig.SecretKey), "",
 		),
 	})
 	require.NoError(t, err)
-	res, err := s3.New(sess).CreateBucket(&s3.CreateBucketInput{
+	res, err := aws_s3.New(sess).CreateBucket(&aws_s3.CreateBucketInput{
 		Bucket: aws.String(cfg.Bucket),
 	})
 	// No need to check error because maybe the bucket can be already exists

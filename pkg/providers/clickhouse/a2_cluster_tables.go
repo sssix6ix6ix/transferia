@@ -10,8 +10,8 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract2"
 	"github.com/transferia/transferia/pkg/abstract2/filter"
-	"github.com/transferia/transferia/pkg/connection/clickhouse"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/model"
+	conn_clickhouse "github.com/transferia/transferia/pkg/connection/clickhouse"
+	clickhouse_model "github.com/transferia/transferia/pkg/providers/clickhouse/model"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
@@ -20,7 +20,7 @@ type ClusterTables struct {
 	iter       int
 	storage    ClickhouseStorage
 	partFilter map[string]bool
-	shards     map[string][]*clickhouse.Host
+	shards     map[string][]*conn_clickhouse.Host
 	rowFilter  map[abstract.TableID]string
 }
 
@@ -99,7 +99,7 @@ func (s *ClusterTables) AddTableDescription(desc abstract.TableDescription) erro
 	return nil
 }
 
-func newClusterTablesFromDescription(storage ClickhouseStorage, config *model.ChSource, descriptions []abstract.TableDescription) (*ClusterTables, error) {
+func newClusterTablesFromDescription(storage ClickhouseStorage, config *clickhouse_model.ChSource, descriptions []abstract.TableDescription) (*ClusterTables, error) {
 	sinkParams, err := config.ToSinkParams()
 	if err != nil {
 		return nil, xerrors.Errorf("unable to get sink params: %w", err)
@@ -143,7 +143,7 @@ func (f *filterWrapper) IncludeTableList() ([]abstract.TableID, error) {
 	return nil, xerrors.New("table listing is not supported by this filter")
 }
 
-func NewClusterTables(storage ClickhouseStorage, config *model.ChSource, inputFilter abstract2.DataObjectFilter) (*ClusterTables, error) {
+func NewClusterTables(storage ClickhouseStorage, config *clickhouse_model.ChSource, inputFilter abstract2.DataObjectFilter) (*ClusterTables, error) {
 	if descriptionFilter, ok := inputFilter.(filter.FilterableFilter); ok {
 		tableDescriptions, err := descriptionFilter.ListFilters()
 		if err != nil {

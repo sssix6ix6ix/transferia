@@ -10,14 +10,15 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
+	aws_session "github.com/aws/aws-sdk-go/aws/session"
 	aws_s3 "github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/transferia/transferia/library/go/core/xerrors"
-	"github.com/transferia/transferia/pkg/providers/s3"
-	"github.com/transferia/transferia/pkg/providers/s3/reader"
+	s3_model "github.com/transferia/transferia/pkg/providers/s3/model"
+	s3_reader "github.com/transferia/transferia/pkg/providers/s3/reader"
 	"github.com/transferia/transferia/pkg/providers/s3/s3util"
 	"github.com/transferia/transferia/pkg/providers/s3/s3util/file"
+	"github.com/transferia/transferia/pkg/providers/s3/s3util/s3sess"
 	"github.com/transferia/transferia/pkg/util"
 	"go.ytsaurus.tech/library/go/core/log"
 )
@@ -78,7 +79,7 @@ func objectsToArrFileEntry(in []object) []file.File {
 	return result
 }
 
-func (s *ObjectFetcherSQS) fetchMessages(inReader reader.Reader) ([]object, error) {
+func (s *ObjectFetcherSQS) fetchMessages(inReader s3_reader.Reader) ([]object, error) {
 	messages, err := s.sqsClient.ReceiveMessageWithContext(s.ctx, &sqs.ReceiveMessageInput{
 		QueueUrl:            s.queueURL,
 		MaxNumberOfMessages: aws.Int64(10),  // maximum is 10, but fewer  msg can be delivered
@@ -147,7 +148,7 @@ func (s *ObjectFetcherSQS) fetchMessages(inReader reader.Reader) ([]object, erro
 	return objectList, nil
 }
 
-func (s *ObjectFetcherSQS) FetchObjects(inReader reader.Reader) ([]file.File, error) {
+func (s *ObjectFetcherSQS) FetchObjects(inReader s3_reader.Reader) ([]file.File, error) {
 	var objectList []object
 	returnResults := false
 	for {
@@ -312,8 +313,8 @@ func (s *ObjectFetcherSQS) Close() error {
 func NewObjectFetcherSQS(
 	ctx context.Context,
 	logger log.Logger,
-	srcModel *s3.S3Source,
-	sess *session.Session,
+	srcModel *s3_model.S3Source,
+	sess *aws_session.Session,
 ) (*ObjectFetcherSQS, error) {
 	sqsConfig := srcModel.EventSource.SQS
 	if sqsConfig == nil {
@@ -322,7 +323,7 @@ func NewObjectFetcherSQS(
 	sqsSession := sess
 	if sqsConfig.ConnectionConfig.AccessKey != "" {
 		logger.Info("Using dedicated session for sqs client")
-		s, err := s3.NewAWSSession(logger, srcModel.Bucket, sqsConfig.ConnectionConfig)
+		s, err := s3sess.NewAWSSession(logger, srcModel.Bucket, sqsConfig.ConnectionConfig)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to initialize session for sqs: %w", err)
 		}

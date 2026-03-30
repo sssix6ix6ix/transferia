@@ -3,34 +3,34 @@ package stats
 import (
 	"time"
 
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/pkg/util/size"
 )
 
 type MiddlewareBuffererStats struct {
-	registry metrics.Registry
+	registry core_metrics.Registry
 
-	FlushOnAllCauses metrics.Counter
-	FlushOnInterval  metrics.Counter
-	FlushOnCount     metrics.Counter
-	FlushOnSize      metrics.Counter
-	FlushOnNonRow    metrics.Counter
+	FlushOnAllCauses core_metrics.Counter
+	FlushOnInterval  core_metrics.Counter
+	FlushOnCount     core_metrics.Counter
+	FlushOnSize      core_metrics.Counter
+	FlushOnNonRow    core_metrics.Counter
 
 	// CollectionTime tracks the time spent on collection of changeitems in the buffer (time between flush attempts).
 	//
 	// When this time is greater than `WaitTime`, this means transfer reads from the source slower than it writes into the destination. Source slows down the whole transfer.
 	//
 	// When `WaitTime` is greater than this time, this means transfer writes into the destination slower than it reads from the source. Destination slows down the whole transfer.
-	CollectionTime metrics.Timer
+	CollectionTime core_metrics.Timer
 	// WaitTime tracks the time spent waiting for another flush to finish (time of doing nothing during a flush attempt).
-	WaitTime     metrics.Timer
-	SizeToFlush  metrics.Histogram
-	CountToFlush metrics.Histogram
+	WaitTime     core_metrics.Timer
+	SizeToFlush  core_metrics.Histogram
+	CountToFlush core_metrics.Histogram
 }
 
 // ShortEvenDurationBuckets returns buckets adapted for short durations and distributed approximately evenly
-func ShortEvenDurationBuckets() metrics.DurationBuckets {
-	return metrics.NewDurationBuckets(
+func ShortEvenDurationBuckets() core_metrics.DurationBuckets {
+	return core_metrics.NewDurationBuckets(
 		500*time.Millisecond,
 		1*time.Second,
 		2*time.Second,
@@ -74,11 +74,11 @@ func ShortEvenDurationBuckets() metrics.DurationBuckets {
 }
 
 // Exponential10Buckets returns a set of buckets with borders at 10^[1..10]
-func Exponential10Buckets() metrics.Buckets {
-	return metrics.MakeExponentialBuckets(10, 10, 10)
+func Exponential10Buckets() core_metrics.Buckets {
+	return core_metrics.MakeExponentialBuckets(10, 10, 10)
 }
 
-func NewMiddlewareBuffererStats(r metrics.Registry) *MiddlewareBuffererStats {
+func NewMiddlewareBuffererStats(r core_metrics.Registry) *MiddlewareBuffererStats {
 	rWT := r.WithTags(map[string]string{"component": "middleware_bufferer"})
 	return &MiddlewareBuffererStats{
 		registry: rWT,

@@ -8,7 +8,7 @@ import (
 
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/library/go/core/xerrors"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/model"
+	clickhouse_model "github.com/transferia/transferia/pkg/providers/clickhouse/model"
 	"github.com/transferia/transferia/tests/tcrecipes"
 	tc_clickhouse "github.com/transferia/transferia/tests/tcrecipes/clickhouse"
 )
@@ -61,7 +61,7 @@ func WithInitDir(dir string) Option {
 	}
 }
 
-func MustSource(opts ...Option) *model.ChSource {
+func MustSource(opts ...Option) *clickhouse_model.ChSource {
 	res, err := Source(opts...)
 	if err != nil {
 		panic(err)
@@ -69,7 +69,7 @@ func MustSource(opts ...Option) *model.ChSource {
 	return res
 }
 
-func Source(opts ...Option) (*model.ChSource, error) {
+func Source(opts ...Option) (*clickhouse_model.ChSource, error) {
 	params := ContainerParams{
 		prefix:      "",
 		initScripts: nil,
@@ -94,10 +94,10 @@ func Source(opts ...Option) (*model.ChSource, error) {
 	if err != nil {
 		return nil, xerrors.Errorf("unable to read RECIPE_CLICKHOUSE_NATIVE_PORT: %w", err)
 	}
-	res := &model.ChSource{
+	res := &clickhouse_model.ChSource{
 		MdbClusterID:  "",
 		ChClusterName: "",
-		ShardsList: []model.ClickHouseShard{
+		ShardsList: []clickhouse_model.ClickHouseShard{
 			{
 				Name: "_",
 				Hosts: []string{
@@ -118,7 +118,7 @@ func Source(opts ...Option) (*model.ChSource, error) {
 		ExcludeTables:    nil,
 		IsHomo:           false,
 		BufferSize:       0,
-		IOHomoFormat:     model.ClickhouseIOFormatCSV,
+		IOHomoFormat:     clickhouse_model.ClickhouseIOFormatCSV,
 		RootCACertPaths:  nil,
 		ConnectionID:     "",
 		UserEnabledTls:   nil,
@@ -127,7 +127,7 @@ func Source(opts ...Option) (*model.ChSource, error) {
 	return res, nil
 }
 
-func MustTarget(opts ...Option) *model.ChDestination {
+func MustTarget(opts ...Option) *clickhouse_model.ChDestination {
 	res, err := Target(opts...)
 	if err != nil {
 		panic(err)
@@ -135,7 +135,7 @@ func MustTarget(opts ...Option) *model.ChDestination {
 	return res
 }
 
-func Target(opts ...Option) (*model.ChDestination, error) {
+func Target(opts ...Option) (*clickhouse_model.ChDestination, error) {
 	params := ContainerParams{
 		prefix:      "",
 		initScripts: nil,
@@ -163,7 +163,7 @@ func Target(opts ...Option) (*model.ChDestination, error) {
 		return nil, xerrors.Errorf("unable to read RECIPE_CLICKHOUSE_NATIVE_PORT: %w", err)
 	}
 	logger.Log.Infof("clickhouse container's httpPort: %v, nativePort: %v", httpPort, nativePort)
-	res := &model.ChDestination{
+	res := &clickhouse_model.ChDestination{
 		MdbClusterID:            "",
 		ChClusterName:           "test_shard_localhost",
 		User:                    params.user,
@@ -189,8 +189,8 @@ func Target(opts ...Option) (*model.ChDestination, error) {
 		ShardByTransferID:       false,
 		ShardByRoundRobin:       false,
 		Rotation:                nil,
-		InsertParams:            model.InsertParams{MaterializedViewsIgnoreErrors: false},
-		ShardsList: []model.ClickHouseShard{
+		InsertParams:            clickhouse_model.InsertParams{MaterializedViewsIgnoreErrors: false},
+		ShardsList: []clickhouse_model.ClickHouseShard{
 			{
 				Name: "_",
 				Hosts: []string{

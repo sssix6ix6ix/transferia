@@ -14,14 +14,14 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	chconn "github.com/transferia/transferia/pkg/connection/clickhouse"
+	conn_clickhouse "github.com/transferia/transferia/pkg/connection/clickhouse"
 	"github.com/transferia/transferia/pkg/middlewares"
-	ch_async "github.com/transferia/transferia/pkg/providers/clickhouse/async"
+	clickhouse_async "github.com/transferia/transferia/pkg/providers/clickhouse/async"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/chrecipe"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/conn"
-	"github.com/transferia/transferia/pkg/sink"
+	"github.com/transferia/transferia/pkg/sink_factory"
 	"github.com/transferia/transferia/tests/helpers"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 var (
@@ -41,13 +41,13 @@ func TestTransformerTypeInference(t *testing.T) {
 	sch := abstract.NewTableSchema([]abstract.ColSchema{{
 		TableName:  targetTable,
 		ColumnName: "number",
-		DataType:   schema.TypeInt32.String(),
+		DataType:   ytschema.TypeInt32.String(),
 	}})
 	transfer := helpers.MakeTransfer(helpers.TransferID, &source, &target, abstract.TransferTypeSnapshotOnly)
 	transfer.Labels = `{"dt-async-ch": "on"}`
-	sink, err := sink.MakeAsyncSink(transfer, &model.TransferOperation{}, logger.Log, solomon.NewRegistry(solomon.NewRegistryOpts()), coordinator.NewFakeClient(), middlewares.MakeConfig())
+	sink, err := sink_factory.MakeAsyncSink(transfer, &model.TransferOperation{}, logger.Log, solomon.NewRegistry(solomon.NewRegistryOpts()), coordinator.NewFakeClient(), middlewares.MakeConfig())
 	require.NoError(t, err)
-	host := &chconn.Host{
+	host := &conn_clickhouse.Host{
 		Name:       "localhost",
 		HTTPPort:   target.HTTPPort,
 		NativePort: target.NativePort,
@@ -82,7 +82,7 @@ func TestTransformerTypeInference(t *testing.T) {
 	}}
 	dataErrCh := sink.AsyncPush(dataItem) // Error or nil will be pushed to chan after DoneShardedTableLoad.
 
-	tmpTableName := fmt.Sprintf("%s_%s_%s_%s", ch_async.TMPPrefix, "dtt", targetTable, "1_1")
+	tmpTableName := fmt.Sprintf("%s_%s_%s_%s", clickhouse_async.TMPPrefix, "dtt", targetTable, "1_1")
 	for {
 		// Wait until tmp table will be filled with data.
 		time.Sleep(time.Millisecond * 200)

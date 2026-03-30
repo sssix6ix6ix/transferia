@@ -10,16 +10,16 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/tests/helpers"
-	yt_helpers "github.com/transferia/transferia/tests/helpers/yt"
+	helpers_yt "github.com/transferia/transferia/tests/helpers/yt"
 	"go.ytsaurus.tech/yt/go/ypath"
 	"go.ytsaurus.tech/yt/go/yt"
 	"go.ytsaurus.tech/yt/go/yttest"
 )
 
 var (
-	Source = postgres.PgSource{
+	Source = provider_postgres.PgSource{
 		ClusterID: os.Getenv("PG_CLUSTER_ID"),
 		Hosts:     []string{"localhost"},
 		User:      os.Getenv("PG_LOCAL_USER"),
@@ -29,7 +29,7 @@ var (
 		DBTables:  []string{"public.root_number"},
 		SlotID:    "test_slot_id",
 	}
-	Target = yt_helpers.RecipeYtTarget("//home/cdc/test/pg2yt_e2e_json_root_number")
+	Target = helpers_yt.RecipeYtTarget("//home/cdc/test/pg2yt_e2e_json_root_number")
 )
 
 func init() {
@@ -72,10 +72,10 @@ func TestGroup(t *testing.T) {
 func Load(t *testing.T, ytEnv *yttest.Env) {
 	transfer := helpers.MakeTransfer(helpers.TransferID, &Source, Target, abstract.TransferTypeSnapshotOnly)
 
-	srcConnConfig, err := postgres.MakeConnConfigFromSrc(logger.Log, &Source)
+	srcConnConfig, err := provider_postgres.MakeConnConfigFromSrc(logger.Log, &Source)
 	require.NoError(t, err)
 	srcConnConfig.PreferSimpleProtocol = true
-	srcConn, err := postgres.NewPgConnPool(srcConnConfig, nil)
+	srcConn, err := provider_postgres.NewPgConnPool(srcConnConfig, nil)
 	require.NoError(t, err)
 	defer srcConn.Close()
 

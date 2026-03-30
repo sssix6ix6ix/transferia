@@ -11,17 +11,17 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/tests/helpers"
-	yt_helpers "github.com/transferia/transferia/tests/helpers/yt"
+	helpers_yt "github.com/transferia/transferia/tests/helpers/yt"
 	"go.ytsaurus.tech/yt/go/ypath"
-	yt_main "go.ytsaurus.tech/yt/go/yt"
+	"go.ytsaurus.tech/yt/go/yt"
 	"go.ytsaurus.tech/yt/go/yttest"
 )
 
 var (
 	srcPort = helpers.GetIntFromEnv("PG_LOCAL_PORT")
-	Source  = postgres.PgSource{
+	Source  = provider_postgres.PgSource{
 		ClusterID: os.Getenv("PG_CLUSTER_ID"),
 		Hosts:     []string{"localhost"},
 		User:      os.Getenv("PG_LOCAL_USER"),
@@ -31,7 +31,7 @@ var (
 		DBTables:  []string{"public.wild_pokemon", "public.captured_pokemon"},
 		SlotID:    "test_slot_id",
 	}
-	Target = yt_helpers.RecipeYtTarget("//home/cdc/test/pg2yt_e2e_relocator_trigger")
+	Target = helpers_yt.RecipeYtTarget("//home/cdc/test/pg2yt_e2e_relocator_trigger")
 )
 
 func init() {
@@ -54,9 +54,9 @@ func TestGroup(t *testing.T) {
 	ytEnv, cancel := yttest.NewEnv(t)
 	defer cancel()
 
-	_, err = ytEnv.YT.CreateNode(ctx, ypath.Path("//home/cdc/test/pg2yt_e2e_relocator_trigger"), yt_main.NodeMap, &yt_main.CreateNodeOptions{Recursive: true})
+	_, err = ytEnv.YT.CreateNode(ctx, ypath.Path("//home/cdc/test/pg2yt_e2e_relocator_trigger"), yt.NodeMap, &yt.CreateNodeOptions{Recursive: true})
 	defer func() {
-		err := ytEnv.YT.RemoveNode(ctx, ypath.Path("//home/cdc/test/pg2yt_e2e_relocator_trigger"), &yt_main.RemoveNodeOptions{Recursive: true})
+		err := ytEnv.YT.RemoveNode(ctx, ypath.Path("//home/cdc/test/pg2yt_e2e_relocator_trigger"), &yt.RemoveNodeOptions{Recursive: true})
 		require.NoError(t, err)
 	}()
 	require.NoError(t, err)
@@ -71,7 +71,7 @@ func Load(t *testing.T) {
 
 	//------------------------------------------------------------------------------
 
-	conn, err := postgres.MakeConnPoolFromSrc(&Source, logger.Log)
+	conn, err := provider_postgres.MakeConnPoolFromSrc(&Source, logger.Log)
 	require.NoError(t, err)
 
 	// Following queries should trigger row relocation to different table (see trigger in SQL file)

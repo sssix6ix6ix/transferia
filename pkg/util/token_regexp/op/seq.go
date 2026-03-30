@@ -1,29 +1,29 @@
 package op
 
 import (
-	"github.com/transferia/transferia/pkg/util/token_regexp/abstract"
+	token_regexp_abstract "github.com/transferia/transferia/pkg/util/token_regexp/abstract"
 )
 
 type SeqOp struct {
-	abstract.Relatives
-	ops []abstract.Op
+	token_regexp_abstract.Relatives
+	ops []token_regexp_abstract.Op
 }
 
 func (t *SeqOp) IsOp() {}
 
-func exec(tokens []*abstract.Token, ops []abstract.Op) *abstract.MatchedResults {
+func exec(tokens []*token_regexp_abstract.Token, ops []token_regexp_abstract.Op) *token_regexp_abstract.MatchedResults {
 	currOp := ops[0]
-	opResult := abstract.NewMatchedResults()
+	opResult := token_regexp_abstract.NewMatchedResults()
 	switch v := currOp.(type) {
-	case abstract.OpPrimitive:
+	case token_regexp_abstract.OpPrimitive:
 		lengths := v.ConsumePrimitive(tokens)
 		opResult.AddMatchedPathsAfterConsumePrimitive(lengths, currOp, tokens)
-	case abstract.OpComplex:
+	case token_regexp_abstract.OpComplex:
 		localResults := v.ConsumeComplex(tokens)
 		opResult.AddLocalResults(localResults, currOp, nil)
 	}
 	if !opResult.IsMatched() {
-		return abstract.NewMatchedResults() // NOT FOUND
+		return token_regexp_abstract.NewMatchedResults() // NOT FOUND
 	}
 
 	leastTempls := ops[1:]
@@ -31,7 +31,7 @@ func exec(tokens []*abstract.Token, ops []abstract.Op) *abstract.MatchedResults 
 		return opResult
 	}
 
-	result := abstract.NewMatchedResults()
+	result := token_regexp_abstract.NewMatchedResults()
 	for index := range opResult.Size() {
 		currLocalPath := opResult.Index(index)
 		localResults := exec(tokens[currLocalPath.Length():], leastTempls)
@@ -40,24 +40,24 @@ func exec(tokens []*abstract.Token, ops []abstract.Op) *abstract.MatchedResults 
 	return result
 }
 
-func (t *SeqOp) ConsumeComplex(tokens []*abstract.Token) *abstract.MatchedResults {
+func (t *SeqOp) ConsumeComplex(tokens []*token_regexp_abstract.Token) *token_regexp_abstract.MatchedResults {
 	return exec(tokens, t.ops)
 }
 
 func Seq(in ...any) *SeqOp {
-	ops := make([]abstract.Op, 0)
+	ops := make([]token_regexp_abstract.Op, 0)
 	for _, el := range in {
 		switch v := el.(type) {
 		case string:
 			ops = append(ops, Match(v))
-		case abstract.Op:
+		case token_regexp_abstract.Op:
 			ops = append(ops, v)
 		default:
 			return nil
 		}
 	}
 	result := &SeqOp{
-		Relatives: abstract.NewRelativesImpl(),
+		Relatives: token_regexp_abstract.NewRelativesImpl(),
 		ops:       ops,
 	}
 	for _, childOp := range result.ops {

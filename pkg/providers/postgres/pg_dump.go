@@ -16,20 +16,20 @@ import (
 	"github.com/jackc/pgtype/pgxtype"
 	"github.com/jackc/pgx/v4"
 	"github.com/transferia/transferia/internal/logger"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
-	yaslices "github.com/transferia/transferia/library/go/slices"
+	yslices "github.com/transferia/transferia/library/go/slices"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/errors/coded"
-	"github.com/transferia/transferia/pkg/errors/codes"
+	error_codes "github.com/transferia/transferia/pkg/errors/codes"
 	"github.com/transferia/transferia/pkg/middlewares"
-	sink_factory "github.com/transferia/transferia/pkg/sink"
+	"github.com/transferia/transferia/pkg/sink_factory"
 	"github.com/transferia/transferia/pkg/util"
 	"github.com/transferia/transferia/pkg/util/set"
 	"go.ytsaurus.tech/library/go/core/log"
-	"golang.org/x/exp/slices"
+	xslices "golang.org/x/exp/slices"
 )
 
 type pgDumpItem struct {
@@ -75,7 +75,7 @@ func (i *pgDumpItem) TableDescription() (*abstract.TableDescription, error) {
 	return nil, xerrors.New("Not found `CREATE TABLE` line")
 }
 
-func ApplyCommands(commands []*pgDumpItem, transfer model.Transfer, task *model.TransferOperation, registry metrics.Registry, types ...string) error {
+func ApplyCommands(commands []*pgDumpItem, transfer model.Transfer, task *model.TransferOperation, registry core_metrics.Registry, types ...string) error {
 	if _, ok := transfer.Dst.(*PgDestination); !ok {
 		return nil
 	}
@@ -119,17 +119,17 @@ func ApplyCommands(commands []*pgDumpItem, transfer model.Transfer, task *model.
 			)
 			// If destination has functions from extensions in user schema missing, pg returns 42883
 			if IsPgError(err, ErrcUndefinedFunction) {
-				return coded.Errorf(codes.PostgresUndefinedFunction,
+				return coded.Errorf(error_codes.PostgresUndefinedFunction,
 					"Unable to apply DDL of type '%v', name '%v'.'%v', error: %w",
 					command.Typ, command.Schema, command.Name, err)
 			}
 			// If schema is missing, map 3F000
 			if IsPgError(err, ErrcSchemaDoesNotExists) {
-				return coded.Errorf(codes.PostgresSchemaDoesNotExist,
+				return coded.Errorf(error_codes.PostgresSchemaDoesNotExist,
 					"Unable to apply DDL of type '%v', name '%v'.'%v', error: %w",
 					command.Typ, command.Schema, command.Name, err)
 			}
-			return coded.Errorf(codes.PostgresDDLApplyFailed,
+			return coded.Errorf(error_codes.PostgresDDLApplyFailed,
 				"Unable to apply DDL of type '%v', name '%v'.'%v', error: %w",
 				command.Typ, command.Schema, command.Name, err)
 		}
@@ -230,7 +230,7 @@ func expandWithTablesPartitions(ctx context.Context, conn pgxtype.Querier, table
 		}
 	}
 	res := includeSet.Slice()
-	slices.SortFunc(res, func(a, b abstract.TableID) int { return a.Less(b) })
+	xslices.SortFunc(res, func(a, b abstract.TableID) int { return a.Less(b) })
 	return res, nil
 }
 
@@ -324,7 +324,7 @@ func ExtractPgDumpSchema(transfer *model.Transfer) ([]*pgDumpItem, error) {
 }
 
 // ApplyPgDumpPreSteps takes the given dump and applies pre-steps defined in transfer source ONLY for homogenous PG-PG transfers. It also logs its actions
-func ApplyPgDumpPreSteps(pgdump []*pgDumpItem, transfer *model.Transfer, task *model.TransferOperation, registry metrics.Registry) error {
+func ApplyPgDumpPreSteps(pgdump []*pgDumpItem, transfer *model.Transfer, task *model.TransferOperation, registry core_metrics.Registry) error {
 	if len(pgdump) == 0 {
 		return nil
 	}
@@ -341,7 +341,7 @@ func ApplyPgDumpPreSteps(pgdump []*pgDumpItem, transfer *model.Transfer, task *m
 }
 
 // ApplyPgDumpPostSteps takes the given dump and applies post-steps defined in transfer source ONLY for homogenous PG-PG transfers. It also logs its actions
-func ApplyPgDumpPostSteps(pgdump []*pgDumpItem, transfer *model.Transfer, task *model.TransferOperation, registry metrics.Registry) error {
+func ApplyPgDumpPostSteps(pgdump []*pgDumpItem, transfer *model.Transfer, task *model.TransferOperation, registry core_metrics.Registry) error {
 	if len(pgdump) == 0 {
 		return nil
 	}
@@ -499,7 +499,7 @@ func shouldDumpSequenceValues(src *PgSource) bool {
 }
 
 func resolveExcludedTypes(ctx context.Context, dump []*pgDumpItem, src *PgSource, tablesSchemas *set.Set[string]) (*set.Set[string], error) {
-	allTypes := yaslices.Filter(dump, func(i *pgDumpItem) bool { return i.Typ == "TYPE" })
+	allTypes := yslices.Filter(dump, func(i *pgDumpItem) bool { return i.Typ == "TYPE" })
 	allowedTypes, err := dumpUserDefinedTypes(ctx, allTypes, src, tablesSchemas)
 	if err != nil {
 		return nil, err
@@ -583,8 +583,8 @@ func filterSequences(sequences SequenceMap, filter abstract.Includeable) (includ
 			excluded = append(excluded, sequenceInfo.SequenceID)
 		}
 	}
-	slices.SortStableFunc(included, abstract.TableID.Less)
-	slices.SortStableFunc(excluded, abstract.TableID.Less)
+	xslices.SortStableFunc(included, abstract.TableID.Less)
+	xslices.SortStableFunc(excluded, abstract.TableID.Less)
 	return included, excluded
 }
 
@@ -867,7 +867,7 @@ func execPgDump(pgDump []string, connString string, password model.SecretString,
 		stderrBytes := stderr.Bytes()
 		if bytes.Contains(stderrBytes, []byte("permission denied")) {
 			// Map to coded error for better UX and docs linking
-			err = abstract.NewFatalError(coded.Errorf(codes.PostgresPgDumpPermissionDenied, "failed to execute pg_dump: %w", err))
+			err = abstract.NewFatalError(coded.Errorf(error_codes.PostgresPgDumpPermissionDenied, "failed to execute pg_dump: %w", err))
 		}
 		return nil, xerrors.Errorf("failed to execute pg_dump. STDERR:\n%s\nerror: %w", string(truncate(string(stderrBytes), 2000)), err)
 	}

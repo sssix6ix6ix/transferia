@@ -6,13 +6,13 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	dp_model "github.com/transferia/transferia/pkg/abstract/model"
+	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/middlewares/synchronizer/bufferer"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/model"
+	clickhouse_model "github.com/transferia/transferia/pkg/providers/clickhouse/model"
 	"go.uber.org/zap/zapcore"
 	"go.ytsaurus.tech/yt/go/yson"
 	"go.ytsaurus.tech/yt/go/yt"
-	"golang.org/x/exp/maps"
+	xmaps "golang.org/x/exp/maps"
 )
 
 type YTSaurusDynamicDestination struct {
@@ -25,15 +25,15 @@ type YTSaurusDynamicDestination struct {
 	AtomicityFull                  bool   `log:"true"` // Atomicity for the dynamic tables being created in YT. See https://yt.yandex-team.ru/docs/description/dynamic_tables/sorted_dynamic_tables#atomarnost
 	DoDiscardBigValues             bool   `log:"true"`
 
-	DoUseStaticTableOnSnapshot bool                 `log:"true"` // optional.Optional[bool] breaks compatibility
-	Cleanup                    dp_model.CleanupType `log:"true"`
+	DoUseStaticTableOnSnapshot bool              `log:"true"` // optional.Optional[bool] breaks compatibility
+	Cleanup                    model.CleanupType `log:"true"`
 
 	Connection            ConnectionData    `log:"true"`
 	TableCustomAttributes map[string]string `log:"true"`
 }
 
 var (
-	_ dp_model.Destination = (*YTSaurusDynamicDestination)(nil)
+	_ model.Destination = (*YTSaurusDynamicDestination)(nil)
 )
 
 func (d *YTSaurusDynamicDestination) MarshalLogObject(enc zapcore.ObjectEncoder) error {
@@ -153,7 +153,7 @@ func (d *YTSaurusDynamicDestination) DiscardBigValues() bool {
 	return d.DoDiscardBigValues
 }
 
-func (d *YTSaurusDynamicDestination) Rotation() *dp_model.RotatorConfig { // not supported
+func (d *YTSaurusDynamicDestination) Rotation() *model.RotatorConfig { // not supported
 	return nil
 }
 
@@ -214,14 +214,14 @@ func (d *YTSaurusDynamicDestination) ChunkSize() uint32 {
 }
 
 func (d *YTSaurusDynamicDestination) BufferTriggingSize() uint64 {
-	return model.BufferTriggingSizeDefault
+	return clickhouse_model.BufferTriggingSizeDefault
 }
 
 func (d *YTSaurusDynamicDestination) BufferTriggingInterval() time.Duration {
 	return 0
 }
 
-func (d *YTSaurusDynamicDestination) CleanupMode() dp_model.CleanupType {
+func (d *YTSaurusDynamicDestination) CleanupMode() model.CleanupType {
 	return d.Cleanup
 }
 
@@ -239,8 +239,8 @@ func (d *YTSaurusDynamicDestination) CustomAttributes() map[string]any {
 
 func (d *YTSaurusDynamicDestination) MergeAttributes(tableSettings map[string]any) map[string]any {
 	res := make(map[string]any)
-	maps.Copy(res, d.CustomAttributes())
-	maps.Copy(res, tableSettings)
+	xmaps.Copy(res, d.CustomAttributes())
+	xmaps.Copy(res, tableSettings)
 	return res
 }
 
@@ -252,7 +252,7 @@ func (d *YTSaurusDynamicDestination) WithDefaults() {
 		d.UserPool = defaultYTSaurusPool
 	}
 	if d.Cleanup == "" {
-		d.Cleanup = dp_model.Drop
+		d.Cleanup = model.Drop
 	}
 	if d.TablePrimaryMedium == "" {
 		d.TablePrimaryMedium = "ssd_blobs"
@@ -262,7 +262,7 @@ func (d *YTSaurusDynamicDestination) WithDefaults() {
 func (d *YTSaurusDynamicDestination) BuffererConfig() *bufferer.BuffererConfig {
 	return &bufferer.BuffererConfig{
 		TriggingCount:    0,
-		TriggingSize:     model.BufferTriggingSizeDefault,
+		TriggingSize:     clickhouse_model.BufferTriggingSizeDefault,
 		TriggingInterval: 0,
 	}
 }

@@ -3,7 +3,7 @@ package table
 import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract2"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 const (
@@ -13,13 +13,13 @@ const (
 type YtColumn interface {
 	abstract2.Column
 	setTable(abstract2.Table)
-	YtType() schema.ComplexType
+	YtType() ytschema.ComplexType
 }
 
 type column struct {
 	name       string
-	ytType     schema.ComplexType
-	ytCol      schema.Column
+	ytType     ytschema.ComplexType
+	ytCol      ytschema.Column
 	typ        abstract2.Type
 	tbl        abstract2.Table
 	isOptional bool
@@ -41,7 +41,7 @@ func (c *column) Type() abstract2.Type {
 	return c.typ
 }
 
-func (c *column) YtType() schema.ComplexType {
+func (c *column) YtType() ytschema.ComplexType {
 	return c.ytType
 }
 
@@ -54,7 +54,7 @@ func (c *column) Nullable() bool {
 }
 
 func (c *column) Key() bool {
-	return c.ytCol.SortOrder != schema.SortNone
+	return c.ytCol.SortOrder != ytschema.SortNone
 }
 
 func (c *column) ToOldColumn() (*abstract.ColSchema, error) {
@@ -66,7 +66,7 @@ func (c *column) ToOldColumn() (*abstract.ColSchema, error) {
 	s.Required = !c.isOptional
 	s.PrimaryKey = c.Key()
 
-	if _, isPrimitive := c.ytType.(schema.Type); !isPrimitive {
+	if _, isPrimitive := c.ytType.(ytschema.Type); !isPrimitive {
 		// It is much harder to restore nested original complex types by using s.OriginalType. Problem is that
 		// c.ytType is schema.ComplexType interface what makes it unrecoverable just from json.Marshal(c.ytType),
 		// we also need to store exact type of c.ytType and all nested types (e.g. schema.List).
@@ -81,7 +81,7 @@ func (c *column) setTable(t abstract2.Table) {
 	c.tbl = t
 }
 
-func NewColumn(name string, typ abstract2.Type, ytType schema.ComplexType, ytCol schema.Column, isOptional bool) YtColumn {
+func NewColumn(name string, typ abstract2.Type, ytType ytschema.ComplexType, ytCol ytschema.Column, isOptional bool) YtColumn {
 	return &column{
 		name:       name,
 		ytType:     ytType,

@@ -11,9 +11,9 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
-	dblogcommon "github.com/transferia/transferia/pkg/dblog"
-	pgcommon "github.com/transferia/transferia/pkg/providers/postgres"
-	"github.com/transferia/transferia/pkg/providers/postgres/dblog"
+	"github.com/transferia/transferia/pkg/dblog"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
+	postgres_dblog "github.com/transferia/transferia/pkg/providers/postgres/dblog"
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
 	"github.com/transferia/transferia/tests/helpers"
 )
@@ -48,14 +48,14 @@ func TestDBLog(t *testing.T) {
 	require.NoError(t, helpers.WaitEqualRowsCount(t, "public", "__test", helpers.GetSampleableStorageByModel(t, Source), helpers.GetSampleableStorageByModel(t, Target), 240*time.Second))
 	require.NoError(t, helpers.CompareStorages(t, Source, Target, helpers.NewCompareStorageParams()))
 
-	srcConn, err := pgcommon.MakeConnPoolFromSrc(&Source, logger.Log)
+	srcConn, err := provider_postgres.MakeConnPoolFromSrc(&Source, logger.Log)
 	require.NoError(t, err)
 	defer srcConn.Close()
 
 	// after all the data has been copied from the source code, all kinds of watermarks are expected
 	checkAllWatermarks(t, srcConn, true)
 
-	dstConn, err := pgcommon.MakeConnPoolFromDst(&Target, logger.Log)
+	dstConn, err := provider_postgres.MakeConnPoolFromDst(&Target, logger.Log)
 	require.NoError(t, err)
 	defer dstConn.Close()
 
@@ -76,19 +76,19 @@ func TestDBLog(t *testing.T) {
 	require.NoError(t, helpers.WaitEqualRowsCount(t, "public", "__test", helpers.GetSampleableStorageByModel(t, Source), helpers.GetSampleableStorageByModel(t, Target), 30*time.Second))
 	require.NoError(t, helpers.CompareStorages(t, Source, Target, helpers.NewCompareStorageParams()))
 
-	require.NoError(t, dblog.DeleteWatermarks(ctx, srcConn, Source.KeeperSchema, helpers.TransferID))
+	require.NoError(t, postgres_dblog.DeleteWatermarks(ctx, srcConn, Source.KeeperSchema, helpers.TransferID))
 	checkAllWatermarks(t, srcConn, false)
 }
 
-func checkWatermarkExist(t *testing.T, mark dblogcommon.WatermarkType, srcConn *pgxpool.Pool, expectedExist bool) {
+func checkWatermarkExist(t *testing.T, mark dblog.WatermarkType, srcConn *pgxpool.Pool, expectedExist bool) {
 	var hasWatermark bool
-	err := srcConn.QueryRow(ctx, fmt.Sprintf("SELECT EXISTS (SELECT true FROM %s WHERE mark_type = ($1));", dblog.SignalTableName), mark).Scan(&hasWatermark)
+	err := srcConn.QueryRow(ctx, fmt.Sprintf("SELECT EXISTS (SELECT true FROM %s WHERE mark_type = ($1));", postgres_dblog.SignalTableName), mark).Scan(&hasWatermark)
 	require.Equal(t, expectedExist, hasWatermark)
 	require.NoError(t, err)
 }
 
 func checkAllWatermarks(t *testing.T, srcConn *pgxpool.Pool, expectedExist bool) {
-	checkWatermarkExist(t, dblogcommon.LowWatermarkType, srcConn, expectedExist)
-	checkWatermarkExist(t, dblogcommon.HighWatermarkType, srcConn, expectedExist)
-	checkWatermarkExist(t, dblogcommon.SuccessWatermarkType, srcConn, expectedExist)
+	checkWatermarkExist(t, dblog.LowWatermarkType, srcConn, expectedExist)
+	checkWatermarkExist(t, dblog.HighWatermarkType, srcConn, expectedExist)
+	checkWatermarkExist(t, dblog.SuccessWatermarkType, srcConn, expectedExist)
 }

@@ -13,7 +13,7 @@ import (
 	"github.com/elastic/go-elasticsearch/v7/esapi"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/connection"
-	"github.com/transferia/transferia/pkg/connection/opensearch"
+	conn_opensearch "github.com/transferia/transferia/pkg/connection/opensearch"
 	"github.com/transferia/transferia/pkg/dbaas"
 	"go.ytsaurus.tech/library/go/core/log"
 )
@@ -45,7 +45,7 @@ func configFromConnection(logger log.Logger, connectionID string) (*elasticsearc
 	if err != nil {
 		return nil, xerrors.Errorf("unable to resolve connection from connection ID: %s, err: %w", connectionID, err)
 	}
-	openSearchConnection, ok := connmanConnection.(*opensearch.Connection)
+	openSearchConnection, ok := connmanConnection.(*conn_opensearch.Connection)
 	if !ok {
 		return nil, xerrors.Errorf("unable to cast connection to OpenSearchConnection, err: %w", err)
 	}
@@ -57,7 +57,7 @@ func configFromConnection(logger log.Logger, connectionID string) (*elasticsearc
 	addresses := make([]string, 0)
 	for _, currHost := range openSearchConnection.Hosts {
 		// If it's not mdb connection, we need to add all hosts, for mdb connection we need to add only data nodes
-		if !isMDBConnection || slices.Contains(currHost.Roles, opensearch.GroupRoleData) {
+		if !isMDBConnection || slices.Contains(currHost.Roles, conn_opensearch.GroupRoleData) {
 			addresses = append(addresses, fmt.Sprintf("%s://%s", protocol, net.JoinHostPort(currHost.Name, fmt.Sprintf("%d", currHost.Port))))
 		}
 	}

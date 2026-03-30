@@ -11,34 +11,34 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	yslices "github.com/transferia/transferia/library/go/slices"
 	"github.com/transferia/transferia/pkg/abstract"
-	cpclient "github.com/transferia/transferia/pkg/abstract/coordinator"
+	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	mongocommon "github.com/transferia/transferia/pkg/providers/mongo"
+	provider_mongo "github.com/transferia/transferia/pkg/providers/mongo"
 	"github.com/transferia/transferia/pkg/runtime/local"
 	"github.com/transferia/transferia/pkg/worker/tasks"
 	"github.com/transferia/transferia/tests/helpers"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-func makeSource(t *testing.T, database, collection string) *mongocommon.MongoSource {
-	return &mongocommon.MongoSource{
+func makeSource(t *testing.T, database, collection string) *provider_mongo.MongoSource {
+	return &provider_mongo.MongoSource{
 		Hosts:    []string{"localhost"},
 		Port:     helpers.GetIntFromEnv("MONGO_LOCAL_PORT"),
 		User:     helpers.GetEnvOfFail(t, "MONGO_LOCAL_USER"),
 		Password: model.SecretString(helpers.GetEnvOfFail(t, "MONGO_LOCAL_PASSWORD")),
-		Collections: []mongocommon.MongoCollection{
+		Collections: []provider_mongo.MongoCollection{
 			{DatabaseName: database, CollectionName: collection},
 		},
-		BatchingParams: &mongocommon.BatcherParameters{
-			BatchSizeLimit:     mongocommon.DefaultBatchSizeLimit,
-			KeySizeThreshold:   mongocommon.DefaultKeySizeThreshold,
-			BatchFlushInterval: mongocommon.DefaultBatchFlushInterval,
+		BatchingParams: &provider_mongo.BatcherParameters{
+			BatchSizeLimit:     provider_mongo.DefaultBatchSizeLimit,
+			KeySizeThreshold:   provider_mongo.DefaultKeySizeThreshold,
+			BatchFlushInterval: provider_mongo.DefaultBatchFlushInterval,
 		},
 	}
 }
 
-func makeTarget(t *testing.T, targetDatabase string) *mongocommon.MongoDestination {
-	return &mongocommon.MongoDestination{
+func makeTarget(t *testing.T, targetDatabase string) *provider_mongo.MongoDestination {
+	return &provider_mongo.MongoDestination{
 		Hosts:    []string{"localhost"},
 		Port:     helpers.GetIntFromEnv("MONGO_LOCAL_PORT"),
 		User:     helpers.GetEnvOfFail(t, "MONGO_LOCAL_USER"),
@@ -193,10 +193,10 @@ func snapshotOnlyStage(t *testing.T, inserter func() uint64, transfer *model.Tra
 }
 
 func replicationOnlyStage(t *testing.T, inserter func() uint64, transfer *model.Transfer, targetDatabase, targetCollection string) {
-	err := tasks.ActivateDelivery(context.TODO(), nil, cpclient.NewFakeClient(), *transfer, helpers.EmptyRegistry())
+	err := tasks.ActivateDelivery(context.TODO(), nil, coordinator.NewFakeClient(), *transfer, helpers.EmptyRegistry())
 	require.NoError(t, err)
 
-	localWorker := local.NewLocalWorker(cpclient.NewFakeClient(), transfer, helpers.EmptyRegistry(), logger.Log)
+	localWorker := local.NewLocalWorker(coordinator.NewFakeClient(), transfer, helpers.EmptyRegistry(), logger.Log)
 	localWorker.Start()
 	defer localWorker.Stop() //nolint
 
@@ -242,10 +242,10 @@ func (b *bsonOrderingTester) RunTest(t *testing.T) {
 	src := makeSource(t, sourceDB, b.collectionName)
 	dst := makeTarget(t, targetDB)
 
-	sourceClient, err := mongocommon.Connect(context.Background(), src.ConnectionOptions([]string{}), nil)
+	sourceClient, err := provider_mongo.Connect(context.Background(), src.ConnectionOptions([]string{}), nil)
 	require.NoError(t, err)
 
-	targetClient, err := mongocommon.Connect(context.Background(), dst.ConnectionOptions([]string{}), nil)
+	targetClient, err := provider_mongo.Connect(context.Background(), dst.ConnectionOptions([]string{}), nil)
 	require.NoError(t, err)
 
 	mongoSourceCollection := sourceClient.Database(sourceDB).Collection(b.collectionName)

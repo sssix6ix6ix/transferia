@@ -6,14 +6,14 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/parsequeue"
-	"github.com/transferia/transferia/pkg/providers/s3"
-	"github.com/transferia/transferia/pkg/providers/s3/pusher"
-	"github.com/transferia/transferia/pkg/providers/s3/reader"
+	s3_model "github.com/transferia/transferia/pkg/providers/s3/model"
+	s3_pusher "github.com/transferia/transferia/pkg/providers/s3/pusher"
+	s3_reader "github.com/transferia/transferia/pkg/providers/s3/reader"
 	"github.com/transferia/transferia/pkg/providers/s3/s3util/object_fetcher"
 	"github.com/transferia/transferia/pkg/stats"
 	"github.com/transferia/transferia/pkg/util"
@@ -26,13 +26,13 @@ type S3Source struct {
 	ctx           context.Context
 	cancel        func()
 	logger        log.Logger
-	srcModel      *s3.S3Source
+	srcModel      *s3_model.S3Source
 	transferID    string
 	metrics       *stats.SourceStats
-	reader        reader.Reader
+	reader        s3_reader.Reader
 	objectFetcher object_fetcher.ObjectFetcher
 	errCh         chan error
-	pusher        pusher.Pusher
+	pusher        s3_pusher.Pusher
 	inflightLimit int64
 	fetchInterval time.Duration
 }
@@ -54,7 +54,7 @@ func (s *S3Source) waitPusherEmpty() {
 func (s *S3Source) sendSynchronizeEvent() error {
 	err := s.pusher.Push(
 		s.ctx,
-		pusher.Chunk{
+		s3_pusher.Chunk{
 			FilePath:  "",
 			Completed: true,
 			Offset:    0,
@@ -84,13 +84,13 @@ func (s *S3Source) newBackoffForFetchInterval() backoff.BackOff {
 	return exponentialBackoff
 }
 
-func (s *S3Source) run(parseQ *parsequeue.ParseQueue[pusher.Chunk]) error {
+func (s *S3Source) run(parseQ *parsequeue.ParseQueue[s3_pusher.Chunk]) error {
 	defer s.metrics.Master.Set(0)
 
 	fetchDelayTimer := s.newBackoffForFetchInterval()
 	nextFetchDelay := fetchDelayTimer.NextBackOff()
 
-	currPusher := pusher.New(nil, parseQ, s.logger, s.inflightLimit)
+	currPusher := s3_pusher.New(nil, parseQ, s.logger, s.inflightLimit)
 	s.pusher = currPusher
 
 	s.objectFetcher.RunBackgroundThreads(s.errCh)
@@ -145,7 +145,7 @@ func (s *S3Source) run(parseQ *parsequeue.ParseQueue[pusher.Chunk]) error {
 	}
 }
 
-func (s *S3Source) ack(chunk pusher.Chunk, pushSt time.Time, err error) {
+func (s *S3Source) ack(chunk s3_pusher.Chunk, pushSt time.Time, err error) {
 	if err != nil {
 		util.Send(s.ctx, s.errCh, err)
 		return
@@ -179,10 +179,10 @@ func (s *S3Source) Stop() {
 }
 
 func NewSource(
-	srcModel *s3.S3Source,
+	srcModel *s3_model.S3Source,
 	transferID string,
 	logger log.Logger,
-	registry metrics.Registry,
+	registry core_metrics.Registry,
 	cp coordinator.Coordinator,
 	runtimeParallelism abstract.ShardingTaskRuntime,
 ) (abstract.Source, error) {

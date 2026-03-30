@@ -10,7 +10,7 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
 	"github.com/transferia/transferia/tests/helpers"
 	mocksink "github.com/transferia/transferia/tests/helpers/mock_sink"
@@ -74,7 +74,7 @@ func TestSnapshotAndIncrement(t *testing.T) {
 	defer worker.Close(t)
 
 	ctx := context.Background()
-	srcConn, err := postgres.MakeConnPoolFromSrc(Source, logger.Log)
+	srcConn, err := provider_postgres.MakeConnPoolFromSrc(Source, logger.Log)
 	require.NoError(t, err)
 
 	_, err = srcConn.Exec(ctx, `UPDATE public.test set another ='23' WHERE value = '11'`)

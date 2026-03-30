@@ -4,11 +4,11 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract2"
-	"github.com/transferia/transferia/pkg/providers/yt/iter"
+	yt_iter "github.com/transferia/transferia/pkg/providers/yt/iter"
 )
 
 type dataObjects struct {
-	it  iter.IteratorBase
+	it  yt_iter.IteratorBase
 	obj dataObject
 }
 
@@ -33,7 +33,7 @@ func (d dataObjects) ToOldTableMap() (abstract.TableMap, error) {
 }
 
 type dataObject struct {
-	it   iter.IteratorBase
+	it   yt_iter.IteratorBase
 	part dataObjectPart
 }
 
@@ -94,9 +94,9 @@ func (d dataObjectPart) ToTablePart() (*abstract.TableDescription, error) {
 
 func newDataObjects(ID string) dataObjects {
 	return dataObjects{
-		it: iter.NewSingleshotIter(),
+		it: yt_iter.NewSingleshotIter(),
 		obj: dataObject{
-			it:   iter.NewSingleshotIter(),
+			it:   yt_iter.NewSingleshotIter(),
 			part: dataObjectPart(ID),
 		},
 	}

@@ -6,20 +6,20 @@ import (
 
 	"github.com/transferia/transferia/kikimr/public/sdk/go/persqueue"
 	"github.com/transferia/transferia/kikimr/public/sdk/go/persqueue/log/corelogadapter"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/config/env"
 	"github.com/transferia/transferia/pkg/parsers"
-	"github.com/transferia/transferia/pkg/parsers/resources"
-	ydssource "github.com/transferia/transferia/pkg/providers/yds/source"
+	parsers_resources "github.com/transferia/transferia/pkg/parsers/resources"
+	yds_source "github.com/transferia/transferia/pkg/providers/yds/source"
 	"github.com/transferia/transferia/pkg/stats"
 	"github.com/transferia/transferia/pkg/util"
 	"github.com/transferia/transferia/pkg/xtls"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
-func newOneDCSource(cfg *LfSource, logger log.Logger, registry metrics.Registry) (abstract.Source, error) {
+func newOneDCSource(cfg *LfSource, logger log.Logger, registry core_metrics.Registry) (abstract.Source, error) {
 	// In test we use logbroker with local environment therefore we should skip this check
 	if !env.IsTest() {
 		if instanceIsValid := checkInstanceValidity(cfg.Instance); !instanceIsValid {
@@ -70,7 +70,7 @@ func newOneDCSource(cfg *LfSource, logger log.Logger, registry metrics.Registry)
 	}
 	rollbacks := util.Rollbacks{}
 	defer rollbacks.Do()
-	if resourceable, ok := parser.(resources.Resourceable); ok {
+	if resourceable, ok := parser.(parsers_resources.Resourceable); ok {
 		resourceable.ResourcesObj().RunWatcher()
 		rollbacks.Add(resourceable.ResourcesObj().Close)
 	}
@@ -79,11 +79,11 @@ func newOneDCSource(cfg *LfSource, logger log.Logger, registry metrics.Registry)
 
 	// transferID is empty because it is used to specify the consumer, and it is already specified in the readerOpts
 	transferID := ""
-	source, err := ydssource.NewSourceWithOpts(transferID, ydsCfg, logger, registry,
-		ydssource.WithCreds(cfg.Credentials),
-		ydssource.WithReaderOpts(&opts),
-		ydssource.WithUseFullTopicName(true),
-		ydssource.WithParser(parser),
+	source, err := yds_source.NewSourceWithOpts(transferID, ydsCfg, logger, registry,
+		yds_source.WithCreds(cfg.Credentials),
+		yds_source.WithReaderOpts(&opts),
+		yds_source.WithUseFullTopicName(true),
+		yds_source.WithParser(parser),
 	)
 	if err != nil {
 		return nil, xerrors.Errorf("unable to create pqv1 source: %w", err)

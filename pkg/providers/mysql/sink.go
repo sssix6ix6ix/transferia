@@ -6,24 +6,24 @@ import (
 	"fmt"
 	"strings"
 	"sync"
-	"text/template"
+	text_template "text/template"
 	"time"
 
-	"github.com/go-sql-driver/mysql"
+	mysql_driver2 "github.com/go-sql-driver/mysql"
 	"github.com/transferia/transferia/internal/logger"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/errors/coded"
-	"github.com/transferia/transferia/pkg/errors/codes"
+	error_codes "github.com/transferia/transferia/pkg/errors/codes"
 	"github.com/transferia/transferia/pkg/format"
 	"github.com/transferia/transferia/pkg/stats"
 	"github.com/transferia/transferia/pkg/util"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
-var createTableTemplate, _ = template.New("query").Parse(`
+var createTableTemplate, _ = text_template.New("query").Parse(`
 {{- /*gotype: TemplateModel*/ -}}
 CREATE TABLE IF NOT EXISTS {{ .Table }} (
 {{ range .Cols }}{{ .Name }} {{ .Typ }} {{ .Comma }}
@@ -189,7 +189,7 @@ func (s *sinker) prepareInputPerTables(input []abstract.ChangeItem) (map[abstrac
 			if _, err := s.db.Exec(ddlQ); err != nil {
 				s.logger.Warn("Unable to exec DDL:\n"+util.Sample(ddlQ, maxSampleLen), log.Error(err))
 				if IsErrorCode(err, ErrCodeSyntax) {
-					return nil, abstract.NewFatalError(coded.Errorf(codes.MySQLIncorrectSyntax, "%w", err))
+					return nil, abstract.NewFatalError(coded.Errorf(error_codes.MySQLIncorrectSyntax, "%w", err))
 				}
 				return nil, xerrors.Errorf("unable to execute ddl: %w", err)
 			} else {
@@ -698,7 +698,7 @@ func (s *sinker) txPushImpl(table abstract.TableID, queries []sinkQuery) error {
 }
 
 func wrapErrorIfFatal(err error) error {
-	if err == mysql.ErrPktTooLarge {
+	if err == mysql_driver2.ErrPktTooLarge {
 		return abstract.NewFatalError(err)
 	} else {
 		return err
@@ -715,7 +715,7 @@ func (s *sinker) pushQuires(tx *sql.Tx, queries []sinkQuery) error {
 		start := time.Now()
 		if _, err := tx.Exec(q.query); err != nil {
 			if IsErrorCode(err, ErrCodeDeadlock) {
-				return coded.Errorf(codes.MySQLDeadlock, "a deadlock occurred while executing query: %w", err)
+				return coded.Errorf(error_codes.MySQLDeadlock, "a deadlock occurred while executing query: %w", err)
 			}
 			s.logger.Error(fmt.Sprintf("exec error, query:\n%v", util.Sample(q.query, maxSampleLen)), log.Duration("elapsed", time.Since(start)), log.Error(err))
 			if tErr := tx.Rollback(); tErr != nil {
@@ -839,7 +839,7 @@ group by TABLE_SCHEMA, TABLE_NAME;
 	return constraint, nil
 }
 
-func NewSinker(lgr log.Logger, cfg *MysqlDestination, mtrcs metrics.Registry) (abstract.Sinker, error) {
+func NewSinker(lgr log.Logger, cfg *MysqlDestination, mtrcs core_metrics.Registry) (abstract.Sinker, error) {
 	rollbacks := util.Rollbacks{}
 	defer rollbacks.Do()
 
@@ -848,7 +848,7 @@ func NewSinker(lgr log.Logger, cfg *MysqlDestination, mtrcs metrics.Registry) (a
 		return nil, xerrors.Errorf("Can't create connection params: %w", err)
 	}
 
-	configAction := func(config *mysql.Config) error {
+	configAction := func(config *mysql_driver2.Config) error {
 		config.MultiStatements = true
 		config.MaxAllowedPacket = 0
 		return nil

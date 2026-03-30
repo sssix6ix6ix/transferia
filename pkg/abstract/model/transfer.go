@@ -6,7 +6,7 @@ import (
 
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	transformers_registry "github.com/transferia/transferia/pkg/transformer"
+	"github.com/transferia/transferia/pkg/transformer"
 	"go.uber.org/zap/zapcore"
 )
 
@@ -281,7 +281,7 @@ func (f *Transfer) HasTransformation() bool {
 	return f.HasPublicTransformation() || f.HasExtraTransformation()
 }
 
-func (f *Transfer) TransformationConfigs() []transformers_registry.Transformer {
+func (f *Transfer) TransformationConfigs() []transformer.Transformer {
 	if !f.HasPublicTransformation() {
 		return nil
 	}

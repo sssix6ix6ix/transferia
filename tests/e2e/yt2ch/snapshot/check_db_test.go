@@ -12,27 +12,27 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	dp_model "github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/model"
-	yt_provider "github.com/transferia/transferia/pkg/providers/yt"
+	"github.com/transferia/transferia/pkg/abstract/model"
+	clickhouse_model "github.com/transferia/transferia/pkg/providers/clickhouse/model"
+	provider_yt "github.com/transferia/transferia/pkg/providers/yt"
 	"github.com/transferia/transferia/pkg/providers/yt/yt_client"
 	"github.com/transferia/transferia/tests/helpers"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 	"go.ytsaurus.tech/yt/go/ypath"
 	"go.ytsaurus.tech/yt/go/yt"
 )
 
 var (
 	TransferType = abstract.TransferTypeSnapshotOnly
-	Source       = yt_provider.YtSource{
+	Source       = provider_yt.YtSource{
 		Cluster:          os.Getenv("YT_PROXY"),
 		YtProxy:          os.Getenv("YT_PROXY"),
 		Paths:            []string{"//home/cdc/junk/test_table"},
 		YtToken:          "",
 		RowIdxColumnName: "row_idx",
 	}
-	Target = model.ChDestination{
-		ShardsList: []model.ClickHouseShard{
+	Target = clickhouse_model.ChDestination{
+		ShardsList: []clickhouse_model.ClickHouseShard{
 			{
 				Name: "_",
 				Hosts: []string{
@@ -47,7 +47,7 @@ var (
 		NativePort:          helpers.GetIntFromEnv("RECIPE_CLICKHOUSE_NATIVE_PORT"),
 		ProtocolUnspecified: true,
 		SSLEnabled:          false,
-		Cleanup:             dp_model.Drop,
+		Cleanup:             model.Drop,
 		Interval:            time.Duration(-1),
 	}
 )
@@ -144,26 +144,26 @@ var TestData = []map[string]interface{}{
 	},
 }
 
-var YtColumns = []schema.Column{
+var YtColumns = []ytschema.Column{
 	// Primitives
-	{Name: "t_int8", ComplexType: schema.TypeInt8, SortOrder: schema.SortAscending},
-	{Name: "t_int16", ComplexType: schema.TypeInt16},
-	{Name: "t_int32", ComplexType: schema.TypeInt32},
-	{Name: "t_int64", ComplexType: schema.TypeInt64},
-	{Name: "t_uint8", ComplexType: schema.TypeUint8},
-	{Name: "t_uint16", ComplexType: schema.TypeUint16},
-	{Name: "t_uint32", ComplexType: schema.TypeUint32},
-	{Name: "t_uint64", ComplexType: schema.TypeUint64},
-	{Name: "t_float", ComplexType: schema.TypeFloat32},
-	{Name: "t_double", ComplexType: schema.TypeFloat64},
-	{Name: "t_bool", ComplexType: schema.TypeBoolean},
-	{Name: "t_string", ComplexType: schema.Optional{Item: schema.TypeBytes}},
-	{Name: "t_utf8", ComplexType: schema.TypeString},
-	{Name: "t_date", ComplexType: schema.TypeDate},
-	{Name: "t_datetime", ComplexType: schema.TypeDatetime},
-	{Name: "t_timestamp", ComplexType: schema.TypeTimestamp},
+	{Name: "t_int8", ComplexType: ytschema.TypeInt8, SortOrder: ytschema.SortAscending},
+	{Name: "t_int16", ComplexType: ytschema.TypeInt16},
+	{Name: "t_int32", ComplexType: ytschema.TypeInt32},
+	{Name: "t_int64", ComplexType: ytschema.TypeInt64},
+	{Name: "t_uint8", ComplexType: ytschema.TypeUint8},
+	{Name: "t_uint16", ComplexType: ytschema.TypeUint16},
+	{Name: "t_uint32", ComplexType: ytschema.TypeUint32},
+	{Name: "t_uint64", ComplexType: ytschema.TypeUint64},
+	{Name: "t_float", ComplexType: ytschema.TypeFloat32},
+	{Name: "t_double", ComplexType: ytschema.TypeFloat64},
+	{Name: "t_bool", ComplexType: ytschema.TypeBoolean},
+	{Name: "t_string", ComplexType: ytschema.Optional{Item: ytschema.TypeBytes}},
+	{Name: "t_utf8", ComplexType: ytschema.TypeString},
+	{Name: "t_date", ComplexType: ytschema.TypeDate},
+	{Name: "t_datetime", ComplexType: ytschema.TypeDatetime},
+	{Name: "t_timestamp", ComplexType: ytschema.TypeTimestamp},
 	// {Name: "t_interval", ComplexType: schema.TypeInterval}, FIXME: support in CH
-	{Name: "t_yson", ComplexType: schema.Optional{Item: schema.TypeAny}},
+	{Name: "t_yson", ComplexType: ytschema.Optional{Item: ytschema.TypeAny}},
 	// {Name: "t_opt_int64", ComplexType: schema.Optional{Item: schema.TypeInt64}},
 }
 
@@ -171,7 +171,7 @@ func createTestData(t *testing.T) {
 	ytc, err := yt_client.NewYtClientWrapper(yt_client.HTTP, nil, &yt.Config{Proxy: Source.YtProxy})
 	require.NoError(t, err)
 
-	sch := schema.Schema{
+	sch := ytschema.Schema{
 		Strict:     nil,
 		UniqueKeys: false,
 		Columns:    YtColumns,
@@ -194,7 +194,7 @@ func checkSchema(t *testing.T, columns []abstract.ColSchema) {
 			require.Equal(t, true, col.PrimaryKey)
 			continue
 		}
-		var testCol *schema.Column
+		var testCol *ytschema.Column
 		for _, c := range YtColumns {
 			if c.Name == col.ColumnName {
 				testCol = &c
@@ -202,7 +202,7 @@ func checkSchema(t *testing.T, columns []abstract.ColSchema) {
 			}
 		}
 		require.NotNil(t, testCol)
-		require.Equal(t, testCol.SortOrder != schema.SortNone, col.PrimaryKey)
+		require.Equal(t, testCol.SortOrder != ytschema.SortNone, col.PrimaryKey)
 		// fmt.Printf("Column %s: type %s, origType %s\n", col.ColumnName, col.DataType, col.OriginalType)
 		switch col.ColumnName {
 		case "t_utf8", "t_yson":

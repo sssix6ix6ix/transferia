@@ -12,9 +12,9 @@ import (
 	"github.com/transferia/transferia/library/go/test/yatest"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	debeziumcommon "github.com/transferia/transferia/pkg/debezium/common"
-	"github.com/transferia/transferia/pkg/debezium/testutil"
-	"github.com/transferia/transferia/pkg/providers/mysql"
+	debezium_common "github.com/transferia/transferia/pkg/debezium/common"
+	debezium_testutil "github.com/transferia/transferia/pkg/debezium/testutil"
+	provider_mysql "github.com/transferia/transferia/pkg/providers/mysql"
 	"github.com/transferia/transferia/tests/helpers"
 	mocksink "github.com/transferia/transferia/tests/helpers/mock_sink"
 )
@@ -323,9 +323,9 @@ func TestReplication(t *testing.T) {
 	//-----------------------------------------------------------------------------------------------------------------
 	// execute SQL statements
 
-	connParams, err := mysql.NewConnectionParams(Source.ToStorageParams())
+	connParams, err := provider_mysql.NewConnectionParams(Source.ToStorageParams())
 	require.NoError(t, err)
-	db, err := mysql.Connect(connParams, nil)
+	db, err := provider_mysql.Connect(connParams, nil)
 	require.NoError(t, err)
 
 	_, err = db.Exec(insertStmt)
@@ -399,31 +399,31 @@ func TestReplication(t *testing.T) {
 
 	//-----------------------------------------------------------------------------------------------------------------
 
-	testSuite := []debeziumcommon.ChangeItemCanon{
+	testSuite := []debezium_common.ChangeItemCanon{
 		{
 			ChangeItem: &changeItems[4],
-			DebeziumEvents: []debeziumcommon.KeyValue{{
+			DebeziumEvents: []debezium_common.KeyValue{{
 				DebeziumKey: canonizedDebeziumInsertKey,
 				DebeziumVal: &canonizedDebeziumInsertVal,
 			}},
 		},
 		{
 			ChangeItem: &changeItems[5],
-			DebeziumEvents: []debeziumcommon.KeyValue{{
+			DebeziumEvents: []debezium_common.KeyValue{{
 				DebeziumKey: canonizedDebeziumUpdate1Key,
 				DebeziumVal: &canonizedDebeziumUpdate1Val,
 			}},
 		},
 		{
 			ChangeItem: &changeItems[6],
-			DebeziumEvents: []debeziumcommon.KeyValue{{
+			DebeziumEvents: []debezium_common.KeyValue{{
 				DebeziumKey: canonizedDebeziumUpdate2Key,
 				DebeziumVal: &canonizedDebeziumUpdate2Val,
 			}},
 		},
 		{
 			ChangeItem: &changeItems[7],
-			DebeziumEvents: []debeziumcommon.KeyValue{{
+			DebeziumEvents: []debezium_common.KeyValue{{
 				DebeziumKey: canonizedDebeziumUpdate30Key,
 				DebeziumVal: &canonizedDebeziumUpdate30Val,
 			}, {
@@ -436,7 +436,7 @@ func TestReplication(t *testing.T) {
 		},
 		{
 			ChangeItem: &changeItems[8],
-			DebeziumEvents: []debeziumcommon.KeyValue{{
+			DebeziumEvents: []debezium_common.KeyValue{{
 				DebeziumKey: canonizedDebeziumDelete0Key,
 				DebeziumVal: &canonizedDebeziumDelete0Val,
 			}, {
@@ -446,10 +446,10 @@ func TestReplication(t *testing.T) {
 		},
 	}
 
-	testSuite = testutil.FixTestSuite(t, testSuite, "dbserver1", "source", "mysql")
+	testSuite = debezium_testutil.FixTestSuite(t, testSuite, "dbserver1", "source", "mysql")
 
 	for _, testCase := range testSuite {
-		testutil.CheckCanonizedDebeziumEvent(t, testCase.ChangeItem, "dbserver1", "source", "mysql", false, testCase.DebeziumEvents)
+		debezium_testutil.CheckCanonizedDebeziumEvent(t, testCase.ChangeItem, "dbserver1", "source", "mysql", false, testCase.DebeziumEvents)
 	}
 
 	for i := range testSuite {
@@ -457,6 +457,6 @@ func TestReplication(t *testing.T) {
 	}
 
 	for _, testCase := range testSuite {
-		testutil.CheckCanonizedDebeziumEvent(t, testCase.ChangeItem, "dbserver1", "source", "mysql", false, testCase.DebeziumEvents)
+		debezium_testutil.CheckCanonizedDebeziumEvent(t, testCase.ChangeItem, "dbserver1", "source", "mysql", false, testCase.DebeziumEvents)
 	}
 }

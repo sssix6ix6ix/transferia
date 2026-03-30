@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	tc "github.com/testcontainers/testcontainers-go"
+	testcontainers_go "github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 	provider_mysql "github.com/transferia/transferia/pkg/providers/mysql"
 )
@@ -26,7 +26,7 @@ func StartMariaDBForSource(t *testing.T, src *provider_mysql.MysqlSource) func()
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 	t.Cleanup(cancel)
 
-	req := tc.ContainerRequest{
+	req := testcontainers_go.ContainerRequest{
 		Image:        "mariadb:10.6",
 		ExposedPorts: []string{"3306/tcp"},
 		Env: map[string]string{
@@ -47,7 +47,7 @@ func StartMariaDBForSource(t *testing.T, src *provider_mysql.MysqlSource) func()
 		),
 	}
 
-	container, err := tc.GenericContainer(ctx, tc.GenericContainerRequest{ContainerRequest: req, Started: true})
+	container, err := testcontainers_go.GenericContainer(ctx, testcontainers_go.GenericContainerRequest{ContainerRequest: req, Started: true})
 	require.NoError(t, err)
 
 	host, err := container.Host(ctx)

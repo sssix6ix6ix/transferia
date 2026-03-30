@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3"
+	aws_session "github.com/aws/aws-sdk-go/aws/session"
+	aws_s3 "github.com/aws/aws-sdk-go/service/s3"
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
@@ -32,7 +32,7 @@ type CoordinatorS3 struct {
 
 	mu       sync.Mutex
 	state    map[string]map[string]*coordinator.TransferStateData
-	s3Client *s3.S3
+	s3Client *aws_s3.S3
 	bucket   string
 	lgr      log.Logger
 }
@@ -43,7 +43,7 @@ func (c *CoordinatorS3) GetTransferState(transferID string) (map[string]*coordin
 
 	// List objects with the prefix transferID/
 	prefix := transferID + "/"
-	listInput := &s3.ListObjectsV2Input{
+	listInput := &aws_s3.ListObjectsV2Input{
 		Bucket: aws.String(c.bucket),
 		Prefix: aws.String(prefix),
 	}
@@ -59,7 +59,7 @@ func (c *CoordinatorS3) GetTransferState(transferID string) (map[string]*coordin
 			continue
 		}
 		key := strings.TrimPrefix(*obj.Key, prefix)
-		getInput := &s3.GetObjectInput{
+		getInput := &aws_s3.GetObjectInput{
 			Bucket: aws.String(c.bucket),
 			Key:    obj.Key,
 		}
@@ -89,7 +89,7 @@ func (c *CoordinatorS3) SetTransferState(transferID string, state map[string]*co
 			return xerrors.Errorf("failed to marshal state data: %w", err)
 		}
 
-		_, err = c.s3Client.PutObject(&s3.PutObjectInput{
+		_, err = c.s3Client.PutObject(&aws_s3.PutObjectInput{
 			Bucket: aws.String(c.bucket),
 			Key:    aws.String(objectKey),
 			Body:   bytes.NewReader(body),
@@ -107,7 +107,7 @@ func (c *CoordinatorS3) RemoveTransferState(transferID string, keys []string) er
 	for _, key := range keys {
 		objectKey := transferID + "/" + key + ".json"
 
-		_, err := c.s3Client.DeleteObject(&s3.DeleteObjectInput{
+		_, err := c.s3Client.DeleteObject(&aws_s3.DeleteObjectInput{
 			Bucket: aws.String(c.bucket),
 			Key:    aws.String(objectKey),
 		})
@@ -353,7 +353,7 @@ func (c *CoordinatorS3) FinishOperation(operationID string, taskType string, run
 
 // Utility functions to interact with S3.
 func (c *CoordinatorS3) putObject(key string, body []byte) error {
-	_, err := c.s3Client.PutObject(&s3.PutObjectInput{
+	_, err := c.s3Client.PutObject(&aws_s3.PutObjectInput{
 		Bucket: aws.String(c.bucket),
 		Key:    aws.String(key),
 		Body:   bytes.NewReader(body),
@@ -362,7 +362,7 @@ func (c *CoordinatorS3) putObject(key string, body []byte) error {
 }
 
 func (c *CoordinatorS3) getObject(key string) ([]byte, error) {
-	resp, err := c.s3Client.GetObject(&s3.GetObjectInput{
+	resp, err := c.s3Client.GetObject(&aws_s3.GetObjectInput{
 		Bucket: aws.String(c.bucket),
 		Key:    aws.String(key),
 	})
@@ -374,8 +374,8 @@ func (c *CoordinatorS3) getObject(key string) ([]byte, error) {
 	return io.ReadAll(resp.Body)
 }
 
-func (c *CoordinatorS3) listObjects(prefix string) ([]*s3.Object, error) {
-	listInput := &s3.ListObjectsV2Input{
+func (c *CoordinatorS3) listObjects(prefix string) ([]*aws_s3.Object, error) {
+	listInput := &aws_s3.ListObjectsV2Input{
 		Bucket: aws.String(c.bucket),
 		Prefix: aws.String(prefix),
 	}
@@ -388,13 +388,13 @@ func (c *CoordinatorS3) listObjects(prefix string) ([]*s3.Object, error) {
 
 // NewS3 creates a new CoordinatorS3 with AWS SDK v1.
 func NewS3(bucket string, l log.Logger, cfgs ...*aws.Config) (*CoordinatorS3, error) {
-	sess, err := session.NewSession(cfgs...)
+	sess, err := aws_session.NewSession(cfgs...)
 	if err != nil {
 		return nil, xerrors.Errorf("unable to create AWS session: %w", err)
 	}
 
 	// Create the S3 client using the session.
-	s3Client := s3.New(sess)
+	s3Client := aws_s3.New(sess)
 
 	// Return the CoordinatorS3 instance.
 	return &CoordinatorS3{

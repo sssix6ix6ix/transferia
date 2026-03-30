@@ -7,13 +7,13 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	dp_model "github.com/transferia/transferia/pkg/abstract/model"
+	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/middlewares/synchronizer/bufferer"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/model"
+	clickhouse_model "github.com/transferia/transferia/pkg/providers/clickhouse/model"
 	"go.uber.org/zap/zapcore"
 	"go.ytsaurus.tech/yt/go/yson"
 	"go.ytsaurus.tech/yt/go/yt"
-	"golang.org/x/exp/maps"
+	xmaps "golang.org/x/exp/maps"
 )
 
 const (
@@ -25,18 +25,18 @@ func proxy(clusterID string) string {
 }
 
 type YTSaurusStaticDestination struct {
-	TablePath             string               `log:"true"`
-	TableOptimizeFor      string               `log:"true"`
-	UserPool              string               `log:"true"` // pool for running merge and sort operations for static tables
-	DoDiscardBigValues    bool                 `log:"true"`
-	TableCustomAttributes map[string]string    `log:"true"`
-	Cleanup               dp_model.CleanupType `log:"true"`
-	Connection            ConnectionData       `log:"true"`
-	IsSortedStatic        bool                 `log:"true"` // true, if we need to sort static tables
+	TablePath             string            `log:"true"`
+	TableOptimizeFor      string            `log:"true"`
+	UserPool              string            `log:"true"` // pool for running merge and sort operations for static tables
+	DoDiscardBigValues    bool              `log:"true"`
+	TableCustomAttributes map[string]string `log:"true"`
+	Cleanup               model.CleanupType `log:"true"`
+	Connection            ConnectionData    `log:"true"`
+	IsSortedStatic        bool              `log:"true"` // true, if we need to sort static tables
 }
 
 var (
-	_ dp_model.Destination = (*YTSaurusStaticDestination)(nil)
+	_ model.Destination = (*YTSaurusStaticDestination)(nil)
 )
 
 func (d *YTSaurusStaticDestination) MarshalLogObject(enc zapcore.ObjectEncoder) error {
@@ -153,7 +153,7 @@ func (d *YTSaurusStaticDestination) DiscardBigValues() bool {
 	return d.DoDiscardBigValues
 }
 
-func (d *YTSaurusStaticDestination) Rotation() *dp_model.RotatorConfig { // not supported
+func (d *YTSaurusStaticDestination) Rotation() *model.RotatorConfig { // not supported
 	return nil
 }
 
@@ -206,14 +206,14 @@ func (d *YTSaurusStaticDestination) ChunkSize() uint32 {
 }
 
 func (d *YTSaurusStaticDestination) BufferTriggingSize() uint64 {
-	return model.BufferTriggingSizeDefault
+	return clickhouse_model.BufferTriggingSizeDefault
 }
 
 func (d *YTSaurusStaticDestination) BufferTriggingInterval() time.Duration {
 	return 0
 }
 
-func (d *YTSaurusStaticDestination) CleanupMode() dp_model.CleanupType {
+func (d *YTSaurusStaticDestination) CleanupMode() model.CleanupType {
 	return d.Cleanup
 }
 
@@ -231,8 +231,8 @@ func (d *YTSaurusStaticDestination) CustomAttributes() map[string]any {
 
 func (d *YTSaurusStaticDestination) MergeAttributes(tableSettings map[string]any) map[string]any {
 	res := make(map[string]any)
-	maps.Copy(res, d.CustomAttributes())
-	maps.Copy(res, tableSettings)
+	xmaps.Copy(res, d.CustomAttributes())
+	xmaps.Copy(res, tableSettings)
 	return res
 }
 
@@ -244,14 +244,14 @@ func (d *YTSaurusStaticDestination) WithDefaults() {
 		d.UserPool = defaultYTSaurusPool
 	}
 	if d.Cleanup == "" {
-		d.Cleanup = dp_model.Drop
+		d.Cleanup = model.Drop
 	}
 }
 
 func (d *YTSaurusStaticDestination) BuffererConfig() *bufferer.BuffererConfig {
 	return &bufferer.BuffererConfig{
 		TriggingCount:    0,
-		TriggingSize:     model.BufferTriggingSizeDefault,
+		TriggingSize:     clickhouse_model.BufferTriggingSizeDefault,
 		TriggingInterval: 0,
 	}
 }

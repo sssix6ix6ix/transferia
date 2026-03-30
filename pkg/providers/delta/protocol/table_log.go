@@ -5,19 +5,19 @@ import (
 
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/providers/delta/action"
-	store2 "github.com/transferia/transferia/pkg/providers/delta/store"
+	"github.com/transferia/transferia/pkg/providers/delta/store"
 )
 
 type TableLog struct {
 	dataPath       string
 	logPath        string
-	store          store2.Store
+	store          store.Store
 	history        *history
 	snapshotReader *SnapshotReader
 }
 
 // NewTableLog Create a DeltaLog instance representing the table located at the provided path.
-func NewTableLog(dataPath string, logStore store2.Store) (*TableLog, error) {
+func NewTableLog(dataPath string, logStore store.Store) (*TableLog, error) {
 	logPath := strings.TrimRight(dataPath, "/") + "/_delta_log/"
 
 	reader, err := NewCheckpointReader(logStore)

@@ -7,14 +7,14 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
+	aws_credentials "github.com/aws/aws-sdk-go/aws/credentials"
+	aws_session "github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/pkg/abstract"
-	dp_model "github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/model"
-	"github.com/transferia/transferia/pkg/providers/s3"
+	"github.com/transferia/transferia/pkg/abstract/model"
+	clickhouse_model "github.com/transferia/transferia/pkg/providers/clickhouse/model"
+	s3_model "github.com/transferia/transferia/pkg/providers/s3/model"
 	"github.com/transferia/transferia/pkg/providers/s3/s3recipe"
 	"github.com/transferia/transferia/tests/helpers"
 )
@@ -24,8 +24,8 @@ func init() {
 }
 
 var (
-	dst = model.ChDestination{
-		ShardsList: []model.ClickHouseShard{
+	dst = clickhouse_model.ChDestination{
+		ShardsList: []clickhouse_model.ClickHouseShard{
 			{
 				Name: "_",
 				Hosts: []string{
@@ -39,7 +39,7 @@ var (
 		HTTPPort:            helpers.GetIntFromEnv("RECIPE_CLICKHOUSE_HTTP_PORT"),
 		NativePort:          helpers.GetIntFromEnv("RECIPE_CLICKHOUSE_NATIVE_PORT"),
 		ProtocolUnspecified: true,
-		Cleanup:             dp_model.Drop,
+		Cleanup:             model.Drop,
 	}
 	sqsEndpoint  = fmt.Sprintf("http://localhost:%s", os.Getenv("SQS_PORT"))
 	sqsUser      = "test_s3_replication_sqs_user"
@@ -60,12 +60,12 @@ func TestNativeS3PathsAreUnescaped(t *testing.T) {
 
 	src.TableNamespace = "test"
 	src.TableName = "unescaped"
-	src.InputFormat = dp_model.ParsingFormatJSONLine
-	src.EventSource.SQS = &s3.SQS{
+	src.InputFormat = model.ParsingFormatJSONLine
+	src.EventSource.SQS = &s3_model.SQS{
 		QueueName: sqsQueueName,
-		ConnectionConfig: s3.ConnectionConfig{
+		ConnectionConfig: s3_model.ConnectionConfig{
 			AccessKey: sqsUser,
-			SecretKey: dp_model.SecretString(sqsKey),
+			SecretKey: model.SecretString(sqsKey),
 			Endpoint:  sqsEndpoint,
 			Region:    sqsRegion,
 		},
@@ -83,11 +83,11 @@ func TestNativeS3PathsAreUnescaped(t *testing.T) {
 		s3recipe.PrepareTestCase(t, src, src.PathPrefix)
 	}
 
-	sess, err := session.NewSession(&aws.Config{
+	sess, err := aws_session.NewSession(&aws.Config{
 		Endpoint:         aws.String(sqsEndpoint),
 		Region:           aws.String(sqsRegion),
 		S3ForcePathStyle: aws.Bool(src.ConnectionConfig.S3ForcePathStyle),
-		Credentials: credentials.NewStaticCredentials(
+		Credentials: aws_credentials.NewStaticCredentials(
 			sqsUser, string(sqsQueueName), "",
 		),
 	})

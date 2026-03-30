@@ -1,15 +1,15 @@
 package op
 
 import (
-	"github.com/transferia/transferia/pkg/util/token_regexp/abstract"
+	token_regexp_abstract "github.com/transferia/transferia/pkg/util/token_regexp/abstract"
 )
 
 type MatchCurlyBracesOp struct {
-	abstract.Relatives
+	token_regexp_abstract.Relatives
 }
 
 func (t *MatchCurlyBracesOp) IsOp() {}
-func (t *MatchCurlyBracesOp) ConsumePrimitive(tokens []*abstract.Token) []int {
+func (t *MatchCurlyBracesOp) ConsumePrimitive(tokens []*token_regexp_abstract.Token) []int {
 	if len(tokens) < 2 {
 		return nil
 	}
@@ -37,6 +37,6 @@ func (t *MatchCurlyBracesOp) ConsumePrimitive(tokens []*abstract.Token) []int {
 
 func MatchCurlyBraces() *MatchCurlyBracesOp {
 	return &MatchCurlyBracesOp{
-		Relatives: abstract.NewRelativesImpl(),
+		Relatives: token_regexp_abstract.NewRelativesImpl(),
 	}
 }

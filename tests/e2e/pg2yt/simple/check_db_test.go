@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
-	pg_provider "github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
 	yt_recipe "github.com/transferia/transferia/pkg/providers/yt/recipe"
 	"github.com/transferia/transferia/tests/helpers"
@@ -38,7 +38,7 @@ func TestGroup(t *testing.T) {
 
 	worker := helpers.Activate(t, transfer)
 
-	conn, err := pg_provider.MakeConnPoolFromSrc(Source, logger.Log)
+	conn, err := provider_postgres.MakeConnPoolFromSrc(Source, logger.Log)
 	require.NoError(t, err)
 
 	_, err = conn.Exec(context.Background(), "insert into __test (str, id, da, i) values ('qqq', 111, '1999-09-16', 1)")

@@ -11,7 +11,7 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/debezium"
-	debeziumparameters "github.com/transferia/transferia/pkg/debezium/parameters"
+	debezium_parameters "github.com/transferia/transferia/pkg/debezium/parameters"
 )
 
 type containerTime struct {
@@ -38,10 +38,10 @@ func (c *containerTime) IsEnoughChangeItems() bool {
 
 func (c *containerTime) Check(t *testing.T) {
 	emitterWithOriginalTypes, err := debezium.NewMessagesEmitter(map[string]string{
-		debeziumparameters.DatabaseDBName:   "public",
-		debeziumparameters.TopicPrefix:      "my_topic",
-		debeziumparameters.AddOriginalTypes: "true",
-		debeziumparameters.SourceType:       "pg",
+		debezium_parameters.DatabaseDBName:   "public",
+		debezium_parameters.TopicPrefix:      "my_topic",
+		debezium_parameters.AddOriginalTypes: "true",
+		debezium_parameters.SourceType:       "pg",
 	}, "1.1.2.Final", false, logger.Log)
 	require.NoError(t, err)
 

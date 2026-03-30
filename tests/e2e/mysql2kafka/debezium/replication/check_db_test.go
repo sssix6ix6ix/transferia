@@ -12,9 +12,9 @@ import (
 	"github.com/transferia/transferia/library/go/test/yatest"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/changeitem"
-	dp_model "github.com/transferia/transferia/pkg/abstract/model"
-	kafka_provider "github.com/transferia/transferia/pkg/providers/kafka"
-	"github.com/transferia/transferia/pkg/providers/mysql"
+	"github.com/transferia/transferia/pkg/abstract/model"
+	provider_kafka "github.com/transferia/transferia/pkg/providers/kafka"
+	provider_mysql "github.com/transferia/transferia/pkg/providers/mysql"
 	"github.com/transferia/transferia/pkg/util"
 	"github.com/transferia/transferia/tests/helpers"
 	mocksink "github.com/transferia/transferia/tests/helpers/mock_sink"
@@ -55,10 +55,10 @@ func TestReplication(t *testing.T) {
 	//------------------------------------------------------------------------------
 	//prepare dst
 
-	dst, err := kafka_provider.DestinationRecipe()
+	dst, err := provider_kafka.DestinationRecipe()
 	require.NoError(t, err)
 	dst.Topic = "dbserver1"
-	dst.FormatSettings = dp_model.SerializationFormat{Name: dp_model.SerializationFormatDebezium}
+	dst.FormatSettings = model.SerializationFormat{Name: model.SerializationFormatDebezium}
 
 	// prepare additional transfer: from dst to mock
 
@@ -72,11 +72,11 @@ func TestReplication(t *testing.T) {
 		}
 		return nil
 	})
-	mockTarget := dp_model.MockDestination{
+	mockTarget := model.MockDestination{
 		SinkerFactory: func() abstract.Sinker { return mockSink },
-		Cleanup:       dp_model.DisabledCleanup,
+		Cleanup:       model.DisabledCleanup,
 	}
-	additionalTransfer := helpers.MakeTransfer("additional", &kafka_provider.KafkaSource{
+	additionalTransfer := helpers.MakeTransfer("additional", &provider_kafka.KafkaSource{
 		Connection:  dst.Connection,
 		Auth:        dst.Auth,
 		GroupTopics: []string{dst.Topic},
@@ -110,9 +110,9 @@ func TestReplication(t *testing.T) {
 	//-----------------------------------------------------------------------------------------------------------------
 	// execute SQL statements
 
-	connParams, err := mysql.NewConnectionParams(Source.ToStorageParams())
+	connParams, err := provider_mysql.NewConnectionParams(Source.ToStorageParams())
 	require.NoError(t, err)
-	srcConn, err := mysql.Connect(connParams, nil)
+	srcConn, err := provider_mysql.Connect(connParams, nil)
 	require.NoError(t, err)
 	defer srcConn.Close()
 

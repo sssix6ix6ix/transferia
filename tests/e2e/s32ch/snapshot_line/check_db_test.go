@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
+	aws_credentials "github.com/aws/aws-sdk-go/aws/credentials"
+	aws_session "github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/pkg/abstract"
@@ -39,11 +39,11 @@ func TestNativeS3(t *testing.T) {
 	}()
 
 	src := s3recipe.PrepareCfg(t, testBucket, "")
-	sess, err := session.NewSession(&aws.Config{
+	sess, err := aws_session.NewSession(&aws.Config{
 		Endpoint:         aws.String(src.ConnectionConfig.Endpoint),
 		Region:           aws.String(src.ConnectionConfig.Region),
 		S3ForcePathStyle: aws.Bool(src.ConnectionConfig.S3ForcePathStyle),
-		Credentials: credentials.NewStaticCredentials(
+		Credentials: aws_credentials.NewStaticCredentials(
 			src.ConnectionConfig.AccessKey, string(src.ConnectionConfig.SecretKey), "",
 		),
 	})

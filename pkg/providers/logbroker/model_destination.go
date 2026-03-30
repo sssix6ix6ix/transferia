@@ -10,10 +10,10 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	debeziumparameters "github.com/transferia/transferia/pkg/debezium/parameters"
+	debezium_parameters "github.com/transferia/transferia/pkg/debezium/parameters"
 	"github.com/transferia/transferia/pkg/middlewares/synchronizer/bufferer"
-	"github.com/transferia/transferia/pkg/providers/ydb"
-	topicsink "github.com/transferia/transferia/pkg/providers/ydb/topics/sink"
+	provider_ydb "github.com/transferia/transferia/pkg/providers/ydb"
+	ydb_topics_sink "github.com/transferia/transferia/pkg/providers/ydb/topics/sink"
 	"github.com/transferia/transferia/pkg/util/queues/coherence_check"
 	"go.uber.org/zap/zapcore"
 	"go.ytsaurus.tech/library/go/core/log"
@@ -30,7 +30,7 @@ type LbDestination struct {
 	Cleanup           model.CleanupType `log:"true"`
 	MaxChunkSize      uint              `log:"true"` // Deprecated, can be deleted, but I'm scared by the GOB
 	WriteTimeoutSec   int               `log:"true"` // Deprecated
-	Credentials       ydb.TokenCredentials
+	Credentials       provider_ydb.TokenCredentials
 	Port              int              `log:"true"`
 	CompressionCodec  CompressionCodec `log:"true"`
 
@@ -56,13 +56,13 @@ const (
 	DisabledTLS = model.DisabledTLS
 )
 
-type CompressionCodec topicsink.CompressionCodec
+type CompressionCodec ydb_topics_sink.CompressionCodec
 
 const (
-	CompressionCodecUnspecified = CompressionCodec(topicsink.CompressionCodecUnspecified)
-	CompressionCodecRaw         = CompressionCodec(topicsink.CompressionCodecRaw)
-	CompressionCodecGzip        = CompressionCodec(topicsink.CompressionCodecGzip)
-	CompressionCodecZstd        = CompressionCodec(topicsink.CompressionCodecZstd)
+	CompressionCodecUnspecified = CompressionCodec(ydb_topics_sink.CompressionCodecUnspecified)
+	CompressionCodecRaw         = CompressionCodec(ydb_topics_sink.CompressionCodecRaw)
+	CompressionCodecGzip        = CompressionCodec(ydb_topics_sink.CompressionCodecGzip)
+	CompressionCodecZstd        = CompressionCodec(ydb_topics_sink.CompressionCodecZstd)
 )
 
 func (d *LbDestination) MarshalLogObject(enc zapcore.ObjectEncoder) error {
@@ -123,7 +123,7 @@ func (d *LbDestination) Validate() error {
 }
 
 func (d *LbDestination) YSRNamespaceID() string {
-	return debeziumparameters.GetYSRNamespaceID(d.FormatSettings.Settings)
+	return debezium_parameters.GetYSRNamespaceID(d.FormatSettings.Settings)
 }
 
 func (d *LbDestination) Compatible(src model.Source, transferType abstract.TransferType) error {
@@ -141,7 +141,7 @@ func (d *LbDestination) TransitionalWith(left model.TransitionalEndpoint) bool {
 
 func (d *LbDestination) Serializer() (model.SerializationFormat, bool) {
 	formatSettings := d.FormatSettings
-	formatSettings.Settings = debeziumparameters.EnrichedWithDefaults(formatSettings.Settings)
+	formatSettings.Settings = debezium_parameters.EnrichedWithDefaults(formatSettings.Settings)
 	return formatSettings, d.SaveTxOrder
 }
 
@@ -212,11 +212,11 @@ func instanceContainsPort(instance string) bool {
 	return true
 }
 
-func (d *LbDestination) TopicSinkConfig() *topicsink.Config {
-	return &topicsink.Config{
+func (d *LbDestination) TopicSinkConfig() *ydb_topics_sink.Config {
+	return &ydb_topics_sink.Config{
 		Topic:            d.Topic,
 		TopicPrefix:      d.TopicPrefix,
-		CompressionCodec: topicsink.CompressionCodec(d.CompressionCodec),
+		CompressionCodec: ydb_topics_sink.CompressionCodec(d.CompressionCodec),
 		FormatSettings:   d.FormatSettings,
 
 		AddSystemTables: d.AddSystemTables,

@@ -10,8 +10,8 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	pg_provider "github.com/transferia/transferia/pkg/providers/postgres"
-	yt_provider "github.com/transferia/transferia/pkg/providers/yt"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
+	provider_yt "github.com/transferia/transferia/pkg/providers/yt"
 	"github.com/transferia/transferia/tests/helpers"
 	"go.ytsaurus.tech/yt/go/ypath"
 	"go.ytsaurus.tech/yt/go/yttest"
@@ -19,7 +19,7 @@ import (
 
 var (
 	srcPort = helpers.GetIntFromEnv("PG_LOCAL_PORT")
-	Source  = pg_provider.PgSource{
+	Source  = provider_postgres.PgSource{
 		ClusterID: os.Getenv("PG_CLUSTER_ID"),
 		Hosts:     []string{"localhost"},
 		User:      os.Getenv("PG_LOCAL_USER"),
@@ -27,7 +27,7 @@ var (
 		Database:  os.Getenv("PG_LOCAL_DATABASE"),
 		Port:      srcPort,
 	}
-	Target = yt_provider.NewYtDestinationV1(yt_provider.YtDestination{
+	Target = provider_yt.NewYtDestinationV1(provider_yt.YtDestination{
 		Path:          "//home/cdc/test/pg2yt_e2e",
 		Cluster:       os.Getenv("YT_PROXY"),
 		CellBundle:    "default",
@@ -67,7 +67,7 @@ func EmptyTableList(t *testing.T) {
 
 	//------------------------------------------------------------------------------
 
-	conn, err := pg_provider.MakeConnPoolFromSrc(&Source, logger.Log)
+	conn, err := provider_postgres.MakeConnPoolFromSrc(&Source, logger.Log)
 	require.NoError(t, err)
 
 	_, err = conn.Exec(context.Background(), "insert into __test (str, id, da, i) values ('qqq', 111, '1999-09-16', 1)")
@@ -111,7 +111,7 @@ func NotEmptyTableList(t *testing.T) {
 
 	//------------------------------------------------------------------------------
 
-	conn, err := pg_provider.MakeConnPoolFromSrc(&Source, logger.Log)
+	conn, err := provider_postgres.MakeConnPoolFromSrc(&Source, logger.Log)
 	require.NoError(t, err)
 
 	_, err = conn.Exec(context.Background(), "insert into __test (str, id, da, i) values ('qqq', 111, '1999-09-16', 1)")

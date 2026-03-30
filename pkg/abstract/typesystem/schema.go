@@ -2,7 +2,7 @@ package typesystem
 
 import (
 	"github.com/transferia/transferia/pkg/abstract"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 const (
@@ -14,26 +14,26 @@ type Rule struct {
 	// `Target` stores the mapping of `schema.Type`-s to provider-specific types for each `Target` provider.
 	// example:
 	//	{schema.TypeString: "TEXT"}
-	Target map[schema.Type]string
+	Target map[ytschema.Type]string
 	// `Source` stores the conversion rules from the provider-specific type to the `schema.Type` for each `Source` provider.
 	// example:
 	//	{"TINYTEXT": schema.TypeString}
-	Source map[string]schema.Type
+	Source map[string]ytschema.Type
 }
 
 var (
 	// `sourceTypeRegistry` stores the conversion rules from the provider-specific type to the transfer type for each `Source` provider.
 	// example:
 	//	{MYSQL: {"TINYTEXT": schema.TypeString}}
-	sourceTypeRegistry = map[abstract.ProviderType]map[string]schema.Type{}
+	sourceTypeRegistry = map[abstract.ProviderType]map[string]ytschema.Type{}
 	// `targetTypeRegistry` stores the mapping of transfer types to provider-specific types for each `Target` provider.
 	// example:
 	//	{MYSQL: {schema.TypeString: "TEXT"}}
-	targetTypeRegistry = map[abstract.ProviderType]map[schema.Type]string{}
+	targetTypeRegistry = map[abstract.ProviderType]map[ytschema.Type]string{}
 )
 
-func SourceRules(provider abstract.ProviderType, rules map[schema.Type][]string) {
-	sourceTypeRegistry[provider] = map[string]schema.Type{}
+func SourceRules(provider abstract.ProviderType, rules map[ytschema.Type][]string) {
+	sourceTypeRegistry[provider] = map[string]ytschema.Type{}
 	for target, sources := range rules {
 		for _, sourceTyp := range sources {
 			sourceTypeRegistry[provider][sourceTyp] = target
@@ -41,29 +41,29 @@ func SourceRules(provider abstract.ProviderType, rules map[schema.Type][]string)
 	}
 }
 
-func TargetRule(provider abstract.ProviderType, rules map[schema.Type]string) {
+func TargetRule(provider abstract.ProviderType, rules map[ytschema.Type]string) {
 	targetTypeRegistry[provider] = rules
 }
 
-func SupportedTypes() []schema.Type {
-	return []schema.Type{
-		schema.TypeInt64,
-		schema.TypeInt32,
-		schema.TypeInt16,
-		schema.TypeInt8,
-		schema.TypeUint64,
-		schema.TypeUint32,
-		schema.TypeUint16,
-		schema.TypeUint8,
-		schema.TypeFloat32,
-		schema.TypeFloat64,
-		schema.TypeBytes,
-		schema.TypeString,
-		schema.TypeBoolean,
-		schema.TypeDate,
-		schema.TypeDatetime,
-		schema.TypeTimestamp,
-		schema.TypeAny,
+func SupportedTypes() []ytschema.Type {
+	return []ytschema.Type{
+		ytschema.TypeInt64,
+		ytschema.TypeInt32,
+		ytschema.TypeInt16,
+		ytschema.TypeInt8,
+		ytschema.TypeUint64,
+		ytschema.TypeUint32,
+		ytschema.TypeUint16,
+		ytschema.TypeUint8,
+		ytschema.TypeFloat32,
+		ytschema.TypeFloat64,
+		ytschema.TypeBytes,
+		ytschema.TypeString,
+		ytschema.TypeBoolean,
+		ytschema.TypeDate,
+		ytschema.TypeDatetime,
+		ytschema.TypeTimestamp,
+		ytschema.TypeAny,
 	}
 }
 

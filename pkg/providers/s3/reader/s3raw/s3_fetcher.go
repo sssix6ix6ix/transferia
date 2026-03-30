@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/s3"
+	aws_s3 "github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/library/go/core/xerrors"
@@ -32,7 +32,7 @@ func (f *s3Fetcher) size() int64 {
 
 func (f *s3Fetcher) fetchSize() (int64, error) {
 	if f.objectSize < 0 {
-		if err := f.headObjectInfo(&s3.HeadObjectInput{
+		if err := f.headObjectInfo(&aws_s3.HeadObjectInput{
 			Bucket: aws.String(f.bucket),
 			Key:    aws.String(f.key),
 		}); err != nil {
@@ -54,7 +54,7 @@ func (f *s3Fetcher) lastModified() time.Time {
 
 func (f *s3Fetcher) fetchLastModified() (time.Time, error) {
 	if f.lastModifiedTimestamp.IsZero() {
-		if err := f.headObjectInfo(&s3.HeadObjectInput{
+		if err := f.headObjectInfo(&aws_s3.HeadObjectInput{
 			Bucket: aws.String(f.bucket),
 			Key:    aws.String(f.key),
 		}); err != nil {
@@ -67,7 +67,7 @@ func (f *s3Fetcher) fetchLastModified() (time.Time, error) {
 	}
 }
 
-func (f *s3Fetcher) headObjectInfo(input *s3.HeadObjectInput) error {
+func (f *s3Fetcher) headObjectInfo(input *aws_s3.HeadObjectInput) error {
 	client := f.client
 
 	resp, err := client.HeadObjectWithContext(f.ctx, input)
@@ -91,7 +91,7 @@ func (f *s3Fetcher) headObjectInfo(input *s3.HeadObjectInput) error {
 	return nil
 }
 
-func (f *s3Fetcher) getObject(input *s3.GetObjectInput) (*s3.GetObjectOutput, error) {
+func (f *s3Fetcher) getObject(input *aws_s3.GetObjectInput) (*aws_s3.GetObjectOutput, error) {
 	client := f.client
 
 	resp, err := client.GetObjectWithContext(f.ctx, input)
@@ -102,7 +102,7 @@ func (f *s3Fetcher) getObject(input *s3.GetObjectInput) (*s3.GetObjectOutput, er
 }
 
 func (f *s3Fetcher) makeReader() (io.ReadCloser, error) {
-	resp, err := f.getObject(&s3.GetObjectInput{
+	resp, err := f.getObject(&aws_s3.GetObjectInput{
 		Bucket: aws.String(f.bucket),
 		Key:    aws.String(f.key),
 	})

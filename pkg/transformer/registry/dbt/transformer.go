@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/transferia/transferia/pkg/abstract"
-	transformerregistry "github.com/transferia/transferia/pkg/transformer"
+	"github.com/transferia/transferia/pkg/transformer"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
@@ -16,7 +16,7 @@ type Config struct {
 }
 
 func init() {
-	transformerregistry.Register[Config](TransformerType, func(cfg Config, lgr log.Logger, runtime abstract.TransformationRuntimeOpts) (abstract.Transformer, error) {
+	transformer.Register[Config](TransformerType, func(cfg Config, lgr log.Logger, runtime abstract.TransformationRuntimeOpts) (abstract.Transformer, error) {
 		return &dbt{cfg: cfg}, nil
 	})
 }

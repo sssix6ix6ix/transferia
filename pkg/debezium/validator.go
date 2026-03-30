@@ -14,7 +14,7 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	debeziumparameters "github.com/transferia/transferia/pkg/debezium/parameters"
+	debezium_parameters "github.com/transferia/transferia/pkg/debezium/parameters"
 	confluentsrmock "github.com/transferia/transferia/tests/helpers/confluent_schema_registry_mock"
 )
 
@@ -66,12 +66,12 @@ func emitAndValidate(connectorParameters map[string]string, changeItem *abstract
 		params[k] = v
 	}
 	srParams := map[string]string{
-		debeziumparameters.KeyConverter:                    debeziumparameters.ConverterConfluentJSON,
-		debeziumparameters.KeyConverterSchemaRegistryURL:   sr.URL(),
-		debeziumparameters.KeyConverterBasicAuthUserInfo:   "my_login:my_pass",
-		debeziumparameters.ValueConverter:                  debeziumparameters.ConverterConfluentJSON,
-		debeziumparameters.ValueConverterSchemaRegistryURL: sr.URL(),
-		debeziumparameters.ValueConverterBasicAuthUserInfo: "my_login:my_pass",
+		debezium_parameters.KeyConverter:                    debezium_parameters.ConverterConfluentJSON,
+		debezium_parameters.KeyConverterSchemaRegistryURL:   sr.URL(),
+		debezium_parameters.KeyConverterBasicAuthUserInfo:   "my_login:my_pass",
+		debezium_parameters.ValueConverter:                  debezium_parameters.ConverterConfluentJSON,
+		debezium_parameters.ValueConverterSchemaRegistryURL: sr.URL(),
+		debezium_parameters.ValueConverterBasicAuthUserInfo: "my_login:my_pass",
 	}
 	for k, v := range srParams {
 		params[k] = v
@@ -80,7 +80,7 @@ func emitAndValidate(connectorParameters map[string]string, changeItem *abstract
 		params[k] = v
 	}
 
-	dropKeys := debeziumparameters.GetBatchingMaxSize(params) != 0
+	dropKeys := debezium_parameters.GetBatchingMaxSize(params) != 0
 
 	emitter, err := NewMessagesEmitter(params, "1.1.2.Final", dropKeys, logger.Log)
 	panicOnError(err)

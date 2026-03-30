@@ -10,17 +10,17 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/parsers"
-	jsonparser "github.com/transferia/transferia/pkg/parsers/registry/json"
+	parser_json "github.com/transferia/transferia/pkg/parsers/registry/json"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/chrecipe"
-	kafkasink "github.com/transferia/transferia/pkg/providers/kafka"
-	"github.com/transferia/transferia/tests/canon/reference"
+	provider_kafka "github.com/transferia/transferia/pkg/providers/kafka"
+	canon_reference "github.com/transferia/transferia/tests/canon/reference"
 	"github.com/transferia/transferia/tests/helpers"
 	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 var (
 	kafkaTopic = "topic1"
-	source     = *kafkasink.MustSourceRecipe()
+	source     = *provider_kafka.MustSourceRecipe()
 
 	chDatabase     = "public"
 	target         = *chrecipe.MustTarget(chrecipe.WithInitDir("dump/ch"), chrecipe.WithDatabase(chDatabase))
@@ -52,7 +52,7 @@ func fixTimestampMiddleware(t *testing.T, items []abstract.ChangeItem) abstract.
 func TestReplication(t *testing.T) {
 	// prepare source
 
-	parserConfigStruct := &jsonparser.ParserConfigJSONCommon{
+	parserConfigStruct := &parser_json.ParserConfigJSONCommon{
 		Fields: []abstract.ColSchema{
 			{ColumnName: "id", DataType: ytschema.TypeInt32.String(), PrimaryKey: true},
 			{ColumnName: "level", DataType: ytschema.TypeString.String()},
@@ -73,8 +73,8 @@ func TestReplication(t *testing.T) {
 	k := []byte(`any_key`)
 	v := []byte(`{"id": "1", "level": "my_level", "caller": "my_caller", "msg": "my_msg"}`)
 
-	srcSink, err := kafkasink.NewReplicationSink(
-		&kafkasink.KafkaDestination{
+	srcSink, err := provider_kafka.NewReplicationSink(
+		&provider_kafka.KafkaDestination{
 			Connection: source.Connection,
 			Auth:       source.Auth,
 			Topic:      source.Topic,
@@ -115,5 +115,5 @@ func TestReplication(t *testing.T) {
 		60*time.Second,
 		1,
 	))
-	reference.Dump(t, &targetAsSource)
+	canon_reference.Dump(t, &targetAsSource)
 }

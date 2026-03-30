@@ -9,7 +9,7 @@ import (
 
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	abstract_reader "github.com/transferia/transferia/pkg/providers/s3/reader"
+	s3_reader "github.com/transferia/transferia/pkg/providers/s3/reader"
 	"github.com/transferia/transferia/pkg/util"
 )
 
@@ -19,7 +19,7 @@ func resolveSchema(ctx context.Context, r *ProtoReader, key string) (*abstract.T
 		return nil, xerrors.Errorf("unable to open reader for file: %s: %w", key, err)
 	}
 
-	chunkReader := abstract_reader.NewChunkReader(s3RawReader, int(r.blockSize), r.logger)
+	chunkReader := s3_reader.NewChunkReader(s3RawReader, int(r.blockSize), r.logger)
 	defer chunkReader.Close()
 	err = chunkReader.ReadNextChunk()
 	if err != nil && !xerrors.Is(err, io.EOF) {

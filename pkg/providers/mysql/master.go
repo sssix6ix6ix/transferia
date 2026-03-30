@@ -3,22 +3,22 @@ package mysql
 import (
 	"sync"
 
-	"github.com/go-mysql-org/go-mysql/mysql"
-	"github.com/siddontang/go-log/log"
+	mysql_driver "github.com/go-mysql-org/go-mysql/mysql"
+	siddontang_log "github.com/siddontang/go-log/log"
 )
 
 type masterInfo struct {
 	sync.RWMutex
 
-	pos mysql.Position
+	pos mysql_driver.Position
 
-	gset mysql.GTIDSet
+	gset mysql_driver.GTIDSet
 
 	timestamp uint32
 }
 
-func (m *masterInfo) Update(pos mysql.Position) {
-	log.Debugf("update master position %s", pos)
+func (m *masterInfo) Update(pos mysql_driver.Position) {
+	siddontang_log.Debugf("update master position %s", pos)
 
 	m.Lock()
 	m.pos = pos
@@ -26,22 +26,22 @@ func (m *masterInfo) Update(pos mysql.Position) {
 }
 
 func (m *masterInfo) UpdateTimestamp(ts uint32) {
-	log.Debugf("update master timestamp %d", ts)
+	siddontang_log.Debugf("update master timestamp %d", ts)
 
 	m.Lock()
 	m.timestamp = ts
 	m.Unlock()
 }
 
-func (m *masterInfo) UpdateGTIDSet(gset mysql.GTIDSet) {
-	log.Debugf("update master gtid set %s", gset)
+func (m *masterInfo) UpdateGTIDSet(gset mysql_driver.GTIDSet) {
+	siddontang_log.Debugf("update master gtid set %s", gset)
 
 	m.Lock()
 	m.gset = gset
 	m.Unlock()
 }
 
-func (m *masterInfo) Position() mysql.Position {
+func (m *masterInfo) Position() mysql_driver.Position {
 	m.RLock()
 	defer m.RUnlock()
 
@@ -55,7 +55,7 @@ func (m *masterInfo) Timestamp() uint32 {
 	return m.timestamp
 }
 
-func (m *masterInfo) GTIDSet() mysql.GTIDSet {
+func (m *masterInfo) GTIDSet() mysql_driver.GTIDSet {
 	m.RLock()
 	defer m.RUnlock()
 

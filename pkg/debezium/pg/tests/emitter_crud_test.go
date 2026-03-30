@@ -7,8 +7,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/library/go/test/yatest"
 	"github.com/transferia/transferia/pkg/abstract"
-	debeziumcommon "github.com/transferia/transferia/pkg/debezium/common"
-	"github.com/transferia/transferia/pkg/debezium/testutil"
+	debezium_common "github.com/transferia/transferia/pkg/debezium/common"
+	debezium_testutil "github.com/transferia/transferia/pkg/debezium/testutil"
 )
 
 var (
@@ -81,10 +81,10 @@ func InitCanon(t *testing.T) {
 	}
 }
 
-func getArrChangeItemCanon() []debeziumcommon.ChangeItemCanon {
-	var changeItemCanonInsert = debeziumcommon.ChangeItemCanon{
+func getArrChangeItemCanon() []debezium_common.ChangeItemCanon {
+	var changeItemCanonInsert = debezium_common.ChangeItemCanon{
 		ChangeItem: insert,
-		DebeziumEvents: []debeziumcommon.KeyValue{
+		DebeziumEvents: []debezium_common.KeyValue{
 			{
 				DebeziumKey: `{"schema":{"type":"struct","fields":[{"type":"int32","optional":false,"field":"i"}],"optional":false,"name":"fullfillment.public.basic_types.Key"},"payload":{"i":1}}`,
 				DebeziumVal: &insertDebebziumVal,
@@ -92,9 +92,9 @@ func getArrChangeItemCanon() []debeziumcommon.ChangeItemCanon {
 		},
 	}
 
-	var changeItemCanonUpdate1 = debeziumcommon.ChangeItemCanon{
+	var changeItemCanonUpdate1 = debezium_common.ChangeItemCanon{
 		ChangeItem: update0,
-		DebeziumEvents: []debeziumcommon.KeyValue{
+		DebeziumEvents: []debezium_common.KeyValue{
 			{
 				DebeziumKey: `{"schema":{"type":"struct","fields":[{"type":"int32","optional":false,"field":"i"}],"optional":false,"name":"fullfillment.public.basic_types.Key"},"payload":{"i":1}}`,
 				DebeziumVal: &update0DebeziumVal,
@@ -102,9 +102,9 @@ func getArrChangeItemCanon() []debeziumcommon.ChangeItemCanon {
 		},
 	}
 
-	var changeItemCanonUpdate2 = debeziumcommon.ChangeItemCanon{
+	var changeItemCanonUpdate2 = debezium_common.ChangeItemCanon{
 		ChangeItem: update1,
-		DebeziumEvents: []debeziumcommon.KeyValue{
+		DebeziumEvents: []debezium_common.KeyValue{
 			{
 				DebeziumKey: `{"schema":{"type":"struct","fields":[{"type":"int32","optional":false,"field":"i"}],"optional":false,"name":"fullfillment.public.basic_types.Key"},"payload":{"i":1}}`,
 				DebeziumVal: &update1DebeziumVal,
@@ -112,9 +112,9 @@ func getArrChangeItemCanon() []debeziumcommon.ChangeItemCanon {
 		},
 	}
 
-	var changeItemCanonUpdate3 = debeziumcommon.ChangeItemCanon{
+	var changeItemCanonUpdate3 = debezium_common.ChangeItemCanon{
 		ChangeItem: update2,
-		DebeziumEvents: []debeziumcommon.KeyValue{
+		DebeziumEvents: []debezium_common.KeyValue{
 			{
 				DebeziumKey: `{"schema":{"type":"struct","fields":[{"type":"int32","optional":false,"field":"i"}],"optional":false,"name":"fullfillment.public.basic_types.Key"},"payload":{"i":1}}`,
 				DebeziumVal: &update2DebeziumVal0,
@@ -130,9 +130,9 @@ func getArrChangeItemCanon() []debeziumcommon.ChangeItemCanon {
 		},
 	}
 
-	var changeItemCanonDelete = debeziumcommon.ChangeItemCanon{
+	var changeItemCanonDelete = debezium_common.ChangeItemCanon{
 		ChangeItem: delete_,
-		DebeziumEvents: []debeziumcommon.KeyValue{
+		DebeziumEvents: []debezium_common.KeyValue{
 			{
 				DebeziumKey: `{"schema":{"type":"struct","fields":[{"type":"int32","optional":false,"field":"i"}],"optional":false,"name":"fullfillment.public.basic_types.Key"},"payload":{"i":2}}`,
 				DebeziumVal: &deleteDebeziumVal,
@@ -144,7 +144,7 @@ func getArrChangeItemCanon() []debeziumcommon.ChangeItemCanon {
 		},
 	}
 
-	return []debeziumcommon.ChangeItemCanon{
+	return []debezium_common.ChangeItemCanon{
 		changeItemCanonInsert,
 		changeItemCanonUpdate1,
 		changeItemCanonUpdate2,
@@ -156,8 +156,8 @@ func getArrChangeItemCanon() []debeziumcommon.ChangeItemCanon {
 func TestPg(t *testing.T) {
 	InitCanon(t)
 	testSuite := getArrChangeItemCanon()
-	testSuite = testutil.FixTestSuite(t, testSuite, "fullfillment", "pguser", "pg")
+	testSuite = debezium_testutil.FixTestSuite(t, testSuite, "fullfillment", "pguser", "pg")
 	for _, testCase := range testSuite {
-		testutil.CheckCanonizedDebeziumEvent(t, testCase.ChangeItem, "fullfillment", "pguser", "pg", false, testCase.DebeziumEvents)
+		debezium_testutil.CheckCanonizedDebeziumEvent(t, testCase.ChangeItem, "fullfillment", "pguser", "pg", false, testCase.DebeziumEvents)
 	}
 }

@@ -11,15 +11,15 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/parsers"
-	"github.com/transferia/transferia/pkg/parsers/registry/debezium"
-	"github.com/transferia/transferia/pkg/providers/kafka"
-	pgcommon "github.com/transferia/transferia/pkg/providers/postgres"
-	"github.com/transferia/transferia/pkg/providers/yt"
+	parser_debezium "github.com/transferia/transferia/pkg/parsers/registry/debezium"
+	provider_kafka "github.com/transferia/transferia/pkg/providers/kafka"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
+	provider_yt "github.com/transferia/transferia/pkg/providers/yt"
 	"github.com/transferia/transferia/tests/helpers"
 )
 
 var (
-	PgSource = &pgcommon.PgSource{
+	PgSource = &provider_postgres.PgSource{
 		ClusterID: os.Getenv("PG_CLUSTER_ID"),
 		Hosts:     []string{"localhost"},
 		User:      os.Getenv("PG_LOCAL_USER"),
@@ -28,7 +28,7 @@ var (
 		Port:      helpers.GetIntFromEnv("PG_LOCAL_PORT"),
 		DBTables:  []string{"public.__test"},
 	}
-	YtDestination = yt.NewYtDestinationV1(yt.YtDestination{
+	YtDestination = provider_yt.NewYtDestinationV1(provider_yt.YtDestination{
 		Path:          "//home/cdc/test/pg2lb2yt_e2e_replication",
 		Cluster:       os.Getenv("YT_PROXY"),
 		CellBundle:    "default",
@@ -49,10 +49,10 @@ func TestReplication(t *testing.T) {
 	//------------------------------------------------------------------------------
 	// init pg
 
-	srcConnConfig, err := pgcommon.MakeConnConfigFromSrc(logger.Log, PgSource)
+	srcConnConfig, err := provider_postgres.MakeConnConfigFromSrc(logger.Log, PgSource)
 	require.NoError(t, err)
 	srcConnConfig.PreferSimpleProtocol = true
-	srcConn, err := pgcommon.NewPgConnPool(srcConnConfig, nil)
+	srcConn, err := provider_postgres.NewPgConnPool(srcConnConfig, nil)
 	require.NoError(t, err)
 
 	createQuery := "create table IF NOT EXISTS __test (a_id integer primary key, a_name varchar(255));"
@@ -62,12 +62,12 @@ func TestReplication(t *testing.T) {
 	//------------------------------------------------------------------------------
 	// run transfer pg -> kafka
 
-	kafkaDst := &kafka.KafkaDestination{
-		Connection: &kafka.KafkaConnectionOptions{
+	kafkaDst := &provider_kafka.KafkaDestination{
+		Connection: &provider_kafka.KafkaConnectionOptions{
 			TLS:     model.DisabledTLS,
 			Brokers: []string{brokers},
 		},
-		Auth:  &kafka.KafkaAuth{Enabled: false},
+		Auth:  &provider_kafka.KafkaAuth{Enabled: false},
 		Topic: topicName,
 		FormatSettings: model.SerializationFormat{
 			Name: model.SerializationFormatAuto,
@@ -82,16 +82,16 @@ func TestReplication(t *testing.T) {
 	//------------------------------------------------------------------------------
 	// run transfer kafka -> yt
 
-	parserConfigStruct := &debezium.ParserConfigDebeziumCommon{}
+	parserConfigStruct := &parser_debezium.ParserConfigDebeziumCommon{}
 	parserConfigMap, err := parsers.ParserConfigStructToMap(parserConfigStruct)
 	require.NoError(t, err)
 
-	kafkaSrc := &kafka.KafkaSource{
-		Connection: &kafka.KafkaConnectionOptions{
+	kafkaSrc := &provider_kafka.KafkaSource{
+		Connection: &provider_kafka.KafkaConnectionOptions{
 			TLS:     model.DisabledTLS,
 			Brokers: []string{brokers},
 		},
-		Auth:             &kafka.KafkaAuth{Enabled: false},
+		Auth:             &provider_kafka.KafkaAuth{Enabled: false},
 		Topic:            topicName,
 		Transformer:      nil,
 		BufferSize:       model.BytesSize(1024),

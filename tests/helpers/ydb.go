@@ -11,9 +11,9 @@ import (
 	yslices "github.com/transferia/transferia/library/go/slices"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/ydb"
+	provider_ydb "github.com/transferia/transferia/pkg/providers/ydb"
 	mocksink "github.com/transferia/transferia/tests/helpers/mock_sink"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 func YDBInitChangeItem(tablePath string) *abstract.ChangeItem {
@@ -27,34 +27,34 @@ func YDBInitChangeItem(tablePath string) *abstract.ChangeItem {
 		TableSchema: abstract.NewTableSchema([]abstract.ColSchema{
 			{PrimaryKey: true, Required: false, ColumnName: "id", DataType: "uint64", OriginalType: "ydb:Uint64"},
 
-			{PrimaryKey: false, Required: false, ColumnName: "Bool_", DataType: string(schema.TypeBoolean), OriginalType: "ydb:Bool"},
+			{PrimaryKey: false, Required: false, ColumnName: "Bool_", DataType: string(ytschema.TypeBoolean), OriginalType: "ydb:Bool"},
 
-			{PrimaryKey: false, Required: false, ColumnName: "Int8_", DataType: string(schema.TypeInt8), OriginalType: "ydb:Int8"},
-			{PrimaryKey: false, Required: false, ColumnName: "Int16_", DataType: string(schema.TypeInt16), OriginalType: "ydb:Int16"},
-			{PrimaryKey: false, Required: false, ColumnName: "Int32_", DataType: string(schema.TypeInt32), OriginalType: "ydb:Int32"},
-			{PrimaryKey: false, Required: false, ColumnName: "Int64_", DataType: string(schema.TypeInt64), OriginalType: "ydb:Int64"},
+			{PrimaryKey: false, Required: false, ColumnName: "Int8_", DataType: string(ytschema.TypeInt8), OriginalType: "ydb:Int8"},
+			{PrimaryKey: false, Required: false, ColumnName: "Int16_", DataType: string(ytschema.TypeInt16), OriginalType: "ydb:Int16"},
+			{PrimaryKey: false, Required: false, ColumnName: "Int32_", DataType: string(ytschema.TypeInt32), OriginalType: "ydb:Int32"},
+			{PrimaryKey: false, Required: false, ColumnName: "Int64_", DataType: string(ytschema.TypeInt64), OriginalType: "ydb:Int64"},
 
-			{PrimaryKey: false, Required: false, ColumnName: "Uint8_", DataType: string(schema.TypeUint8), OriginalType: "ydb:Uint8"},
-			{PrimaryKey: false, Required: false, ColumnName: "Uint16_", DataType: string(schema.TypeUint16), OriginalType: "ydb:Uint16"},
-			{PrimaryKey: false, Required: false, ColumnName: "Uint32_", DataType: string(schema.TypeUint32), OriginalType: "ydb:Uint32"},
-			{PrimaryKey: false, Required: false, ColumnName: "Uint64_", DataType: string(schema.TypeUint64), OriginalType: "ydb:Uint64"},
+			{PrimaryKey: false, Required: false, ColumnName: "Uint8_", DataType: string(ytschema.TypeUint8), OriginalType: "ydb:Uint8"},
+			{PrimaryKey: false, Required: false, ColumnName: "Uint16_", DataType: string(ytschema.TypeUint16), OriginalType: "ydb:Uint16"},
+			{PrimaryKey: false, Required: false, ColumnName: "Uint32_", DataType: string(ytschema.TypeUint32), OriginalType: "ydb:Uint32"},
+			{PrimaryKey: false, Required: false, ColumnName: "Uint64_", DataType: string(ytschema.TypeUint64), OriginalType: "ydb:Uint64"},
 
-			{PrimaryKey: false, Required: false, ColumnName: "Float_", DataType: string(schema.TypeFloat32), OriginalType: "ydb:Float"},
-			{PrimaryKey: false, Required: false, ColumnName: "Double_", DataType: string(schema.TypeFloat64), OriginalType: "ydb:Double"},
-			{PrimaryKey: false, Required: false, ColumnName: "Decimal_", DataType: string(schema.TypeString), OriginalType: "ydb:Decimal"}, // When used in table columns, precision is fixed: Decimal(22,9)
-			{PrimaryKey: false, Required: false, ColumnName: "DyNumber_", DataType: string(schema.TypeString), OriginalType: "ydb:DyNumber"},
+			{PrimaryKey: false, Required: false, ColumnName: "Float_", DataType: string(ytschema.TypeFloat32), OriginalType: "ydb:Float"},
+			{PrimaryKey: false, Required: false, ColumnName: "Double_", DataType: string(ytschema.TypeFloat64), OriginalType: "ydb:Double"},
+			{PrimaryKey: false, Required: false, ColumnName: "Decimal_", DataType: string(ytschema.TypeString), OriginalType: "ydb:Decimal"}, // When used in table columns, precision is fixed: Decimal(22,9)
+			{PrimaryKey: false, Required: false, ColumnName: "DyNumber_", DataType: string(ytschema.TypeString), OriginalType: "ydb:DyNumber"},
 
-			{PrimaryKey: false, Required: false, ColumnName: "String_", DataType: string(schema.TypeBytes), OriginalType: "ydb:String"},
-			{PrimaryKey: false, Required: false, ColumnName: "Utf8_", DataType: string(schema.TypeString), OriginalType: "ydb:Utf8"},
-			{PrimaryKey: false, Required: false, ColumnName: "Json_", DataType: string(schema.TypeAny), OriginalType: "ydb:Json"},
-			{PrimaryKey: false, Required: false, ColumnName: "JsonDocument_", DataType: string(schema.TypeAny), OriginalType: "ydb:JsonDocument"},
+			{PrimaryKey: false, Required: false, ColumnName: "String_", DataType: string(ytschema.TypeBytes), OriginalType: "ydb:String"},
+			{PrimaryKey: false, Required: false, ColumnName: "Utf8_", DataType: string(ytschema.TypeString), OriginalType: "ydb:Utf8"},
+			{PrimaryKey: false, Required: false, ColumnName: "Json_", DataType: string(ytschema.TypeAny), OriginalType: "ydb:Json"},
+			{PrimaryKey: false, Required: false, ColumnName: "JsonDocument_", DataType: string(ytschema.TypeAny), OriginalType: "ydb:JsonDocument"},
 			//{PrimaryKey: false, Required: false, ColumnName: "Yson_", DataType: "", OriginalType: "ydb:Yson"}, // can't find any acceptable value
-			{PrimaryKey: false, Required: false, ColumnName: "Uuid_", DataType: string(schema.TypeString), OriginalType: "ydb:Uuid"}, // Не поддержан для столбцов таблиц
+			{PrimaryKey: false, Required: false, ColumnName: "Uuid_", DataType: string(ytschema.TypeString), OriginalType: "ydb:Uuid"}, // Не поддержан для столбцов таблиц
 
-			{PrimaryKey: false, Required: false, ColumnName: "Date_", DataType: string(schema.TypeDate), OriginalType: "ydb:Date"},
-			{PrimaryKey: false, Required: false, ColumnName: "Datetime_", DataType: string(schema.TypeDatetime), OriginalType: "ydb:Datetime"},
-			{PrimaryKey: false, Required: false, ColumnName: "Timestamp_", DataType: string(schema.TypeTimestamp), OriginalType: "ydb:Timestamp"},
-			{PrimaryKey: false, Required: false, ColumnName: "Interval_", DataType: string(schema.TypeInterval), OriginalType: "ydb:Interval"},
+			{PrimaryKey: false, Required: false, ColumnName: "Date_", DataType: string(ytschema.TypeDate), OriginalType: "ydb:Date"},
+			{PrimaryKey: false, Required: false, ColumnName: "Datetime_", DataType: string(ytschema.TypeDatetime), OriginalType: "ydb:Datetime"},
+			{PrimaryKey: false, Required: false, ColumnName: "Timestamp_", DataType: string(ytschema.TypeTimestamp), OriginalType: "ydb:Timestamp"},
+			{PrimaryKey: false, Required: false, ColumnName: "Interval_", DataType: string(ytschema.TypeInterval), OriginalType: "ydb:Interval"},
 			//{PrimaryKey: false, Required: false, ColumnName: "TzDate_", DataType: "", OriginalType: "ydb:TzDate"}, // Не поддержан для столбцов таблиц
 			//{PrimaryKey: false, Required: false, ColumnName: "TzDateTime_", DataType: "", OriginalType: "ydb:TzDateTime"}, // Не поддержан для столбцов таблиц
 			//{PrimaryKey: false, Required: false, ColumnName: "TzTimestamp_", DataType: "", OriginalType: "ydb:TzTimestamp"}, // Не поддержан для столбцов таблиц
@@ -255,7 +255,7 @@ func YDBTwoTablesEqual(t *testing.T, token, database, instance, tableA, tableB s
 }
 
 func YDBPullDataFromTable(t *testing.T, token, database, instance, table string) []abstract.ChangeItem {
-	src := &ydb.YdbSource{
+	src := &provider_ydb.YdbSource{
 		Token:              model.SecretString(token),
 		Database:           database,
 		Instance:           instance,

@@ -14,9 +14,9 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/parsers"
-	jsonparser "github.com/transferia/transferia/pkg/parsers/registry/json"
-	kafkasink "github.com/transferia/transferia/pkg/providers/kafka"
-	filterrows "github.com/transferia/transferia/pkg/transformer/registry/filter_rows"
+	parser_json "github.com/transferia/transferia/pkg/parsers/registry/json"
+	provider_kafka "github.com/transferia/transferia/pkg/providers/kafka"
+	transformer_filter_rows "github.com/transferia/transferia/pkg/transformer/registry/filter_rows"
 	"github.com/transferia/transferia/tests/helpers"
 	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
@@ -24,12 +24,12 @@ import (
 var (
 	topicName = "testTopic"
 
-	source = kafkasink.KafkaSource{
-		Connection: &kafkasink.KafkaConnectionOptions{
+	source = provider_kafka.KafkaSource{
+		Connection: &provider_kafka.KafkaConnectionOptions{
 			TLS:     model.DisabledTLS,
 			Brokers: []string{os.Getenv("KAFKA_RECIPE_BROKER_LIST")},
 		},
-		Auth:             &kafkasink.KafkaAuth{Enabled: false},
+		Auth:             &provider_kafka.KafkaAuth{Enabled: false},
 		Topic:            topicName,
 		Transformer:      nil,
 		BufferSize:       model.BytesSize(1024),
@@ -42,7 +42,7 @@ var (
 func TestReplication(t *testing.T) {
 
 	// prepare source
-	parserConfigStruct := &jsonparser.ParserConfigJSONCommon{
+	parserConfigStruct := &parser_json.ParserConfigJSONCommon{
 		Fields: []abstract.ColSchema{
 			{ColumnName: "id", DataType: ytschema.TypeInt32.String(), PrimaryKey: true},
 			{ColumnName: "i64", DataType: ytschema.TypeInt64.String()},
@@ -76,8 +76,8 @@ func TestReplication(t *testing.T) {
 	}, " AND ")
 
 	transfer := helpers.MakeTransfer(helpers.TransferID, &source, &target, abstract.TransferTypeIncrementOnly)
-	transformer, err := filterrows.NewFilterRowsTransformer(
-		filterrows.Config{Filter: filter},
+	transformer, err := transformer_filter_rows.NewFilterRowsTransformer(
+		transformer_filter_rows.Config{Filter: filter},
 		logger.Log,
 	)
 	require.NoError(t, err)
@@ -86,8 +86,8 @@ func TestReplication(t *testing.T) {
 	defer worker.Close(t)
 
 	// write to source topic
-	srcSink, err := kafkasink.NewReplicationSink(
-		&kafkasink.KafkaDestination{
+	srcSink, err := provider_kafka.NewReplicationSink(
+		&provider_kafka.KafkaDestination{
 			Connection: source.Connection,
 			Auth:       source.Auth,
 			Topic:      source.Topic,

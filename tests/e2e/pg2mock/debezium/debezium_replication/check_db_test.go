@@ -15,9 +15,9 @@ import (
 	"github.com/transferia/transferia/library/go/test/yatest"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	debeziumcommon "github.com/transferia/transferia/pkg/debezium/common"
-	"github.com/transferia/transferia/pkg/debezium/testutil"
-	pgcommon "github.com/transferia/transferia/pkg/providers/postgres"
+	debezium_common "github.com/transferia/transferia/pkg/debezium/common"
+	debezium_testutil "github.com/transferia/transferia/pkg/debezium/testutil"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
 	"github.com/transferia/transferia/tests/helpers"
 	mocksink "github.com/transferia/transferia/tests/helpers/mock_sink"
@@ -309,7 +309,7 @@ func TestReplication(t *testing.T) {
 	//-----------------------------------------------------------------------------------------------------------------
 	// execute SQL statements
 
-	srcConn, err := pgcommon.MakeConnPoolFromSrc(&Source, logger.Log)
+	srcConn, err := provider_postgres.MakeConnPoolFromSrc(&Source, logger.Log)
 	require.NoError(t, err)
 	defer srcConn.Close()
 
@@ -352,31 +352,31 @@ func TestReplication(t *testing.T) {
 
 	canonizeTypes(t, &changeItems[4])
 
-	testSuite := []debeziumcommon.ChangeItemCanon{
+	testSuite := []debezium_common.ChangeItemCanon{
 		{
 			ChangeItem: &changeItems[4],
-			DebeziumEvents: []debeziumcommon.KeyValue{{
+			DebeziumEvents: []debezium_common.KeyValue{{
 				DebeziumKey: canonizedDebeziumInsertKey,
 				DebeziumVal: &canonizedDebeziumInsertVal,
 			}},
 		},
 		{
 			ChangeItem: &changeItems[5],
-			DebeziumEvents: []debeziumcommon.KeyValue{{
+			DebeziumEvents: []debezium_common.KeyValue{{
 				DebeziumKey: canonizedDebeziumUpdate1Key,
 				DebeziumVal: &canonizedDebeziumUpdate1Val,
 			}},
 		},
 		{
 			ChangeItem: &changeItems[6],
-			DebeziumEvents: []debeziumcommon.KeyValue{{
+			DebeziumEvents: []debezium_common.KeyValue{{
 				DebeziumKey: canonizedDebeziumUpdate2Key,
 				DebeziumVal: &canonizedDebeziumUpdate2Val,
 			}},
 		},
 		{
 			ChangeItem: &changeItems[7],
-			DebeziumEvents: []debeziumcommon.KeyValue{{
+			DebeziumEvents: []debezium_common.KeyValue{{
 				DebeziumKey: canonizedDebeziumUpdate30Key,
 				DebeziumVal: &canonizedDebeziumUpdate30Val,
 			}, {
@@ -389,7 +389,7 @@ func TestReplication(t *testing.T) {
 		},
 		{
 			ChangeItem: &changeItems[8],
-			DebeziumEvents: []debeziumcommon.KeyValue{{
+			DebeziumEvents: []debezium_common.KeyValue{{
 				DebeziumKey: canonizedDebeziumDelete0Key,
 				DebeziumVal: &canonizedDebeziumDelete0Val,
 			}, {
@@ -399,10 +399,10 @@ func TestReplication(t *testing.T) {
 		},
 	}
 
-	testSuite = testutil.FixTestSuite(t, testSuite, "fullfillment", "pguser", "pg")
+	testSuite = debezium_testutil.FixTestSuite(t, testSuite, "fullfillment", "pguser", "pg")
 
 	for _, testCase := range testSuite {
-		testutil.CheckCanonizedDebeziumEvent(t, testCase.ChangeItem, "fullfillment", "pguser", "pg", false, testCase.DebeziumEvents)
+		debezium_testutil.CheckCanonizedDebeziumEvent(t, testCase.ChangeItem, "fullfillment", "pguser", "pg", false, testCase.DebeziumEvents)
 	}
 
 	for i := range testSuite {
@@ -410,7 +410,7 @@ func TestReplication(t *testing.T) {
 	}
 
 	for _, testCase := range testSuite {
-		testutil.CheckCanonizedDebeziumEvent(t, testCase.ChangeItem, "fullfillment", "pguser", "pg", false, testCase.DebeziumEvents)
+		debezium_testutil.CheckCanonizedDebeziumEvent(t, testCase.ChangeItem, "fullfillment", "pguser", "pg", false, testCase.DebeziumEvents)
 	}
 }
 

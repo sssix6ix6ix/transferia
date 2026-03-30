@@ -8,12 +8,12 @@ import (
 	"github.com/cenkalti/backoff/v4"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	yslices "github.com/transferia/transferia/library/go/slices"
-	"github.com/transferia/transferia/pkg/connection/clickhouse"
-	conn2 "github.com/transferia/transferia/pkg/providers/clickhouse/conn"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/model"
+	conn_clickhouse "github.com/transferia/transferia/pkg/connection/clickhouse"
+	"github.com/transferia/transferia/pkg/providers/clickhouse/conn"
+	clickhouse_model "github.com/transferia/transferia/pkg/providers/clickhouse/model"
 	"github.com/transferia/transferia/pkg/util"
 	"go.ytsaurus.tech/library/go/core/log"
-	"golang.org/x/exp/maps"
+	xmaps "golang.org/x/exp/maps"
 )
 
 var ErrNoCluster = xerrors.New("no clusters found in system.clusters table")
@@ -31,7 +31,7 @@ func (t *Topology) SingleNode() bool {
 	return t.singleNode
 }
 
-func resolveClusterName(ctx context.Context, db *sql.DB, cfg model.ChSinkServerParams) (string, error) {
+func resolveClusterName(ctx context.Context, db *sql.DB, cfg clickhouse_model.ChSinkServerParams) (string, error) {
 	// case 1: forced cluster name via config (it could be MDB shard group)
 	if cfgName := cfg.ChClusterName(); cfgName != "" {
 		return cfgName, nil
@@ -58,11 +58,11 @@ func resolveClusterName(ctx context.Context, db *sql.DB, cfg model.ChSinkServerP
 	return name, nil
 }
 
-func IsSingleNode(shards map[string][]*clickhouse.Host) bool {
-	return len(shards) == 1 && len(maps.Values(shards)[0]) == 1
+func IsSingleNode(shards map[string][]*conn_clickhouse.Host) bool {
+	return len(shards) == 1 && len(xmaps.Values(shards)[0]) == 1
 }
 
-func validateShards(shards map[string][]*clickhouse.Host) error {
+func validateShards(shards map[string][]*conn_clickhouse.Host) error {
 	if len(shards) < 1 {
 		return xerrors.New("empty shards config")
 	}
@@ -74,14 +74,14 @@ func validateShards(shards map[string][]*clickhouse.Host) error {
 	return nil
 }
 
-func ResolveTopology(params model.ChSinkParams, lgr log.Logger) (*Topology, error) {
+func ResolveTopology(params clickhouse_model.ChSinkParams, lgr log.Logger) (*Topology, error) {
 	shards := params.Shards()
 	if err := validateShards(shards); err != nil {
 		return nil, xerrors.Errorf("invalid shards config: %w", err)
 	}
 
 	singleNode := IsSingleNode(shards)
-	var allHosts, remainHosts []*clickhouse.Host
+	var allHosts, remainHosts []*conn_clickhouse.Host
 	for _, hosts := range shards {
 		allHosts = append(allHosts, hosts...)
 	}
@@ -89,7 +89,7 @@ func ResolveTopology(params model.ChSinkParams, lgr log.Logger) (*Topology, erro
 	// Cyclic iterate over all cluster hosts in random order
 	clusterName, err := backoff.RetryNotifyWithData(func() (string, error) {
 		if len(remainHosts) == 0 {
-			remainHosts = make([]*clickhouse.Host, len(allHosts))
+			remainHosts = make([]*conn_clickhouse.Host, len(allHosts))
 			copy(remainHosts, allHosts)
 			remainHosts = yslices.Shuffle(remainHosts, nil)
 		}
@@ -97,7 +97,7 @@ func ResolveTopology(params model.ChSinkParams, lgr log.Logger) (*Topology, erro
 		remainHosts = remainHosts[1:]
 
 		lgr.Infof("Trying to resolve cluster name from host %s", host.Name)
-		conn, err := conn2.ConnectNative(host, params)
+		conn, err := conn.ConnectNative(host, params)
 		if err != nil {
 			return "", xerrors.Errorf("error connecting to clickhouse host %s: %w", host.Name, err)
 		}

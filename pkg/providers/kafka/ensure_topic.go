@@ -8,7 +8,7 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/errors/coded"
-	"github.com/transferia/transferia/pkg/errors/codes"
+	error_codes "github.com/transferia/transferia/pkg/errors/codes"
 	"github.com/twmb/franz-go/pkg/kerr"
 	"github.com/twmb/franz-go/pkg/kgo"
 	"github.com/twmb/franz-go/pkg/kmsg"
@@ -51,7 +51,7 @@ func ensureTopicExists(requestor kmsg.Requestor, timeout time.Duration, topics [
 		missedTopics = append(missedTopics, name)
 	}
 	if len(missedTopics) != 0 {
-		return abstract.NewFatalError(coded.Errorf(codes.MissingData, "%v not found", missedTopics))
+		return abstract.NewFatalError(coded.Errorf(error_codes.MissingData, "%v not found", missedTopics))
 	}
 
 	return nil

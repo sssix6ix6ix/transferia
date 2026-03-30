@@ -11,31 +11,31 @@ import (
 	"github.com/transferia/transferia/library/go/core/metrics/solomon"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/greenplum"
-	"github.com/transferia/transferia/pkg/providers/postgres"
+	provider_greenplum "github.com/transferia/transferia/pkg/providers/greenplum"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
 	"github.com/transferia/transferia/tests/helpers"
 )
 
 var (
 	pgSource = pgrecipe.RecipeSource(pgrecipe.WithPrefix(""), pgrecipe.WithInitDir("init_source"))
-	gpSource = greenplum.GpSource{
-		Connection: greenplum.GpConnection{
-			OnPremises: &greenplum.GpCluster{
-				Coordinator: &greenplum.GpHAP{
-					Primary: &greenplum.GpHP{
+	gpSource = provider_greenplum.GpSource{
+		Connection: provider_greenplum.GpConnection{
+			OnPremises: &provider_greenplum.GpCluster{
+				Coordinator: &provider_greenplum.GpHAP{
+					Primary: &provider_greenplum.GpHP{
 						Host: "localhost",
 						Port: helpers.GetIntFromEnv("PG_LOCAL_PORT"),
 					},
 				},
-				Segments: []*greenplum.GpHAP{
-					{Primary: new(greenplum.GpHP)},
-					{Primary: new(greenplum.GpHP)},
+				Segments: []*provider_greenplum.GpHAP{
+					{Primary: new(provider_greenplum.GpHP)},
+					{Primary: new(provider_greenplum.GpHP)},
 				},
 			},
 			Database: os.Getenv("PG_LOCAL_DATABASE"),
 			User:     os.Getenv("PG_LOCAL_USER"),
-			AuthProps: greenplum.PgAuthProps{
+			AuthProps: provider_greenplum.PgAuthProps{
 				Password: model.SecretString(os.Getenv("PG_LOCAL_PASSWORD")),
 			},
 		},
@@ -60,7 +60,7 @@ func TestSnapshot(t *testing.T) {
 
 	var pgColumns abstract.TableColumns
 
-	pgStorage, err := postgres.NewStorage(pgSource.ToStorageParams(nil))
+	pgStorage, err := provider_postgres.NewStorage(pgSource.ToStorageParams(nil))
 	require.NoError(t, err)
 	pgTableMap, err := pgStorage.TableList(nil)
 	require.NoError(t, err)
@@ -77,23 +77,23 @@ func TestSnapshot(t *testing.T) {
 
 	var gpColumns abstract.TableColumns
 
-	checkConnectionFunc := func(ctx context.Context, pgs *postgres.Storage, expectedSP greenplum.GPSegPointer) error {
+	checkConnectionFunc := func(ctx context.Context, pgs *provider_postgres.Storage, expectedSP provider_greenplum.GPSegPointer) error {
 		return nil
 	}
 
-	newFlavourFunc := func(in *greenplum.Storage) postgres.DBFlavour {
-		return greenplum.NewGreenplumFlavourImpl(
+	newFlavourFunc := func(in *provider_greenplum.Storage) provider_postgres.DBFlavour {
+		return provider_greenplum.NewGreenplumFlavourImpl(
 			in.WorkersCount() == 1,
 			func(bool, func() string) string {
-				return postgres.NewPostgreSQLFlavour().PgClassFilter()
+				return provider_postgres.NewPostgreSQLFlavour().PgClassFilter()
 			},
 			func() string {
-				return postgres.NewPostgreSQLFlavour().PgClassRelsOnlyFilter()
+				return provider_postgres.NewPostgreSQLFlavour().PgClassRelsOnlyFilter()
 			},
 		)
 	}
 
-	gpStorage := greenplum.NewStorageImpl(&gpSource, solomon.NewRegistry(nil), checkConnectionFunc, newFlavourFunc)
+	gpStorage := provider_greenplum.NewStorageImpl(&gpSource, solomon.NewRegistry(nil), checkConnectionFunc, newFlavourFunc)
 	gpTableMap, err := gpStorage.TableList(nil)
 	require.NoError(t, err)
 	for _, v := range gpTableMap {

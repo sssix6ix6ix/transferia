@@ -11,9 +11,9 @@ import (
 
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	debeziumcommon "github.com/transferia/transferia/pkg/debezium/common"
+	debezium_common "github.com/transferia/transferia/pkg/debezium/common"
 	"github.com/transferia/transferia/pkg/debezium/typeutil"
-	"github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/util/jsonx"
 	"github.com/transferia/transferia/pkg/util/xlocale"
 	ytschema "go.ytsaurus.tech/yt/go/schema"
@@ -22,55 +22,55 @@ import (
 //---------------------------------------------------------------------------------------------------------------------
 // pg non-default converting
 
-var KafkaTypeToOriginalTypeToFieldReceiverFunc = map[debeziumcommon.KafkaType]map[string]debeziumcommon.FieldReceiver{
-	debeziumcommon.KafkaTypeInt32: {
+var KafkaTypeToOriginalTypeToFieldReceiverFunc = map[debezium_common.KafkaType]map[string]debezium_common.FieldReceiver{
+	debezium_common.KafkaTypeInt32: {
 		"pg:date": new(Date),
-		debeziumcommon.DTMatchByFunc: &debeziumcommon.FieldReceiverMatchers{
-			Matchers: []debeziumcommon.FieldReceiverMatcher{new(TimeWithoutTimeZone)},
+		debezium_common.DTMatchByFunc: &debezium_common.FieldReceiverMatchers{
+			Matchers: []debezium_common.FieldReceiverMatcher{new(TimeWithoutTimeZone)},
 		},
 	},
-	debeziumcommon.KafkaTypeInt64: {
+	debezium_common.KafkaTypeInt64: {
 		"pg:interval": new(Interval),
 		"pg:oid":      new(Oid),
-		debeziumcommon.DTMatchByFunc: &debeziumcommon.FieldReceiverMatchers{
-			Matchers: []debeziumcommon.FieldReceiverMatcher{new(TimestampWithoutTimeZone), new(TimeWithoutTimeZone2)},
+		debezium_common.DTMatchByFunc: &debezium_common.FieldReceiverMatchers{
+			Matchers: []debezium_common.FieldReceiverMatcher{new(TimestampWithoutTimeZone), new(TimeWithoutTimeZone2)},
 		},
 	},
-	debeziumcommon.KafkaTypeBoolean: {
+	debezium_common.KafkaTypeBoolean: {
 		"pg:bit(1)": new(Bit1),
 	},
-	debeziumcommon.KafkaTypeBytes: {
+	debezium_common.KafkaTypeBytes: {
 		"pg:bit":         new(BitN),
 		"pg:bit varying": new(BitVarying),
-		"pg:money":       new(debeziumcommon.Decimal),
-		debeziumcommon.DTMatchByFunc: &debeziumcommon.FieldReceiverMatchers{
-			Matchers: []debeziumcommon.FieldReceiverMatcher{new(Decimal), new(DebeziumBuf)},
+		"pg:money":       new(debezium_common.Decimal),
+		debezium_common.DTMatchByFunc: &debezium_common.FieldReceiverMatchers{
+			Matchers: []debezium_common.FieldReceiverMatcher{new(Decimal), new(DebeziumBuf)},
 		},
 	},
-	debeziumcommon.KafkaTypeFloat64: {
+	debezium_common.KafkaTypeFloat64: {
 		"pg:double precision": new(DoublePrecision),
 	},
-	debeziumcommon.KafkaTypeString: {
+	debezium_common.KafkaTypeString: {
 		"pg:inet":      new(Inet),
-		"pg:int4range": new(debeziumcommon.StringToAnyDefault),
-		"pg:int8range": new(debeziumcommon.StringToAnyDefault),
+		"pg:int4range": new(debezium_common.StringToAnyDefault),
+		"pg:int8range": new(debezium_common.StringToAnyDefault),
 		"pg:json":      new(JSON),
 		"pg:jsonb":     new(JSON),
 		"pg:numrange":  new(NumRange),
 		"pg:tsrange":   new(TSRange),
 		"pg:tstzrange": new(TSTZRange),
-		"pg:xml":       new(debeziumcommon.StringToAnyDefault),
+		"pg:xml":       new(debezium_common.StringToAnyDefault),
 		"pg:citext":    new(CIText),
 		"pg:hstore":    new(HStore),
 		"pg:macaddr":   new(StringButYTAny),
 		"pg:cidr":      new(StringButYTAny),
 		"pg:character": new(StringButYTAny),
 		"pg:daterange": new(StringButYTAny),
-		debeziumcommon.DTMatchByFunc: &debeziumcommon.FieldReceiverMatchers{
-			Matchers: []debeziumcommon.FieldReceiverMatcher{new(TimestampWithTimeZone), new(Enum)},
+		debezium_common.DTMatchByFunc: &debezium_common.FieldReceiverMatchers{
+			Matchers: []debezium_common.FieldReceiverMatcher{new(TimestampWithTimeZone), new(Enum)},
 		},
 	},
-	debeziumcommon.KafkaTypeStruct: {
+	debezium_common.KafkaTypeStruct: {
 		"pg:point": new(Point),
 	},
 }
@@ -79,26 +79,26 @@ var KafkaTypeToOriginalTypeToFieldReceiverFunc = map[debeziumcommon.KafkaType]ma
 // int32
 
 type Date struct {
-	debeziumcommon.Int64ToTime
-	debeziumcommon.YTTypeDate
-	debeziumcommon.FieldReceiverMarker
+	debezium_common.Int64ToTime
+	debezium_common.YTTypeDate
+	debezium_common.FieldReceiverMarker
 }
 
-func (d *Date) Do(in int64, _ *debeziumcommon.OriginalTypeInfo, _ *debeziumcommon.Schema, _ bool) (time.Time, error) {
+func (d *Date) Do(in int64, _ *debezium_common.OriginalTypeInfo, _ *debezium_common.Schema, _ bool) (time.Time, error) {
 	return time.Unix(in*3600*24, 0).UTC(), nil
 }
 
 type TimeWithoutTimeZone struct {
-	debeziumcommon.IntToString
-	debeziumcommon.YTTypeString
-	debeziumcommon.FieldReceiverMarker
+	debezium_common.IntToString
+	debezium_common.YTTypeString
+	debezium_common.FieldReceiverMarker
 }
 
-func (t *TimeWithoutTimeZone) IsMatched(originalType *debeziumcommon.OriginalTypeInfo, _ *debeziumcommon.Schema) bool {
-	return postgres.IsPgTypeTimeWithoutTimeZone(originalType.OriginalType)
+func (t *TimeWithoutTimeZone) IsMatched(originalType *debezium_common.OriginalTypeInfo, _ *debezium_common.Schema) bool {
+	return provider_postgres.IsPgTypeTimeWithoutTimeZone(originalType.OriginalType)
 }
 
-func (t *TimeWithoutTimeZone) Do(in int64, originalType *debeziumcommon.OriginalTypeInfo, _ *debeziumcommon.Schema, _ bool) (string, error) {
+func (t *TimeWithoutTimeZone) Do(in int64, originalType *debezium_common.OriginalTypeInfo, _ *debezium_common.Schema, _ bool) (string, error) {
 	precision := typeutil.PgTimeWithoutTimeZonePrecision(originalType.OriginalType)
 	if precision == 0 {
 		valSec := in / 1000
@@ -119,28 +119,28 @@ func (t *TimeWithoutTimeZone) Do(in int64, originalType *debeziumcommon.Original
 // int64
 
 type Interval struct {
-	debeziumcommon.IntToString
-	debeziumcommon.YTTypeString
-	debeziumcommon.FieldReceiverMarker
+	debezium_common.IntToString
+	debezium_common.YTTypeString
+	debezium_common.FieldReceiverMarker
 }
 
-func (i *Interval) Do(in int64, _ *debeziumcommon.OriginalTypeInfo, _ *debeziumcommon.Schema, _ bool) (string, error) {
+func (i *Interval) Do(in int64, _ *debezium_common.OriginalTypeInfo, _ *debezium_common.Schema, _ bool) (string, error) {
 	return typeutil.EmitPostgresInterval(in), nil
 }
 
 type TimestampWithoutTimeZone struct {
-	debeziumcommon.Int64ToTime
-	debeziumcommon.YTTypeTimestamp
-	debeziumcommon.FieldReceiverMarker
+	debezium_common.Int64ToTime
+	debezium_common.YTTypeTimestamp
+	debezium_common.FieldReceiverMarker
 }
 
-func (t *TimestampWithoutTimeZone) IsMatched(originalType *debeziumcommon.OriginalTypeInfo, _ *debeziumcommon.Schema) bool {
-	return postgres.IsPgTypeTimestampWithoutTimeZone(originalType.OriginalType)
+func (t *TimestampWithoutTimeZone) IsMatched(originalType *debezium_common.OriginalTypeInfo, _ *debezium_common.Schema) bool {
+	return provider_postgres.IsPgTypeTimestampWithoutTimeZone(originalType.OriginalType)
 }
 
 var OriginalTypePropertyTimeZone = "timezone"
 
-func (t *TimestampWithoutTimeZone) Do(in int64, originalType *debeziumcommon.OriginalTypeInfo, _ *debeziumcommon.Schema, intoArr bool) (time.Time, error) {
+func (t *TimestampWithoutTimeZone) Do(in int64, originalType *debezium_common.OriginalTypeInfo, _ *debezium_common.Schema, intoArr bool) (time.Time, error) {
 	var datetimePrecisionInt int
 	if intoArr {
 		datetimePrecisionInt = 6
@@ -172,16 +172,16 @@ func (t *TimestampWithoutTimeZone) Do(in int64, originalType *debeziumcommon.Ori
 }
 
 type TimeWithoutTimeZone2 struct {
-	debeziumcommon.IntToString
-	debeziumcommon.YTTypeString
-	debeziumcommon.FieldReceiverMarker
+	debezium_common.IntToString
+	debezium_common.YTTypeString
+	debezium_common.FieldReceiverMarker
 }
 
-func (t *TimeWithoutTimeZone2) IsMatched(originalType *debeziumcommon.OriginalTypeInfo, _ *debeziumcommon.Schema) bool {
-	return postgres.IsPgTypeTimeWithoutTimeZone(originalType.OriginalType)
+func (t *TimeWithoutTimeZone2) IsMatched(originalType *debezium_common.OriginalTypeInfo, _ *debezium_common.Schema) bool {
+	return provider_postgres.IsPgTypeTimeWithoutTimeZone(originalType.OriginalType)
 }
 
-func (t *TimeWithoutTimeZone2) Do(in int64, originalType *debeziumcommon.OriginalTypeInfo, _ *debeziumcommon.Schema, intoArr bool) (string, error) {
+func (t *TimeWithoutTimeZone2) Do(in int64, originalType *debezium_common.OriginalTypeInfo, _ *debezium_common.Schema, intoArr bool) (string, error) {
 	var precision int
 	if intoArr {
 		precision = 6
@@ -207,12 +207,12 @@ func (t *TimeWithoutTimeZone2) Do(in int64, originalType *debeziumcommon.Origina
 // boolean
 
 type Bit1 struct {
-	debeziumcommon.IntToString
-	debeziumcommon.YTTypeAny
-	debeziumcommon.FieldReceiverMarker
+	debezium_common.IntToString
+	debezium_common.YTTypeAny
+	debezium_common.FieldReceiverMarker
 }
 
-func (b *Bit1) Do(in bool, _ *debeziumcommon.OriginalTypeInfo, _ *debeziumcommon.Schema, _ bool) (string, error) {
+func (b *Bit1) Do(in bool, _ *debezium_common.OriginalTypeInfo, _ *debezium_common.Schema, _ bool) (string, error) {
 	if in {
 		return "1", nil
 	} else {
@@ -223,12 +223,12 @@ func (b *Bit1) Do(in bool, _ *debeziumcommon.OriginalTypeInfo, _ *debeziumcommon
 // string
 
 type Inet struct {
-	debeziumcommon.StringToString
-	debeziumcommon.YTTypeAny
-	debeziumcommon.FieldReceiverMarker
+	debezium_common.StringToString
+	debezium_common.YTTypeAny
+	debezium_common.FieldReceiverMarker
 }
 
-func (i *Inet) Do(in string, _ *debeziumcommon.OriginalTypeInfo, _ *debeziumcommon.Schema, _ bool) (string, error) {
+func (i *Inet) Do(in string, _ *debezium_common.OriginalTypeInfo, _ *debezium_common.Schema, _ bool) (string, error) {
 	if !strings.Contains(in, "/") {
 		in += "/32"
 	}
@@ -236,12 +236,12 @@ func (i *Inet) Do(in string, _ *debeziumcommon.OriginalTypeInfo, _ *debeziumcomm
 }
 
 type JSON struct {
-	debeziumcommon.StringToAny
-	debeziumcommon.YTTypeAny
-	debeziumcommon.FieldReceiverMarker
+	debezium_common.StringToAny
+	debezium_common.YTTypeAny
+	debezium_common.FieldReceiverMarker
 }
 
-func (i *JSON) Do(in string, _ *debeziumcommon.OriginalTypeInfo, _ *debeziumcommon.Schema, _ bool) (interface{}, error) {
+func (i *JSON) Do(in string, _ *debezium_common.OriginalTypeInfo, _ *debezium_common.Schema, _ bool) (interface{}, error) {
 	var result interface{}
 	if err := jsonx.NewDefaultDecoder(strings.NewReader(in)).Decode(&result); err != nil {
 		return "", err
@@ -250,12 +250,12 @@ func (i *JSON) Do(in string, _ *debeziumcommon.OriginalTypeInfo, _ *debeziumcomm
 }
 
 type DoublePrecision struct {
-	debeziumcommon.AnyToDouble
-	debeziumcommon.YTTypeFloat64
-	debeziumcommon.FieldReceiverMarker
+	debezium_common.AnyToDouble
+	debezium_common.YTTypeFloat64
+	debezium_common.FieldReceiverMarker
 }
 
-func (p *DoublePrecision) Do(in interface{}, _ *debeziumcommon.OriginalTypeInfo, _ *debeziumcommon.Schema, _ bool) (float64, error) {
+func (p *DoublePrecision) Do(in interface{}, _ *debezium_common.OriginalTypeInfo, _ *debezium_common.Schema, _ bool) (float64, error) {
 	switch val := in.(type) {
 	case json.Number:
 		vall, err := val.Float64()
@@ -275,26 +275,26 @@ func (p *DoublePrecision) Do(in interface{}, _ *debeziumcommon.OriginalTypeInfo,
 }
 
 type NumRange struct {
-	debeziumcommon.StringToAny
-	debeziumcommon.YTTypeAny
-	debeziumcommon.FieldReceiverMarker
+	debezium_common.StringToAny
+	debezium_common.YTTypeAny
+	debezium_common.FieldReceiverMarker
 }
 
-func (r *NumRange) Do(in string, _ *debeziumcommon.OriginalTypeInfo, _ *debeziumcommon.Schema, _ bool) (interface{}, error) {
+func (r *NumRange) Do(in string, _ *debezium_common.OriginalTypeInfo, _ *debezium_common.Schema, _ bool) (interface{}, error) {
 	return typeutil.NumRangeFromDebezium(in)
 }
 
 type TimestampWithTimeZone struct {
-	debeziumcommon.StringToString
-	debeziumcommon.YTTypeTimestamp
-	debeziumcommon.FieldReceiverMarker
+	debezium_common.StringToString
+	debezium_common.YTTypeTimestamp
+	debezium_common.FieldReceiverMarker
 }
 
-func (t *TimestampWithTimeZone) IsMatched(originalType *debeziumcommon.OriginalTypeInfo, _ *debeziumcommon.Schema) bool {
-	return postgres.IsPgTypeTimestampWithTimeZone(originalType.OriginalType)
+func (t *TimestampWithTimeZone) IsMatched(originalType *debezium_common.OriginalTypeInfo, _ *debezium_common.Schema) bool {
+	return provider_postgres.IsPgTypeTimestampWithTimeZone(originalType.OriginalType)
 }
 
-func (t *TimestampWithTimeZone) Do(in string, _ *debeziumcommon.OriginalTypeInfo, _ *debeziumcommon.Schema, _ bool) (time.Time, error) {
+func (t *TimestampWithTimeZone) Do(in string, _ *debezium_common.OriginalTypeInfo, _ *debezium_common.Schema, _ bool) (time.Time, error) {
 	timestamp, err := typeutil.ParsePgDateTimeWithTimezone(in)
 	if err != nil {
 		return time.Time{}, xerrors.Errorf("unable to parse timestamp with timezone: %s, err: %w", in, err)
@@ -304,33 +304,33 @@ func (t *TimestampWithTimeZone) Do(in string, _ *debeziumcommon.OriginalTypeInfo
 }
 
 type Enum struct {
-	debeziumcommon.StringToString
-	debeziumcommon.YTTypeString
-	debeziumcommon.FieldReceiverMarker
+	debezium_common.StringToString
+	debezium_common.YTTypeString
+	debezium_common.FieldReceiverMarker
 }
 
-func (t *Enum) IsMatched(_ *debeziumcommon.OriginalTypeInfo, debeziumSchema *debeziumcommon.Schema) bool {
+func (t *Enum) IsMatched(_ *debezium_common.OriginalTypeInfo, debeziumSchema *debezium_common.Schema) bool {
 	return debeziumSchema.Name == "io.debezium.data.Enum"
 }
 
-func (t *Enum) Do(in string, _ *debeziumcommon.OriginalTypeInfo, _ *debeziumcommon.Schema, _ bool) (string, error) {
+func (t *Enum) Do(in string, _ *debezium_common.OriginalTypeInfo, _ *debezium_common.Schema, _ bool) (string, error) {
 	return in, nil
 }
 
-func (t *Enum) AddInfo(schema *debeziumcommon.Schema, outColSchema *abstract.ColSchema) {
+func (t *Enum) AddInfo(schema *debezium_common.Schema, outColSchema *abstract.ColSchema) {
 	if schema.Parameters == nil || schema.Parameters.Allowed == "" {
 		return
 	}
-	outColSchema.Properties = map[abstract.PropertyKey]interface{}{postgres.EnumAllValues: strings.Split(schema.Parameters.Allowed, ",")}
+	outColSchema.Properties = map[abstract.PropertyKey]interface{}{provider_postgres.EnumAllValues: strings.Split(schema.Parameters.Allowed, ",")}
 }
 
 type TSRange struct {
-	debeziumcommon.StringToAny
-	debeziumcommon.YTTypeAny
-	debeziumcommon.FieldReceiverMarker
+	debezium_common.StringToAny
+	debezium_common.YTTypeAny
+	debezium_common.FieldReceiverMarker
 }
 
-func (r *TSRange) Do(in string, _ *debeziumcommon.OriginalTypeInfo, _ *debeziumcommon.Schema, _ bool) (interface{}, error) {
+func (r *TSRange) Do(in string, _ *debezium_common.OriginalTypeInfo, _ *debezium_common.Schema, _ bool) (interface{}, error) {
 	result, err := typeutil.TSRangeUnquote(in)
 	if err != nil {
 		return "", xerrors.Errorf("unable to unquote tsrange: %s, err: %w", in, err)
@@ -339,12 +339,12 @@ func (r *TSRange) Do(in string, _ *debeziumcommon.OriginalTypeInfo, _ *debeziumc
 }
 
 type TSTZRange struct {
-	debeziumcommon.StringToAny
-	debeziumcommon.YTTypeAny
-	debeziumcommon.FieldReceiverMarker
+	debezium_common.StringToAny
+	debezium_common.YTTypeAny
+	debezium_common.FieldReceiverMarker
 }
 
-func (r *TSTZRange) Do(in string, _ *debeziumcommon.OriginalTypeInfo, _ *debeziumcommon.Schema, _ bool) (interface{}, error) {
+func (r *TSTZRange) Do(in string, _ *debezium_common.OriginalTypeInfo, _ *debezium_common.Schema, _ bool) (interface{}, error) {
 	result, err := typeutil.TstZRangeUnquote(in)
 	if err != nil {
 		return "", xerrors.Errorf("unable to unquote tstzrange: %s, err: %w", in, err)
@@ -353,12 +353,12 @@ func (r *TSTZRange) Do(in string, _ *debeziumcommon.OriginalTypeInfo, _ *debeziu
 }
 
 type HStore struct {
-	debeziumcommon.StringToAny
-	debeziumcommon.YTTypeAny
-	debeziumcommon.FieldReceiverMarker
+	debezium_common.StringToAny
+	debezium_common.YTTypeAny
+	debezium_common.FieldReceiverMarker
 }
 
-func (p *HStore) Do(in string, _ *debeziumcommon.OriginalTypeInfo, _ *debeziumcommon.Schema, _ bool) (interface{}, error) {
+func (p *HStore) Do(in string, _ *debezium_common.OriginalTypeInfo, _ *debezium_common.Schema, _ bool) (interface{}, error) {
 	var result interface{}
 	if err := jsonx.NewDefaultDecoder(strings.NewReader(in)).Decode(&result); err != nil {
 		return nil, err
@@ -367,28 +367,28 @@ func (p *HStore) Do(in string, _ *debeziumcommon.OriginalTypeInfo, _ *debeziumco
 }
 
 type CIText struct {
-	debeziumcommon.StringToAny
-	debeziumcommon.YTTypeAny
-	debeziumcommon.FieldReceiverMarker
+	debezium_common.StringToAny
+	debezium_common.YTTypeAny
+	debezium_common.FieldReceiverMarker
 }
 
-func (t *CIText) Do(in string, _ *debeziumcommon.OriginalTypeInfo, _ *debeziumcommon.Schema, _ bool) (interface{}, error) {
+func (t *CIText) Do(in string, _ *debezium_common.OriginalTypeInfo, _ *debezium_common.Schema, _ bool) (interface{}, error) {
 	return in, nil
 }
 
 // bytes
 
 type DebeziumBuf struct {
-	debeziumcommon.StringToString
-	debeziumcommon.YTTypeBytes
-	debeziumcommon.FieldReceiverMarker
+	debezium_common.StringToString
+	debezium_common.YTTypeBytes
+	debezium_common.FieldReceiverMarker
 }
 
-func (b *DebeziumBuf) IsMatched(_ *debeziumcommon.OriginalTypeInfo, schema *debeziumcommon.Schema) bool {
+func (b *DebeziumBuf) IsMatched(_ *debezium_common.OriginalTypeInfo, schema *debezium_common.Schema) bool {
 	return schema.Name == "io.debezium.data.Bits"
 }
 
-func (b *DebeziumBuf) Do(in string, _ *debeziumcommon.OriginalTypeInfo, schema *debeziumcommon.Schema, _ bool) (string, error) {
+func (b *DebeziumBuf) Do(in string, _ *debezium_common.OriginalTypeInfo, schema *debezium_common.Schema, _ bool) (string, error) {
 	resultBuf, err := base64.StdEncoding.DecodeString(in)
 	if err != nil {
 		return "", xerrors.Errorf("unable to decode base64: %s, err: %w", in, err)
@@ -410,12 +410,12 @@ func (b *DebeziumBuf) Do(in string, _ *debeziumcommon.OriginalTypeInfo, schema *
 // things to fix YTType
 
 type BitVarying struct {
-	debeziumcommon.StringToString
-	debeziumcommon.YTTypeAny
-	debeziumcommon.FieldReceiverMarker
+	debezium_common.StringToString
+	debezium_common.YTTypeAny
+	debezium_common.FieldReceiverMarker
 }
 
-func (d *BitVarying) Do(in string, _ *debeziumcommon.OriginalTypeInfo, _ *debeziumcommon.Schema, _ bool) (string, error) {
+func (d *BitVarying) Do(in string, _ *debezium_common.OriginalTypeInfo, _ *debezium_common.Schema, _ bool) (string, error) {
 	resultBuf, err := base64.StdEncoding.DecodeString(in)
 	if err != nil {
 		return "", xerrors.Errorf("unable to decode base64: %s, err: %w", in, err)
@@ -424,12 +424,12 @@ func (d *BitVarying) Do(in string, _ *debeziumcommon.OriginalTypeInfo, _ *debezi
 }
 
 type BitN struct {
-	debeziumcommon.StringToString
-	debeziumcommon.YTTypeAny
-	debeziumcommon.FieldReceiverMarker
+	debezium_common.StringToString
+	debezium_common.YTTypeAny
+	debezium_common.FieldReceiverMarker
 }
 
-func (d *BitN) Do(in string, _ *debeziumcommon.OriginalTypeInfo, _ *debeziumcommon.Schema, _ bool) (string, error) {
+func (d *BitN) Do(in string, _ *debezium_common.OriginalTypeInfo, _ *debezium_common.Schema, _ bool) (string, error) {
 	resultBuf, err := base64.StdEncoding.DecodeString(in)
 	if err != nil {
 		return "", xerrors.Errorf("unable to decode base64: %s, err: %w", in, err)
@@ -438,49 +438,49 @@ func (d *BitN) Do(in string, _ *debeziumcommon.OriginalTypeInfo, _ *debeziumcomm
 }
 
 type Oid struct {
-	debeziumcommon.Int64ToInt64
-	debeziumcommon.YTTypeAny
-	debeziumcommon.FieldReceiverMarker
+	debezium_common.Int64ToInt64
+	debezium_common.YTTypeAny
+	debezium_common.FieldReceiverMarker
 }
 
-func (d *Oid) Do(in int64, _ *debeziumcommon.OriginalTypeInfo, _ *debeziumcommon.Schema, _ bool) (int64, error) {
+func (d *Oid) Do(in int64, _ *debezium_common.OriginalTypeInfo, _ *debezium_common.Schema, _ bool) (int64, error) {
 	return in, nil
 }
 
 type StringButYTAny struct {
-	debeziumcommon.StringToStringDefault
-	debeziumcommon.YTTypeAny
-	debeziumcommon.FieldReceiverMarker
+	debezium_common.StringToStringDefault
+	debezium_common.YTTypeAny
+	debezium_common.FieldReceiverMarker
 }
 
 type Point struct {
-	p debeziumcommon.Point
-	debeziumcommon.AnyToAny
-	debeziumcommon.YTTypeAny
-	debeziumcommon.FieldReceiverMarker
+	p debezium_common.Point
+	debezium_common.AnyToAny
+	debezium_common.YTTypeAny
+	debezium_common.FieldReceiverMarker
 }
 
-func (d *Point) Do(in interface{}, originalTypeInfo *debeziumcommon.OriginalTypeInfo, schema *debeziumcommon.Schema, intoArr bool) (interface{}, error) {
+func (d *Point) Do(in interface{}, originalTypeInfo *debezium_common.OriginalTypeInfo, schema *debezium_common.Schema, intoArr bool) (interface{}, error) {
 	result, err := d.p.Do(in, originalTypeInfo, schema, intoArr)
 	return result, err
 }
 
-func (d *Point) AddInfo(_ *debeziumcommon.Schema, colSchema *abstract.ColSchema) {
+func (d *Point) AddInfo(_ *debezium_common.Schema, colSchema *abstract.ColSchema) {
 	colSchema.DataType = string(ytschema.TypeString)
 }
 
 type Decimal struct {
-	p debeziumcommon.Decimal
-	debeziumcommon.StringToAny
-	debeziumcommon.YTTypeFloat64
-	debeziumcommon.FieldReceiverMarker
+	p debezium_common.Decimal
+	debezium_common.StringToAny
+	debezium_common.YTTypeFloat64
+	debezium_common.FieldReceiverMarker
 }
 
-func (d *Decimal) IsMatched(_ *debeziumcommon.OriginalTypeInfo, schema *debeziumcommon.Schema) bool {
+func (d *Decimal) IsMatched(_ *debezium_common.OriginalTypeInfo, schema *debezium_common.Schema) bool {
 	return schema.Name == "org.apache.kafka.connect.data.Decimal"
 }
 
-func (d *Decimal) Do(in string, originalType *debeziumcommon.OriginalTypeInfo, schema *debeziumcommon.Schema, intoArr bool) (interface{}, error) {
+func (d *Decimal) Do(in string, originalType *debezium_common.OriginalTypeInfo, schema *debezium_common.Schema, intoArr bool) (interface{}, error) {
 	result, err := d.p.Do(in, originalType, schema, intoArr)
 	return json.Number(result), err
 }

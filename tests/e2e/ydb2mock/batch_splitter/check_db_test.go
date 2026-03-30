@@ -10,9 +10,9 @@ import (
 	"github.com/transferia/transferia/library/go/core/metrics/solomon"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/ydb"
+	provider_ydb "github.com/transferia/transferia/pkg/providers/ydb"
 	"github.com/transferia/transferia/pkg/transformer"
-	batchsplitter "github.com/transferia/transferia/pkg/transformer/registry/batch_splitter"
+	transformer_batch_splitter "github.com/transferia/transferia/pkg/transformer/registry/batch_splitter"
 	"github.com/transferia/transferia/tests/helpers"
 	mocksink "github.com/transferia/transferia/tests/helpers/mock_sink"
 )
@@ -23,7 +23,7 @@ var maxBatchSize = 1
 //---------------------------------------------------------------------------------------------------------------------
 
 func TestGroup(t *testing.T) {
-	src := &ydb.YdbSource{
+	src := &provider_ydb.YdbSource{
 		Token:              model.SecretString(os.Getenv("YDB_TOKEN")),
 		Database:           helpers.GetEnvOfFail(t, "YDB_DATABASE"),
 		Instance:           helpers.GetEnvOfFail(t, "YDB_ENDPOINT"),
@@ -35,13 +35,13 @@ func TestGroup(t *testing.T) {
 	}
 
 	t.Run("init source database", func(t *testing.T) {
-		Target := &ydb.YdbDestination{
+		Target := &provider_ydb.YdbDestination{
 			Database: src.Database,
 			Token:    src.Token,
 			Instance: src.Instance,
 		}
 		Target.WithDefaults()
-		sinker, err := ydb.NewSinker(logger.Log, Target, solomon.NewRegistry(solomon.NewRegistryOpts()))
+		sinker, err := provider_ydb.NewSinker(logger.Log, Target, solomon.NewRegistry(solomon.NewRegistryOpts()))
 		require.NoError(t, err)
 
 		var changes []abstract.ChangeItem
@@ -74,7 +74,7 @@ func TestGroup(t *testing.T) {
 	transfer.Transformation = &model.Transformation{Transformers: &transformer.Transformers{
 		DebugMode: false,
 		Transformers: []transformer.Transformer{{
-			batchsplitter.Type: batchsplitter.Config{
+			transformer_batch_splitter.Type: transformer_batch_splitter.Config{
 				MaxItemsPerBatch: 1,
 			},
 		}},

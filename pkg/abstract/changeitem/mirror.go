@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/transferia/transferia/library/go/core/xerrors"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 const (
@@ -21,13 +21,13 @@ const (
 
 var (
 	RawDataSchema = NewTableSchema([]ColSchema{
-		{ColumnName: RawMessageTopic, DataType: string(schema.TypeString), PrimaryKey: true, Required: true},
-		{ColumnName: RawMessagePartition, DataType: string(schema.TypeUint32), PrimaryKey: true, Required: true},
-		{ColumnName: RawMessageSeqNo, DataType: string(schema.TypeUint64), PrimaryKey: true, Required: true},
-		{ColumnName: RawMessageWriteTime, DataType: string(schema.TypeDatetime), PrimaryKey: true, Required: true},
-		{ColumnName: RawMessageData, DataType: string(schema.TypeString), OriginalType: OriginalTypeMirrorBinary},
-		{ColumnName: RawMessageMeta, DataType: string(schema.TypeAny)},
-		{ColumnName: RawSequenceKey, DataType: string(schema.TypeBytes)},
+		{ColumnName: RawMessageTopic, DataType: string(ytschema.TypeString), PrimaryKey: true, Required: true},
+		{ColumnName: RawMessagePartition, DataType: string(ytschema.TypeUint32), PrimaryKey: true, Required: true},
+		{ColumnName: RawMessageSeqNo, DataType: string(ytschema.TypeUint64), PrimaryKey: true, Required: true},
+		{ColumnName: RawMessageWriteTime, DataType: string(ytschema.TypeDatetime), PrimaryKey: true, Required: true},
+		{ColumnName: RawMessageData, DataType: string(ytschema.TypeString), OriginalType: OriginalTypeMirrorBinary},
+		{ColumnName: RawMessageMeta, DataType: string(ytschema.TypeAny)},
+		{ColumnName: RawSequenceKey, DataType: string(ytschema.TypeBytes)},
 	})
 	RawDataColumns = RawDataSchema.Columns().ColumnNames()
 	RawDataColsIDX = colIDX(RawDataSchema.Columns())

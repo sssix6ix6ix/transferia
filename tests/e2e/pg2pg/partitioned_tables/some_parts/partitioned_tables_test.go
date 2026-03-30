@@ -10,7 +10,7 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
 	"github.com/transferia/transferia/pkg/worker/tasks"
 	"github.com/transferia/transferia/tests/helpers"
@@ -26,7 +26,7 @@ var (
 		"public.measurement_declarative",
 		"public.measurement_declarative_y2006m02",
 		"public.measurement_declarative_y2006m04",
-	), pgrecipe.WithEdit(func(pg *postgres.PgSource) {
+	), pgrecipe.WithEdit(func(pg *provider_postgres.PgSource) {
 		pg.UseFakePrimaryKey = true
 	}))
 	Target = *pgrecipe.RecipeTarget(pgrecipe.WithPrefix("DB0_"))
@@ -53,9 +53,9 @@ func TestGroup(t *testing.T) {
 }
 
 func Existence(t *testing.T) {
-	_, err := postgres.NewStorage(Source.ToStorageParams(nil))
+	_, err := provider_postgres.NewStorage(Source.ToStorageParams(nil))
 	require.NoError(t, err)
-	_, err = postgres.NewStorage(Target.ToStorageParams())
+	_, err = provider_postgres.NewStorage(Target.ToStorageParams())
 	require.NoError(t, err)
 }
 
@@ -68,7 +68,7 @@ func Verify(t *testing.T) {
 	err := tasks.VerifyDelivery(transfer, logger.Log, helpers.EmptyRegistry())
 	require.NoError(t, err)
 
-	dstStorage, err := postgres.NewStorage(Target.ToStorageParams())
+	dstStorage, err := provider_postgres.NewStorage(Target.ToStorageParams())
 	require.NoError(t, err)
 
 	var result bool
@@ -93,7 +93,7 @@ func Load(t *testing.T) {
 	worker := helpers.Activate(t, transfer)
 	defer worker.Close(t)
 
-	srcStorage, err := postgres.NewStorage(Source.ToStorageParams(nil))
+	srcStorage, err := provider_postgres.NewStorage(Source.ToStorageParams(nil))
 	require.NoError(t, err)
 
 	//-----------------------------------------------------------------------------------------------------------------

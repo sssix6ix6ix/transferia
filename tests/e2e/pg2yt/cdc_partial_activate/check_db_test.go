@@ -10,15 +10,15 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
-	pgcommon "github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
 	"github.com/transferia/transferia/tests/helpers"
-	yt_helpers "github.com/transferia/transferia/tests/helpers/yt"
+	helpers_yt "github.com/transferia/transferia/tests/helpers/yt"
 )
 
 var (
 	Source = *pgrecipe.RecipeSource(pgrecipe.WithPrefix(""), pgrecipe.WithInitDir("dump"), pgrecipe.WithDBTables("public.__test"))
-	Target = yt_helpers.RecipeYtTarget("//home/cdc/test/pg2yt_e2e")
+	Target = helpers_yt.RecipeYtTarget("//home/cdc/test/pg2yt_e2e")
 )
 
 const (
@@ -79,7 +79,7 @@ func Load(t *testing.T) {
 
 	// check snapshot loaded
 
-	conn, err := pgcommon.MakeConnPoolFromSrc(&Source, logger.Log)
+	conn, err := provider_postgres.MakeConnPoolFromSrc(&Source, logger.Log)
 	require.NoError(t, err)
 	defer conn.Close()
 

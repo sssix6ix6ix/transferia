@@ -9,7 +9,7 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
 	"github.com/transferia/transferia/pkg/worker/tasks"
 	"github.com/transferia/transferia/tests/helpers"
@@ -59,12 +59,12 @@ func descsToPgNames(descs []abstract.TableDescription) []string {
 }
 
 var (
-	SourceA = *pgrecipe.RecipeSource(pgrecipe.WithInitDir("dump"), pgrecipe.WithPrefix(""), pgrecipe.WithDBTables(descsToPgNames(tablesA)...), pgrecipe.WithEdit(func(pg *postgres.PgSource) {
+	SourceA = *pgrecipe.RecipeSource(pgrecipe.WithInitDir("dump"), pgrecipe.WithPrefix(""), pgrecipe.WithDBTables(descsToPgNames(tablesA)...), pgrecipe.WithEdit(func(pg *provider_postgres.PgSource) {
 		pg.User = "blockeduser"
 		pg.Password = "sim-sim@OPEN"
 	}))
 	SourceIAForDump = *pgrecipe.RecipeSource(pgrecipe.WithInitDir("dump"), pgrecipe.WithPrefix(""), pgrecipe.WithDBTables(descsToPgNames(tablesIA)...))
-	SourceIA        = *pgrecipe.RecipeSource(pgrecipe.WithInitDir("dump"), pgrecipe.WithPrefix(""), pgrecipe.WithDBTables(descsToPgNames(tablesIA)...), pgrecipe.WithEdit(func(pg *postgres.PgSource) {
+	SourceIA        = *pgrecipe.RecipeSource(pgrecipe.WithInitDir("dump"), pgrecipe.WithPrefix(""), pgrecipe.WithDBTables(descsToPgNames(tablesIA)...), pgrecipe.WithEdit(func(pg *provider_postgres.PgSource) {
 		pg.User = "blockeduser"
 		pg.Password = "sim-sim@OPEN"
 	}))
@@ -103,18 +103,18 @@ func TestGroup(t *testing.T) {
 func UploadTestAccessible(t *testing.T) {
 	transfer := helpers.MakeTransfer(sourceATID, &SourceA, &Target, abstract.TransferTypeSnapshotOnly)
 
-	pgdump, err := postgres.ExtractPgDumpSchema(transfer)
+	pgdump, err := provider_postgres.ExtractPgDumpSchema(transfer)
 	require.NoError(t, err)
-	require.NoError(t, postgres.ApplyPgDumpPreSteps(pgdump, transfer, &model.TransferOperation{}, helpers.EmptyRegistry()))
+	require.NoError(t, provider_postgres.ApplyPgDumpPreSteps(pgdump, transfer, &model.TransferOperation{}, helpers.EmptyRegistry()))
 
 	require.NoError(t, tasks.Upload(context.TODO(), coordinator.NewFakeClient(), *transfer, nil, tasks.UploadSpec{Tables: tablesA}, helpers.EmptyRegistry()))
 }
 
 func UploadTestInaccessible(t *testing.T) {
 	transferForDump := helpers.MakeTransfer(sourceIAForDumpTID, &SourceIAForDump, &Target, abstract.TransferTypeSnapshotOnly)
-	pgdump, err := postgres.ExtractPgDumpSchema(transferForDump)
+	pgdump, err := provider_postgres.ExtractPgDumpSchema(transferForDump)
 	require.NoError(t, err)
-	require.NoError(t, postgres.ApplyPgDumpPreSteps(pgdump, transferForDump, &model.TransferOperation{}, helpers.EmptyRegistry()))
+	require.NoError(t, provider_postgres.ApplyPgDumpPreSteps(pgdump, transferForDump, &model.TransferOperation{}, helpers.EmptyRegistry()))
 
 	transfer := helpers.MakeTransfer(sourceIATID, &SourceIA, &Target, abstract.TransferTypeSnapshotOnly)
 	err = tasks.Upload(context.TODO(), coordinator.NewFakeClient(), *transfer, nil, tasks.UploadSpec{Tables: tablesIA}, helpers.EmptyRegistry())

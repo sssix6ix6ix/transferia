@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	yt2 "github.com/transferia/transferia/pkg/providers/yt"
-	dyn_sink "github.com/transferia/transferia/pkg/providers/yt/sink"
+	provider_yt "github.com/transferia/transferia/pkg/providers/yt"
+	yt_sink "github.com/transferia/transferia/pkg/providers/yt/sink"
 	"github.com/transferia/transferia/pkg/providers/yt/sink/v2/statictable"
 	"github.com/transferia/transferia/pkg/providers/yt/sink/v2/transactions"
 	"github.com/transferia/transferia/pkg/providers/yt/yt_client"
@@ -49,7 +49,7 @@ type mainTransaction interface {
 type sink struct {
 	ytClient   yt.Client
 	dir        ypath.Path
-	config     yt2.YtDestinationModel
+	config     provider_yt.YtDestinationModel
 	transferID string
 
 	mainTx mainTransaction
@@ -160,9 +160,9 @@ func (s *sink) beginPartTx() error {
 }
 
 func (s *sink) createWriter(tablePath ypath.Path) (staticTableWriter, error) {
-	stringLimit := dyn_sink.YtStatMaxStringLength
+	stringLimit := yt_sink.YtStatMaxStringLength
 	if s.config.UseStaticTableOnSnapshot() {
-		stringLimit = dyn_sink.YtDynMaxStringLength
+		stringLimit = yt_sink.YtDynMaxStringLength
 	}
 	return statictable.NewWriter(statictable.WriterConfig{
 		TransferID:       s.transferID,
@@ -228,9 +228,9 @@ func (s *sink) commitTable(tablePath ypath.Path, scheme abstract.TableColumns) e
 func (s *sink) getTablePath(item abstract.ChangeItem) ypath.Path {
 	tableName := getNameFromTableID(item.TableID())
 	if s.config == nil {
-		return yt2.SafeChild(s.dir, tableName)
+		return provider_yt.SafeChild(s.dir, tableName)
 	}
-	return yt2.SafeChild(s.dir, s.config.GetTableAltName(tableName))
+	return provider_yt.SafeChild(s.dir, s.config.GetTableAltName(tableName))
 }
 
 func getNameFromTableID(id abstract.TableID) string {
@@ -240,10 +240,10 @@ func getNameFromTableID(id abstract.TableID) string {
 	return fmt.Sprintf("%s_%s", id.Namespace, id.Name)
 }
 
-func dataplaneExecutablePath(cfg yt2.YtDestinationModel, ytClient yt.Client, logger log.Logger) (ypath.Path, error) {
+func dataplaneExecutablePath(cfg provider_yt.YtDestinationModel, ytClient yt.Client, logger log.Logger) (ypath.Path, error) {
 	ctx := context.Background()
-	if dataplaneVersion, ok := yt2.DataplaneVersion(); ok {
-		pathToBinary := yt2.DataplaneExecutablePath(cfg.Cluster(), dataplaneVersion)
+	if dataplaneVersion, ok := provider_yt.DataplaneVersion(); ok {
+		pathToBinary := provider_yt.DataplaneExecutablePath(cfg.Cluster(), dataplaneVersion)
 		if exists, err := ytClient.NodeExists(ctx, pathToBinary, nil); err != nil {
 			return "", xerrors.Errorf("unable to check if dataplane executable exists: %w", err)
 		} else if !exists {
@@ -259,7 +259,7 @@ func dataplaneExecutablePath(cfg yt2.YtDestinationModel, ytClient yt.Client, log
 	}
 }
 
-func NewStaticSink(cfg yt2.YtDestinationModel, cp coordinator.Coordinator, transferID string, registry metrics.Registry, logger log.Logger) (abstract.Sinker, error) {
+func NewStaticSink(cfg provider_yt.YtDestinationModel, cp coordinator.Coordinator, transferID string, registry core_metrics.Registry, logger log.Logger) (abstract.Sinker, error) {
 	ytClient, err := yt_client.FromConnParams(cfg, logger)
 	if err != nil {
 		return nil, err

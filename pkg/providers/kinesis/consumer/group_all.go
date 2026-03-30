@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/kinesis"
+	aws_kinesis "github.com/aws/aws-sdk-go/service/kinesis"
 	"github.com/aws/aws-sdk-go/service/kinesis/kinesisiface"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"go.ytsaurus.tech/library/go/core/log"
@@ -21,7 +21,7 @@ func NewAllGroup(ksis kinesisiface.KinesisAPI, store Store, streamName string, l
 		streamName: streamName,
 		logger:     logger,
 		shardMu:    sync.Mutex{},
-		shards:     make(map[string]*kinesis.Shard),
+		shards:     make(map[string]*aws_kinesis.Shard),
 	}
 }
 
@@ -36,12 +36,12 @@ type AllGroup struct {
 	logger     log.Logger
 
 	shardMu sync.Mutex
-	shards  map[string]*kinesis.Shard
+	shards  map[string]*aws_kinesis.Shard
 }
 
 // Start is a blocking operation which will loop and attempt to find new
 // shards on a regular cadence.
-func (g *AllGroup) Start(ctx context.Context, shardc chan *kinesis.Shard) {
+func (g *AllGroup) Start(ctx context.Context, shardc chan *aws_kinesis.Shard) {
 	var ticker = time.NewTicker(30 * time.Second)
 	g.findNewShards(shardc)
 
@@ -68,7 +68,7 @@ func (g *AllGroup) Start(ctx context.Context, shardc chan *kinesis.Shard) {
 // findNewShards pulls the list of shards from the Kinesis API
 // and uses a local cache to determine if we are already processing
 // a particular shard.
-func (g *AllGroup) findNewShards(shardc chan *kinesis.Shard) {
+func (g *AllGroup) findNewShards(shardc chan *aws_kinesis.Shard) {
 	g.shardMu.Lock()
 	defer g.shardMu.Unlock()
 
@@ -88,9 +88,9 @@ func (g *AllGroup) findNewShards(shardc chan *kinesis.Shard) {
 }
 
 // listShards pulls a list of shard IDs from the kinesis api
-func listShards(ksis kinesisiface.KinesisAPI, streamName string) ([]*kinesis.Shard, error) {
-	var ss []*kinesis.Shard
-	var listShardsInput = &kinesis.ListShardsInput{
+func listShards(ksis kinesisiface.KinesisAPI, streamName string) ([]*aws_kinesis.Shard, error) {
+	var ss []*aws_kinesis.Shard
+	var listShardsInput = &aws_kinesis.ListShardsInput{
 		StreamName: aws.String(streamName),
 	}
 
@@ -105,7 +105,7 @@ func listShards(ksis kinesisiface.KinesisAPI, streamName string) ([]*kinesis.Sha
 			return ss, nil
 		}
 
-		listShardsInput = &kinesis.ListShardsInput{
+		listShardsInput = &aws_kinesis.ListShardsInput{
 			NextToken: resp.NextToken,
 		}
 	}

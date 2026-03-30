@@ -17,29 +17,29 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/parsers"
-	"github.com/transferia/transferia/pkg/parsers/registry/confluentschemaregistry"
-	"github.com/transferia/transferia/pkg/providers/kafka"
-	ytStorage "github.com/transferia/transferia/pkg/providers/yt/storage"
-	replaceprimarykey "github.com/transferia/transferia/pkg/transformer/registry/replace_primary_key"
+	parser_confluentschemaregistry "github.com/transferia/transferia/pkg/parsers/registry/confluentschemaregistry"
+	provider_kafka "github.com/transferia/transferia/pkg/providers/kafka"
+	yt_storage "github.com/transferia/transferia/pkg/providers/yt/storage"
+	transformer_replace_primary_key "github.com/transferia/transferia/pkg/transformer/registry/replace_primary_key"
 	"github.com/transferia/transferia/tests/helpers"
 	confluentsrmock "github.com/transferia/transferia/tests/helpers/confluent_schema_registry_mock"
-	yt_helpers "github.com/transferia/transferia/tests/helpers/yt"
+	helpers_yt "github.com/transferia/transferia/tests/helpers/yt"
 )
 
 var (
-	currSource = &kafka.KafkaSource{
-		Connection: &kafka.KafkaConnectionOptions{
+	currSource = &provider_kafka.KafkaSource{
+		Connection: &provider_kafka.KafkaConnectionOptions{
 			TLS:     model.DisabledTLS,
 			Brokers: []string{os.Getenv("KAFKA_RECIPE_BROKER_LIST")},
 		},
-		Auth:             &kafka.KafkaAuth{Enabled: false},
+		Auth:             &provider_kafka.KafkaAuth{Enabled: false},
 		Topic:            "",
 		Transformer:      nil,
 		BufferSize:       model.BytesSize(1024),
 		SecurityGroupIDs: nil,
 		ParserConfig:     nil,
 	}
-	target = yt_helpers.RecipeYtTarget("//home/confluent_sr/test/kafka2yt_e2e_replication")
+	target = helpers_yt.RecipeYtTarget("//home/confluent_sr/test/kafka2yt_e2e_replication")
 )
 
 var idToBuf = make(map[int]string)
@@ -68,7 +68,7 @@ func TestSchemaRegistryJSONtoYT(t *testing.T) {
 	defer schemaRegistryMock.Close()
 
 	// prepare currSource
-	parserConfigMap, err := parsers.ParserConfigStructToMap(&confluentschemaregistry.ParserConfigConfluentSchemaRegistryCommon{
+	parserConfigMap, err := parsers.ParserConfigStructToMap(&parser_confluentschemaregistry.ParserConfigConfluentSchemaRegistryCommon{
 		SchemaRegistryURL: schemaRegistryMock.URL(),
 		SkipAuth:          true,
 		IsGenerateUpdates: true,
@@ -79,7 +79,7 @@ func TestSchemaRegistryJSONtoYT(t *testing.T) {
 
 	// add transformation and activate transfer
 	transfer := helpers.MakeTransfer(helpers.TransferID, currSource, target, abstract.TransferTypeIncrementOnly)
-	transformer, err := replaceprimarykey.NewReplacePrimaryKeyTransformer(replaceprimarykey.Config{
+	transformer, err := transformer_replace_primary_key.NewReplacePrimaryKeyTransformer(transformer_replace_primary_key.Config{
 		Keys: []string{"id"},
 	})
 	require.NoError(t, err)
@@ -88,8 +88,8 @@ func TestSchemaRegistryJSONtoYT(t *testing.T) {
 	defer worker.Close(t)
 
 	// write to currSource topic
-	srcSink, err := kafka.NewReplicationSink(
-		&kafka.KafkaDestination{
+	srcSink, err := provider_kafka.NewReplicationSink(
+		&provider_kafka.KafkaDestination{
 			Connection: currSource.Connection,
 			Auth:       currSource.Auth,
 			Topic:      currSource.Topic,
@@ -118,7 +118,7 @@ func TestSchemaRegistryJSONtoYT(t *testing.T) {
 	// check results
 	require.NoError(t, helpers.WaitDestinationEqualRowsCount("schema", "table", helpers.GetSampleableStorageByModel(t, target.LegacyModel()), 60*time.Second, 2))
 	result := make([]abstract.ChangeItem, 0)
-	storage, err := ytStorage.NewStorage(target.ToStorageParams())
+	storage, err := yt_storage.NewStorage(target.ToStorageParams())
 	require.NoError(t, err)
 	err = storage.LoadTable(context.Background(), abstract.TableDescription{
 		Name:   "table",

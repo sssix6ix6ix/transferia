@@ -9,11 +9,11 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract2"
 	"github.com/transferia/transferia/pkg/abstract2/filter"
-	yt2 "github.com/transferia/transferia/pkg/providers/yt"
+	provider_yt "github.com/transferia/transferia/pkg/providers/yt"
 	"github.com/transferia/transferia/pkg/providers/yt/tablemeta"
 	"go.ytsaurus.tech/library/go/core/log"
 	"go.ytsaurus.tech/yt/go/yt"
-	"golang.org/x/exp/slices"
+	xslices "golang.org/x/exp/slices"
 )
 
 const grpcShardLimit = 1024
@@ -28,7 +28,7 @@ type YTDataObjects struct {
 	txID         yt.TxID
 	parts        map[string][]partKey
 	currentParts []partKey
-	cfg          yt2.YtSourceModel
+	cfg          provider_yt.YtSourceModel
 	lgr          log.Logger
 	filter       abstract2.DataObjectFilter
 }
@@ -154,7 +154,7 @@ func (objs *YTDataObjects) uniformParts() (map[int]int, error) {
 		tablesWeightArr = append(tablesWeightArr, tableWeightPair{TableIndex: i, TableWeight: w.DataWeight})
 	}
 
-	slices.SortFunc(tablesWeightArr, func(a, b tableWeightPair) int { return int(a.TableWeight - b.TableWeight) })
+	xslices.SortFunc(tablesWeightArr, func(a, b tableWeightPair) int { return int(a.TableWeight - b.TableWeight) })
 
 	res := make(map[int]int)
 
@@ -239,7 +239,7 @@ func (objs *YTDataObjects) ParsePartKey(data string) (*abstract.TableID, error) 
 	return abstract.NewTableID("", partKey.Table), nil
 }
 
-func NewDataObjects(cfg yt2.YtSourceModel, tx yt.Tx, lgr log.Logger, filter abstract2.DataObjectFilter) *YTDataObjects {
+func NewDataObjects(cfg provider_yt.YtSourceModel, tx yt.Tx, lgr log.Logger, filter abstract2.DataObjectFilter) *YTDataObjects {
 	var txID yt.TxID
 	if tx != nil {
 		txID = tx.ID()

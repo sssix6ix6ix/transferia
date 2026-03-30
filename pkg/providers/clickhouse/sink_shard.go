@@ -3,15 +3,15 @@ package clickhouse
 import (
 	"context"
 	"database/sql"
-	"database/sql/driver"
+	sql_driver "database/sql/driver"
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/errors"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/model"
+	clickhouse_errors "github.com/transferia/transferia/pkg/providers/clickhouse/errors"
+	clickhouse_model "github.com/transferia/transferia/pkg/providers/clickhouse/model"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/topology"
 	"github.com/transferia/transferia/pkg/stats"
 	"github.com/transferia/transferia/pkg/util"
@@ -24,14 +24,14 @@ const (
 
 type lazySinkShard struct {
 	Name     string
-	Config   model.ChSinkShardParams
+	Config   clickhouse_model.ChSinkShardParams
 	logger   log.Logger
-	registry metrics.Registry
+	registry core_metrics.Registry
 	sink     *sinkShard
 	topology *topology.Topology
 }
 
-func newLazySinkShard(shardName string, config model.ChSinkShardParams, topology *topology.Topology, logger log.Logger, registry metrics.Registry) *lazySinkShard {
+func newLazySinkShard(shardName string, config clickhouse_model.ChSinkShardParams, topology *topology.Topology, logger log.Logger, registry core_metrics.Registry) *lazySinkShard {
 	return &lazySinkShard{
 		Name:     shardName,
 		Config:   config,
@@ -69,7 +69,7 @@ func (ls *lazySinkShard) SinkIfInitialized() *sinkShard {
 type sinkShard struct {
 	shardName      string
 	cluster        *sinkCluster
-	config         model.ChSinkShardParams
+	config         clickhouse_model.ChSinkShardParams
 	logger         log.Logger
 	metrics        *stats.SinkerStats
 	chStats        *stats.ChStats
@@ -141,13 +141,13 @@ func (s *sinkShard) Push(input []abstract.ChangeItem) error {
 			return xerrors.Errorf("ClickHouse Push failed (got fatal error): %w", &backoff.PermanentError{Err: err})
 		}
 
-		var ddlTaskErr errors.DDLTaskError
+		var ddlTaskErr clickhouse_errors.DDLTaskError
 		// No reason to fill DDL task queue with retries on half-dead cluster
 		if xerrors.As(err, &ddlTaskErr) {
 			return xerrors.Errorf("ddl task error: %w", &backoff.PermanentError{Err: err})
 		}
 
-		if xerrors.Is(err, driver.ErrBadConn) {
+		if xerrors.Is(err, sql_driver.ErrBadConn) {
 			s.reset()
 		}
 		return err
@@ -288,7 +288,7 @@ func (s *sinkShard) buildMetrikaDDL(row abstract.ChangeItem, distributed bool) (
 	return builder.BuildClickHouseDDL(s.config.Database(), row.Table, s.cluster.topology.ClusterName(), distributed)
 }
 
-func MakeAltNames(config model.ChSinkShardParams) map[string]string {
+func MakeAltNames(config clickhouse_model.ChSinkShardParams) map[string]string {
 	var fromTables []string
 	for fromTable := range config.Tables() {
 		fromTables = append(fromTables, fromTable)
@@ -310,7 +310,7 @@ func MakeAltNames(config model.ChSinkShardParams) map[string]string {
 	return altNames
 }
 
-func newSinkShard(shardName string, config model.ChSinkShardParams, topology *topology.Topology, logger log.Logger, chStats *stats.ChStats, sinkStats *stats.SinkerStats) (*sinkShard, error) {
+func newSinkShard(shardName string, config clickhouse_model.ChSinkShardParams, topology *topology.Topology, logger log.Logger, chStats *stats.ChStats, sinkStats *stats.SinkerStats) (*sinkShard, error) {
 	cl, err := newSinkCluster(config, logger, chStats, topology)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to create a sink for a concrete ClickHouse cluster: %w", err)

@@ -10,14 +10,14 @@ import (
 	"github.com/jackc/pgtype"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	debeziumcommon "github.com/transferia/transferia/pkg/debezium/common"
-	debeziumparameters "github.com/transferia/transferia/pkg/debezium/parameters"
+	debezium_common "github.com/transferia/transferia/pkg/debezium/common"
+	debezium_parameters "github.com/transferia/transferia/pkg/debezium/parameters"
 	"github.com/transferia/transferia/pkg/debezium/typeutil"
-	"github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/util"
 )
 
-var mapPgNotParametrizedTypeToKafkaType = map[string]debeziumcommon.KafkaTypeDescr{
+var mapPgNotParametrizedTypeToKafkaType = map[string]debezium_common.KafkaTypeDescr{
 	"pg:boolean": {KafkaTypeAndDebeziumNameAndExtra: func(*abstract.ColSchema, bool, bool, map[string]string) (string, string, map[string]interface{}) {
 		return "boolean", "", nil
 	}},
@@ -107,7 +107,7 @@ var mapPgNotParametrizedTypeToKafkaType = map[string]debeziumcommon.KafkaTypeDes
 	//
 }
 
-var mapPgParametrizedTypePrefixToKafkaType = map[string]debeziumcommon.KafkaTypeDescr{
+var mapPgParametrizedTypePrefixToKafkaType = map[string]debezium_common.KafkaTypeDescr{
 	"pg:bit(":         {KafkaTypeAndDebeziumNameAndExtra: typeutil.BitParametersExtractor},
 	"pg:bit varying(": {KafkaTypeAndDebeziumNameAndExtra: typeutil.BitParametersExtractor},
 	"pg:character(": {KafkaTypeAndDebeziumNameAndExtra: func(*abstract.ColSchema, bool, bool, map[string]string) (string, string, map[string]interface{}) {
@@ -122,12 +122,12 @@ var mapPgParametrizedTypePrefixToKafkaType = map[string]debeziumcommon.KafkaType
 }
 
 func pgMoneyExtra(_ *abstract.ColSchema, _, _ bool, connectorParameters map[string]string) (string, string, map[string]interface{}) {
-	switch debeziumparameters.GetDecimalHandlingMode(connectorParameters) {
-	case debeziumparameters.DecimalHandlingModePrecise:
+	switch debezium_parameters.GetDecimalHandlingMode(connectorParameters) {
+	case debezium_parameters.DecimalHandlingModePrecise:
 		return "bytes", "org.apache.kafka.connect.data.Decimal", map[string]interface{}{"parameters": map[string]string{"scale": "2"}}
-	case debeziumparameters.DecimalHandlingModeDouble:
+	case debezium_parameters.DecimalHandlingModeDouble:
 		return "double", "", nil
-	case debeziumparameters.DecimalHandlingModeString:
+	case debezium_parameters.DecimalHandlingModeString:
 		return "string", "", nil
 	default:
 		return "", "", nil
@@ -135,8 +135,8 @@ func pgMoneyExtra(_ *abstract.ColSchema, _, _ bool, connectorParameters map[stri
 }
 
 func pgNumericExtra(colSchema *abstract.ColSchema, _, _ bool, connectorParameters map[string]string) (string, string, map[string]interface{}) {
-	switch debeziumparameters.GetDecimalHandlingMode(connectorParameters) {
-	case debeziumparameters.DecimalHandlingModePrecise:
+	switch debezium_parameters.GetDecimalHandlingMode(connectorParameters) {
+	case debezium_parameters.DecimalHandlingModePrecise:
 		result := make(map[string]interface{})
 		putScaleToValue, precision, scale, _ := typeutil.DecimalGetPrecisionAndScale(typeutil.OriginalTypeWithoutProvider(colSchema.OriginalType))
 		if putScaleToValue {
@@ -158,9 +158,9 @@ func pgNumericExtra(colSchema *abstract.ColSchema, _, _ bool, connectorParameter
 		} else {
 			return typeutil.FieldDescrDecimal(precision, scale)
 		}
-	case debeziumparameters.DecimalHandlingModeDouble:
+	case debezium_parameters.DecimalHandlingModeDouble:
 		return "double", "", nil
-	case debeziumparameters.DecimalHandlingModeString:
+	case debezium_parameters.DecimalHandlingModeString:
 		return "string", "", nil
 	default:
 		return "", "", nil
@@ -168,7 +168,7 @@ func pgNumericExtra(colSchema *abstract.ColSchema, _, _ bool, connectorParameter
 }
 
 func pgEnum(colSchema *abstract.ColSchema, _, _ bool, _ map[string]string) (string, string, map[string]interface{}) {
-	arr := postgres.GetPropertyEnumAllValues(colSchema)
+	arr := provider_postgres.GetPropertyEnumAllValues(colSchema)
 
 	result := make(map[string]interface{})
 	result["version"] = 1
@@ -219,7 +219,7 @@ func pgPointExtra(_ *abstract.ColSchema, _, _ bool, _ map[string]string) (string
 	return "struct", "io.debezium.data.geometry.Point", result
 }
 
-func GetKafkaTypeDescrByPgType(colSchema *abstract.ColSchema) (*debeziumcommon.KafkaTypeDescr, error) {
+func GetKafkaTypeDescrByPgType(colSchema *abstract.ColSchema) (*debezium_common.KafkaTypeDescr, error) {
 	typeName := colSchema.OriginalType
 	if val, ok := mapPgNotParametrizedTypeToKafkaType[typeName]; ok {
 		return &val, nil
@@ -229,40 +229,40 @@ func GetKafkaTypeDescrByPgType(colSchema *abstract.ColSchema) (*debeziumcommon.K
 				return &v, nil
 			}
 		}
-		if postgres.IsPgTypeTimeWithTimeZone(typeName) {
-			return &debeziumcommon.KafkaTypeDescr{KafkaTypeAndDebeziumNameAndExtra: func(*abstract.ColSchema, bool, bool, map[string]string) (string, string, map[string]interface{}) {
+		if provider_postgres.IsPgTypeTimeWithTimeZone(typeName) {
+			return &debezium_common.KafkaTypeDescr{KafkaTypeAndDebeziumNameAndExtra: func(*abstract.ColSchema, bool, bool, map[string]string) (string, string, map[string]interface{}) {
 				return "string", "io.debezium.time.ZonedTime", nil
 			}}, nil
 		}
-		if postgres.IsPgTypeTimeWithoutTimeZone(typeName) {
-			return &debeziumcommon.KafkaTypeDescr{KafkaTypeAndDebeziumNameAndExtra: typeutil.TimePgWithoutTZParamsToKafkaType}, nil
+		if provider_postgres.IsPgTypeTimeWithoutTimeZone(typeName) {
+			return &debezium_common.KafkaTypeDescr{KafkaTypeAndDebeziumNameAndExtra: typeutil.TimePgWithoutTZParamsToKafkaType}, nil
 		}
-		if postgres.IsPgTypeTimestampWithTimeZone(typeName) {
-			return &debeziumcommon.KafkaTypeDescr{KafkaTypeAndDebeziumNameAndExtra: func(*abstract.ColSchema, bool, bool, map[string]string) (string, string, map[string]interface{}) {
+		if provider_postgres.IsPgTypeTimestampWithTimeZone(typeName) {
+			return &debezium_common.KafkaTypeDescr{KafkaTypeAndDebeziumNameAndExtra: func(*abstract.ColSchema, bool, bool, map[string]string) (string, string, map[string]interface{}) {
 				return "string", "io.debezium.time.ZonedTimestamp", nil
 			}}, nil
 		}
-		if postgres.IsPgTypeTimestampWithoutTimeZone(typeName) {
-			return &debeziumcommon.KafkaTypeDescr{KafkaTypeAndDebeziumNameAndExtra: typeutil.TimestampPgParamsTypeToKafkaType}, nil
+		if provider_postgres.IsPgTypeTimestampWithoutTimeZone(typeName) {
+			return &debezium_common.KafkaTypeDescr{KafkaTypeAndDebeziumNameAndExtra: typeutil.TimestampPgParamsTypeToKafkaType}, nil
 		}
 		if typeutil.IsPgNumeric(typeName) {
-			return &debeziumcommon.KafkaTypeDescr{KafkaTypeAndDebeziumNameAndExtra: pgNumericExtra}, nil
+			return &debezium_common.KafkaTypeDescr{KafkaTypeAndDebeziumNameAndExtra: pgNumericExtra}, nil
 		}
-		if postgres.GetPropertyEnumAllValues(colSchema) != nil {
-			return &debeziumcommon.KafkaTypeDescr{KafkaTypeAndDebeziumNameAndExtra: pgEnum}, nil
+		if provider_postgres.GetPropertyEnumAllValues(colSchema) != nil {
+			return &debezium_common.KafkaTypeDescr{KafkaTypeAndDebeziumNameAndExtra: pgEnum}, nil
 		}
-		return nil, debeziumcommon.NewUnknownTypeError(xerrors.Errorf("unknown pgType: %s", typeName))
+		return nil, debezium_common.NewUnknownTypeError(xerrors.Errorf("unknown pgType: %s", typeName))
 	}
 }
 
 func GetOriginalTypeProperties(in *abstract.ColSchema) map[string]string {
-	if val, ok := in.Properties[postgres.DatabaseTimeZone]; ok {
+	if val, ok := in.Properties[provider_postgres.DatabaseTimeZone]; ok {
 		return map[string]string{"timezone": val.(string)}
 	}
 	return nil
 }
 
-func AddPg(v *debeziumcommon.Values, colSchema *abstract.ColSchema, colName string, colVal interface{}, originalType string, intoArr bool, connectorParameters map[string]string) error {
+func AddPg(v *debezium_common.Values, colSchema *abstract.ColSchema, colName string, colVal interface{}, originalType string, intoArr bool, connectorParameters map[string]string) error {
 	if colVal == nil {
 		v.AddVal(colName, nil)
 		return nil
@@ -368,7 +368,7 @@ func AddPg(v *debeziumcommon.Values, colSchema *abstract.ColSchema, colName stri
 			return xerrors.Errorf("unknown type of value for 'pg:double precision': %T", colVal)
 		}
 	case "pg:bytea":
-		val, err := typeutil.ParseBytea(colVal, v.ConnectorParameters[debeziumparameters.BinaryHandlingMode])
+		val, err := typeutil.ParseBytea(colVal, v.ConnectorParameters[debezium_parameters.BinaryHandlingMode])
 		if err != nil {
 			return xerrors.Errorf("pg - bytea - unable to parse bytea, err: %w", err)
 		}
@@ -452,7 +452,7 @@ func AddPg(v *debeziumcommon.Values, colSchema *abstract.ColSchema, colName stri
 			if len(t) != 2 {
 				return xerrors.Errorf("len([]time.Time) != 2. len:%d", len(t))
 			}
-			v.AddVal(colName, postgres.DaterangeToString(t))
+			v.AddVal(colName, provider_postgres.DaterangeToString(t))
 		case string: // original replication
 			v.AddVal(colName, t)
 		default:
@@ -496,7 +496,7 @@ func AddPg(v *debeziumcommon.Values, colSchema *abstract.ColSchema, colName stri
 			}
 			result = string(str)
 		case string:
-			result, err = postgres.HstoreToJSON(t)
+			result, err = provider_postgres.HstoreToJSON(t)
 			if err != nil {
 				return xerrors.Errorf("pg - hstore - hstoreToJSON returned error, hstore val: %s, err: %w", t, err)
 			}
@@ -506,12 +506,12 @@ func AddPg(v *debeziumcommon.Values, colSchema *abstract.ColSchema, colName stri
 		v.AddVal(colName, result)
 		return nil
 	default:
-		if postgres.IsPgTypeTimeWithTimeZone(originalType) {
+		if provider_postgres.IsPgTypeTimeWithTimeZone(originalType) {
 			val, casts := colVal.(string)
 			if !casts {
 				return xerrors.Errorf("pg - unable to process %s: expected string, got %T", originalType, colVal)
 			}
-			t, err := postgres.TimeWithTimeZoneToTime(val)
+			t, err := provider_postgres.TimeWithTimeZoneToTime(val)
 			if err != nil {
 				return xerrors.Errorf("pg - failed to parse %s, err: %w", originalType, err)
 			}
@@ -523,7 +523,7 @@ func AddPg(v *debeziumcommon.Values, colSchema *abstract.ColSchema, colName stri
 			}
 			v.AddVal(colName, t.Format(tFormat))
 			return nil
-		} else if postgres.IsPgTypeTimeWithoutTimeZone(originalType) {
+		} else if provider_postgres.IsPgTypeTimeWithoutTimeZone(originalType) {
 			t := new(pgtype.Time)
 			if err := t.Scan(colVal); err != nil {
 				return xerrors.Errorf("pg - unable to parse %s %v, err: %w", originalType, colVal, err)
@@ -546,7 +546,7 @@ func AddPg(v *debeziumcommon.Values, colSchema *abstract.ColSchema, colName stri
 			}
 			v.AddVal(colName, result)
 			return nil
-		} else if postgres.IsPgTypeTimestampWithoutTimeZone(originalType) {
+		} else if provider_postgres.IsPgTypeTimestampWithoutTimeZone(originalType) {
 			ts := new(pgtype.Timestamp)
 			if err := ts.Set(colVal); err != nil {
 				return xerrors.Errorf("pg - unable to parse original_type:'%s', value:%v, err: %w", originalType, colVal, err)
@@ -567,7 +567,7 @@ func AddPg(v *debeziumcommon.Values, colSchema *abstract.ColSchema, colName stri
 			result := ts.Time.UnixMicro() / int64(divider)
 			v.AddVal(colName, result)
 			return nil
-		} else if postgres.IsPgTypeTimestampWithTimeZone(originalType) {
+		} else if provider_postgres.IsPgTypeTimestampWithTimeZone(originalType) {
 			switch t := colVal.(type) {
 			case time.Time: // original snapshot
 				v.AddVal(colName, typeutil.SprintfDebeziumTime(t))
@@ -612,17 +612,17 @@ func AddPg(v *debeziumcommon.Values, colSchema *abstract.ColSchema, colName stri
 			v.AddVal(colName, colVal.(string))
 			return nil
 		} else if strings.HasPrefix(originalType, "pg:interval") {
-			val, err := typeutil.ParsePostgresInterval(colVal.(string), v.ConnectorParameters[debeziumparameters.IntervalHandlingMode])
+			val, err := typeutil.ParsePostgresInterval(colVal.(string), v.ConnectorParameters[debezium_parameters.IntervalHandlingMode])
 			if err != nil {
 				return xerrors.Errorf("pg - interval - unknown interval: %s, err: %w", colVal.(string), err)
 			}
 			v.AddVal(colName, val)
 			return nil
-		} else if postgres.GetPropertyEnumAllValues(colSchema) != nil {
+		} else if provider_postgres.GetPropertyEnumAllValues(colSchema) != nil {
 			v.AddVal(colName, colVal.(string))
 			return nil
 		} else {
-			return debeziumcommon.NewUnknownTypeError(xerrors.Errorf("unknown column type: %s, column name: %s", originalType, colName))
+			return debezium_common.NewUnknownTypeError(xerrors.Errorf("unknown column type: %s, column name: %s", originalType, colName))
 		}
 	}
 	return nil

@@ -10,9 +10,9 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/changeitem"
-	ytprovider "github.com/transferia/transferia/pkg/providers/yt"
+	provider_yt "github.com/transferia/transferia/pkg/providers/yt"
 	"github.com/transferia/transferia/pkg/util"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 	"go.ytsaurus.tech/yt/go/ypath"
 	"go.ytsaurus.tech/yt/go/yt"
 )
@@ -22,7 +22,7 @@ func (s *Storage) TableSizeInBytes(table abstract.TableID) (uint64, error) {
 	defer cancel()
 
 	var size uint64
-	if err := s.ytClient.GetNode(ctx, ytprovider.SafeChild(ypath.Path(s.path), table.Name).Attr("uncompressed_data_size"), &size, nil); err != nil {
+	if err := s.ytClient.GetNode(ctx, provider_yt.SafeChild(ypath.Path(s.path), table.Name).Attr("uncompressed_data_size"), &size, nil); err != nil {
 		return 0, err
 	}
 
@@ -133,14 +133,14 @@ func (s *Storage) LoadTopBottomSample(table abstract.TableDescription, pusher ab
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	tablePath := ytprovider.SafeChild(ypath.Path(s.path), getTableName(table))
+	tablePath := provider_yt.SafeChild(ypath.Path(s.path), getTableName(table))
 
-	var scheme schema.Schema
+	var scheme ytschema.Schema
 	if err := s.ytClient.GetNode(ctx, tablePath.Attr("schema"), &scheme, nil); err != nil {
 		return err
 	}
 
-	tableSchema := ytprovider.YTColumnToColSchema(scheme.Columns)
+	tableSchema := provider_yt.YTColumnToColSchema(scheme.Columns)
 
 	orderByPkeysAsc, err := orderByPrimaryKeys(tableSchema.Columns(), "ASC")
 	if err != nil {
@@ -189,15 +189,15 @@ func (s *Storage) LoadRandomSample(table abstract.TableDescription, pusher abstr
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	tablePath := ytprovider.SafeChild(ypath.Path(s.path), getTableName(table))
+	tablePath := provider_yt.SafeChild(ypath.Path(s.path), getTableName(table))
 
-	var scheme schema.Schema
+	var scheme ytschema.Schema
 	if err := s.ytClient.GetNode(ctx, tablePath.Attr("schema"), &scheme, nil); err != nil {
 		//nolint:descriptiveerrors
 		return err
 	}
 
-	tableSchema := ytprovider.YTColumnToColSchema(scheme.Columns)
+	tableSchema := provider_yt.YTColumnToColSchema(scheme.Columns)
 
 	var cols []string
 	for _, col := range tableSchema.Columns() {
@@ -234,14 +234,14 @@ func (s *Storage) LoadSampleBySet(table abstract.TableDescription, keySet []map[
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	tablePath := ytprovider.SafeChild(ypath.Path(s.path), getTableName(table))
+	tablePath := provider_yt.SafeChild(ypath.Path(s.path), getTableName(table))
 
-	var scheme schema.Schema
+	var scheme ytschema.Schema
 	if err := s.ytClient.GetNode(ctx, tablePath.Attr("schema"), &scheme, nil); err != nil {
 		return err
 	}
 
-	tableSchema := ytprovider.YTColumnToColSchema(scheme.Columns)
+	tableSchema := provider_yt.YTColumnToColSchema(scheme.Columns)
 
 	var conditions []string
 	for _, v := range keySet {
@@ -284,7 +284,7 @@ func (s *Storage) TableAccessible(table abstract.TableDescription) bool {
 
 	dummyS := struct{}{}
 
-	if err := s.ytClient.GetNode(ctx, ytprovider.SafeChild(ypath.Path(s.path), getTableName(table)), dummyS, nil); err != nil {
+	if err := s.ytClient.GetNode(ctx, provider_yt.SafeChild(ypath.Path(s.path), getTableName(table)), dummyS, nil); err != nil {
 		logger.Log.Warnf("Inaccessible table %v: %v", table.Fqtn(), err)
 		return false
 	}

@@ -7,7 +7,7 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract2"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/model"
+	clickhouse_model "github.com/transferia/transferia/pkg/providers/clickhouse/model"
 )
 
 type Validator interface {
@@ -32,18 +32,18 @@ func NewFatalValidator(in Validator) *FatalValidatorWithInputLogger {
 	}
 }
 
-func newValidatorImpl(reader io.Reader, format model.ClickhouseIOFormat, expectedColumnsNum int) (Validator, error) {
+func newValidatorImpl(reader io.Reader, format clickhouse_model.ClickhouseIOFormat, expectedColumnsNum int) (Validator, error) {
 	switch format {
-	case model.ClickhouseIOFormatCSV:
+	case clickhouse_model.ClickhouseIOFormatCSV:
 		return NewCsvValidator(reader, expectedColumnsNum), nil
-	case model.ClickhouseIOFormatJSONCompact:
+	case clickhouse_model.ClickhouseIOFormatJSONCompact:
 		return NewJSONCompactValidator(reader, expectedColumnsNum), nil
 	default:
 		return nil, abstract.NewFatalError(xerrors.Errorf("unexpected format: %s, only CSV/JSONCompactEachRow supported", string(format)))
 	}
 }
 
-func NewValidator(reader io.Reader, format model.ClickhouseIOFormat, expectedColumnsNum int) (*FatalValidatorWithInputLogger, error) {
+func NewValidator(reader io.Reader, format clickhouse_model.ClickhouseIOFormat, expectedColumnsNum int) (*FatalValidatorWithInputLogger, error) {
 	validator, err := newValidatorImpl(reader, format, expectedColumnsNum)
 	if err != nil {
 		return nil, err
@@ -51,11 +51,11 @@ func NewValidator(reader io.Reader, format model.ClickhouseIOFormat, expectedCol
 	return NewFatalValidator(validator), nil
 }
 
-func NewEvent(format model.ClickhouseIOFormat, row []byte, cols *abstract.TableSchema, names []string, table abstract.TableID, readerTime time.Time) (abstract2.Event, error) {
+func NewEvent(format clickhouse_model.ClickhouseIOFormat, row []byte, cols *abstract.TableSchema, names []string, table abstract.TableID, readerTime time.Time) (abstract2.Event, error) {
 	switch format {
-	case model.ClickhouseIOFormatCSV:
+	case clickhouse_model.ClickhouseIOFormatCSV:
 		return NewCSVEvent(row, cols, names, table, readerTime), nil
-	case model.ClickhouseIOFormatJSONCompact:
+	case clickhouse_model.ClickhouseIOFormatJSONCompact:
 		return NewJSONCompactEvent(row, cols, names, table, readerTime), nil
 	default:
 		return nil, abstract.NewFatalError(xerrors.Errorf("unexpected format: %s, only CSV/JSONCompactEachRow supported", string(format)))

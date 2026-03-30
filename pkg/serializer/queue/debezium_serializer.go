@@ -9,7 +9,7 @@ import (
 	"github.com/transferia/transferia/pkg/debezium"
 	"github.com/transferia/transferia/pkg/debezium/packer"
 	lightningcache "github.com/transferia/transferia/pkg/debezium/packer/lightning_cache"
-	debeziumparameters "github.com/transferia/transferia/pkg/debezium/parameters"
+	debezium_parameters "github.com/transferia/transferia/pkg/debezium/parameters"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
@@ -96,13 +96,13 @@ func MakeFormatSettingsWithTopicPrefix(format model.SerializationFormat, topicPr
 	for k, v := range format.Settings {
 		formatSettingsCopy[k] = v
 	}
-	if _, ok := formatSettingsCopy[debeziumparameters.TopicPrefix]; !ok {
+	if _, ok := formatSettingsCopy[debezium_parameters.TopicPrefix]; !ok {
 		if topicPrefix != "" {
-			formatSettingsCopy[debeziumparameters.TopicPrefix] = topicPrefix
+			formatSettingsCopy[debezium_parameters.TopicPrefix] = topicPrefix
 		} else if topicFullPath != "" {
-			formatSettingsCopy[debeziumparameters.TopicPrefix] = topicFullPath
+			formatSettingsCopy[debezium_parameters.TopicPrefix] = topicFullPath
 		} else {
-			formatSettingsCopy[debeziumparameters.TopicPrefix] = defaultTopicPrefix
+			formatSettingsCopy[debezium_parameters.TopicPrefix] = defaultTopicPrefix
 		}
 	}
 	return model.SerializationFormat{

@@ -3,7 +3,7 @@ package postgres
 import (
 	"bytes"
 	"context"
-	"database/sql/driver"
+	sql_driver "database/sql/driver"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -25,7 +25,7 @@ import (
 	"github.com/transferia/transferia/pkg/util/strict"
 	"github.com/transferia/transferia/pkg/util/xlocale"
 	"go.ytsaurus.tech/library/go/core/log"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 type changeProcessor struct {
@@ -218,34 +218,34 @@ func (c *changeProcessor) restoreType(value any, oid pgtype.OID, colSchema *abst
 
 	// in the switch below, the usage of `strict.UnexpectedSQL` indicates an unexpected or even impossible situation.
 	// However, in order for Data Transfer to remain resilient, "unexpected" casts must exist
-	switch schema.Type(colSchema.DataType) {
-	case schema.TypeInt64:
+	switch ytschema.Type(colSchema.DataType) {
+	case ytschema.TypeInt64:
 		result, err = strict.ExpectedSQL[json.Number](value, cast.ToInt64E)
-	case schema.TypeInt32:
+	case ytschema.TypeInt32:
 		result, err = strict.ExpectedSQL[json.Number](value, cast.ToInt32E)
-	case schema.TypeInt16:
+	case ytschema.TypeInt16:
 		result, err = strict.ExpectedSQL[json.Number](value, cast.ToInt16E)
-	case schema.TypeInt8:
+	case ytschema.TypeInt8:
 		result, err = strict.UnexpectedSQL(value, cast.ToInt8E)
-	case schema.TypeUint64:
+	case ytschema.TypeUint64:
 		result, err = strict.UnexpectedSQL(value, cast.ToUint64E)
-	case schema.TypeUint32:
+	case ytschema.TypeUint32:
 		result, err = strict.UnexpectedSQL(value, cast.ToUint32E)
-	case schema.TypeUint16:
+	case ytschema.TypeUint16:
 		result, err = strict.UnexpectedSQL(value, cast.ToUint16E)
-	case schema.TypeUint8:
+	case ytschema.TypeUint8:
 		result, err = strict.UnexpectedSQL(value, cast.ToUint8E)
-	case schema.TypeFloat32:
+	case ytschema.TypeFloat32:
 		result, err = strict.UnexpectedSQL(value, cast.ToFloat32E)
-	case schema.TypeFloat64:
+	case ytschema.TypeFloat64:
 		result, err = strict.ExpectedSQL[json.Number](value, castx.ToJSONNumberE)
-	case schema.TypeBytes:
+	case ytschema.TypeBytes:
 		result, err = strict.ExpectedSQL[string](value, unmarshalHexStringBytes)
-	case schema.TypeBoolean:
+	case ytschema.TypeBoolean:
 		result, err = strict.ExpectedSQL[bool](value, cast.ToBoolE)
-	case schema.TypeDate:
+	case ytschema.TypeDate:
 		result, err = strict.ExpectedSQL[string](value, temporalsUnmarshallerFromDecoder(NewDate(), &c.connInfo, c.config.IsHomo))
-	case schema.TypeDatetime:
+	case ytschema.TypeDatetime:
 		switch ClearOriginalType(colSchema.OriginalType) {
 		case "TIMESTAMP WITH TIME ZONE":
 			result, err = strict.ExpectedSQL[string](value, temporalsUnmarshallerFromDecoder(NewTimestamptz(), &c.connInfo, c.config.IsHomo))
@@ -254,7 +254,7 @@ func (c *changeProcessor) restoreType(value any, oid pgtype.OID, colSchema *abst
 		default:
 			result, err = strict.UnexpectedSQL(value, cast.ToTimeE)
 		}
-	case schema.TypeTimestamp:
+	case ytschema.TypeTimestamp:
 		switch ClearOriginalType(colSchema.OriginalType) {
 		case "TIMESTAMP WITH TIME ZONE":
 			result, err = strict.UnexpectedSQL(value, temporalsUnmarshallerFromDecoder(NewTimestamptz(), &c.connInfo, c.config.IsHomo))
@@ -263,9 +263,9 @@ func (c *changeProcessor) restoreType(value any, oid pgtype.OID, colSchema *abst
 		default:
 			result, err = strict.UnexpectedSQL(value, cast.ToTimeE)
 		}
-	case schema.TypeInterval:
+	case ytschema.TypeInterval:
 		result, err = strict.UnexpectedSQL(value, cast.ToDurationE)
-	case schema.TypeString:
+	case ytschema.TypeString:
 		switch ClearOriginalType(colSchema.OriginalType) {
 		case "TEXT", "CHARACTER VARYING":
 			result, err = strict.ExpectedSQL[string](value, castx.ToStringE)
@@ -278,14 +278,14 @@ func (c *changeProcessor) restoreType(value any, oid pgtype.OID, colSchema *abst
 		default:
 			result, err = strict.UnexpectedSQL(value, castx.ToStringE)
 		}
-	case schema.TypeAny:
+	case ytschema.TypeAny:
 		result, err = expectedAnyCastReplication(value, oid, colSchema, &c.connInfo, c.config.IsHomo)
 	default:
 		return nil, abstract.NewFatalError(xerrors.Errorf("unexpected target type %s (original type %q, value of type %T), unmarshalling is not implemented", colSchema.DataType, colSchema.OriginalType, value))
 	}
 
 	if err != nil {
-		return nil, abstract.NewStrictifyError(colSchema, schema.Type(colSchema.DataType), err)
+		return nil, abstract.NewStrictifyError(colSchema, ytschema.Type(colSchema.DataType), err)
 	}
 	return result, nil
 }
@@ -346,7 +346,7 @@ func unmarshalHexStringBytes(v any) ([]byte, error) {
 
 type TextDecoderAndValuerWithHomo interface {
 	pgtype.TextDecoder
-	driver.Valuer
+	sql_driver.Valuer
 	abstract.HomoValuer
 }
 

@@ -2,11 +2,11 @@ package postgres
 
 import (
 	"bytes"
-	"database/sql/driver"
+	sql_driver "database/sql/driver"
 	"net"
 	"time"
 
-	"github.com/gofrs/uuid"
+	gofrs_uuid "github.com/gofrs/uuid"
 	"github.com/jackc/pgtype"
 	"github.com/spf13/cast"
 	"github.com/transferia/transferia/library/go/core/xerrors"
@@ -14,7 +14,7 @@ import (
 	"github.com/transferia/transferia/pkg/util/castx"
 	"github.com/transferia/transferia/pkg/util/jsonx"
 	"github.com/transferia/transferia/pkg/util/strict"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 func unmarshalFieldHetero(value any, colSchema *abstract.ColSchema, connInfo *pgtype.ConnInfo) (any, error) {
@@ -23,26 +23,26 @@ func unmarshalFieldHetero(value any, colSchema *abstract.ColSchema, connInfo *pg
 
 	// in the switch below, the usage of `strict.UnexpectedSQL` indicates an unexpected or even impossible situation.
 	// However, in order for Data Transfer to remain resilient, "unexpected" casts must exist
-	switch schema.Type(colSchema.DataType) {
-	case schema.TypeInt64:
+	switch ytschema.Type(colSchema.DataType) {
+	case ytschema.TypeInt64:
 		result, err = strict.ExpectedSQL[*pgtype.Int8](value, cast.ToInt64E)
-	case schema.TypeInt32:
+	case ytschema.TypeInt32:
 		result, err = strict.ExpectedSQL[*pgtype.Int4](value, cast.ToInt32E)
-	case schema.TypeInt16:
+	case ytschema.TypeInt16:
 		result, err = strict.ExpectedSQL[*pgtype.Int2](value, cast.ToInt16E)
-	case schema.TypeInt8:
+	case ytschema.TypeInt8:
 		result, err = strict.UnexpectedSQL(value, cast.ToInt8E)
-	case schema.TypeUint64:
+	case ytschema.TypeUint64:
 		result, err = strict.UnexpectedSQL(value, cast.ToUint64E)
-	case schema.TypeUint32:
+	case ytschema.TypeUint32:
 		result, err = strict.UnexpectedSQL(value, cast.ToUint32E)
-	case schema.TypeUint16:
+	case ytschema.TypeUint16:
 		result, err = strict.UnexpectedSQL(value, cast.ToUint16E)
-	case schema.TypeUint8:
+	case ytschema.TypeUint8:
 		result, err = strict.UnexpectedSQL(value, cast.ToUint8E)
-	case schema.TypeFloat32:
+	case ytschema.TypeFloat32:
 		result, err = strict.UnexpectedSQL(value, cast.ToFloat32E)
-	case schema.TypeFloat64:
+	case ytschema.TypeFloat64:
 		switch v := value.(type) {
 		case *pgtype.Float4:
 			result, err = strict.ExpectedSQL[*pgtype.Float4](v, castx.ToJSONNumberE)
@@ -53,15 +53,15 @@ func unmarshalFieldHetero(value any, colSchema *abstract.ColSchema, connInfo *pg
 		default:
 			result, err = strict.UnexpectedSQL(v, castx.ToJSONNumberE)
 		}
-	case schema.TypeBytes:
+	case ytschema.TypeBytes:
 		result, err = strict.ExpectedSQL[*pgtype.Bytea](value, castx.ToByteSliceE)
-	case schema.TypeBoolean:
+	case ytschema.TypeBoolean:
 		result, err = strict.ExpectedSQL[*pgtype.Bool](value, cast.ToBoolE)
-	case schema.TypeDate:
+	case ytschema.TypeDate:
 		result, err = strict.ExpectedSQL[*Date](value, cast.ToTimeE)
-	case schema.TypeDatetime:
+	case ytschema.TypeDatetime:
 		result, err = strict.UnexpectedSQL(value, cast.ToTimeE)
-	case schema.TypeTimestamp:
+	case ytschema.TypeTimestamp:
 		switch v := value.(type) {
 		case *Timestamp:
 			result, err = strict.ExpectedSQL[*Timestamp](v, cast.ToTimeE)
@@ -70,18 +70,18 @@ func unmarshalFieldHetero(value any, colSchema *abstract.ColSchema, connInfo *pg
 		default:
 			result, err = strict.UnexpectedSQL(value, cast.ToTimeE)
 		}
-	case schema.TypeInterval:
+	case ytschema.TypeInterval:
 		result, err = strict.UnexpectedSQL(value, cast.ToDurationE)
-	case schema.TypeString:
+	case ytschema.TypeString:
 		result, err = expectedStringCast(value)
-	case schema.TypeAny:
+	case ytschema.TypeAny:
 		result, err = expectedAnyCast(value, colSchema, connInfo)
 	default:
 		return nil, abstract.NewFatalError(xerrors.Errorf("unexpected target type %s (original type %q, value of type %T), unmarshalling is not implemented", colSchema.DataType, colSchema.OriginalType, value))
 	}
 
 	if err != nil {
-		return nil, abstract.NewStrictifyError(colSchema, schema.Type(colSchema.DataType), err)
+		return nil, abstract.NewStrictifyError(colSchema, ytschema.Type(colSchema.DataType), err)
 	}
 	return result, nil
 }
@@ -116,12 +116,12 @@ func expectedAnyCast(value any, colSchema *abstract.ColSchema, connInfo *pgtype.
 		result, err = strict.ExpectedSQL[*pgtype.Tstzrange](v, castx.ToStringE)
 	case *pgtype.Daterange:
 		result, err = unmarshalDaterange(v)
-	case driver.Valuer:
+	case sql_driver.Valuer:
 		// all possible pgtype types (which can appear in future PostgreSQL versions and those which Transfer just does not support) should fall into this case
 		result, err = v.Value()
 	case [16]byte:
 		// this should never appear, but has been present since https://github.com/transferia/transferia/review/757334/files/2#file-/trunk/arcadia/transfer_manager/go/pkg/storage/pg/scanner.go:R21
-		result, err = uuid.FromBytesOrNil(v[:16]).String(), nil
+		result, err = gofrs_uuid.FromBytesOrNil(v[:16]).String(), nil
 	case *net.IPNet:
 		// this should never appear, but has been present since https://github.com/transferia/transferia/review/1204645/files/2#file-transfer_manager/go/pkg/storage/pg/scanner.go:R98
 		result, err = unmarshalIPNet(v)

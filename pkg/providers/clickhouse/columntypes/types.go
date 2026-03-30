@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/transferia/transferia/pkg/abstract"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 var (
@@ -89,7 +89,7 @@ func Restore(column abstract.ColSchema, val interface{}) interface{} {
 		default:
 			return marshalAny(val)
 		}
-	case schema.TypeDatetime.String(), schema.TypeDate.String():
+	case ytschema.TypeDatetime.String(), ytschema.TypeDate.String():
 		switch v := val.(type) {
 		case time.Time:
 			return applyClickhouseDateBoundaries(v)
@@ -163,42 +163,42 @@ var chTypeWithModifierRe *regexp.Regexp = regexp.MustCompile(`(\w*)\((.*)\)`)
 //
 // XXX: support all types from system.data_type_families, such as Decimal, Tuple, Array, Nested, Array(Array(...))
 func ToYtType(chType string) (ytType string, required bool) {
-	var result schema.Type
+	var result ytschema.Type
 	switch BaseType(chType) {
 	case "Date":
-		result = schema.TypeDate
+		result = ytschema.TypeDate
 	case "DateTime":
-		result = schema.TypeDatetime
+		result = ytschema.TypeDatetime
 	case "DateTime64":
-		result = schema.TypeTimestamp
+		result = ytschema.TypeTimestamp
 	case "Enum8", "Enum16":
-		result = schema.TypeString
+		result = ytschema.TypeString
 	case "FixedString":
-		result = schema.TypeBytes
+		result = ytschema.TypeBytes
 	case "Float64":
-		result = schema.TypeFloat64
+		result = ytschema.TypeFloat64
 	case "Int8":
-		result = schema.TypeInt8
+		result = ytschema.TypeInt8
 	case "Int16":
-		result = schema.TypeInt16
+		result = ytschema.TypeInt16
 	case "Int32":
-		result = schema.TypeInt32
+		result = ytschema.TypeInt32
 	case "Int64":
-		result = schema.TypeInt64
+		result = ytschema.TypeInt64
 	case "IPv4", "IPv6":
-		result = schema.TypeString
+		result = ytschema.TypeString
 	case "String":
-		result = schema.TypeBytes
+		result = ytschema.TypeBytes
 	case "UInt8":
-		result = schema.TypeUint8
+		result = ytschema.TypeUint8
 	case "UInt16":
-		result = schema.TypeUint16
+		result = ytschema.TypeUint16
 	case "UInt32":
-		result = schema.TypeUint32
+		result = ytschema.TypeUint32
 	case "UInt64":
-		result = schema.TypeUint64
+		result = ytschema.TypeUint64
 	default:
-		result = schema.TypeAny
+		result = ytschema.TypeAny
 	}
 	return string(result), !isNullable(chType)
 }
@@ -209,38 +209,38 @@ func isNullable(chType string) bool {
 }
 
 func ToChType(ytType string) string {
-	switch schema.Type(ytType) {
-	case schema.TypeAny, schema.TypeBytes:
+	switch ytschema.Type(ytType) {
+	case ytschema.TypeAny, ytschema.TypeBytes:
 		return "String"
-	case schema.TypeFloat64:
+	case ytschema.TypeFloat64:
 		return "Float64"
-	case schema.TypeFloat32:
+	case ytschema.TypeFloat32:
 		return "Float32"
-	case schema.TypeBoolean:
+	case ytschema.TypeBoolean:
 		return "UInt8"
-	case schema.TypeInt8:
+	case ytschema.TypeInt8:
 		return "Int8"
-	case schema.TypeInt16:
+	case ytschema.TypeInt16:
 		return "Int16"
-	case schema.TypeInt32:
+	case ytschema.TypeInt32:
 		return "Int32"
-	case schema.TypeInt64:
+	case ytschema.TypeInt64:
 		return "Int64"
-	case schema.TypeUint8:
+	case ytschema.TypeUint8:
 		return "UInt8"
-	case schema.TypeUint16:
+	case ytschema.TypeUint16:
 		return "UInt16"
-	case schema.TypeUint32:
+	case ytschema.TypeUint32:
 		return "UInt32"
-	case schema.TypeUint64:
+	case ytschema.TypeUint64:
 		return "UInt64"
-	case schema.TypeDate:
+	case ytschema.TypeDate:
 		return "Date"
-	case schema.TypeDatetime:
+	case ytschema.TypeDatetime:
 		return "DateTime"
-	case schema.TypeTimestamp:
+	case ytschema.TypeTimestamp:
 		return "DateTime64(6)"
-	case schema.TypeInterval:
+	case ytschema.TypeInterval:
 		return "Int64"
 	default:
 		return "String"

@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/transferia/transferia/internal/logger"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/pkg/util/gobwrapper"
 )
 
@@ -43,7 +43,7 @@ CAT                 |        | |        | |        |
 |_|_|_|_|_|_|_|_|_|_|_|_|_|_|_|_|_|_|_|_|_|_|_|_|_|_|_|_|_|_|_|_|_|_|_|_|
 `
 
-func (f *JobNoJob) Do(_ metrics.Registry) error {
+func (f *JobNoJob) Do(_ core_metrics.Registry) error {
 	catTailDirectionToggle := 0
 	logger.Log.Info(`
 This job should do nothing.

@@ -13,8 +13,8 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	"github.com/transferia/transferia/pkg/providers/postgres"
-	yt_provider "github.com/transferia/transferia/pkg/providers/yt"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
+	provider_yt "github.com/transferia/transferia/pkg/providers/yt"
 	"github.com/transferia/transferia/pkg/util"
 	"github.com/transferia/transferia/pkg/util/jsonx"
 	"go.ytsaurus.tech/library/go/core/log"
@@ -302,13 +302,13 @@ func onConflictTryAlterWithoutNarrowing(ctx context.Context, ytClient yt.Client)
 		}
 		logger.Log.Info("united schema computed", log.String("path", path.String()), log.Reflect("united_schema", unitedSchema))
 
-		if err := yt_provider.MountUnmountWrapper(ctx, ytClient, path, migrate.UnmountAndWait); err != nil {
+		if err := provider_yt.MountUnmountWrapper(ctx, ytClient, path, migrate.UnmountAndWait); err != nil {
 			return xerrors.Errorf("unmount error: %w", err)
 		}
 		if err := ytClient.AlterTable(ctx, path, &yt.AlterTableOptions{Schema: &unitedSchema}); err != nil {
 			return xerrors.Errorf("alter error: %w", err)
 		}
-		if err := yt_provider.MountUnmountWrapper(ctx, ytClient, path, migrate.MountAndWait); err != nil {
+		if err := provider_yt.MountUnmountWrapper(ctx, ytClient, path, migrate.MountAndWait); err != nil {
 			return xerrors.Errorf("mount error: %w", err)
 		}
 		// Schema has been altered, no need to retry schema comparison
@@ -418,7 +418,7 @@ func restore(colSchema abstract.ColSchema, val any, isStatic bool) (any, error) 
 			return nil, xerrors.Errorf("unable type for ch:Float32, type=%T", val)
 		}
 	}
-	if postgres.IsPgEnum(colSchema) {
+	if provider_postgres.IsPgEnum(colSchema) {
 		switch v := val.(type) {
 		case string:
 			return v, nil
@@ -442,7 +442,7 @@ func restore(colSchema abstract.ColSchema, val any, isStatic bool) (any, error) 
 	}
 
 	// it's for TM-4877 --- typesystem version=1
-	if (postgres.IsPgTypeTimestampWithTimeZone(colSchema.OriginalType) || postgres.IsPgTypeTimestampWithoutTimeZone(colSchema.OriginalType)) && colSchema.DataType == ytschema.TypeString.String() {
+	if (provider_postgres.IsPgTypeTimestampWithTimeZone(colSchema.OriginalType) || provider_postgres.IsPgTypeTimestampWithoutTimeZone(colSchema.OriginalType)) && colSchema.DataType == ytschema.TypeString.String() {
 		switch valUnp := val.(type) {
 		case string: // pg->lb->yt
 			return valUnp, nil

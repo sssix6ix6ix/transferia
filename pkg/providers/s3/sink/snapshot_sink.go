@@ -6,15 +6,16 @@ import (
 	"strconv"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/s3"
+	aws_s3 "github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	s3_provider "github.com/transferia/transferia/pkg/providers/s3"
-	s3_writer "github.com/transferia/transferia/pkg/providers/s3/sink/writer"
+	s3_model "github.com/transferia/transferia/pkg/providers/s3/model"
+	"github.com/transferia/transferia/pkg/providers/s3/s3util/s3sess"
+	s3_sink_writer "github.com/transferia/transferia/pkg/providers/s3/sink/writer"
 	"github.com/transferia/transferia/pkg/stats"
 	"go.ytsaurus.tech/library/go/core/log"
 )
@@ -23,7 +24,7 @@ type SnapshotSink struct {
 	transferID         string
 	operationTimestamp string
 	s3Client           S3Client
-	cfg                *s3_provider.S3Destination
+	cfg                *s3_model.S3Destination
 	snapshotWriters    map[s3ObjectRef]*SnapshotWriter
 	logger             log.Logger
 	metrics            *stats.SinkerStats
@@ -67,7 +68,7 @@ func (s *SnapshotSink) initPipe(fullTableName string, ref s3ObjectRef, keyPartNu
 	if err != nil {
 		return xerrors.Errorf("unable to create serializer with outputFormat: %s: %w", s.cfg.OutputFormat, err)
 	}
-	writer := s3_writer.NewWriter(s.cfg.OutputEncoding, pipeWriter)
+	writer := s3_sink_writer.NewWriter(s.cfg.OutputEncoding, pipeWriter)
 	snapshotWriter, err := NewsnapshotWriter(
 		context.Background(),
 		batchSerializer,
@@ -126,7 +127,7 @@ func (s *SnapshotSink) processItemsAndReturnInserts(input []abstract.ChangeItem)
 			ref := s.makeS3ObjectRef(row)
 			key := s.fileSplitter.key(ref)
 			s.logger.Info("drop table", log.String("table", fullTableName))
-			res, err := s.s3Client.DeleteObject(&s3.DeleteObjectInput{
+			res, err := s.s3Client.DeleteObject(&aws_s3.DeleteObjectInput{
 				Bucket: aws.String(s.cfg.Bucket),
 				Key:    aws.String(key),
 			})
@@ -297,18 +298,18 @@ func (s *SnapshotSink) UpdateOutputFormat(f model.ParsingFormat) {
 
 func NewSnapshotSink(
 	lgr log.Logger,
-	cfg *s3_provider.S3Destination,
-	mtrcs metrics.Registry,
+	cfg *s3_model.S3Destination,
+	mtrcs core_metrics.Registry,
 	cp coordinator.Coordinator,
 	transferID string,
 	operationTimestamp int64,
 ) (*SnapshotSink, error) {
-	sess, err := s3_provider.NewAWSSession(lgr, cfg.Bucket, cfg.ConnectionConfig())
+	sess, err := s3sess.NewAWSSession(lgr, cfg.Bucket, cfg.ConnectionConfig())
 	if err != nil {
 		return nil, xerrors.Errorf("unable to create session to s3 bucket: %w", err)
 	}
 
-	s3Client := s3.New(sess)
+	s3Client := aws_s3.New(sess)
 	uploader := s3manager.NewUploader(sess)
 	uploader.PartSize = cfg.PartSize
 

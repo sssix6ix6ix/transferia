@@ -1,4 +1,4 @@
-package s3
+package s3_model
 
 import (
 	"time"
@@ -6,16 +6,16 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	dp_model "github.com/transferia/transferia/pkg/abstract/model"
+	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/middlewares/synchronizer/bufferer"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/model"
+	clickhouse_model "github.com/transferia/transferia/pkg/providers/clickhouse/model"
 	"github.com/transferia/transferia/pkg/util/gobwrapper"
 	"go.uber.org/zap/zapcore"
 )
 
 func init() {
 	gobwrapper.RegisterName("*server.S3Destination", new(S3Destination))
-	dp_model.RegisterDestination(ProviderType, func() dp_model.LoggableDestination {
+	model.RegisterDestination(ProviderType, func() model.LoggableDestination {
 		return new(S3Destination)
 	})
 	abstract.RegisterProviderName(ProviderType, "ObjectStorage")
@@ -53,12 +53,12 @@ type Rotator interface {
 }
 
 type S3Destination struct {
-	OutputFormat     dp_model.ParsingFormat `log:"true"`
-	OutputEncoding   Encoding               `log:"true"`
-	BufferSize       dp_model.BytesSize     `log:"true"`
-	BufferInterval   time.Duration          `log:"true"`
-	Endpoint         string                 `log:"true"`
-	Region           string                 `log:"true"`
+	OutputFormat     model.ParsingFormat `log:"true"`
+	OutputEncoding   Encoding            `log:"true"`
+	BufferSize       model.BytesSize     `log:"true"`
+	BufferInterval   time.Duration       `log:"true"`
+	Endpoint         string              `log:"true"`
+	Region           string              `log:"true"`
 	AccessKey        string
 	S3ForcePathStyle bool `log:"true"`
 	Secret           string
@@ -83,8 +83,8 @@ type S3Destination struct {
 	Partitioner PartitionerType
 }
 
-var _ dp_model.Destination = (*S3Destination)(nil)
-var _ dp_model.QueueToS3Destination = (*S3Destination)(nil)
+var _ model.Destination = (*S3Destination)(nil)
+var _ model.QueueToS3Destination = (*S3Destination)(nil)
 
 func (d *S3Destination) IsQueueToS3Destination() {
 }
@@ -101,7 +101,7 @@ func (d *S3Destination) WithDefaults() {
 		d.BufferInterval = time.Second * 30
 	}
 	if d.BufferSize == 0 {
-		d.BufferSize = dp_model.BytesSize(model.BufferTriggingSizeDefault)
+		d.BufferSize = model.BytesSize(clickhouse_model.BufferTriggingSizeDefault)
 	}
 	if d.Concurrency == 0 {
 		d.Concurrency = 4
@@ -127,7 +127,7 @@ func (d *S3Destination) ConnectionConfig() ConnectionConfig {
 	return ConnectionConfig{
 		AccessKey:        d.AccessKey,
 		S3ForcePathStyle: d.S3ForcePathStyle,
-		SecretKey:        dp_model.SecretString(d.Secret),
+		SecretKey:        model.SecretString(d.Secret),
 		Endpoint:         d.Endpoint,
 		UseSSL:           d.UseSSL,
 		VerifySSL:        d.VerifySSL,
@@ -140,8 +140,8 @@ func (d *S3Destination) Transformer() map[string]string {
 	return map[string]string{}
 }
 
-func (d *S3Destination) CleanupMode() dp_model.CleanupType {
-	return dp_model.DisabledCleanup
+func (d *S3Destination) CleanupMode() model.CleanupType {
+	return model.DisabledCleanup
 }
 
 func (d *S3Destination) IsDestination() {
@@ -155,9 +155,9 @@ func (d *S3Destination) Validate() error {
 	return nil
 }
 
-func (d *S3Destination) compatible(src dp_model.Source) bool {
-	parseable, ok := src.(dp_model.Parseable)
-	if d.OutputFormat == dp_model.ParsingFormatRaw {
+func (d *S3Destination) compatible(src model.Source) bool {
+	parseable, ok := src.(model.Parseable)
+	if d.OutputFormat == model.ParsingFormatRaw {
 		if ok {
 			return parseable.Parser() == nil
 		}
@@ -170,7 +170,7 @@ func (d *S3Destination) compatible(src dp_model.Source) bool {
 	}
 }
 
-func (d *S3Destination) Compatible(src dp_model.Source, _ abstract.TransferType) error {
+func (d *S3Destination) Compatible(src model.Source, _ abstract.TransferType) error {
 	if d.compatible(src) {
 		return nil
 	}

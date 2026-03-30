@@ -8,18 +8,18 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
+	aws_credentials "github.com/aws/aws-sdk-go/aws/credentials"
+	aws_session "github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/library/go/core/metrics/solomon"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/s3"
+	s3_model "github.com/transferia/transferia/pkg/providers/s3/model"
 	"github.com/transferia/transferia/pkg/providers/s3/s3recipe"
-	"github.com/transferia/transferia/pkg/providers/s3/sink/testutil"
-	"github.com/transferia/transferia/pkg/providers/s3/source"
+	s3_sink_testutil "github.com/transferia/transferia/pkg/providers/s3/sink/testutil"
+	s3_source "github.com/transferia/transferia/pkg/providers/s3/source"
 )
 
 func init() {
@@ -75,9 +75,9 @@ func TestNativeS3PathsAreUnescaped(t *testing.T) {
 	src.ReadBatchSize = 4000 // just for testing so its faster, normally much smaller
 	src.Format.CSVSetting.QuoteChar = "\""
 
-	src.EventSource.SQS = &s3.SQS{
+	src.EventSource.SQS = &s3_model.SQS{
 		QueueName: sqsQueueName,
-		ConnectionConfig: s3.ConnectionConfig{
+		ConnectionConfig: s3_model.ConnectionConfig{
 			AccessKey: sqsUser,
 			SecretKey: model.SecretString(sqsKey),
 			Endpoint:  sqsEndpoint,
@@ -85,12 +85,12 @@ func TestNativeS3PathsAreUnescaped(t *testing.T) {
 		},
 	}
 
-	sess, err := session.NewSession(
+	sess, err := aws_session.NewSession(
 		&aws.Config{
 			Endpoint:         aws.String(sqsEndpoint),
 			Region:           aws.String(sqsRegion),
 			S3ForcePathStyle: aws.Bool(src.ConnectionConfig.S3ForcePathStyle),
-			Credentials: credentials.NewStaticCredentials(
+			Credentials: aws_credentials.NewStaticCredentials(
 				sqsUser,
 				sqsQueueName,
 				"",
@@ -106,12 +106,12 @@ func TestNativeS3PathsAreUnescaped(t *testing.T) {
 	sendAllMessages(t, 1240, testCasePath, queueURL, sqsClient)
 
 	time.Sleep(5 * time.Second)
-	cp := testutil.NewFakeClientWithTransferState()
+	cp := s3_sink_testutil.NewFakeClientWithTransferState()
 
 	parallelism := abstract.NewFakeShardingTaskRuntime(0, 1, 1, 1)
-	sourceOne, err := source.NewSource(src, "test-1", logger.Log, solomon.NewRegistry(solomon.NewRegistryOpts()), cp, parallelism)
+	sourceOne, err := s3_source.NewSource(src, "test-1", logger.Log, solomon.NewRegistry(solomon.NewRegistryOpts()), cp, parallelism)
 	require.NoError(t, err)
-	sourceTwo, err := source.NewSource(src, "test-2", logger.Log, solomon.NewRegistry(solomon.NewRegistryOpts()), cp, parallelism)
+	sourceTwo, err := s3_source.NewSource(src, "test-2", logger.Log, solomon.NewRegistry(solomon.NewRegistryOpts()), cp, parallelism)
 	require.NoError(t, err)
 
 	sink1 := mockAsyncSink{}

@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/cmd/trcli/activate"
-	"github.com/transferia/transferia/cmd/trcli/config"
+	trcli_config "github.com/transferia/transferia/cmd/trcli/config"
 	"github.com/transferia/transferia/library/go/core/metrics/solomon"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/chrecipe"
@@ -30,7 +30,7 @@ func TestActivate(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	transfer, err := config.ParseTransfer(transferYaml)
+	transfer, err := trcli_config.ParseTransfer(transferYaml)
 	require.NoError(t, err)
 
 	transfer.Src = src
@@ -54,7 +54,7 @@ func TestActivateWithDelay(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	transfer, err := config.ParseTransfer(transferYaml)
+	transfer, err := trcli_config.ParseTransfer(transferYaml)
 	require.NoError(t, err)
 
 	transfer.Src = src

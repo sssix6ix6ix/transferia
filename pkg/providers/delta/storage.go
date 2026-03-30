@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/aws/aws-sdk-go/service/s3"
+	aws_s3 "github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
 	"github.com/parquet-go/parquet-go"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
@@ -16,15 +16,16 @@ import (
 	"github.com/transferia/transferia/pkg/providers/delta/action"
 	"github.com/transferia/transferia/pkg/providers/delta/protocol"
 	"github.com/transferia/transferia/pkg/providers/delta/store"
-	"github.com/transferia/transferia/pkg/providers/delta/types"
-	s3_source "github.com/transferia/transferia/pkg/providers/s3"
-	"github.com/transferia/transferia/pkg/providers/s3/pusher"
+	delta_types "github.com/transferia/transferia/pkg/providers/delta/types"
+	s3_model "github.com/transferia/transferia/pkg/providers/s3/model"
+	s3_pusher "github.com/transferia/transferia/pkg/providers/s3/pusher"
 	s3_reader "github.com/transferia/transferia/pkg/providers/s3/reader"
-	reader_factory "github.com/transferia/transferia/pkg/providers/s3/reader/registry"
+	s3_reader_registry "github.com/transferia/transferia/pkg/providers/s3/reader/registry"
 	"github.com/transferia/transferia/pkg/providers/s3/reader/s3raw"
+	"github.com/transferia/transferia/pkg/providers/s3/s3util/s3sess"
 	"github.com/transferia/transferia/pkg/stats"
 	"go.ytsaurus.tech/library/go/core/log"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 // To verify providers contract implementation
@@ -45,7 +46,7 @@ type Storage struct {
 	snapshot    *protocol.Snapshot
 	tableSchema *abstract.TableSchema
 	colNames    []string
-	registry    metrics.Registry
+	registry    core_metrics.Registry
 }
 
 func (s *Storage) Ping() error {
@@ -61,7 +62,7 @@ func (s *Storage) LoadTable(ctx context.Context, table abstract.TableDescription
 		return xerrors.Errorf("delta lake works only with enabled filter: %s", table.ID().String())
 	}
 
-	currPusher := pusher.New(abstractPusher, nil, s.logger, 0)
+	currPusher := s3_pusher.New(abstractPusher, nil, s.logger, 0)
 	return s.reader.Read(ctx, fmt.Sprintf("%s/%s", s.cfg.PathPrefix, string(table.Filter)), currPusher)
 }
 
@@ -78,14 +79,14 @@ func (s *Storage) TableList(_ abstract.IncludeTableList) (abstract.TableMap, err
 	}, nil
 }
 
-func (s *Storage) asTableSchema(typ *types.StructType) *abstract.TableSchema {
+func (s *Storage) asTableSchema(typ *delta_types.StructType) *abstract.TableSchema {
 	var res []abstract.ColSchema
 	if !s.cfg.HideSystemCols {
-		res = append(res, abstract.NewColSchema("__delta_file_name", schema.TypeString, true))
-		res = append(res, abstract.NewColSchema("__delta_row_index", schema.TypeUint64, true))
+		res = append(res, abstract.NewColSchema("__delta_file_name", ytschema.TypeString, true))
+		res = append(res, abstract.NewColSchema("__delta_row_index", ytschema.TypeUint64, true))
 	}
 	for _, f := range typ.Fields {
-		jsonType, _ := types.ToJSON(f.DataType)
+		jsonType, _ := delta_types.ToJSON(f.DataType)
 		res = append(res, abstract.ColSchema{
 			TableSchema:  "",
 			TableName:    "",
@@ -103,11 +104,11 @@ func (s *Storage) asTableSchema(typ *types.StructType) *abstract.TableSchema {
 	return abstract.NewTableSchema(res)
 }
 
-func mapDataType(dataType types.DataType) schema.Type {
+func mapDataType(dataType delta_types.DataType) ytschema.Type {
 	if dtType, ok := typesystem.RuleFor(ProviderType).Source[dataType.Name()]; ok {
 		return dtType
 	}
-	return schema.TypeAny
+	return ytschema.TypeAny
 }
 
 func (s *Storage) ExactTableRowsCount(_ abstract.TableID) (uint64, error) {
@@ -155,8 +156,8 @@ func (s *Storage) TableExists(table abstract.TableID) (bool, error) {
 
 func (s *Storage) Close() {}
 
-func NewStorage(cfg *DeltaSource, lgr log.Logger, registry metrics.Registry) (*Storage, error) {
-	sess, err := s3_source.NewAWSSession(lgr, cfg.Bucket, cfg.ConnectionConfig())
+func NewStorage(cfg *DeltaSource, lgr log.Logger, registry core_metrics.Registry) (*Storage, error) {
+	sess, err := s3sess.NewAWSSession(lgr, cfg.Bucket, cfg.ConnectionConfig())
 	if err != nil {
 		return nil, xerrors.Errorf("unable to init aws session: %w", err)
 	}
@@ -179,8 +180,8 @@ func NewStorage(cfg *DeltaSource, lgr log.Logger, registry metrics.Registry) (*S
 		return nil, xerrors.Errorf("unable to load delta table: %w", err)
 	}
 
-	s3Source := new(s3_source.S3Source)
-	s3Source.ConnectionConfig = s3_source.ConnectionConfig{
+	s3Source := new(s3_model.S3Source)
+	s3Source.ConnectionConfig = s3_model.ConnectionConfig{
 		Endpoint:         cfg.Endpoint,
 		Region:           cfg.Region,
 		AccessKey:        cfg.AccessKey,
@@ -199,13 +200,13 @@ func NewStorage(cfg *DeltaSource, lgr log.Logger, registry metrics.Registry) (*S
 	s3Source.InputFormat = model.ParsingFormatPARQUET
 	s3Source.PathPattern = "*.parquet"
 
-	reader, err := reader_factory.NewReader(s3Source, lgr, sess, stats.NewSourceStats(registry))
+	reader, err := s3_reader_registry.NewReader(s3Source, lgr, sess, stats.NewSourceStats(registry))
 	if err != nil {
 		return nil, xerrors.Errorf("unable to initialize parquet reader: %w", err)
 	}
 	return &Storage{
 		cfg:         cfg,
-		client:      s3.New(sess),
+		client:      aws_s3.New(sess),
 		logger:      lgr,
 		reader:      reader,
 		table:       table,

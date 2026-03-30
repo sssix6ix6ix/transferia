@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/s3"
+	aws_s3 "github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/library/go/core/xerrors"
@@ -105,7 +105,7 @@ func (r *wrappedReader[T]) Close() error {
 }
 
 func (r *wrappedReader[T]) ReadAll() ([]byte, error) {
-	file, err := r.client.GetObject(&s3.GetObjectInput{
+	file, err := r.client.GetObject(&aws_s3.GetObjectInput{
 		Bucket: aws.String(r.fetcher.bucket),
 		Key:    aws.String(r.fetcher.key),
 	})

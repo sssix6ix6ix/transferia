@@ -9,21 +9,21 @@ import (
 
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	"github.com/transferia/transferia/pkg/providers/mysql/unmarshaller/types"
+	mysql_unmarshaller_types "github.com/transferia/transferia/pkg/providers/mysql/unmarshaller/types"
 )
 
 func NewValueReceiver(k *sql.ColumnType, originalTypeName string, location *time.Location) any {
 	switch k.DatabaseTypeName() {
 	case "BIGINT", "UNSIGNED BIGINT":
 		if strings.HasSuffix(originalTypeName, "unsigned") || strings.HasSuffix(originalTypeName, "zerofill") {
-			return new(types.NullUint64)
+			return new(mysql_unmarshaller_types.NullUint64)
 		}
 	case "JSON":
-		return new(types.JSON)
+		return new(mysql_unmarshaller_types.JSON)
 	case "DATE", "DATETIME":
-		return types.NewTemporal()
+		return mysql_unmarshaller_types.NewTemporal()
 	case "TIMESTAMP":
-		return types.NewTemporalInLocation(location)
+		return mysql_unmarshaller_types.NewTemporalInLocation(location)
 	}
 	return reflect.New(k.ScanType()).Interface()
 }

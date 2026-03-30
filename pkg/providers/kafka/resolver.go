@@ -10,9 +10,9 @@ import (
 	yslices "github.com/transferia/transferia/library/go/slices"
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/connection"
-	"github.com/transferia/transferia/pkg/connection/kafka"
+	conn_kafka "github.com/transferia/transferia/pkg/connection/kafka"
 	"github.com/transferia/transferia/pkg/dbaas"
-	"github.com/transferia/transferia/pkg/providers/kafka/client"
+	kafka_client "github.com/transferia/transferia/pkg/providers/kafka/client"
 	"github.com/transferia/transferia/pkg/util"
 )
 
@@ -44,7 +44,7 @@ func ResolveOnPremBrokers(connectionOpt *KafkaConnectionOptions, kafkaAuth *Kafk
 	if err != nil {
 		return nil, xerrors.Errorf("Can't get auth mechanism: %w", err)
 	}
-	kafkaClient, err := client.NewClient(connectionOpt.Brokers, auth, tls, dial)
+	kafkaClient, err := kafka_client.NewClient(connectionOpt.Brokers, auth, tls, dial)
 	if err != nil {
 		return nil, xerrors.Errorf("unable to create kafka client, err: %w", err)
 	}
@@ -96,7 +96,7 @@ func ResolvePassword(s *KafkaConnectionOptions, kafkaAuth *KafkaAuth) (string, e
 	return password, nil
 }
 
-func ResolveConnectionOptions(connection *KafkaConnectionOptions, kafkaConnection *kafka.Connection) *KafkaConnectionOptions {
+func ResolveConnectionOptions(connection *KafkaConnectionOptions, kafkaConnection *conn_kafka.Connection) *KafkaConnectionOptions {
 	if kafkaConnection == nil {
 		return connection
 	}
@@ -119,28 +119,28 @@ func ResolveConnectionOptions(connection *KafkaConnectionOptions, kafkaConnectio
 	return kafkaOptions
 }
 
-func ResolveKafkaAuth(auth *KafkaAuth, kafkaConnection *kafka.Connection) *KafkaAuth {
+func ResolveKafkaAuth(auth *KafkaAuth, kafkaConnection *conn_kafka.Connection) *KafkaAuth {
 	if kafkaConnection == nil {
 		return auth
 	}
 
-	resultMechanism := kafka.KafkaSaslSecurityMechanism_UNSPECIFIED
+	resultMechanism := conn_kafka.KafkaSaslSecurityMechanism_UNSPECIFIED
 	for _, mechanism := range kafkaConnection.Mechanisms {
-		if mechanism == kafka.KafkaSaslSecurityMechanism_SCRAM_SHA512 {
-			resultMechanism = kafka.KafkaSaslSecurityMechanism_SCRAM_SHA512
+		if mechanism == conn_kafka.KafkaSaslSecurityMechanism_SCRAM_SHA512 {
+			resultMechanism = conn_kafka.KafkaSaslSecurityMechanism_SCRAM_SHA512
 			break
-		} else if mechanism == kafka.KafkaSaslSecurityMechanism_SCRAM_SHA256 {
-			resultMechanism = kafka.KafkaSaslSecurityMechanism_SCRAM_SHA256
+		} else if mechanism == conn_kafka.KafkaSaslSecurityMechanism_SCRAM_SHA256 {
+			resultMechanism = conn_kafka.KafkaSaslSecurityMechanism_SCRAM_SHA256
 		}
 	}
 
-	if resultMechanism == kafka.KafkaSaslSecurityMechanism_UNSPECIFIED {
+	if resultMechanism == conn_kafka.KafkaSaslSecurityMechanism_UNSPECIFIED {
 		logger.Log.Infof("Resolved Kafka auth mechanism is UNSPECIFIED, using SCRAM-SHA-256")
-		resultMechanism = kafka.KafkaSaslSecurityMechanism_SCRAM_SHA256
+		resultMechanism = conn_kafka.KafkaSaslSecurityMechanism_SCRAM_SHA256
 	}
-	if resultMechanism == kafka.KafkaSaslSecurityMechanism_PLAIN {
+	if resultMechanism == conn_kafka.KafkaSaslSecurityMechanism_PLAIN {
 		logger.Log.Infof("Resolved Kafka auth mechanism is PLAIN, using SCRAM-SHA-256")
-		resultMechanism = kafka.KafkaSaslSecurityMechanism_SCRAM_SHA256
+		resultMechanism = conn_kafka.KafkaSaslSecurityMechanism_SCRAM_SHA256
 	}
 
 	return &KafkaAuth{
@@ -151,7 +151,7 @@ func ResolveKafkaAuth(auth *KafkaAuth, kafkaConnection *kafka.Connection) *Kafka
 	}
 }
 
-func resolveConnection(connectionID string) (*kafka.Connection, error) {
+func resolveConnection(connectionID string) (*conn_kafka.Connection, error) {
 	connCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	//DP agent token here
@@ -160,7 +160,7 @@ func resolveConnection(connectionID string) (*kafka.Connection, error) {
 		return nil, err
 	}
 
-	if kafkaConn, ok := conn.(*kafka.Connection); ok {
+	if kafkaConn, ok := conn.(*conn_kafka.Connection); ok {
 		return kafkaConn, nil
 	}
 

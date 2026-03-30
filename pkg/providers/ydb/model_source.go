@@ -7,11 +7,11 @@ import (
 	"time"
 
 	"github.com/transferia/transferia/internal/logger"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	v3credential "github.com/ydb-platform/ydb-go-sdk/v3/credentials"
-	"github.com/ydb-platform/ydb-go-sdk/v3/table/options"
+	ydb_credentials "github.com/ydb-platform/ydb-go-sdk/v3/credentials"
+	ydb_options "github.com/ydb-platform/ydb-go-sdk/v3/table/options"
 	"go.uber.org/zap/zapcore"
 )
 
@@ -72,7 +72,7 @@ type YdbSource struct {
 	ServiceAccountID string `log:"true"`
 	TokenServiceURL  string `log:"true"`
 	SAKeyContent     string
-	OAuth2Config     *v3credential.OAuth2Config
+	OAuth2Config     *ydb_credentials.OAuth2Config
 
 	// storage
 	IsSnapshotSharded     bool   `log:"true"`
@@ -140,13 +140,13 @@ func MakeYDBRelPath(useFullPaths bool, paths []string, tableName string) string 
 	return tableName
 }
 
-func MatchchangeFeedMode(ydbMode options.ChangefeedMode) ChangeFeedModeType {
+func MatchchangeFeedMode(ydbMode ydb_options.ChangefeedMode) ChangeFeedModeType {
 	switch ydbMode {
-	case options.ChangefeedModeUpdates:
+	case ydb_options.ChangefeedModeUpdates:
 		return ChangeFeedModeUpdates
-	case options.ChangefeedModeNewAndOldImages:
+	case ydb_options.ChangefeedModeNewAndOldImages:
 		return ChangeFeedModeNewAndOldImages
-	case options.ChangefeedModeNewImage:
+	case ydb_options.ChangefeedModeNewImage:
 		return ChangeFeedModeNewImage
 	default:
 		return ""
@@ -191,7 +191,7 @@ func (s *YdbSource) Validate() error {
 	return nil
 }
 
-func (s *YdbSource) ExtraTransformers(_ context.Context, _ *model.Transfer, _ metrics.Registry) ([]abstract.Transformer, error) {
+func (s *YdbSource) ExtraTransformers(_ context.Context, _ *model.Transfer, _ core_metrics.Registry) ([]abstract.Transformer, error) {
 	var result []abstract.Transformer
 	if !s.UseFullPaths {
 		result = append(result, NewYDBRelativePathTransformer(s.Tables))

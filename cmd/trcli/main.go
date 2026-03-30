@@ -14,7 +14,7 @@ import (
 	"github.com/transferia/transferia/cmd/trcli/upload"
 	"github.com/transferia/transferia/cmd/trcli/validate"
 	"github.com/transferia/transferia/internal/logger"
-	internal_metrics "github.com/transferia/transferia/internal/metrics"
+	dt_metrics "github.com/transferia/transferia/internal/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
@@ -22,10 +22,10 @@ import (
 	"github.com/transferia/transferia/pkg/coordinator/s3coordinator"
 	_ "github.com/transferia/transferia/pkg/dataplane"
 	"github.com/transferia/transferia/pkg/serverutil"
-	zp "go.uber.org/zap"
+	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"go.ytsaurus.tech/library/go/core/log"
-	"go.ytsaurus.tech/library/go/core/log/zap"
+	ya_zap "go.ytsaurus.tech/library/go/core/log/zap"
 )
 
 var (
@@ -39,7 +39,7 @@ func main() {
 	var cp coordinator.Coordinator = coordinator.NewStatefulFakeClient()
 
 	loggerConfig := newLoggerConfig()
-	logger.Log = zap.Must(loggerConfig)
+	logger.Log = ya_zap.Must(loggerConfig)
 	hcPort := 0
 	logLevel := defaultLogLevel
 	logConfig := defaultLogConfig
@@ -47,7 +47,7 @@ func main() {
 	coordinatorS3Bucket := ""
 	runProfiler := false
 
-	promRegistry, registry := internal_metrics.NewPrometheusRegistryWithNameProcessor()
+	promRegistry, registry := dt_metrics.NewPrometheusRegistryWithNameProcessor()
 
 	rootCommand := &cobra.Command{
 		Use:          "trcli",
@@ -75,7 +75,7 @@ func main() {
 
 			switch strings.ToLower(logConfig) {
 			case "json":
-				loggerConfig = zp.NewProductionConfig()
+				loggerConfig = zap.NewProductionConfig()
 			case "minimal":
 				loggerConfig.EncoderConfig = zapcore.EncoderConfig{
 					MessageKey: "message",
@@ -109,7 +109,7 @@ func main() {
 				return xerrors.Errorf("unsupported value \"%s\" for --log-level", logLevel)
 			}
 
-			logger.Log = zap.Must(loggerConfig)
+			logger.Log = ya_zap.Must(loggerConfig)
 
 			switch coordinatorTyp {
 			case defaultCoordinator:
@@ -153,7 +153,7 @@ func main() {
 	}
 }
 
-func newLoggerConfig() zp.Config {
+func newLoggerConfig() zap.Config {
 	cfg := logger.DefaultLoggerConfig(zapcore.DebugLevel)
 	cfg.OutputPaths = []string{"stdout"}
 	cfg.ErrorOutputPaths = []string{"stderr"}

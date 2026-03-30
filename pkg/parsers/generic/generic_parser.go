@@ -24,7 +24,7 @@ import (
 	"github.com/valyala/fastjson"
 	"github.com/valyala/fastjson/fastfloat"
 	"go.ytsaurus.tech/library/go/core/log"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 	"go.ytsaurus.tech/yt/go/yson"
 	"golang.org/x/sync/semaphore"
 )
@@ -100,7 +100,7 @@ func dedupColumnName(expected string, cols []abstract.ColSchema) string {
 	return expected
 }
 
-func newColSchema(columnName string, dataType schema.Type, isPrimaryKey bool) abstract.ColSchema {
+func newColSchema(columnName string, dataType ytschema.Type, isPrimaryKey bool) abstract.ColSchema {
 	colSchema := abstract.NewColSchema(
 		columnName,
 		dataType,
@@ -118,14 +118,14 @@ func addAuxFields(baseFields []abstract.ColSchema, opts AuxParserOpts) []abstrac
 	if opts.AddSystemColumns {
 		result = append(result, abstract.NewColSchema(
 			dedupColumnName("_topic", result),
-			schema.TypeBytes,
+			ytschema.TypeBytes,
 			false,
 		))
 	}
 	if opts.AddRest {
 		result = append(result, abstract.NewColSchema(
 			dedupColumnName("_rest", result),
-			schema.TypeAny,
+			ytschema.TypeAny,
 			false,
 		))
 	}
@@ -141,22 +141,22 @@ func addAuxFields(baseFields []abstract.ColSchema, opts AuxParserOpts) []abstrac
 		}
 		result = append(result, newColSchema(
 			dedupColumnName(ColNameTimestamp, result),
-			schema.TypeTimestamp,
+			ytschema.TypeTimestamp,
 			!skipSystemKeys,
 		))
 		result = append(result, newColSchema(
 			dedupColumnName(ColNamePartition, result),
-			schema.TypeBytes,
+			ytschema.TypeBytes,
 			!skipSystemKeys,
 		))
 		result = append(result, newColSchema(
 			dedupColumnName(ColNameOffset, result),
-			schema.TypeUint64,
+			ytschema.TypeUint64,
 			!skipSystemKeys,
 		))
 		result = append(result, newColSchema(
 			dedupColumnName(ColNameIdx, result),
-			schema.TypeUint32,
+			ytschema.TypeUint32,
 			!skipSystemKeys,
 		))
 	}
@@ -231,35 +231,35 @@ var (
 	UnparsedSchema = abstract.NewTableSchema([]abstract.ColSchema{
 		{
 			ColumnName: ColNameTimestamp,
-			DataType:   schema.TypeTimestamp.String(),
+			DataType:   ytschema.TypeTimestamp.String(),
 			PrimaryKey: true,
 			Required:   true,
 		},
 		{
 			ColumnName: ColNamePartition,
-			DataType:   schema.TypeBytes.String(),
+			DataType:   ytschema.TypeBytes.String(),
 			PrimaryKey: true,
 			Required:   true,
 		},
 		{
 			ColumnName: ColNameOffset,
-			DataType:   schema.TypeUint64.String(),
+			DataType:   ytschema.TypeUint64.String(),
 			PrimaryKey: true,
 			Required:   true,
 		},
 		{
 			ColumnName: ColNameIdx,
-			DataType:   schema.TypeUint32.String(),
+			DataType:   ytschema.TypeUint32.String(),
 			PrimaryKey: true,
 			Required:   true,
 		},
 		{
 			ColumnName: "unparsed_row",
-			DataType:   schema.TypeBytes.String(),
+			DataType:   ytschema.TypeBytes.String(),
 		},
 		{
 			ColumnName: "reason",
-			DataType:   schema.TypeBytes.String(),
+			DataType:   ytschema.TypeBytes.String(),
 		},
 	})
 )
@@ -698,28 +698,28 @@ func (p *GenericParser) Unmarshal(line string, item *map[string]interface{}) err
 					return
 				}
 
-				switch schema.Type(p.colTypeMap[string(k)]) {
-				case schema.TypeString, schema.TypeBytes:
+				switch ytschema.Type(p.colTypeMap[string(k)]) {
+				case ytschema.TypeString, ytschema.TypeBytes:
 					res[string(k)] = v.String()
-				case schema.TypeFloat64:
+				case ytschema.TypeFloat64:
 					res[string(k)] = v.GetFloat64()
-				case schema.TypeBoolean:
+				case ytschema.TypeBoolean:
 					res[string(k)] = v.GetBool()
-				case schema.TypeInt8:
+				case ytschema.TypeInt8:
 					res[string(k)] = int8(v.GetInt())
-				case schema.TypeInt16:
+				case ytschema.TypeInt16:
 					res[string(k)] = int16(v.GetInt())
-				case schema.TypeInt32:
+				case ytschema.TypeInt32:
 					res[string(k)] = int32(v.GetInt())
-				case schema.TypeInt64:
+				case ytschema.TypeInt64:
 					res[string(k)] = v.GetInt64()
-				case schema.TypeUint8:
+				case ytschema.TypeUint8:
 					res[string(k)] = uint8(v.GetUint())
-				case schema.TypeUint16:
+				case ytschema.TypeUint16:
 					res[string(k)] = uint16(v.GetUint())
-				case schema.TypeUint32:
+				case ytschema.TypeUint32:
 					res[string(k)] = uint32(v.GetUint())
-				case schema.TypeUint64:
+				case ytschema.TypeUint64:
 					res[string(k)] = v.GetUint64()
 				default:
 					r := wrapIntoEmptyInterface(v.Get(), p.auxOpts.UseNumbersInAny)
@@ -898,26 +898,26 @@ func (p *GenericParser) ParseVal(v interface{}, typ string) (interface{}, error)
 	}
 
 	if n, ok := v.(float64); ok {
-		switch schema.Type(typ) {
-		case schema.TypeFloat64:
+		switch ytschema.Type(typ) {
+		case ytschema.TypeFloat64:
 			return n, nil
-		case schema.TypeInt8:
+		case ytschema.TypeInt8:
 			return int8(n), nil
-		case schema.TypeInt16:
+		case ytschema.TypeInt16:
 			return int16(n), nil
-		case schema.TypeInt32:
+		case ytschema.TypeInt32:
 			return int32(n), nil
-		case schema.TypeInt64:
+		case ytschema.TypeInt64:
 			return int64(n), nil
-		case schema.TypeUint8:
+		case ytschema.TypeUint8:
 			return uint8(n), nil
-		case schema.TypeUint16:
+		case ytschema.TypeUint16:
 			return uint16(n), nil
-		case schema.TypeUint32:
+		case ytschema.TypeUint32:
 			return uint32(n), nil
-		case schema.TypeUint64:
+		case ytschema.TypeUint64:
 			return uint64(n), nil
-		case schema.TypeString, schema.TypeBytes:
+		case ytschema.TypeString, ytschema.TypeBytes:
 			return fmt.Sprintf("%v", v), nil
 		default:
 			return n, nil
@@ -925,87 +925,87 @@ func (p *GenericParser) ParseVal(v interface{}, typ string) (interface{}, error)
 	}
 
 	if n, ok := v.(uint64); ok {
-		switch schema.Type(typ) {
-		case schema.TypeFloat64:
+		switch ytschema.Type(typ) {
+		case ytschema.TypeFloat64:
 			return n, nil
-		case schema.TypeInt8:
+		case ytschema.TypeInt8:
 			return int8(n), nil
-		case schema.TypeInt16:
+		case ytschema.TypeInt16:
 			return int16(n), nil
-		case schema.TypeInt32:
+		case ytschema.TypeInt32:
 			return int32(n), nil
-		case schema.TypeInt64:
+		case ytschema.TypeInt64:
 			return int64(n), nil
-		case schema.TypeUint8:
+		case ytschema.TypeUint8:
 			return uint8(n), nil
-		case schema.TypeUint16:
+		case ytschema.TypeUint16:
 			return uint16(n), nil
-		case schema.TypeUint32:
+		case ytschema.TypeUint32:
 			return uint32(n), nil
-		case schema.TypeUint64:
+		case ytschema.TypeUint64:
 			return n, nil
 		}
 	}
 
 	if vv, ok := v.(json.Number); ok {
-		switch schema.Type(typ) {
-		case schema.TypeFloat64:
+		switch ytschema.Type(typ) {
+		case ytschema.TypeFloat64:
 			result, err := fastfloat.Parse(vv.String())
 			if err != nil {
 				return nil, xerrors.Errorf("unable to parse float64 %v:, err: %w", vv, err)
 			}
 			return result, nil
-		case schema.TypeInt8:
+		case ytschema.TypeInt8:
 			n, err := vv.Int64()
 			if err != nil {
 				return nil, xerrors.Errorf("unable to parse json.Number to %v: %w", typ, err)
 			}
 			return int8(n), nil
-		case schema.TypeInt16:
+		case ytschema.TypeInt16:
 			n, err := vv.Int64()
 			if err != nil {
 				return nil, xerrors.Errorf("unable to parse json.Number to %v: %w", typ, err)
 			}
 			return int16(n), nil
-		case schema.TypeInt32:
+		case ytschema.TypeInt32:
 			n, err := vv.Int64()
 			if err != nil {
 				return nil, xerrors.Errorf("unable to parse json.Number to %v: %w", typ, err)
 			}
 			return int32(n), nil
-		case schema.TypeInt64:
+		case ytschema.TypeInt64:
 			n, err := vv.Int64()
 			if err != nil {
 				return nil, xerrors.Errorf("unable to parse json.Number to %v: %w", typ, err)
 			}
 			return n, nil
-		case schema.TypeUint8:
+		case ytschema.TypeUint8:
 			n, err := vv.Int64()
 			if err != nil {
 				return nil, xerrors.Errorf("unable to parse json.Number to %v: %w", typ, err)
 			}
 			return uint8(n), nil
-		case schema.TypeUint16:
+		case ytschema.TypeUint16:
 			n, err := vv.Int64()
 			if err != nil {
 				return nil, xerrors.Errorf("unable to parse json.Number to %v: %w", typ, err)
 			}
 			return uint16(n), nil
-		case schema.TypeUint32:
+		case ytschema.TypeUint32:
 			n, err := vv.Int64()
 			if err != nil {
 				return nil, xerrors.Errorf("unable to parse json.Number to %v: %w", typ, err)
 			}
 			return uint32(n), nil
-		case schema.TypeUint64:
+		case ytschema.TypeUint64:
 			result, err := strconv.ParseUint(vv.String(), 10, 64)
 			if err != nil {
 				return nil, xerrors.Errorf("unable to parse uint %v:, err: %w", vv, err)
 			}
 			return result, nil
-		case schema.TypeString, schema.TypeBytes:
+		case ytschema.TypeString, ytschema.TypeBytes:
 			return vv.String(), nil
-		case schema.TypeAny:
+		case ytschema.TypeAny:
 			return vv, nil
 		default:
 			result, err := fastfloat.Parse(vv.String())
@@ -1017,68 +1017,68 @@ func (p *GenericParser) ParseVal(v interface{}, typ string) (interface{}, error)
 	}
 
 	if vv, ok := v.(string); ok {
-		switch schema.Type(typ) {
-		case schema.TypeFloat64:
+		switch ytschema.Type(typ) {
+		case ytschema.TypeFloat64:
 			result, err := strconv.ParseFloat(vv, 64)
 			if err != nil {
 				return nil, xerrors.Errorf("unable to parse float %v:, err: %w", vv, err)
 			}
 			return result, nil
-		case schema.TypeBoolean:
+		case ytschema.TypeBoolean:
 			result, err := strconv.ParseBool(vv)
 			if err != nil {
 				return nil, xerrors.Errorf("unable to parse bool %v:, err: %w", vv, err)
 			}
 			return result, nil
-		case schema.TypeInt8:
+		case ytschema.TypeInt8:
 			i, err := strconv.ParseInt(vv, 0, 8)
 			if err != nil {
 				return nil, xerrors.Errorf("unable to parse string to %v: %w", typ, err)
 			}
 			return int8(i), nil
-		case schema.TypeInt16:
+		case ytschema.TypeInt16:
 			i, err := strconv.ParseInt(vv, 0, 16)
 			if err != nil {
 				return nil, xerrors.Errorf("unable to parse string to %v: %w", typ, err)
 			}
 			return int16(i), nil
-		case schema.TypeInt32:
+		case ytschema.TypeInt32:
 			i, err := strconv.ParseInt(vv, 0, 32)
 			if err != nil {
 				return nil, xerrors.Errorf("unable to parse string to %v: %w", typ, err)
 			}
 			return int32(i), nil
-		case schema.TypeInt64:
+		case ytschema.TypeInt64:
 			i, err := strconv.ParseInt(vv, 0, 64)
 			if err != nil {
 				return nil, xerrors.Errorf("unable to parse string to %v: %w", typ, err)
 			}
 			return i, nil
-		case schema.TypeUint8:
+		case ytschema.TypeUint8:
 			i, err := strconv.ParseUint(vv, 0, 8)
 			if err != nil {
 				return nil, xerrors.Errorf("unable to parse string to %v: %w", typ, err)
 			}
 			return uint8(i), nil
-		case schema.TypeUint16:
+		case ytschema.TypeUint16:
 			i, err := strconv.ParseUint(vv, 0, 16)
 			if err != nil {
 				return nil, xerrors.Errorf("unable to parse string to %v: %w", typ, err)
 			}
 			return uint16(i), nil
-		case schema.TypeUint32:
+		case ytschema.TypeUint32:
 			i, err := strconv.ParseUint(vv, 0, 32)
 			if err != nil {
 				return nil, xerrors.Errorf("unable to parse string to %v: %w", typ, err)
 			}
 			return uint32(i), nil
-		case schema.TypeUint64:
+		case ytschema.TypeUint64:
 			i, err := strconv.ParseUint(vv, 0, 64)
 			if err != nil {
 				return nil, xerrors.Errorf("unable to parse string to %v: %w", typ, err)
 			}
 			return i, nil
-		case schema.TypeBytes:
+		case ytschema.TypeBytes:
 			if p.auxOpts.UnpackBytesBase64 {
 				// will try to base64 decode values out of parser
 				decodedV, err := base64.StdEncoding.DecodeString(vv)
@@ -1088,7 +1088,7 @@ func (p *GenericParser) ParseVal(v interface{}, typ string) (interface{}, error)
 				return decodedV, nil
 			}
 			return v, nil
-		case schema.TypeAny:
+		case ytschema.TypeAny:
 			var res map[string]interface{}
 			// TODO: (tserakhau) fixme
 			vv = strings.ReplaceAll(vv, "\\\\", "\\") // double escaping taxi bug
@@ -1101,17 +1101,17 @@ func (p *GenericParser) ParseVal(v interface{}, typ string) (interface{}, error)
 		}
 	}
 
-	switch schema.Type(typ) {
-	case schema.TypeTimestamp:
+	switch ytschema.Type(typ) {
+	case ytschema.TypeTimestamp:
 		switch t := v.(type) {
 		case int64:
-			return schema.Timestamp(t).Time(), nil
+			return ytschema.Timestamp(t).Time(), nil
 		case uint64:
-			return schema.Timestamp(t).Time(), nil
+			return ytschema.Timestamp(t).Time(), nil
 		}
-	case schema.TypeInterval:
+	case ytschema.TypeInterval:
 		switch t := v.(type) {
-		case schema.Interval:
+		case ytschema.Interval:
 			duration := time.Duration(int64(t) * 1000)
 			return duration, nil
 		case int64:
@@ -1177,7 +1177,7 @@ func checkParserCorrectness(opts AuxParserOpts, sch []abstract.ColSchema, lgr lo
 
 	hasDatetime := false
 	for _, col := range sch {
-		if col.DataType == schema.TypeDatetime.String() {
+		if col.DataType == ytschema.TypeDatetime.String() {
 			hasDatetime = true
 			break
 		}

@@ -14,10 +14,10 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/library/go/core/metrics/solomon"
 	"github.com/transferia/transferia/pkg/abstract"
-	cpclient "github.com/transferia/transferia/pkg/abstract/coordinator"
+	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/errors/codes"
-	mongodataagent "github.com/transferia/transferia/pkg/providers/mongo"
+	error_codes "github.com/transferia/transferia/pkg/errors/codes"
+	provider_mongo "github.com/transferia/transferia/pkg/providers/mongo"
 	"github.com/transferia/transferia/pkg/runtime/local"
 	"github.com/transferia/transferia/pkg/worker/tasks"
 	"github.com/transferia/transferia/tests/helpers"
@@ -25,12 +25,12 @@ import (
 )
 
 // creates source from environment settings/recipe
-func sourceFromConfig() (*mongodataagent.MongoSource, error) {
+func sourceFromConfig() (*provider_mongo.MongoSource, error) {
 	srcPort, err := strconv.Atoi(os.Getenv("MONGO_LOCAL_PORT"))
 	if err != nil {
 		return nil, err
 	}
-	ret := new(mongodataagent.MongoSource)
+	ret := new(provider_mongo.MongoSource)
 	ret.Hosts = []string{"localhost"}
 	ret.Port = srcPort
 	ret.User = os.Getenv("MONGO_LOCAL_USER")
@@ -39,12 +39,12 @@ func sourceFromConfig() (*mongodataagent.MongoSource, error) {
 	return ret, nil
 }
 
-func targetFromConfig() (*mongodataagent.MongoDestination, error) {
+func targetFromConfig() (*provider_mongo.MongoDestination, error) {
 	trgPort, err := strconv.Atoi(os.Getenv("DB0_MONGO_LOCAL_PORT"))
 	if err != nil {
 		return nil, err
 	}
-	ret := new(mongodataagent.MongoDestination)
+	ret := new(provider_mongo.MongoDestination)
 	ret.Hosts = []string{"localhost"}
 	ret.Port = trgPort
 	ret.User = os.Getenv("DB0_MONGO_LOCAL_USER")
@@ -53,7 +53,7 @@ func targetFromConfig() (*mongodataagent.MongoDestination, error) {
 	return ret, nil
 }
 
-func makeTransfer(id string, source *mongodataagent.MongoSource, target *mongodataagent.MongoDestination) *model.Transfer {
+func makeTransfer(id string, source *provider_mongo.MongoSource, target *provider_mongo.MongoDestination) *model.Transfer {
 	source.SlotID = id // set slot ID in order to get valid cluster time on ActivateDelivery
 
 	transfer := new(model.Transfer)
@@ -92,17 +92,17 @@ func testCollectionFilterIncludeWholeDB(t *testing.T) {
 	tgt, err := targetFromConfig()
 	require.NoError(t, err)
 
-	src.Collections = []mongodataagent.MongoCollection{
+	src.Collections = []provider_mongo.MongoCollection{
 		{DatabaseName: "db1", CollectionName: "*"},
 	}
 
 	transfer := makeTransfer("transfer1", src, tgt)
 
-	err = tasks.ActivateDelivery(context.TODO(), nil, cpclient.NewFakeClient(), *transfer, helpers.EmptyRegistry())
+	err = tasks.ActivateDelivery(context.TODO(), nil, coordinator.NewFakeClient(), *transfer, helpers.EmptyRegistry())
 	if strings.Contains(err.Error(), "replication") {
 		require.EqualError(t, err, "Failed in accordance with configuration: Some tables whose replication was requested are missing in the source database. Include directives with no matching tables: [db1.*]")
 	} else {
-		require.True(t, codes.NoTablesFound.Contains(err))
+		require.True(t, error_codes.NoTablesFound.Contains(err))
 	}
 }
 
@@ -114,14 +114,14 @@ func testCollectionFilterAllIncludesExcluded(t *testing.T) {
 	tgt, err := targetFromConfig()
 	require.NoError(t, err)
 
-	src.Collections = []mongodataagent.MongoCollection{
+	src.Collections = []provider_mongo.MongoCollection{
 		{DatabaseName: "db1", CollectionName: "coll1"},
 		{DatabaseName: "db1", CollectionName: "coll2"},
 		{DatabaseName: "db2", CollectionName: "A"},
 		{DatabaseName: "db2", CollectionName: "B"},
 	}
 	// exclude elides all included collections
-	src.ExcludedCollections = []mongodataagent.MongoCollection{
+	src.ExcludedCollections = []provider_mongo.MongoCollection{
 		{DatabaseName: "db2", CollectionName: "B"},
 		{DatabaseName: "db2", CollectionName: "C"},
 		{DatabaseName: "db1", CollectionName: "coll3"},
@@ -133,7 +133,7 @@ func testCollectionFilterAllIncludesExcluded(t *testing.T) {
 	logger.Log.Info("start replication")
 	transfer := makeTransfer("transfer2", src, tgt)
 
-	err = tasks.ActivateDelivery(context.TODO(), nil, cpclient.NewFakeClient(), *transfer, helpers.EmptyRegistry())
+	err = tasks.ActivateDelivery(context.TODO(), nil, coordinator.NewFakeClient(), *transfer, helpers.EmptyRegistry())
 	require.Error(t, err)
 	if strings.Contains(err.Error(), "replication") {
 		require.Contains(t, err.Error(), "Failed in accordance with configuration: Some tables whose replication was requested are missing in the source database. Include directives with no matching tables:")
@@ -154,7 +154,7 @@ func testEmptyCollectionListIncludesAll(t *testing.T) {
 	tgt, err := targetFromConfig()
 	require.NoError(t, err)
 
-	srcClient, err := mongodataagent.Connect(context.Background(), src.ConnectionOptions([]string{}), nil)
+	srcClient, err := provider_mongo.Connect(context.Background(), src.ConnectionOptions([]string{}), nil)
 	require.NoError(t, err)
 	ldb, err := srcClient.ListDatabases(context.Background(), bson.D{})
 	require.NoError(t, err)
@@ -184,14 +184,14 @@ func testEmptyCollectionListIncludesAll(t *testing.T) {
 
 	logger.Log.Info("Create and activate transfer")
 	transfer := makeTransfer("transfer3", src, tgt)
-	err = tasks.ActivateDelivery(context.TODO(), nil, cpclient.NewFakeClient(), *transfer, helpers.EmptyRegistry())
+	err = tasks.ActivateDelivery(context.TODO(), nil, coordinator.NewFakeClient(), *transfer, helpers.EmptyRegistry())
 	require.NoError(t, err)
 
 	logger.Log.Info("Insert documents after activation")
 	insertRandomDocuments()
 
 	logger.Log.Info("Start replication worker")
-	replicationWorker := local.NewLocalWorker(cpclient.NewFakeClient(), transfer, solomon.NewRegistry(nil), logger.Log)
+	replicationWorker := local.NewLocalWorker(coordinator.NewFakeClient(), transfer, solomon.NewRegistry(nil), logger.Log)
 	errChan := make(chan error, 1)
 	var wgWaitForStart sync.WaitGroup
 	wgWaitForStart.Add(1)
@@ -222,21 +222,21 @@ func testCollectionFilterWholeDBExcludedExcludesCollection(t *testing.T) {
 	tgt, err := targetFromConfig()
 	require.NoError(t, err)
 
-	src.Collections = []mongodataagent.MongoCollection{
+	src.Collections = []provider_mongo.MongoCollection{
 		{DatabaseName: "db1", CollectionName: "coll1"},
 	}
 	// exclude elides previous collections
-	src.ExcludedCollections = []mongodataagent.MongoCollection{
+	src.ExcludedCollections = []provider_mongo.MongoCollection{
 		{DatabaseName: "db1", CollectionName: "*"},
 	}
 
 	logger.Log.Info("start replication")
 	transfer := makeTransfer("transfer4", src, tgt)
 
-	err = tasks.ActivateDelivery(context.TODO(), nil, cpclient.NewFakeClient(), *transfer, helpers.EmptyRegistry())
+	err = tasks.ActivateDelivery(context.TODO(), nil, coordinator.NewFakeClient(), *transfer, helpers.EmptyRegistry())
 	if strings.Contains(err.Error(), "replication") {
 		require.EqualError(t, err, "Failed in accordance with configuration: Some tables whose replication was requested are missing in the source database. Include directives with no matching tables: [db1.coll1]")
 	} else {
-		require.True(t, codes.NoTablesFound.Contains(err))
+		require.True(t, error_codes.NoTablesFound.Contains(err))
 	}
 }

@@ -11,9 +11,9 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	mongodataagent "github.com/transferia/transferia/pkg/providers/mongo"
-	ytcommon "github.com/transferia/transferia/pkg/providers/yt"
-	ytstorage "github.com/transferia/transferia/pkg/providers/yt/storage"
+	provider_mongo "github.com/transferia/transferia/pkg/providers/mongo"
+	provider_yt "github.com/transferia/transferia/pkg/providers/yt"
+	yt_storage "github.com/transferia/transferia/pkg/providers/yt/storage"
 	"github.com/transferia/transferia/tests/helpers"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.ytsaurus.tech/library/go/core/log"
@@ -44,15 +44,15 @@ var (
 	prefillIteration = 0
 )
 
-func PrefilledSourceAndTarget() (mongodataagent.MongoSource, ytcommon.YtDestination) {
+func PrefilledSourceAndTarget() (provider_mongo.MongoSource, provider_yt.YtDestination) {
 	prefillIteration += 1
-	return mongodataagent.MongoSource{
+	return provider_mongo.MongoSource{
 			Hosts:             []string{"localhost"},
 			Port:              helpers.GetIntFromEnv("MONGO_LOCAL_PORT"),
 			User:              os.Getenv("MONGO_LOCAL_USER"),
 			Password:          model.SecretString(os.Getenv("MONGO_LOCAL_PASSWORD")),
-			ReplicationSource: mongodataagent.MongoReplicationSourcePerDatabaseUpdateDocument,
-		}, ytcommon.YtDestination{
+			ReplicationSource: provider_mongo.MongoReplicationSourcePerDatabaseUpdateDocument,
+		}, provider_yt.YtDestination{
 			Path:          fmt.Sprintf("//home/cdc/test/mongo2yt/rotator/prefill%d", prefillIteration),
 			Cluster:       os.Getenv("YT_PROXY"),
 			CellBundle:    "default",
@@ -108,13 +108,13 @@ func includeAllTables(table abstract.TableID, schema abstract.TableColumns) bool
 
 func ScenarioCheckActivation(
 	t *testing.T,
-	source mongodataagent.MongoSource,
-	target ytcommon.YtDestination,
+	source provider_mongo.MongoSource,
+	target provider_yt.YtDestination,
 	table abstract.TableID,
 	rotationTime time.Time,
 	expectedTablePath ypath.Path,
 ) {
-	targetModel := ytcommon.NewYtDestinationV1(target)
+	targetModel := provider_yt.NewYtDestinationV1(target)
 	transferType := abstract.TransferTypeSnapshotOnly
 	helpers.InitSrcDst(helpers.TransferID, &source, targetModel, transferType)
 	transfer := model.Transfer{
@@ -139,7 +139,7 @@ func ScenarioCheckActivation(
 	logger.Log.Info("Checking cypress path", log.Any("nodes", nodes), log.Error(err))
 
 	// Step: prepare source
-	client, err := mongodataagent.Connect(context.Background(), source.ConnectionOptions([]string{}), nil)
+	client, err := provider_mongo.Connect(context.Background(), source.ConnectionOptions([]string{}), nil)
 	require.NoError(t, err)
 	defer func() { _ = client.Close(context.Background()) }()
 
@@ -171,7 +171,7 @@ func ScenarioCheckActivation(
 	require.NoError(t, err)
 	require.True(t, ok1, "table path '%s' should be generated as snapshot result after first activation, but there is nothing", expectedTablePath)
 
-	count1, err := ytstorage.ExactYTTableRowsCount(ytEnv.YT, expectedTablePath)
+	count1, err := yt_storage.ExactYTTableRowsCount(ytEnv.YT, expectedTablePath)
 	require.NoError(t, err)
 	require.True(t, count1 > 0, "table path '%s' should be a table with data as a snapshot result after first activation", expectedTablePath)
 
@@ -200,7 +200,7 @@ func ScenarioCheckActivation(
 	require.NoError(t, err)
 	require.True(t, ok2, "table path '%s' should be generated as snapshot result after second activation, but there is nothing", expectedTablePath)
 
-	count2, err := ytstorage.ExactYTTableRowsCount(ytEnv.YT, expectedTablePath)
+	count2, err := yt_storage.ExactYTTableRowsCount(ytEnv.YT, expectedTablePath)
 	require.NoError(t, err)
 	require.True(t, count2 > 0, "table path '%s' should be a table with data as a snapshot result after second activation", expectedTablePath)
 

@@ -13,20 +13,20 @@ import (
 	"github.com/stretchr/testify/require"
 	yslices "github.com/transferia/transferia/library/go/slices"
 	"github.com/transferia/transferia/pkg/abstract"
-	cpclient "github.com/transferia/transferia/pkg/abstract/coordinator"
+	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/ydb"
+	provider_ydb "github.com/transferia/transferia/pkg/providers/ydb"
 	"github.com/transferia/transferia/pkg/worker/tasks"
 	"github.com/transferia/transferia/tests/helpers"
 	mocksink "github.com/transferia/transferia/tests/helpers/mock_sink"
-	ydbsdk "github.com/ydb-platform/ydb-go-sdk/v3"
-	"github.com/ydb-platform/ydb-go-sdk/v3/table"
-	"github.com/ydb-platform/ydb-go-sdk/v3/table/options"
-	"github.com/ydb-platform/ydb-go-sdk/v3/table/types"
+	ydb_go_sdk "github.com/ydb-platform/ydb-go-sdk/v3"
+	ydb_table "github.com/ydb-platform/ydb-go-sdk/v3/table"
+	ydb_options "github.com/ydb-platform/ydb-go-sdk/v3/table/options"
+	ydb_table_types "github.com/ydb-platform/ydb-go-sdk/v3/table/types"
 )
 
 func TestYDBIncrementalSnapshot(t *testing.T) {
-	src := &ydb.YdbSource{
+	src := &provider_ydb.YdbSource{
 		Token:              model.SecretString(os.Getenv("YDB_TOKEN")),
 		Database:           helpers.GetEnvOfFail(t, "YDB_DATABASE"),
 		Instance:           helpers.GetEnvOfFail(t, "YDB_ENDPOINT"),
@@ -58,10 +58,10 @@ func TestYDBIncrementalSnapshot(t *testing.T) {
 		Cleanup:       model.DisabledCleanup,
 	}
 
-	db, err := ydbsdk.Open(
+	db, err := ydb_go_sdk.Open(
 		context.Background(),
 		os.Getenv("YDB_CONNECTION_STRING"),
-		ydbsdk.WithAccessTokenCredentials(
+		ydb_go_sdk.WithAccessTokenCredentials(
 			os.Getenv("YDB_ACCESS_TOKEN_CREDENTIALS"),
 		),
 	)
@@ -89,7 +89,7 @@ func TestYDBIncrementalSnapshot(t *testing.T) {
 	transfer := helpers.MakeTransfer("dttest", src, dst, abstract.TransferTypeSnapshotOnly)
 	transfer.RegularSnapshot = &abstract.RegularSnapshot{Incremental: incremental}
 
-	cpClient := cpclient.NewStatefulFakeClient()
+	cpClient := coordinator.NewStatefulFakeClient()
 	require.NoError(t, tasks.ActivateDelivery(context.Background(), nil, cpClient, *transfer, helpers.EmptyRegistry()))
 
 	readTables := abstract.SplitByTableID(readItems)
@@ -112,7 +112,7 @@ func TestYDBIncrementalSnapshot(t *testing.T) {
 		incremental[i].InitialState = initialValues[i]
 	}
 	// forgot current increment by using clean empty state
-	cpClient = cpclient.NewStatefulFakeClient()
+	cpClient = coordinator.NewStatefulFakeClient()
 	readItems = nil
 	require.NoError(t, tasks.ActivateDelivery(context.Background(), nil, cpClient, *transfer, helpers.EmptyRegistry()))
 
@@ -143,33 +143,33 @@ func checkRows(t *testing.T, rows []abstract.ChangeItem, expectedFrom, expectedT
 	require.Len(t, rowNumberSet, len(rows))
 }
 
-func createSampleTable(db *ydbsdk.Driver, tablePath string, keyCol string) error {
-	return db.Table().Do(context.Background(), func(ctx context.Context, s table.Session) error {
+func createSampleTable(db *ydb_go_sdk.Driver, tablePath string, keyCol string) error {
+	return db.Table().Do(context.Background(), func(ctx context.Context, s ydb_table.Session) error {
 		return s.CreateTable(context.Background(), tablePath,
-			options.WithColumn("c_int64", types.Optional(types.TypeInt64)),
-			options.WithColumn("c_string", types.Optional(types.TypeString)),
-			options.WithColumn("c_datetime", types.Optional(types.TypeDatetime)),
-			options.WithPrimaryKeyColumn(keyCol),
+			ydb_options.WithColumn("c_int64", ydb_table_types.Optional(ydb_table_types.TypeInt64)),
+			ydb_options.WithColumn("c_string", ydb_table_types.Optional(ydb_table_types.TypeString)),
+			ydb_options.WithColumn("c_datetime", ydb_table_types.Optional(ydb_table_types.TypeDatetime)),
+			ydb_options.WithPrimaryKeyColumn(keyCol),
 		)
 	})
 }
 
-func fillRowsRange(db *ydbsdk.Driver, tablePath string, from, to int) error {
-	return db.Table().Do(context.Background(), func(ctx context.Context, s table.Session) error {
+func fillRowsRange(db *ydb_go_sdk.Driver, tablePath string, from, to int) error {
+	return db.Table().Do(context.Background(), func(ctx context.Context, s ydb_table.Session) error {
 		return s.BulkUpsert(context.Background(), tablePath, generateRows(from, to))
 	})
 }
 
 const baseUnixTime = 1696183362
 
-func generateRows(from, to int) types.Value {
-	rows := make([]types.Value, 0, to-from)
+func generateRows(from, to int) ydb_table_types.Value {
+	rows := make([]ydb_table_types.Value, 0, to-from)
 	for i := from; i < to; i++ {
-		rows = append(rows, types.StructValue(
-			types.StructFieldValue("c_int64", types.Int64Value(int64(i))),
-			types.StructFieldValue("c_string", types.BytesValue([]byte(fmt.Sprintf("row %3d", i)))),
-			types.StructFieldValue("c_datetime", types.DatetimeValue(baseUnixTime+uint32(i))),
+		rows = append(rows, ydb_table_types.StructValue(
+			ydb_table_types.StructFieldValue("c_int64", ydb_table_types.Int64Value(int64(i))),
+			ydb_table_types.StructFieldValue("c_string", ydb_table_types.BytesValue([]byte(fmt.Sprintf("row %3d", i)))),
+			ydb_table_types.StructFieldValue("c_datetime", ydb_table_types.DatetimeValue(baseUnixTime+uint32(i))),
 		))
 	}
-	return types.ListValue(rows...)
+	return ydb_table_types.ListValue(rows...)
 }

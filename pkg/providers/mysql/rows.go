@@ -6,8 +6,8 @@ import (
 	"io"
 	"strings"
 
-	"github.com/go-mysql-org/go-mysql/replication"
-	"github.com/go-mysql-org/go-mysql/schema"
+	mysql_replication "github.com/go-mysql-org/go-mysql/replication"
+	mysql_schema "github.com/go-mysql-org/go-mysql/schema"
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
@@ -25,20 +25,20 @@ const (
 
 // RowsEvent is the event for row replication.
 type RowsEvent struct {
-	Table  *schema.Table
+	Table  *mysql_schema.Table
 	Action string
-	Header *replication.EventHeader
+	Header *mysql_replication.EventHeader
 	// binlog has three update event version, v0, v1 and v2.
 	// for v1 and v2, the rows number must be even.
 	// Two rows for one event, format is [before update row, after update row]
 	// for update v0, only one row for a event, and we don't support this version.
-	Data *replication.RowsEvent
+	Data *mysql_replication.RowsEvent
 
 	// rows query is defined if option binlog_rows_query_log_events is enabled
 	Query string
 }
 
-func newRowsEvent(table *schema.Table, action string, header *replication.EventHeader, event *replication.RowsEvent, rowsQuery string) *RowsEvent {
+func newRowsEvent(table *mysql_schema.Table, action string, header *mysql_replication.EventHeader, event *mysql_replication.RowsEvent, rowsQuery string) *RowsEvent {
 	e := new(RowsEvent)
 
 	e.Table = table
@@ -109,7 +109,7 @@ func (r *RowsEvent) handleUnsigned() {
 			case int32:
 				// problem with mediumint is that it's a 3-byte type. There is no compatible golang type to match that.
 				// So to convert from negative to positive we'd need to convert the value manually
-				if value < 0 && r.Table.Columns[columnIdx].Type == schema.TYPE_MEDIUM_INT {
+				if value < 0 && r.Table.Columns[columnIdx].Type == mysql_schema.TYPE_MEDIUM_INT {
 					r.Data.Rows[i][columnIdx] = uint32(maxMediumintUnsigned + value + 1)
 				} else {
 					r.Data.Rows[i][columnIdx] = uint32(value)

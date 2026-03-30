@@ -7,11 +7,11 @@ import (
 	"sync"
 	"testing"
 
-	mysql_client "github.com/go-sql-driver/mysql"
+	mysql_driver2 "github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/mysql"
+	provider_mysql "github.com/transferia/transferia/pkg/providers/mysql"
 	"github.com/transferia/transferia/pkg/worker/tasks"
 	"github.com/transferia/transferia/tests/helpers"
 	mocksink "github.com/transferia/transferia/tests/helpers/mock_sink"
@@ -30,8 +30,8 @@ var requests = []string{
 	"insert into test(name, email, age) values ('name_test', 'email_test', 1);",
 }
 
-func getCfg(source mysql.MysqlSource) *mysql_client.Config {
-	cfg := mysql_client.NewConfig()
+func getCfg(source provider_mysql.MysqlSource) *mysql_driver2.Config {
+	cfg := mysql_driver2.NewConfig()
 	cfg.Addr = fmt.Sprintf("%v:%v", source.Host, source.Port)
 	cfg.User = source.User
 	cfg.Passwd = string(source.Password)
@@ -98,7 +98,7 @@ func TestMySQLHeteroViewsInteraction(t *testing.T) {
 				defer worker.Close(t)
 				var notesPerTable int
 				if params.transferType == abstract.TransferTypeSnapshotAndIncrement {
-					mysqlConnector, err := mysql_client.NewConnector(getCfg(source))
+					mysqlConnector, err := mysql_driver2.NewConnector(getCfg(source))
 					require.NoError(t, err)
 					db := sql.OpenDB(mysqlConnector)
 

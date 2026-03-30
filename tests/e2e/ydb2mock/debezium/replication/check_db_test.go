@@ -13,18 +13,18 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/debezium"
-	debeziumparameters "github.com/transferia/transferia/pkg/debezium/parameters"
-	"github.com/transferia/transferia/pkg/providers/ydb"
+	debezium_parameters "github.com/transferia/transferia/pkg/debezium/parameters"
+	provider_ydb "github.com/transferia/transferia/pkg/providers/ydb"
 	"github.com/transferia/transferia/tests/helpers"
 	mocksink "github.com/transferia/transferia/tests/helpers/mock_sink"
 )
 
 func checkIfDebeziumConvertorWorks(t *testing.T, currChangeItem *abstract.ChangeItem) {
 	emitter, err := debezium.NewMessagesEmitter(map[string]string{
-		debeziumparameters.DatabaseDBName:   "public",
-		debeziumparameters.TopicPrefix:      "my_topic",
-		debeziumparameters.AddOriginalTypes: "true",
-		debeziumparameters.SourceType:       "ydb",
+		debezium_parameters.DatabaseDBName:   "public",
+		debezium_parameters.TopicPrefix:      "my_topic",
+		debezium_parameters.AddOriginalTypes: "true",
+		debezium_parameters.SourceType:       "ydb",
 	}, "1.1.2.Final", false, logger.Log)
 	require.NoError(t, err)
 	arrKV, err := emitter.EmitKV(currChangeItem, time.Time{}, false, nil)
@@ -39,11 +39,11 @@ func checkIfDebeziumConvertorWorks(t *testing.T, currChangeItem *abstract.Change
 	}
 }
 
-func Iteration(t *testing.T, currMode ydb.ChangeFeedModeType) map[string]interface{} {
+func Iteration(t *testing.T, currMode provider_ydb.ChangeFeedModeType) map[string]interface{} {
 	currTableName := fmt.Sprintf("foo/my_table_%v", string(currMode))
 	logger.Log.Infof("current table name: %s\n", currTableName)
 
-	src := &ydb.YdbSource{
+	src := &provider_ydb.YdbSource{
 		Token:              model.SecretString(os.Getenv("YDB_TOKEN")),
 		Database:           helpers.GetEnvOfFail(t, "YDB_DATABASE"),
 		Instance:           helpers.GetEnvOfFail(t, "YDB_ENDPOINT"),
@@ -73,7 +73,7 @@ func Iteration(t *testing.T, currMode ydb.ChangeFeedModeType) map[string]interfa
 				logger.Log.Infof("changeItem:%s\n", currChangeItem.ToJSONString())
 
 				// check if there are only 1 element in every oldKeys
-				if currMode == ydb.ChangeFeedModeUpdates || currMode == ydb.ChangeFeedModeNewImage {
+				if currMode == provider_ydb.ChangeFeedModeUpdates || currMode == provider_ydb.ChangeFeedModeNewImage {
 					require.Len(t, currChangeItem.OldKeys.KeyNames, 1)
 					require.Len(t, currChangeItem.OldKeys.KeyValues, 1)
 					require.Len(t, currChangeItem.OldKeys.KeyTypes, 1)
@@ -90,13 +90,13 @@ func Iteration(t *testing.T, currMode ydb.ChangeFeedModeType) map[string]interfa
 
 	// init source table
 
-	Target := &ydb.YdbDestination{
+	Target := &provider_ydb.YdbDestination{
 		Database: src.Database,
 		Token:    src.Token,
 		Instance: src.Instance,
 	}
 	Target.WithDefaults()
-	srcSink, err := ydb.NewSinker(logger.Log, Target, solomon.NewRegistry(solomon.NewRegistryOpts()))
+	srcSink, err := provider_ydb.NewSinker(logger.Log, Target, solomon.NewRegistry(solomon.NewRegistryOpts()))
 	require.NoError(t, err)
 
 	require.NoError(t, srcSink.Push([]abstract.ChangeItem{ // to create table
@@ -145,10 +145,10 @@ func Iteration(t *testing.T, currMode ydb.ChangeFeedModeType) map[string]interfa
 }
 
 func TestCRUDOnAllSupportedModes(t *testing.T) {
-	modes := []ydb.ChangeFeedModeType{
+	modes := []provider_ydb.ChangeFeedModeType{
 		//ydb.ChangeFeedModeUpdates,
-		ydb.ChangeFeedModeNewImage,
-		ydb.ChangeFeedModeNewAndOldImages,
+		provider_ydb.ChangeFeedModeNewImage,
+		provider_ydb.ChangeFeedModeNewAndOldImages,
 	}
 	canonResult := make([]map[string]interface{}, 0)
 	for _, currMode := range modes {

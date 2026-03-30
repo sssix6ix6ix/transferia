@@ -10,12 +10,12 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/debezium"
-	debeziumparameters "github.com/transferia/transferia/pkg/debezium/parameters"
-	"github.com/transferia/transferia/pkg/providers/ydb"
+	debezium_parameters "github.com/transferia/transferia/pkg/debezium/parameters"
+	provider_ydb "github.com/transferia/transferia/pkg/providers/ydb"
 	"github.com/transferia/transferia/tests/helpers"
 	mocksink "github.com/transferia/transferia/tests/helpers/mock_sink"
 	"github.com/transferia/transferia/tests/helpers/serde"
-	simple_transformer "github.com/transferia/transferia/tests/helpers/transformer"
+	helpers_transformer "github.com/transferia/transferia/tests/helpers/transformer"
 )
 
 var path = "dectest/timmyb32r-test"
@@ -23,7 +23,7 @@ var pathOut = "dectest/timmyb32r-test-out"
 var sourceChangeItem abstract.ChangeItem
 
 func TestSnapshotAndSerDeViaDebeziumEmbedded(t *testing.T) {
-	src := &ydb.YdbSource{
+	src := &provider_ydb.YdbSource{
 		Token:              model.SecretString(os.Getenv("YDB_TOKEN")),
 		Database:           helpers.GetEnvOfFail(t, "YDB_DATABASE"),
 		Instance:           helpers.GetEnvOfFail(t, "YDB_ENDPOINT"),
@@ -35,13 +35,13 @@ func TestSnapshotAndSerDeViaDebeziumEmbedded(t *testing.T) {
 	}
 
 	t.Run("init source database", func(t *testing.T) {
-		Target := &ydb.YdbDestination{
+		Target := &provider_ydb.YdbDestination{
 			Database: src.Database,
 			Token:    src.Token,
 			Instance: src.Instance,
 		}
 		Target.WithDefaults()
-		sinker, err := ydb.NewSinker(logger.Log, Target, solomon.NewRegistry(solomon.NewRegistryOpts()))
+		sinker, err := provider_ydb.NewSinker(logger.Log, Target, solomon.NewRegistry(solomon.NewRegistryOpts()))
 		require.NoError(t, err)
 
 		currChangeItem := helpers.YDBInitChangeItem(path)
@@ -51,7 +51,7 @@ func TestSnapshotAndSerDeViaDebeziumEmbedded(t *testing.T) {
 		require.NoError(t, sinker.Push([]abstract.ChangeItem{*currChangeItem}))
 	})
 
-	dst := &ydb.YdbDestination{
+	dst := &provider_ydb.YdbDestination{
 		Token:    model.SecretString(os.Getenv("YDB_TOKEN")),
 		Database: helpers.GetEnvOfFail(t, "YDB_DATABASE"),
 		Instance: helpers.GetEnvOfFail(t, "YDB_ENDPOINT"),
@@ -60,13 +60,13 @@ func TestSnapshotAndSerDeViaDebeziumEmbedded(t *testing.T) {
 	transfer := helpers.MakeTransfer("fake", src, dst, abstract.TransferTypeSnapshotOnly)
 
 	emitter, err := debezium.NewMessagesEmitter(map[string]string{
-		debeziumparameters.DatabaseDBName:   "public",
-		debeziumparameters.TopicPrefix:      "my_topic",
-		debeziumparameters.AddOriginalTypes: "true",
+		debezium_parameters.DatabaseDBName:   "public",
+		debezium_parameters.TopicPrefix:      "my_topic",
+		debezium_parameters.AddOriginalTypes: "true",
 	}, "1.1.2.Final", false, logger.Log)
 	require.NoError(t, err)
 	receiver := debezium.NewReceiver(nil, nil)
-	debeziumSerDeTransformer := simple_transformer.NewSimpleTransformer(t, serde.MakeYdb2YdbDebeziumSerDeUdf(pathOut, &sourceChangeItem, emitter, receiver), serde.AnyTablesUdf)
+	debeziumSerDeTransformer := helpers_transformer.NewSimpleTransformer(t, serde.MakeYdb2YdbDebeziumSerDeUdf(pathOut, &sourceChangeItem, emitter, receiver), serde.AnyTablesUdf)
 	require.NoError(t, transfer.AddExtraTransformer(debeziumSerDeTransformer))
 
 	t.Run("activate", func(t *testing.T) {

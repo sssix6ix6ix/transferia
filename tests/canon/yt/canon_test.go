@@ -11,11 +11,11 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	yt_provider "github.com/transferia/transferia/pkg/providers/yt"
+	provider_yt "github.com/transferia/transferia/pkg/providers/yt"
 	"github.com/transferia/transferia/pkg/providers/yt/yt_client"
 	"github.com/transferia/transferia/tests/canon/validator"
 	"github.com/transferia/transferia/tests/helpers"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 	"go.ytsaurus.tech/yt/go/ypath"
 	"go.ytsaurus.tech/yt/go/yt"
 )
@@ -111,8 +111,8 @@ var TestData = []map[string]any{
 	},
 }
 
-func ytInterval(duration time.Duration) schema.Interval {
-	res, err := schema.NewInterval(duration)
+func ytInterval(duration time.Duration) ytschema.Interval {
+	res, err := ytschema.NewInterval(duration)
 	if err != nil {
 		panic(err)
 	}
@@ -120,51 +120,51 @@ func ytInterval(duration time.Duration) schema.Interval {
 }
 
 var (
-	members = []schema.StructMember{
-		{Name: "fieldInt16", Type: schema.TypeInt16},
-		{Name: "fieldFloat32", Type: schema.TypeFloat32},
-		{Name: "fieldString", Type: schema.TypeString},
+	members = []ytschema.StructMember{
+		{Name: "fieldInt16", Type: ytschema.TypeInt16},
+		{Name: "fieldFloat32", Type: ytschema.TypeFloat32},
+		{Name: "fieldString", Type: ytschema.TypeString},
 	}
-	elements = []schema.TupleElement{
-		{Type: schema.TypeInt16},
-		{Type: schema.TypeFloat32},
-		{Type: schema.TypeString},
+	elements = []ytschema.TupleElement{
+		{Type: ytschema.TypeInt16},
+		{Type: ytschema.TypeFloat32},
+		{Type: ytschema.TypeString},
 	}
 	secondsPerDay = int64(24 * 60 * 60)
 )
 
-var YtColumns = []schema.Column{
+var YtColumns = []ytschema.Column{
 	// Primitives
-	{Name: "t_int8", ComplexType: schema.TypeInt8, SortOrder: schema.SortAscending},
-	{Name: "t_int16", ComplexType: schema.TypeInt16},
-	{Name: "t_int32", ComplexType: schema.TypeInt32},
-	{Name: "t_int64", ComplexType: schema.TypeInt64},
-	{Name: "t_uint8", ComplexType: schema.TypeUint8},
-	{Name: "t_uint16", ComplexType: schema.TypeUint16},
-	{Name: "t_uint32", ComplexType: schema.TypeUint32},
-	{Name: "t_uint64", ComplexType: schema.TypeUint64},
-	{Name: "t_float", ComplexType: schema.TypeFloat32},
-	{Name: "t_double", ComplexType: schema.TypeFloat64},
-	{Name: "t_bool", ComplexType: schema.TypeBoolean},
-	{Name: "t_string", ComplexType: schema.TypeBytes},
-	{Name: "t_utf8", ComplexType: schema.TypeString},
-	{Name: "t_date", ComplexType: schema.TypeDate},
-	{Name: "t_datetime", ComplexType: schema.TypeDatetime},
-	{Name: "t_timestamp", ComplexType: schema.TypeTimestamp},
-	{Name: "t_interval", ComplexType: schema.TypeInterval}, // FIXME: support in CH
-	{Name: "t_yson", ComplexType: schema.Optional{Item: schema.TypeAny}},
-	{Name: "t_opt_int64", ComplexType: schema.Optional{Item: schema.TypeInt64}},
-	{Name: "t_list", ComplexType: schema.List{Item: schema.TypeFloat64}},
-	{Name: "t_struct", ComplexType: schema.Struct{Members: members}},
-	{Name: "t_tuple", ComplexType: schema.Tuple{Elements: elements}},
-	{Name: "t_variant_named", ComplexType: schema.Variant{Members: members}},
-	{Name: "t_variant_unnamed", ComplexType: schema.Variant{Elements: elements}},
-	{Name: "t_dict", ComplexType: schema.Dict{Key: schema.TypeString, Value: schema.TypeInt64}},
-	{Name: "t_tagged", ComplexType: schema.Tagged{Tag: "mytag", Item: schema.Variant{Members: members}}},
+	{Name: "t_int8", ComplexType: ytschema.TypeInt8, SortOrder: ytschema.SortAscending},
+	{Name: "t_int16", ComplexType: ytschema.TypeInt16},
+	{Name: "t_int32", ComplexType: ytschema.TypeInt32},
+	{Name: "t_int64", ComplexType: ytschema.TypeInt64},
+	{Name: "t_uint8", ComplexType: ytschema.TypeUint8},
+	{Name: "t_uint16", ComplexType: ytschema.TypeUint16},
+	{Name: "t_uint32", ComplexType: ytschema.TypeUint32},
+	{Name: "t_uint64", ComplexType: ytschema.TypeUint64},
+	{Name: "t_float", ComplexType: ytschema.TypeFloat32},
+	{Name: "t_double", ComplexType: ytschema.TypeFloat64},
+	{Name: "t_bool", ComplexType: ytschema.TypeBoolean},
+	{Name: "t_string", ComplexType: ytschema.TypeBytes},
+	{Name: "t_utf8", ComplexType: ytschema.TypeString},
+	{Name: "t_date", ComplexType: ytschema.TypeDate},
+	{Name: "t_datetime", ComplexType: ytschema.TypeDatetime},
+	{Name: "t_timestamp", ComplexType: ytschema.TypeTimestamp},
+	{Name: "t_interval", ComplexType: ytschema.TypeInterval}, // FIXME: support in CH
+	{Name: "t_yson", ComplexType: ytschema.Optional{Item: ytschema.TypeAny}},
+	{Name: "t_opt_int64", ComplexType: ytschema.Optional{Item: ytschema.TypeInt64}},
+	{Name: "t_list", ComplexType: ytschema.List{Item: ytschema.TypeFloat64}},
+	{Name: "t_struct", ComplexType: ytschema.Struct{Members: members}},
+	{Name: "t_tuple", ComplexType: ytschema.Tuple{Elements: elements}},
+	{Name: "t_variant_named", ComplexType: ytschema.Variant{Members: members}},
+	{Name: "t_variant_unnamed", ComplexType: ytschema.Variant{Elements: elements}},
+	{Name: "t_dict", ComplexType: ytschema.Dict{Key: ytschema.TypeString, Value: ytschema.TypeInt64}},
+	{Name: "t_tagged", ComplexType: ytschema.Tagged{Tag: "mytag", Item: ytschema.Variant{Members: members}}},
 }
 
 func TestCanonSource(t *testing.T) {
-	Source := &yt_provider.YtSource{
+	Source := &provider_yt.YtSource{
 		Cluster:          os.Getenv("YT_PROXY"),
 		YtProxy:          os.Getenv("YT_PROXY"),
 		Paths:            []string{"//home/cdc/junk/test_table"},
@@ -188,7 +188,7 @@ func TestCanonSource(t *testing.T) {
 }
 
 func TestCanonSourceWithDataObjects(t *testing.T) {
-	Source := &yt_provider.YtSource{
+	Source := &provider_yt.YtSource{
 		Cluster:          os.Getenv("YT_PROXY"),
 		YtProxy:          os.Getenv("YT_PROXY"),
 		Paths:            []string{"//home/cdc/junk/test_parent_dir"},
@@ -213,7 +213,7 @@ func TestCanonSourceWithDataObjects(t *testing.T) {
 }
 
 func TestCanonSourceWithDirInDataObjects(t *testing.T) {
-	Source := &yt_provider.YtSource{
+	Source := &provider_yt.YtSource{
 		Cluster:          os.Getenv("YT_PROXY"),
 		YtProxy:          os.Getenv("YT_PROXY"),
 		Paths:            []string{"//home/cdc/junk/test_parent_dir"},
@@ -237,12 +237,12 @@ func TestCanonSourceWithDirInDataObjects(t *testing.T) {
 	_ = helpers.Activate(t, transfer)
 }
 
-func createTestData(t *testing.T, Source *yt_provider.YtSource, path string) {
+func createTestData(t *testing.T, Source *provider_yt.YtSource, path string) {
 	ytc, err := yt_client.NewYtClientWrapper(yt_client.HTTP, nil, &yt.Config{Proxy: Source.YtProxy})
 	require.NoError(t, err)
 	_ = ytc.RemoveNode(context.Background(), ypath.NewRich(path).YPath(), nil)
 
-	sch := schema.Schema{
+	sch := ytschema.Schema{
 		Strict:     nil,
 		UniqueKeys: false,
 		Columns:    YtColumns,

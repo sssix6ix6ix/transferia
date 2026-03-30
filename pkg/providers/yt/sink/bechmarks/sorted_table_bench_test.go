@@ -8,14 +8,14 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/internal/logger"
-	"github.com/transferia/transferia/internal/metrics"
+	dt_metrics "github.com/transferia/transferia/internal/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	client2 "github.com/transferia/transferia/pkg/abstract/coordinator"
-	yt2 "github.com/transferia/transferia/pkg/providers/yt"
-	"github.com/transferia/transferia/pkg/providers/yt/sink"
+	"github.com/transferia/transferia/pkg/abstract/coordinator"
+	provider_yt "github.com/transferia/transferia/pkg/providers/yt"
+	yt_sink "github.com/transferia/transferia/pkg/providers/yt/sink"
 	"go.uber.org/zap/zapcore"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 	"go.ytsaurus.tech/yt/go/ypath"
 	"go.ytsaurus.tech/yt/go/yt"
 )
@@ -47,7 +47,7 @@ func (fakeYTTX) Commit() error {
 
 type fakeYT struct {
 	yt.Client
-	cols []schema.Column
+	cols []ytschema.Column
 }
 
 func (fakeYT) NodeExists(
@@ -69,15 +69,15 @@ func (f fakeYT) GetNode(
 	options *yt.GetNodeOptions,
 ) (err error) {
 	resPtr, ok := result.(*struct {
-		Schema      schema.Schema `yson:"schema"`
-		TabletState string        `yson:"expected_tablet_state"`
+		Schema      ytschema.Schema `yson:"schema"`
+		TabletState string          `yson:"expected_tablet_state"`
 	})
 	if !ok {
 		return xerrors.Errorf("result must be a pointer to the expected struct")
 	}
 
 	resPtr.TabletState = yt.TabletMounted
-	resPtr.Schema = schema.Schema{
+	resPtr.Schema = ytschema.Schema{
 		Strict:     aws.Bool(true),
 		UniqueKeys: true,
 		Columns:    f.cols,
@@ -118,16 +118,16 @@ func BenchmarkSinkWrite(b *testing.B) {
 			ColumnValues: []interface{}{3.99, time.Now()},
 		}
 		b.Run("dt_hack", func(b *testing.B) {
-			cfg := yt2.NewYtDestinationV1(yt2.YtDestination{
+			cfg := provider_yt.NewYtDestinationV1(provider_yt.YtDestination{
 				CellBundle:          "default",
 				PrimaryMedium:       "default",
 				DisableDatetimeHack: false,
 			})
 			cfg.WithDefaults()
-			table, err := sink.NewSinker(cfg, "some_uniq_transfer_id", logger.LoggerWithLevel(zapcore.WarnLevel), metrics.NewRegistry(), client2.NewFakeClient(), nil)
+			table, err := yt_sink.NewSinker(cfg, "some_uniq_transfer_id", logger.LoggerWithLevel(zapcore.WarnLevel), dt_metrics.NewRegistry(), coordinator.NewFakeClient(), nil)
 			require.NoError(b, err)
 			if o, ok := table.(overrideable); ok {
-				o.OverrideClient(&fakeYT{cols: []schema.Column{{
+				o.OverrideClient(&fakeYT{cols: []ytschema.Column{{
 					Name:      "test",
 					Type:      "double",
 					SortOrder: "ascending",
@@ -136,7 +136,7 @@ func BenchmarkSinkWrite(b *testing.B) {
 					Type:      "int64",
 					SortOrder: "ascending",
 				}, {
-					Name: sink.DummyMainTable,
+					Name: yt_sink.DummyMainTable,
 					Type: "any",
 				}}})
 			}
@@ -149,16 +149,16 @@ func BenchmarkSinkWrite(b *testing.B) {
 			})
 		})
 		b.Run("no_dt_hack", func(b *testing.B) {
-			cfg := yt2.NewYtDestinationV1(yt2.YtDestination{
+			cfg := provider_yt.NewYtDestinationV1(provider_yt.YtDestination{
 				CellBundle:          "default",
 				PrimaryMedium:       "default",
 				DisableDatetimeHack: true,
 			})
 			cfg.WithDefaults()
-			table, err := sink.NewSinker(cfg, "some_uniq_transfer_id", logger.LoggerWithLevel(zapcore.WarnLevel), metrics.NewRegistry(), client2.NewFakeClient(), nil)
+			table, err := yt_sink.NewSinker(cfg, "some_uniq_transfer_id", logger.LoggerWithLevel(zapcore.WarnLevel), dt_metrics.NewRegistry(), coordinator.NewFakeClient(), nil)
 			require.NoError(b, err)
 			if o, ok := table.(overrideable); ok {
-				o.OverrideClient(&fakeYT{cols: []schema.Column{{
+				o.OverrideClient(&fakeYT{cols: []ytschema.Column{{
 					Name:      "test",
 					Type:      "double",
 					SortOrder: "ascending",
@@ -167,7 +167,7 @@ func BenchmarkSinkWrite(b *testing.B) {
 					Type:      "datetime",
 					SortOrder: "ascending",
 				}, {
-					Name: sink.DummyMainTable,
+					Name: yt_sink.DummyMainTable,
 					Type: "any",
 				}}})
 			}

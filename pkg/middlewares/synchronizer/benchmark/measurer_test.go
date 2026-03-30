@@ -14,7 +14,7 @@ import (
 	"github.com/transferia/transferia/pkg/middlewares/synchronizer"
 	"github.com/transferia/transferia/pkg/middlewares/synchronizer/bufferer"
 	"github.com/transferia/transferia/pkg/stats"
-	"github.com/transferia/transferia/tests/canon/reference"
+	canon_reference "github.com/transferia/transferia/tests/canon/reference"
 )
 
 type mockAsyncSink struct {
@@ -79,7 +79,7 @@ func BenchmarkMeasurer(b *testing.B) {
 		for _, count := range []int{1, 1000, 100_000} {
 			var input []abstract.ChangeItem
 			for i := 0; i < count; i++ {
-				input = append(input, reference.Table()[0])
+				input = append(input, canon_reference.Table()[0])
 			}
 			b.Run(fmt.Sprintf("row_%d", count), func(b *testing.B) {
 				target := &mockSink{}
@@ -99,7 +99,7 @@ func BenchmarkMeasurer(b *testing.B) {
 		for _, count := range []int{1, 1000, 100_000} {
 			var input []abstract.ChangeItem
 			for i := 0; i < count; i++ {
-				input = append(input, reference.Table()[0])
+				input = append(input, canon_reference.Table()[0])
 			}
 			b.Run(fmt.Sprintf("row_%d", count), func(b *testing.B) {
 				target := &mockSink{}

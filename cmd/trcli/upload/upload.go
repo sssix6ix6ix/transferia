@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"github.com/spf13/cobra"
-	"github.com/transferia/transferia/cmd/trcli/config"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	trcli_config "github.com/transferia/transferia/cmd/trcli/config"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
@@ -13,7 +13,7 @@ import (
 	"github.com/transferia/transferia/pkg/worker/tasks"
 )
 
-func UploadCommand(cp *coordinator.Coordinator, rt abstract.Runtime, registry metrics.Registry) *cobra.Command {
+func UploadCommand(cp *coordinator.Coordinator, rt abstract.Runtime, registry core_metrics.Registry) *cobra.Command {
 	var transferParams string
 	var uploadParams string
 	var metricsPrefix string
@@ -31,16 +31,16 @@ func UploadCommand(cp *coordinator.Coordinator, rt abstract.Runtime, registry me
 	return uploadCommand
 }
 
-func upload(cp *coordinator.Coordinator, rt abstract.Runtime, transferYaml, uploadTablesYaml *string, registry metrics.Registry, metricsPrefix string) func(cmd *cobra.Command, args []string) error {
+func upload(cp *coordinator.Coordinator, rt abstract.Runtime, transferYaml, uploadTablesYaml *string, registry core_metrics.Registry, metricsPrefix string) func(cmd *cobra.Command, args []string) error {
 	return func(cmd *cobra.Command, args []string) error {
-		transfer, err := config.TransferFromYaml(transferYaml)
+		transfer, err := trcli_config.TransferFromYaml(transferYaml)
 		if err != nil {
 			return xerrors.Errorf("unable to load transfer: %w", err)
 		}
 
 		transfer.Runtime = rt
 
-		tables, err := config.TablesFromYaml(uploadTablesYaml)
+		tables, err := trcli_config.TablesFromYaml(uploadTablesYaml)
 		if err != nil {
 			return xerrors.Errorf("unable to load tables: %w", err)
 		}
@@ -53,7 +53,7 @@ func upload(cp *coordinator.Coordinator, rt abstract.Runtime, transferYaml, uplo
 	}
 }
 
-func RunUpload(cp coordinator.Coordinator, transfer *model.Transfer, tables *config.UploadTables, registry metrics.Registry) error {
+func RunUpload(cp coordinator.Coordinator, transfer *model.Transfer, tables *trcli_config.UploadTables, registry core_metrics.Registry) error {
 	return tasks.Upload(
 		context.Background(),
 		cp,

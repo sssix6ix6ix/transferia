@@ -5,8 +5,8 @@ import (
 	"strings"
 
 	"github.com/transferia/transferia/pkg/abstract"
-	"github.com/ydb-platform/ydb-go-sdk/v3/table/options"
-	"go.ytsaurus.tech/yt/go/schema"
+	ydb_options "github.com/ydb-platform/ydb-go-sdk/v3/table/options"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 type column struct {
@@ -24,46 +24,46 @@ func buildColumnDescription(col *column, isPkey bool) abstract.ColSchema {
 		ydbTypeStr = ydbTypeStr[:bracketsStart]
 	}
 
-	var dataType schema.Type
+	var dataType ytschema.Type
 	switch ydbTypeStr {
 	case "Bool":
-		dataType = schema.TypeBoolean
+		dataType = ytschema.TypeBoolean
 	case "Int8":
-		dataType = schema.TypeInt8
+		dataType = ytschema.TypeInt8
 	case "Int16":
-		dataType = schema.TypeInt16
+		dataType = ytschema.TypeInt16
 	case "Int32":
-		dataType = schema.TypeInt32
+		dataType = ytschema.TypeInt32
 	case "Int64":
-		dataType = schema.TypeInt64
+		dataType = ytschema.TypeInt64
 	case "Uint8":
-		dataType = schema.TypeUint8
+		dataType = ytschema.TypeUint8
 	case "Uint16":
-		dataType = schema.TypeUint16
+		dataType = ytschema.TypeUint16
 	case "Uint32":
-		dataType = schema.TypeUint32
+		dataType = ytschema.TypeUint32
 	case "Uint64":
-		dataType = schema.TypeUint64
+		dataType = ytschema.TypeUint64
 	case "Float":
-		dataType = schema.TypeFloat32
+		dataType = ytschema.TypeFloat32
 	case "Double":
-		dataType = schema.TypeFloat64
+		dataType = ytschema.TypeFloat64
 	case "String":
-		dataType = schema.TypeBytes
+		dataType = ytschema.TypeBytes
 	case "Utf8", "Decimal", "DyNumber":
-		dataType = schema.TypeString
+		dataType = ytschema.TypeString
 	case "Date":
-		dataType = schema.TypeDate
+		dataType = ytschema.TypeDate
 	case "Datetime":
-		dataType = schema.TypeDatetime
+		dataType = ytschema.TypeDatetime
 	case "Timestamp":
-		dataType = schema.TypeTimestamp
+		dataType = ytschema.TypeTimestamp
 	case "Interval":
-		dataType = schema.TypeInterval
+		dataType = ytschema.TypeInterval
 	case "Uuid":
-		dataType = schema.TypeString
+		dataType = ytschema.TypeString
 	default:
-		dataType = schema.TypeAny
+		dataType = ytschema.TypeAny
 	}
 
 	return abstract.ColSchema{
@@ -104,7 +104,7 @@ func fromYdbSchemaImpl(original []column, keys []string) abstract.TableColumns {
 	return result
 }
 
-func FromYdbSchema(original []options.Column, keys []string) abstract.TableColumns {
+func FromYdbSchema(original []ydb_options.Column, keys []string) abstract.TableColumns {
 	columns := make([]column, len(original))
 	for i, el := range original {
 		columns[i] = column{

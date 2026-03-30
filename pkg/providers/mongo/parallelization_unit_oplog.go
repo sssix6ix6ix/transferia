@@ -9,7 +9,7 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	mongo_options "go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type ParallelizationUnitOplog struct {
@@ -33,7 +33,7 @@ func (p ParallelizationUnitOplog) String() string {
 func (p ParallelizationUnitOplog) Ping(ctx context.Context, client *MongoClientWrapper) error {
 	db := client.Database(p.metadataStorageDB())
 	clusterTimeColl := db.Collection(ClusterTimeCollName)
-	opts := options.Update().SetUpsert(true)
+	opts := mongo_options.Update().SetUpsert(true)
 	_, err := clusterTimeColl.UpdateOne(
 		ctx,
 		bson.D{{Key: "_id", Value: p.SlotID}},
@@ -48,7 +48,7 @@ func (p ParallelizationUnitOplog) Ping(ctx context.Context, client *MongoClientW
 func (p ParallelizationUnitOplog) SaveClusterTime(ctx context.Context, client *MongoClientWrapper, timestamp *primitive.Timestamp) error {
 	db := client.Database(p.metadataStorageDB())
 	clusterTimeColl := db.Collection(ClusterTimeCollName)
-	opts := options.Update().SetUpsert(true)
+	opts := mongo_options.Update().SetUpsert(true)
 	_, err := clusterTimeColl.UpdateOne(
 		ctx,
 		bson.D{{Key: "_id", Value: p.SlotID}},

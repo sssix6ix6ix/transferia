@@ -8,18 +8,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-sql-driver/mysql"
+	mysql_driver2 "github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	mysql_source "github.com/transferia/transferia/pkg/providers/mysql"
-	yt_provider "github.com/transferia/transferia/pkg/providers/yt"
+	provider_mysql "github.com/transferia/transferia/pkg/providers/mysql"
+	provider_yt "github.com/transferia/transferia/pkg/providers/yt"
 	"github.com/transferia/transferia/pkg/runtime/local"
 	"github.com/transferia/transferia/pkg/worker/tasks"
 	"github.com/transferia/transferia/tests/helpers"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 	"go.ytsaurus.tech/yt/go/ypath"
 	"go.ytsaurus.tech/yt/go/yt"
 	"go.ytsaurus.tech/yt/go/yttest"
@@ -40,8 +40,8 @@ func init() {
 	source.WithDefaults()
 }
 
-func makeConnConfig() *mysql.Config {
-	cfg := mysql.NewConfig()
+func makeConnConfig() *mysql_driver2.Config {
+	cfg := mysql_driver2.NewConfig()
 	cfg.Addr = fmt.Sprintf("%v:%v", source.Host, source.Port)
 	cfg.User = source.User
 	cfg.Passwd = string(source.Password)
@@ -51,7 +51,7 @@ func makeConnConfig() *mysql.Config {
 }
 
 func makeTarget() model.Destination {
-	target := yt_provider.NewYtDestinationV1(yt_provider.YtDestination{
+	target := provider_yt.NewYtDestinationV1(provider_yt.YtDestination{
 		Path:          "//home/cdc/test/mysql2yt/date_time",
 		Cluster:       targetCluster,
 		CellBundle:    "default",
@@ -61,9 +61,9 @@ func makeTarget() model.Destination {
 	return target
 }
 
-func ParseDate(value string) schema.Date {
+func ParseDate(value string) ytschema.Date {
 	date, _ := time.Parse(layoutDateMySQL, value)
-	schemaDate, err := schema.NewDate(date)
+	schemaDate, err := ytschema.NewDate(date)
 	if err != nil {
 		panic(err)
 	}
@@ -96,17 +96,17 @@ func TestDateTime(t *testing.T) {
 	err = snapshotLoader.LoadSnapshot(context.Background())
 	require.NoError(t, err)
 
-	require.NoError(t, helpers.CompareStorages(t, source, ytDestination.(yt_provider.YtDestinationModel).LegacyModel(), helpers.NewCompareStorageParams()))
+	require.NoError(t, helpers.CompareStorages(t, source, ytDestination.(provider_yt.YtDestinationModel).LegacyModel(), helpers.NewCompareStorageParams()))
 
 	fakeClient := coordinator.NewStatefulFakeClient()
-	err = mysql_source.SyncBinlogPosition(&source, transfer.ID, fakeClient)
+	err = provider_mysql.SyncBinlogPosition(&source, transfer.ID, fakeClient)
 	require.NoError(t, err)
 
 	localWorker := local.NewLocalWorker(fakeClient, transfer, helpers.EmptyRegistry(), logger.Log)
 	localWorker.Start()
 	defer localWorker.Stop() //nolint
 
-	conn, err := mysql.NewConnector(makeConnConfig())
+	conn, err := mysql_driver2.NewConnector(makeConnConfig())
 	require.NoError(t, err)
 	db := sql.OpenDB(conn)
 	_, err = db.Exec(`INSERT INTO time_test VALUES (101, '2022-12-25', '2022-12-25 14:15:16', '2022-12-25 14:15:16')`)
@@ -124,6 +124,6 @@ func TestDateTime(t *testing.T) {
 	_, err = db.Exec(`INSERT INTO time_test VALUES (107, '2025-05-25', '2025-05-25 00:05:25.555', '2025-05-25 00:05:25.555555')`)
 	require.NoError(t, err)
 
-	require.NoError(t, helpers.WaitEqualRowsCount(t, source.Database, tableName, helpers.GetSampleableStorageByModel(t, source), helpers.GetSampleableStorageByModel(t, ytDestination.(yt_provider.YtDestinationModel).LegacyModel()), 60*time.Second))
-	require.NoError(t, helpers.CompareStorages(t, source, ytDestination.(yt_provider.YtDestinationModel).LegacyModel(), helpers.NewCompareStorageParams()))
+	require.NoError(t, helpers.WaitEqualRowsCount(t, source.Database, tableName, helpers.GetSampleableStorageByModel(t, source), helpers.GetSampleableStorageByModel(t, ytDestination.(provider_yt.YtDestinationModel).LegacyModel()), 60*time.Second))
+	require.NoError(t, helpers.CompareStorages(t, source, ytDestination.(provider_yt.YtDestinationModel).LegacyModel(), helpers.NewCompareStorageParams()))
 }

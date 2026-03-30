@@ -7,7 +7,7 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/errors/coded"
-	"github.com/transferia/transferia/pkg/errors/codes"
+	error_codes "github.com/transferia/transferia/pkg/errors/codes"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
@@ -71,7 +71,7 @@ func VerifyPostgresTables(src *PgSource, transfer *model.Transfer, lgr log.Logge
 		return xerrors.Errorf("Tables not found. Missed: %v", missed)
 	}
 	if noKeysTables := exist.NoKeysTables(); len(noKeysTables) > 0 {
-		return coded.Errorf(codes.PostgresNoPrimaryKeyCode, "unable to check primary keys: %v", noKeysTables)
+		return coded.Errorf(error_codes.PostgresNoPrimaryKeyCode, "unable to check primary keys: %v", noKeysTables)
 	}
 	return nil
 }

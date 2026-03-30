@@ -1,42 +1,42 @@
 package op
 
 import (
-	"github.com/transferia/transferia/pkg/util/token_regexp/abstract"
+	token_regexp_abstract "github.com/transferia/transferia/pkg/util/token_regexp/abstract"
 )
 
 type PlusOp struct {
-	abstract.Relatives
-	op abstract.Op
+	token_regexp_abstract.Relatives
+	op token_regexp_abstract.Op
 }
 
 func (t *PlusOp) IsOp() {}
 
 // recursive function - every call is every match repeat of '+' operator
-func consumeComplex(op abstract.Op, tokens []*abstract.Token) *abstract.MatchedResults {
+func consumeComplex(op token_regexp_abstract.Op, tokens []*token_regexp_abstract.Token) *token_regexp_abstract.MatchedResults {
 	if len(tokens) == 0 {
-		result := abstract.NewMatchedResults()
+		result := token_regexp_abstract.NewMatchedResults()
 		return result
 	}
 
-	opResult := abstract.NewMatchedResults()
+	opResult := token_regexp_abstract.NewMatchedResults()
 
 	switch currOp := op.(type) {
-	case abstract.OpPrimitive:
+	case token_regexp_abstract.OpPrimitive:
 		lengths := currOp.ConsumePrimitive(tokens)
 		opResult.AddMatchedPathsAfterConsumePrimitive(lengths, op, tokens)
-	case abstract.OpComplex:
+	case token_regexp_abstract.OpComplex:
 		localResults := currOp.ConsumeComplex(tokens)
 		opResult.AddLocalResults(localResults, op, nil)
 	}
 
-	result := abstract.NewMatchedResults()
+	result := token_regexp_abstract.NewMatchedResults()
 	for index := range opResult.Size() {
 		currOpPath := opResult.Index(index)
 		currPathLength := currOpPath.Length()
 		localResult := consumeComplex(op, tokens[currPathLength:])
 
 		for localIndex := range localResult.Size() {
-			currPath := abstract.NewMatchedPathParentPathChildPath(currOpPath, localResult.Index(localIndex))
+			currPath := token_regexp_abstract.NewMatchedPathParentPathChildPath(currOpPath, localResult.Index(localIndex))
 			result.AddMatchedPath(currPath)
 		}
 		result.AddMatchedPath(currOpPath)
@@ -44,24 +44,24 @@ func consumeComplex(op abstract.Op, tokens []*abstract.Token) *abstract.MatchedR
 	return result
 }
 
-func (t *PlusOp) ConsumeComplex(tokens []*abstract.Token) *abstract.MatchedResults {
+func (t *PlusOp) ConsumeComplex(tokens []*token_regexp_abstract.Token) *token_regexp_abstract.MatchedResults {
 	return consumeComplex(t.op, tokens)
 }
 
 func Plus(arg any) *PlusOp {
-	var op abstract.Op = nil
+	var op token_regexp_abstract.Op = nil
 
 	switch v := arg.(type) {
 	case string:
 		op = Match(v)
-	case abstract.Op:
+	case token_regexp_abstract.Op:
 		op = v
 	default:
 		return nil
 	}
 
 	result := &PlusOp{
-		Relatives: abstract.NewRelativesImpl(),
+		Relatives: token_regexp_abstract.NewRelativesImpl(),
 		op:        op,
 	}
 	result.op.SetParent(result)

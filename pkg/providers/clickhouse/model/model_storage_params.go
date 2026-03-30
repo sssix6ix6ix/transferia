@@ -7,7 +7,7 @@ import (
 
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/connection"
-	"github.com/transferia/transferia/pkg/connection/clickhouse"
+	conn_clickhouse "github.com/transferia/transferia/pkg/connection/clickhouse"
 )
 
 // ch
@@ -109,7 +109,7 @@ func (c *ChStorageParams) String() string {
 	return fmt.Sprintf("%v/%v", shardsToString, c.ConnectionParams.Database)
 }
 
-func resolveHosts(clucterID, shardGroup string, shardList []ClickHouseShard, nativePort, httpPort int) ([]*clickhouse.Host, map[string][]*clickhouse.Host, error) {
+func resolveHosts(clucterID, shardGroup string, shardList []ClickHouseShard, nativePort, httpPort int) ([]*conn_clickhouse.Host, map[string][]*conn_clickhouse.Host, error) {
 	if clucterID != "" {
 		return ResolveHostsFromMDBCluster(clucterID, shardGroup, nativePort, httpPort)
 	}
@@ -118,12 +118,12 @@ func resolveHosts(clucterID, shardGroup string, shardList []ClickHouseShard, nat
 	return hosts, shards, nil
 }
 
-func resolveShardsAndHosts(shardList []ClickHouseShard, nativePort, httpPort int) ([]*clickhouse.Host, map[string][]*clickhouse.Host) {
-	var connectionHosts []*clickhouse.Host
-	shards := make(map[string][]*clickhouse.Host)
+func resolveShardsAndHosts(shardList []ClickHouseShard, nativePort, httpPort int) ([]*conn_clickhouse.Host, map[string][]*conn_clickhouse.Host) {
+	var connectionHosts []*conn_clickhouse.Host
+	shards := make(map[string][]*conn_clickhouse.Host)
 	for _, shard := range shardList {
 		for _, host := range shard.Hosts {
-			connectionHost := &clickhouse.Host{
+			connectionHost := &conn_clickhouse.Host{
 				Name:       host,
 				NativePort: nativePort,
 				HTTPPort:   httpPort,
@@ -137,7 +137,7 @@ func resolveShardsAndHosts(shardList []ClickHouseShard, nativePort, httpPort int
 	return connectionHosts, shards
 }
 
-func resolveConnection(connectionID string) (*clickhouse.Connection, error) {
+func resolveConnection(connectionID string) (*conn_clickhouse.Connection, error) {
 	connCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	//DP agent token here
@@ -146,7 +146,7 @@ func resolveConnection(connectionID string) (*clickhouse.Connection, error) {
 		return nil, err
 	}
 
-	chConn, ok := conn.(*clickhouse.Connection)
+	chConn, ok := conn.(*conn_clickhouse.Connection)
 	if !ok {
 		return nil, xerrors.Errorf("Cannot cast connection %s to ClickHouse connection", connectionID)
 	}

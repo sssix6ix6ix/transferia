@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
-	pg_provider "github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
 	"github.com/transferia/transferia/tests/helpers"
 )
@@ -39,7 +39,7 @@ func TestPkeyUpdate(t *testing.T) {
 	defer worker.Close(t)
 
 	// insert data
-	srcConn, err := pg_provider.MakeConnPoolFromSrc(&Source, logger.Log)
+	srcConn, err := provider_postgres.MakeConnPoolFromSrc(&Source, logger.Log)
 	require.NoError(t, err)
 	defer srcConn.Close()
 	_, err = srcConn.Exec(context.Background(), `UPDATE __test SET id = 2 WHERE id = 1;`)

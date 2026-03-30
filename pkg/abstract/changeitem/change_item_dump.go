@@ -7,7 +7,7 @@ import (
 
 	"github.com/olekukonko/tablewriter"
 	"github.com/transferia/transferia/pkg/util"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 func Dump(input []ChangeItem) {
@@ -43,7 +43,7 @@ func Dump(input []ChangeItem) {
 					switch vv := v.(type) {
 					case []byte:
 						data[colIdx[row.ColumnNames[i]]] = util.Sample(string(vv), 100)
-					case schema.Datetime:
+					case ytschema.Datetime:
 						data[colIdx[row.ColumnNames[i]]] = vv.Time().String()
 					default:
 						d, _ := json.MarshalIndent(v, "", "	")

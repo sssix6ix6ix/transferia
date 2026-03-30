@@ -11,7 +11,7 @@ import (
 	yslices "github.com/transferia/transferia/library/go/slices"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/async/dao"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/async/model/db"
+	ch_db_model "github.com/transferia/transferia/pkg/providers/clickhouse/async/model/db"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/columntypes"
 	"github.com/transferia/transferia/pkg/util"
 	"go.ytsaurus.tech/library/go/core/log"
@@ -20,7 +20,7 @@ import (
 type shardPart struct {
 	lgr        log.Logger
 	db         DDLStreamingClient
-	streamer   db.Streamer
+	streamer   ch_db_model.Streamer
 	dao        *dao.DDLDAO
 	partsDao   *dao.PartsDAO
 	baseDB     string
@@ -28,7 +28,7 @@ type shardPart struct {
 	tmpDB      string
 	tmpTable   string
 	query      string
-	marshaller db.ChangeItemMarshaller
+	marshaller ch_db_model.ChangeItemMarshaller
 	closeOnce  sync.Once
 	cols       columntypes.TypeMapping
 }

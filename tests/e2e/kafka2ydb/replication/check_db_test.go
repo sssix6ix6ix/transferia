@@ -12,16 +12,16 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/parsers"
-	jsonparser "github.com/transferia/transferia/pkg/parsers/registry/json"
-	kafkasink "github.com/transferia/transferia/pkg/providers/kafka"
-	"github.com/transferia/transferia/pkg/providers/ydb"
+	parser_json "github.com/transferia/transferia/pkg/parsers/registry/json"
+	provider_kafka "github.com/transferia/transferia/pkg/providers/kafka"
+	provider_ydb "github.com/transferia/transferia/pkg/providers/ydb"
 	"github.com/transferia/transferia/tests/helpers"
 	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 func TestReplication(t *testing.T) {
 	// create source
-	parserConfigStruct := &jsonparser.ParserConfigJSONCommon{
+	parserConfigStruct := &parser_json.ParserConfigJSONCommon{
 		Fields: []abstract.ColSchema{
 			{ColumnName: "id", DataType: ytschema.TypeInt32.String(), PrimaryKey: true},
 			{ColumnName: "level", DataType: ytschema.TypeString.String()},
@@ -34,12 +34,12 @@ func TestReplication(t *testing.T) {
 	parserConfigMap, err := parsers.ParserConfigStructToMap(parserConfigStruct)
 	require.NoError(t, err)
 
-	source := &kafkasink.KafkaSource{
-		Connection: &kafkasink.KafkaConnectionOptions{
+	source := &provider_kafka.KafkaSource{
+		Connection: &provider_kafka.KafkaConnectionOptions{
 			TLS:     model.DisabledTLS,
 			Brokers: []string{os.Getenv("KAFKA_RECIPE_BROKER_LIST")},
 		},
-		Auth:             &kafkasink.KafkaAuth{Enabled: false},
+		Auth:             &provider_kafka.KafkaAuth{Enabled: false},
 		Topic:            "topic1",
 		Transformer:      nil,
 		BufferSize:       model.BytesSize(1024),
@@ -70,7 +70,7 @@ func TestReplication(t *testing.T) {
 		token = "anyNotEmptyString"
 	}
 
-	dst := &ydb.YdbDestination{
+	dst := &provider_ydb.YdbDestination{
 		Token:                 model.SecretString(token),
 		Database:              prefix,
 		Path:                  "",
@@ -84,8 +84,8 @@ func TestReplication(t *testing.T) {
 	}
 
 	// write messages to source topic
-	srcSink, err := kafkasink.NewReplicationSink(
-		&kafkasink.KafkaDestination{
+	srcSink, err := provider_kafka.NewReplicationSink(
+		&provider_kafka.KafkaDestination{
 			Connection: source.Connection,
 			Auth:       source.Auth,
 			Topic:      source.Topic,

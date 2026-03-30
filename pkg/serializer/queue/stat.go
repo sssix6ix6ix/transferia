@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/transferia/transferia/pkg/abstract"
-	util "github.com/transferia/transferia/pkg/util/queues"
+	util_queues "github.com/transferia/transferia/pkg/util/queues"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
@@ -14,7 +14,7 @@ func LogBatchingStat(logger log.Logger, input []abstract.ChangeItem, in map[abst
 	sumSize := uint64(0)
 	statBySize := make(map[string]uint64)
 	for k, v := range in {
-		fqtn := util.UnquotedFQTNWithPartID(k)
+		fqtn := util_queues.UnquotedFQTNWithPartID(k)
 		sumMessages += len(v)
 		statByMessages[fqtn] = len(v)
 		currTableSize := uint64(0)

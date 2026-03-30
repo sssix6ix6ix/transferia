@@ -12,7 +12,7 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
+	mongo_driver "go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap/zapcore"
 )
 
@@ -193,7 +193,7 @@ var (
 
 // BuildPipeline returns mongo pipeline that should be able
 // to filter the oplog from unwanted changes in database 'forDatabaseName'
-func (f MongoCollectionFilter) BuildPipeline(forDatabaseName string) (mongo.Pipeline, error) {
+func (f MongoCollectionFilter) BuildPipeline(forDatabaseName string) (mongo_driver.Pipeline, error) {
 	excluded := map[string]struct{}{}
 	included := map[string]struct{}{}
 	makeInExprFromMap := func(m map[string]struct{}) bson.D {
@@ -216,7 +216,7 @@ func (f MongoCollectionFilter) BuildPipeline(forDatabaseName string) (mongo.Pipe
 		if coll.DatabaseName == forDatabaseName {
 			if coll.CollectionName == "*" {
 				// TODO test $not
-				return mongo.Pipeline{
+				return mongo_driver.Pipeline{
 					// just exclude excluded, others values are passing
 					{{Key: "$match", Value: bson.D{{Key: "ns.coll", Value: bson.M{"$not": makeInExprFromMap(excluded)}}}}},
 				}, nil
@@ -239,7 +239,7 @@ func (f MongoCollectionFilter) BuildPipeline(forDatabaseName string) (mongo.Pipe
 	if len(excluded) > 0 {
 		matchFilters = append(matchFilters, bson.E{Key: "ns.coll", Value: bson.M{"$not": makeInExprFromMap(excluded)}})
 	}
-	return mongo.Pipeline{{{Key: "$match", Value: matchFilters}}}, nil
+	return mongo_driver.Pipeline{{{Key: "$match", Value: matchFilters}}}, nil
 }
 
 func (s *MongoSource) GetMongoCollectionFilter() MongoCollectionFilter {

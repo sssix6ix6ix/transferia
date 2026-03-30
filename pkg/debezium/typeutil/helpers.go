@@ -14,7 +14,7 @@ import (
 
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	debeziumparameters "github.com/transferia/transferia/pkg/debezium/parameters"
+	debezium_parameters "github.com/transferia/transferia/pkg/debezium/parameters"
 	"github.com/transferia/transferia/pkg/util"
 )
 
@@ -211,13 +211,13 @@ func mysqlParsePrecisionScale(colType string) (int, int, error) {
 }
 
 func MysqlDecimalFieldDescr(colSchema *abstract.ColSchema, _, _ bool, connectorParameters map[string]string) (string, string, map[string]interface{}) {
-	switch debeziumparameters.GetDecimalHandlingMode(connectorParameters) {
-	case debeziumparameters.DecimalHandlingModePrecise:
+	switch debezium_parameters.GetDecimalHandlingMode(connectorParameters) {
+	case debezium_parameters.DecimalHandlingModePrecise:
 		precision, scale, _ := mysqlParsePrecisionScale(colSchema.OriginalType)
 		return FieldDescrDecimal(precision, scale)
-	case debeziumparameters.DecimalHandlingModeDouble:
+	case debezium_parameters.DecimalHandlingModeDouble:
 		return "double", "", nil
-	case debeziumparameters.DecimalHandlingModeString:
+	case debezium_parameters.DecimalHandlingModeString:
 		return "string", "", nil
 	default:
 		return "", "", nil
@@ -274,21 +274,21 @@ func DecimalToDebeziumHandlingModePrecise(decimal, decimalWithoutProvider string
 }
 
 func DecimalToDebezium(decimal, decimalWithoutProvider string, connectorParameters map[string]string) (interface{}, error) {
-	decimalHandlingMode := debeziumparameters.GetDecimalHandlingMode(connectorParameters)
+	decimalHandlingMode := debezium_parameters.GetDecimalHandlingMode(connectorParameters)
 	switch decimalHandlingMode {
-	case debeziumparameters.DecimalHandlingModePrecise:
+	case debezium_parameters.DecimalHandlingModePrecise:
 		result, err := DecimalToDebeziumHandlingModePrecise(decimal, decimalWithoutProvider)
 		if err != nil {
 			return nil, xerrors.Errorf("unable to convert decimal to debezium in precise handling mode, decimal: %s, err: %w", decimal, err)
 		}
 		return result, nil
-	case debeziumparameters.DecimalHandlingModeDouble:
+	case debezium_parameters.DecimalHandlingModeDouble:
 		result, err := strconv.ParseFloat(decimal, 64)
 		if err != nil {
 			return nil, xerrors.Errorf("unable to parse float %s, err: %w", decimal, err)
 		}
 		return result, nil
-	case debeziumparameters.DecimalHandlingModeString:
+	case debezium_parameters.DecimalHandlingModeString:
 		return decimal, nil
 	default:
 		return nil, xerrors.Errorf("unknown DecimalHandlingMode: %s", decimalHandlingMode)
@@ -435,17 +435,17 @@ func DecimalToDebeziumPrimitivesImpl(decimal string) (string, int, error) {
 }
 
 func DecimalToDebeziumPrimitives(decimal string, connectorParameters map[string]string) (interface{}, error) {
-	decimalHandlingMode := debeziumparameters.GetDecimalHandlingMode(connectorParameters)
+	decimalHandlingMode := debezium_parameters.GetDecimalHandlingMode(connectorParameters)
 	switch decimalHandlingMode {
-	case debeziumparameters.DecimalHandlingModePrecise:
+	case debezium_parameters.DecimalHandlingModePrecise:
 		result, _, err := DecimalToDebeziumPrimitivesImpl(decimal)
 		if err != nil {
 			return nil, xerrors.Errorf("unable to emit decimal debezium, val:%s, err: %w", decimal, err)
 		}
 		return result, nil
-	case debeziumparameters.DecimalHandlingModeDouble:
+	case debezium_parameters.DecimalHandlingModeDouble:
 		return strconv.ParseFloat(decimal, 64)
-	case debeziumparameters.DecimalHandlingModeString:
+	case debezium_parameters.DecimalHandlingModeString:
 		return decimal, nil
 	default:
 		return "", xerrors.Errorf("unknown DecimalHandlingMode: %s", decimalHandlingMode)
@@ -483,7 +483,7 @@ func ParsePgDateTimeWithTimezone(in string) (time.Time, error) {
 }
 
 func ParsePostgresInterval(interval, intervalHandlingMode string) (interface{}, error) {
-	if intervalHandlingMode == debeziumparameters.IntervalHandlingModeNumeric {
+	if intervalHandlingMode == debezium_parameters.IntervalHandlingModeNumeric {
 		arrStr, err := ExtractPostgresIntervalArray(interval)
 		if err != nil {
 			return nil, xerrors.Errorf("unable to extract postgres interval array, interval: %s, intervalHandlingMode: %s, err: %w", interval, intervalHandlingMode, err)
@@ -536,7 +536,7 @@ func ParseBytea(colVal interface{}, binaryHandlingMode string) (interface{}, err
 	}
 
 	switch binaryHandlingMode {
-	case debeziumparameters.BinaryHandlingModeBytes:
+	case debezium_parameters.BinaryHandlingModeBytes:
 		return bufInBase64, nil
 	default:
 		return nil, xerrors.Errorf("unsupported binary.handling.mode: %s", binaryHandlingMode)

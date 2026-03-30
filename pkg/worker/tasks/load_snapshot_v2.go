@@ -19,8 +19,8 @@ import (
 	"github.com/transferia/transferia/pkg/errors"
 	"github.com/transferia/transferia/pkg/errors/categories"
 	"github.com/transferia/transferia/pkg/middlewares"
-	"github.com/transferia/transferia/pkg/sink"
-	"github.com/transferia/transferia/pkg/storage"
+	"github.com/transferia/transferia/pkg/sink_factory"
+	"github.com/transferia/transferia/pkg/storage_factory"
 	"github.com/transferia/transferia/pkg/targets"
 	"github.com/transferia/transferia/pkg/targets/legacy"
 	"github.com/transferia/transferia/pkg/util"
@@ -89,7 +89,7 @@ func (l *SnapshotLoader) sendCleanupEventV2(target abstract2.EventTarget, tables
 func (l *SnapshotLoader) makeTargetV2(lgr log.Logger) (dataTarget abstract2.EventTarget, closer func(), err error) {
 	dataTarget, err = targets.NewTarget(l.transfer, l.operation, lgr, l.registry, l.cp)
 	if xerrors.Is(err, targets.UnknownTargetError) { // Legacy fallback
-		legacySink, err := sink.MakeAsyncSink(l.transfer, l.operation, lgr, l.registry, l.cp, middlewares.MakeConfig(middlewares.WithEnableRetries))
+		legacySink, err := sink_factory.MakeAsyncSink(l.transfer, l.operation, lgr, l.registry, l.cp, middlewares.MakeConfig(middlewares.WithEnableRetries))
 		if err != nil {
 			return nil, nil, xerrors.Errorf("error creating legacy sink: %w", err)
 		}
@@ -206,7 +206,7 @@ func (l *SnapshotLoader) uploadV2Single(ctx context.Context, snapshotProvider ab
 
 	var nextIncrementalState []abstract.IncrementalState
 	if l.transfer.IsIncremental() {
-		abstract1SourceStorage, err := storage.NewStorage(l.transfer, l.cp, l.registry)
+		abstract1SourceStorage, err := storage_factory.NewStorage(l.transfer, l.cp, l.registry)
 		if err != nil {
 			return errors.CategorizedErrorf(categories.Source, resolveStorageErrorText, err)
 		}
@@ -354,7 +354,7 @@ func (l *SnapshotLoader) uploadV2Main(ctx context.Context, snapshotProvider abst
 
 	var nextIncrementalState []abstract.IncrementalState
 	if l.transfer.IsIncremental() {
-		abstract1SourceStorage, err := storage.NewStorage(l.transfer, l.cp, l.registry)
+		abstract1SourceStorage, err := storage_factory.NewStorage(l.transfer, l.cp, l.registry)
 		if err != nil {
 			return errors.CategorizedErrorf(categories.Source, resolveStorageErrorText, err)
 		}

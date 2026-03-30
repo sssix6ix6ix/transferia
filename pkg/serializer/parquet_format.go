@@ -7,34 +7,34 @@ import (
 	"github.com/parquet-go/parquet-go"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
-var primitiveTypesMap = map[schema.Type]parquet.Node{
-	schema.TypeInt8:  parquet.Int(8),
-	schema.TypeInt16: parquet.Int(16),
-	schema.TypeInt32: parquet.Int(32),
-	schema.TypeInt64: parquet.Int(64),
+var primitiveTypesMap = map[ytschema.Type]parquet.Node{
+	ytschema.TypeInt8:  parquet.Int(8),
+	ytschema.TypeInt16: parquet.Int(16),
+	ytschema.TypeInt32: parquet.Int(32),
+	ytschema.TypeInt64: parquet.Int(64),
 
-	schema.TypeUint8:  parquet.Uint(8),
-	schema.TypeUint16: parquet.Uint(16),
-	schema.TypeUint32: parquet.Uint(32),
-	schema.TypeUint64: parquet.Uint(64),
+	ytschema.TypeUint8:  parquet.Uint(8),
+	ytschema.TypeUint16: parquet.Uint(16),
+	ytschema.TypeUint32: parquet.Uint(32),
+	ytschema.TypeUint64: parquet.Uint(64),
 
-	schema.TypeBoolean: parquet.Leaf(parquet.BooleanType),
+	ytschema.TypeBoolean: parquet.Leaf(parquet.BooleanType),
 
-	schema.TypeFloat32: parquet.Leaf(parquet.FloatType),
-	schema.TypeFloat64: parquet.String(), // stringed decimal. todo fixme
+	ytschema.TypeFloat32: parquet.Leaf(parquet.FloatType),
+	ytschema.TypeFloat64: parquet.String(), // stringed decimal. todo fixme
 
-	schema.TypeDate:      parquet.Date(),
-	schema.TypeDatetime:  parquet.Timestamp(parquet.Nanosecond),
-	schema.TypeTimestamp: parquet.Timestamp(parquet.Nanosecond),
+	ytschema.TypeDate:      parquet.Date(),
+	ytschema.TypeDatetime:  parquet.Timestamp(parquet.Nanosecond),
+	ytschema.TypeTimestamp: parquet.Timestamp(parquet.Nanosecond),
 
-	schema.TypeInterval: parquet.Timestamp(parquet.Nanosecond),
+	ytschema.TypeInterval: parquet.Timestamp(parquet.Nanosecond),
 
-	schema.TypeBytes:  parquet.Leaf(parquet.ByteArrayType),
-	schema.TypeString: parquet.String(),
-	schema.TypeAny:    parquet.JSON(),
+	ytschema.TypeBytes:  parquet.Leaf(parquet.ByteArrayType),
+	ytschema.TypeString: parquet.String(),
+	ytschema.TypeAny:    parquet.JSON(),
 }
 
 // Parses map[string] -> parquet.Row. Doesn't support repeated
@@ -44,16 +44,16 @@ func toParquetValue(column parquet.Field, col abstract.ColSchema, value any, idx
 	var leafValue parquet.Value
 	if value == nil {
 		leafValue = parquet.ValueOf(nil)
-		switch schema.Type(col.DataType) {
-		case schema.TypeBytes, schema.TypeString:
+		switch ytschema.Type(col.DataType) {
+		case ytschema.TypeBytes, ytschema.TypeString:
 			leafValue = parquet.ValueOf("")
 		}
 	} else {
 		if !column.Required() {
 			defLevel++
 		}
-		switch schema.Type(col.DataType) {
-		case schema.TypeFloat64:
+		switch ytschema.Type(col.DataType) {
+		case ytschema.TypeFloat64:
 			// we store all doubles as string, some storage may pass for us float64 instead of json.Number
 			// so we must stringify it
 			switch value.(type) {
@@ -62,7 +62,7 @@ func toParquetValue(column parquet.Field, col abstract.ColSchema, value any, idx
 			default:
 				leafValue = parquet.ValueOf(fmt.Sprintf("%v", value))
 			}
-		case schema.TypeAny:
+		case ytschema.TypeAny:
 			marshalled, err := json.Marshal(value)
 			if err != nil {
 				return nil, xerrors.Errorf("serializer:parquet: field %v type of '%v' failed to marshal: %w", column.Name(), column.Type().String(), err)
@@ -83,7 +83,7 @@ func buildParquetGroup(tableSchema abstract.FastTableSchema) (parquet.Group, err
 	for name, colSchema := range tableSchema {
 		var n parquet.Node
 
-		if value, contains := primitiveTypesMap[schema.Type(colSchema.DataType)]; contains {
+		if value, contains := primitiveTypesMap[ytschema.Type(colSchema.DataType)]; contains {
 			n = value
 		} else {
 			return nil, fmt.Errorf("serializer:parquet: field %v type of '%v' not recognised", name, colSchema.DataType)

@@ -6,7 +6,7 @@ import (
 
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	s3_provider "github.com/transferia/transferia/pkg/providers/s3"
+	s3_model "github.com/transferia/transferia/pkg/providers/s3/model"
 )
 
 type Partitioner interface {
@@ -78,17 +78,17 @@ type PartitionerConfig struct {
 	partition       int
 	format          string
 	isGzip          bool
-	partitionerType s3_provider.PartitionerType
+	partitionerType s3_model.PartitionerType
 	initialised     bool
 }
 
-func (c *PartitionerConfig) Prefix() string                    { return c.prefix }
-func (c *PartitionerConfig) Topic() string                     { return c.topic }
-func (c *PartitionerConfig) Partition() int                    { return c.partition }
-func (c *PartitionerConfig) Format() string                    { return c.format }
-func (c *PartitionerConfig) IsGzip() bool                      { return c.isGzip }
-func (c *PartitionerConfig) Type() s3_provider.PartitionerType { return c.partitionerType }
-func (c *PartitionerConfig) Initialised() bool                 { return c.initialised }
+func (c *PartitionerConfig) Prefix() string                 { return c.prefix }
+func (c *PartitionerConfig) Topic() string                  { return c.topic }
+func (c *PartitionerConfig) Partition() int                 { return c.partition }
+func (c *PartitionerConfig) Format() string                 { return c.format }
+func (c *PartitionerConfig) IsGzip() bool                   { return c.isGzip }
+func (c *PartitionerConfig) Type() s3_model.PartitionerType { return c.partitionerType }
+func (c *PartitionerConfig) Initialised() bool              { return c.initialised }
 
 func (c *PartitionerConfig) FinishInit(item *abstract.ChangeItem) error {
 	if c.initialised {
@@ -106,7 +106,7 @@ func (c *PartitionerConfig) FinishInit(item *abstract.ChangeItem) error {
 	return nil
 }
 
-func NewPartitionerConfig(cfg *s3_provider.S3Destination) *PartitionerConfig {
+func NewPartitionerConfig(cfg *s3_model.S3Destination) *PartitionerConfig {
 	switch cfg.Partitioner {
 	default:
 		return &PartitionerConfig{
@@ -114,8 +114,8 @@ func NewPartitionerConfig(cfg *s3_provider.S3Destination) *PartitionerConfig {
 			topic:           "", // Extract from first message
 			partition:       -1, // Extract from first message
 			format:          strings.ToLower(string(cfg.OutputFormat)),
-			isGzip:          cfg.OutputEncoding == s3_provider.GzipEncoding,
-			partitionerType: s3_provider.DefaultPartitionerType,
+			isGzip:          cfg.OutputEncoding == s3_model.GzipEncoding,
+			partitionerType: s3_model.DefaultPartitionerType,
 			initialised:     false,
 		}
 	}
@@ -123,7 +123,7 @@ func NewPartitionerConfig(cfg *s3_provider.S3Destination) *PartitionerConfig {
 
 func PartitionerFactory(config *PartitionerConfig) Partitioner {
 	switch config.Type() {
-	case s3_provider.DefaultPartitionerType:
+	case s3_model.DefaultPartitionerType:
 		return &DefaultPartitioner{
 			config: config,
 		}

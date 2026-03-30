@@ -7,11 +7,11 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/library/go/ptr"
 	"github.com/transferia/transferia/pkg/abstract"
-	"github.com/transferia/transferia/pkg/providers/yt"
+	provider_yt "github.com/transferia/transferia/pkg/providers/yt"
 	"github.com/transferia/transferia/pkg/util/set"
 	"go.ytsaurus.tech/library/go/core/log"
 	"go.ytsaurus.tech/yt/go/migrate"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 	"go.ytsaurus.tech/yt/go/ypath"
 )
 
@@ -20,7 +20,7 @@ const shardIndexColumnName = "_shard_key"
 type Schema struct {
 	path   ypath.Path
 	cols   []abstract.ColSchema
-	config yt.YtDestinationModel
+	config provider_yt.YtDestinationModel
 }
 
 func (s *Schema) PrimaryKeys() []abstract.ColSchema {
@@ -53,24 +53,24 @@ func (s *Schema) DataKeys() []abstract.ColSchema {
 	return append(keys, res...)
 }
 
-func (s *Schema) BuildSchema(schemas []abstract.ColSchema) (*schema.Schema, error) {
-	target := schema.Schema{
+func (s *Schema) BuildSchema(schemas []abstract.ColSchema) (*ytschema.Schema, error) {
+	target := ytschema.Schema{
 		UniqueKeys: true,
 		Strict:     ptr.Bool(true),
-		Columns:    make([]schema.Column, len(schemas)),
+		Columns:    make([]ytschema.Column, len(schemas)),
 	}
 	haveDataColumns := false
 	haveKeyColumns := false
 	for i, col := range schemas {
-		target.Columns[i] = schema.Column{
+		target.Columns[i] = ytschema.Column{
 			Name:       col.ColumnName,
-			Type:       schema.Type(col.DataType),
+			Type:       ytschema.Type(col.DataType),
 			Expression: col.Expression,
 		}
 		if col.PrimaryKey {
-			target.Columns[i].SortOrder = schema.SortAscending
-			if target.Columns[i].Type == schema.TypeAny {
-				target.Columns[i].Type = schema.TypeString // should not use any as keys
+			target.Columns[i].SortOrder = ytschema.SortAscending
+			if target.Columns[i].Type == ytschema.TypeAny {
+				target.Columns[i].Type = ytschema.TypeString // should not use any as keys
 			}
 			haveKeyColumns = true
 		} else {
@@ -81,7 +81,7 @@ func (s *Schema) BuildSchema(schemas []abstract.ColSchema) (*schema.Schema, erro
 		return nil, abstract.NewFatalError(NoKeyColumnsFound)
 	}
 	if !haveDataColumns {
-		target.Columns = append(target.Columns, schema.Column{
+		target.Columns = append(target.Columns, ytschema.Column{
 			Name:     DummyMainTable,
 			Type:     "any",
 			Required: false,
@@ -90,7 +90,7 @@ func (s *Schema) BuildSchema(schemas []abstract.ColSchema) (*schema.Schema, erro
 	return &target, nil
 }
 
-func pivotKeys(cols []abstract.ColSchema, config yt.YtDestinationModel) (pivots []interface{}) {
+func pivotKeys(cols []abstract.ColSchema, config provider_yt.YtDestinationModel) (pivots []interface{}) {
 	pivots = []interface{}{make([]interface{}, 0)}
 	countK := 0
 	for _, col := range cols {
@@ -118,12 +118,12 @@ func (s *Schema) PivotKeys() (pivots []interface{}) {
 	return pivotKeys(s.Cols(), s.config)
 }
 
-func GetCols(s schema.Schema) []abstract.ColSchema {
+func GetCols(s ytschema.Schema) []abstract.ColSchema {
 	var cols []abstract.ColSchema
 	for _, column := range s.Columns {
 		var col abstract.ColSchema
 		col.ColumnName = column.Name
-		if column.SortOrder != schema.SortNone {
+		if column.SortOrder != ytschema.SortNone {
 			col.PrimaryKey = true
 		}
 		cols = append(cols, col)
@@ -131,7 +131,7 @@ func GetCols(s schema.Schema) []abstract.ColSchema {
 	return cols
 }
 
-func BuildDynamicAttrs(cols []abstract.ColSchema, config yt.YtDestinationModel) map[string]interface{} {
+func BuildDynamicAttrs(cols []abstract.ColSchema, config provider_yt.YtDestinationModel) map[string]interface{} {
 	attrs := map[string]interface{}{
 		"primary_medium":            config.PrimaryMedium(),
 		"optimize_for":              config.OptimizeFor(),
@@ -182,7 +182,7 @@ func (s *Schema) ShardCol() (abstract.ColSchema, string) {
 	}
 
 	shardE := "farm_hash(" + hashC + ") % " + strconv.Itoa(s.config.TimeShardCount())
-	colSch := abstract.MakeTypedColSchema(shardIndexColumnName, string(schema.TypeUint64), true)
+	colSch := abstract.MakeTypedColSchema(shardIndexColumnName, string(ytschema.TypeUint64), true)
 	colSch.Expression = shardE
 
 	return colSch, hashC
@@ -298,7 +298,7 @@ func (s *Schema) IndexTables() map[ypath.Path]migrate.Table {
 		var idxCols []abstract.ColSchema
 		if shardCount > 0 {
 			shardE := "farm_hash(" + k + ") % " + strconv.Itoa(shardCount)
-			shardCol := abstract.MakeTypedColSchema(shardIndexColumnName, string(schema.TypeUint64), true)
+			shardCol := abstract.MakeTypedColSchema(shardIndexColumnName, string(ytschema.TypeUint64), true)
 			shardCol.Expression = shardE
 
 			idxCols = append(idxCols, shardCol)
@@ -332,7 +332,7 @@ func tryHackType(col abstract.ColSchema) string { // it works only for legacy th
 		if col.ColumnName == "_timestamp" || col.ColumnName == "write_time" {
 			switch col.DataType {
 			case "DateTime", "datetime":
-				return string(schema.TypeInt64)
+				return string(ytschema.TypeInt64)
 			}
 		}
 	}
@@ -340,7 +340,7 @@ func tryHackType(col abstract.ColSchema) string { // it works only for legacy th
 	return col.DataType
 }
 
-func NewSchema(cols []abstract.ColSchema, config yt.YtDestinationModel, path ypath.Path) *Schema {
+func NewSchema(cols []abstract.ColSchema, config provider_yt.YtDestinationModel, path ypath.Path) *Schema {
 	columnsWithoutExpression := make([]abstract.ColSchema, len(cols))
 	for i := range cols {
 		columnsWithoutExpression[i] = cols[i]

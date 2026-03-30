@@ -6,8 +6,8 @@ import (
 
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/util/set"
-	"go.ytsaurus.tech/yt/go/schema"
-	"golang.org/x/exp/slices"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
+	xslices "golang.org/x/exp/slices"
 )
 
 const etlUpdatedField = "etl_updated_at"
@@ -19,7 +19,7 @@ const pgText = "pg:text"
 const pgTimestamp = "pg:timestamp without time zone"
 const pgJSON = "pg:json"
 
-func MakeStubFieldWithOriginalType(colName string, ytType schema.Type, primaryKey bool, original abstract.TableColumns) abstract.ColSchema {
+func MakeStubFieldWithOriginalType(colName string, ytType ytschema.Type, primaryKey bool, original abstract.TableColumns) abstract.ColSchema {
 	field := abstract.MakeTypedColSchema(colName, ytType.String(), primaryKey)
 	originalType := getOriginalType(original, ytType)
 	if originalType != "" {
@@ -28,7 +28,7 @@ func MakeStubFieldWithOriginalType(colName string, ytType schema.Type, primaryKe
 	return field
 }
 
-func getOriginalType(original abstract.TableColumns, ytType schema.Type) string {
+func getOriginalType(original abstract.TableColumns, ytType ytschema.Type) string {
 	for _, column := range original {
 		//checking if data is from pg and at least 1 original type is present
 		//in this case setting pg original for our column
@@ -39,12 +39,12 @@ func getOriginalType(original abstract.TableColumns, ytType schema.Type) string 
 	return ""
 }
 
-func getPgTypeFor(ytType schema.Type) string {
-	if ytType == schema.TypeAny {
+func getPgTypeFor(ytType ytschema.Type) string {
+	if ytType == ytschema.TypeAny {
 		return pgJSON
 	}
 
-	if ytType == schema.TypeDatetime || ytType == schema.TypeTimestamp {
+	if ytType == ytschema.TypeDatetime || ytType == ytschema.TypeTimestamp {
 		return pgTimestamp
 	}
 	//may be throw exception here? then need to change protocol
@@ -52,11 +52,11 @@ func getPgTypeFor(ytType schema.Type) string {
 }
 
 func CollectFieldsForTransformer(fields []string, columns abstract.TableColumns, isKey bool, colNameToIdx map[string]int,
-	fieldsMap map[string]schema.Type) []abstract.ColSchema {
+	fieldsMap map[string]ytschema.Type) []abstract.ColSchema {
 	result := make([]abstract.ColSchema, 0, len(fields))
 	for _, key := range fields {
 		var keySchema abstract.ColSchema
-		if slices.Contains(columns.ColumnNames(), key) {
+		if xslices.Contains(columns.ColumnNames(), key) {
 			keySchema = columns[colNameToIdx[key]]
 			keySchema.PrimaryKey = isKey
 			result = append(result, keySchema)
@@ -72,7 +72,7 @@ func CollectFieldsForTransformer(fields []string, columns abstract.TableColumns,
 func CollectAdditionalKeysForTransformer(newKeys []string, originalKeyColumns []string) []string {
 	additionalKeys := make([]string, 0)
 	for _, newKey := range newKeys {
-		if !slices.Contains(originalKeyColumns, newKey) {
+		if !xslices.Contains(originalKeyColumns, newKey) {
 			additionalKeys = append(additionalKeys, newKey)
 		}
 	}
@@ -100,7 +100,7 @@ func processUpdateItem(item abstract.ChangeItem, additionalKeys []string, addAdd
 	}
 
 	for _, additionalKey := range additionalKeys {
-		if slices.Contains(item.OldKeys.KeyNames, additionalKey) {
+		if xslices.Contains(item.OldKeys.KeyNames, additionalKey) {
 			continue
 		}
 
@@ -131,7 +131,7 @@ func inPlaceRemoveOldKeys(oldKeysType *abstract.OldKeysType, columnNames []strin
 
 	n := 0
 	for i := range oldKeysType.KeyNames {
-		if slices.Contains(columnNames, oldKeysType.KeyNames[i]) {
+		if xslices.Contains(columnNames, oldKeysType.KeyNames[i]) {
 			oldKeysType.KeyNames[n] = oldKeysType.KeyNames[i]
 			oldKeysType.KeyValues[n] = oldKeysType.KeyValues[i]
 			n++
@@ -141,7 +141,7 @@ func inPlaceRemoveOldKeys(oldKeysType *abstract.OldKeysType, columnNames []strin
 	oldKeysType.KeyValues = oldKeysType.KeyValues[:n]
 }
 
-func allFieldsPresent(colNames []string, rawDocFields map[string]schema.Type, fields []string) bool {
+func allFieldsPresent(colNames []string, rawDocFields map[string]ytschema.Type, fields []string) bool {
 	colSet := set.New[string](colNames...)
 	for _, key := range fields {
 		if _, ok := rawDocFields[key]; !ok && !colSet.Contains(key) {

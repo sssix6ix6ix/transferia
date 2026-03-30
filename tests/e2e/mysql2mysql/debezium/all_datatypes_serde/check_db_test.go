@@ -8,10 +8,10 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/pkg/abstract"
-	"github.com/transferia/transferia/pkg/providers/mysql"
+	provider_mysql "github.com/transferia/transferia/pkg/providers/mysql"
 	"github.com/transferia/transferia/pkg/providers/mysql/mysqlrecipe"
 	"github.com/transferia/transferia/tests/helpers"
-	simple_transformer "github.com/transferia/transferia/tests/helpers/transformer"
+	helpers_transformer "github.com/transferia/transferia/tests/helpers/transformer"
 )
 
 var (
@@ -183,18 +183,18 @@ func TestSnapshotAndIncrement(t *testing.T) {
 	}()
 
 	transfer := helpers.MakeTransfer(helpers.TransferID, &Source, &Target, abstract.TransferTypeSnapshotAndIncrement)
-	transfer.Src.(*mysql.MysqlSource).PlzNoHomo = true
-	transfer.Src.(*mysql.MysqlSource).AllowDecimalAsFloat = true
-	serdeTransformer := simple_transformer.NewSimpleTransformer(t, serdeUdf, anyTablesUdf)
+	transfer.Src.(*provider_mysql.MysqlSource).PlzNoHomo = true
+	transfer.Src.(*provider_mysql.MysqlSource).AllowDecimalAsFloat = true
+	serdeTransformer := helpers_transformer.NewSimpleTransformer(t, serdeUdf, anyTablesUdf)
 	require.NoError(t, transfer.AddExtraTransformer(serdeTransformer))
 	worker := helpers.Activate(t, transfer)
 	defer worker.Close(t)
 
 	//---
 
-	connParams, err := mysql.NewConnectionParams(Source.ToStorageParams())
+	connParams, err := provider_mysql.NewConnectionParams(Source.ToStorageParams())
 	require.NoError(t, err)
-	db, err := mysql.Connect(connParams, nil)
+	db, err := provider_mysql.Connect(connParams, nil)
 	require.NoError(t, err)
 
 	_, err = db.Exec(insertStmt)

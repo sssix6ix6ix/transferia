@@ -9,7 +9,7 @@ import (
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/errors/coded"
-	"github.com/transferia/transferia/pkg/errors/codes"
+	error_codes "github.com/transferia/transferia/pkg/errors/codes"
 	"github.com/transferia/transferia/pkg/util"
 	"go.ytsaurus.tech/library/go/core/log"
 )
@@ -81,7 +81,7 @@ func BeginTxWithSnapshot(ctx context.Context, conn *pgx.Conn, options pgx.TxOpti
 	if _, err := tx.Exec(ctx, qry); err != nil {
 		rollbacks.Do()
 		if IsPgError(err, ErrcInvalidSnapshotIdentifier) {
-			return nil, nil, coded.Errorf(codes.PostgresInvalidSnapshot, "failed to execute %s: %w", qry, err)
+			return nil, nil, coded.Errorf(error_codes.PostgresInvalidSnapshot, "failed to execute %s: %w", qry, err)
 		}
 		return nil, nil, xerrors.Errorf("failed to execute %s: %w", qry, err)
 	}

@@ -1,8 +1,8 @@
-package storage
+package storage_factory
 
 import (
 	"github.com/transferia/transferia/internal/logger"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
@@ -12,7 +12,7 @@ import (
 
 var UnsupportedSourceErr = xerrors.New("Unsupported storage")
 
-func NewStorage(transfer *model.Transfer, cp coordinator.Coordinator, registry metrics.Registry) (abstract.Storage, error) {
+func NewStorage(transfer *model.Transfer, cp coordinator.Coordinator, registry core_metrics.Registry) (abstract.Storage, error) {
 	switch src := transfer.Src.(type) {
 	case *model.MockSource:
 		return src.StorageFactory(), nil

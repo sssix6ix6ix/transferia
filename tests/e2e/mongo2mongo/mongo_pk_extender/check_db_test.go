@@ -9,11 +9,11 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
-	cpclient "github.com/transferia/transferia/pkg/abstract/coordinator"
-	mongodataagent "github.com/transferia/transferia/pkg/providers/mongo"
+	"github.com/transferia/transferia/pkg/abstract/coordinator"
+	provider_mongo "github.com/transferia/transferia/pkg/providers/mongo"
 	"github.com/transferia/transferia/pkg/runtime/local"
-	"github.com/transferia/transferia/pkg/transformer/registry/filter"
-	"github.com/transferia/transferia/pkg/transformer/registry/mongo_pk_extender"
+	transformer_filter "github.com/transferia/transferia/pkg/transformer/registry/filter"
+	transformer_mongo_pk_extender "github.com/transferia/transferia/pkg/transformer/registry/mongo_pk_extender"
 	"github.com/transferia/transferia/pkg/worker/tasks"
 	"github.com/transferia/transferia/tests/helpers"
 	"go.mongodb.org/mongo-driver/bson"
@@ -26,7 +26,7 @@ var (
 	SecondDbName   = "second"
 )
 
-func initEndpoints(t *testing.T, source *mongodataagent.MongoSource, target *mongodataagent.MongoDestination) (*mongodataagent.MongoClientWrapper, *mongodataagent.MongoClientWrapper) {
+func initEndpoints(t *testing.T, source *provider_mongo.MongoSource, target *provider_mongo.MongoDestination) (*provider_mongo.MongoClientWrapper, *provider_mongo.MongoClientWrapper) {
 	_ = os.Setenv("YC", "1")
 
 	defer func() {
@@ -36,25 +36,25 @@ func initEndpoints(t *testing.T, source *mongodataagent.MongoSource, target *mon
 		))
 	}()
 
-	srcClient, err := mongodataagent.Connect(context.Background(), source.ConnectionOptions([]string{}), nil)
+	srcClient, err := provider_mongo.Connect(context.Background(), source.ConnectionOptions([]string{}), nil)
 	require.NoError(t, err)
 
-	targetClient, err := mongodataagent.Connect(context.Background(), target.ConnectionOptions([]string{}), nil)
+	targetClient, err := provider_mongo.Connect(context.Background(), target.ConnectionOptions([]string{}), nil)
 	require.NoError(t, err)
 
 	return srcClient, targetClient
 }
 
-func runTransfer(t *testing.T, source *mongodataagent.MongoSource, target *mongodataagent.MongoDestination, expand bool) *local.LocalWorker {
+func runTransfer(t *testing.T, source *provider_mongo.MongoSource, target *provider_mongo.MongoDestination, expand bool) *local.LocalWorker {
 	transfer := helpers.MakeTransfer(helpers.TransferID, source, target, abstract.TransferTypeSnapshotAndIncrement)
 
-	transformer, err := mongo_pk_extender.NewMongoPKExtenderTransformer(
-		mongo_pk_extender.Config{
+	transformer, err := transformer_mongo_pk_extender.NewMongoPKExtenderTransformer(
+		transformer_mongo_pk_extender.Config{
 			Expand:              expand,
 			DiscriminatorField:  "orgId",
-			DiscriminatorValues: []mongo_pk_extender.SchemaDiscriminator{{Schema: FirstDbName, Value: "24"}, {Schema: SecondDbName, Value: "81"}},
-			Tables: filter.Tables{
-				ExcludeTables: []string{mongodataagent.ClusterTimeCollName},
+			DiscriminatorValues: []transformer_mongo_pk_extender.SchemaDiscriminator{{Schema: FirstDbName, Value: "24"}, {Schema: SecondDbName, Value: "81"}},
+			Tables: transformer_filter.Tables{
+				ExcludeTables: []string{provider_mongo.ClusterTimeCollName},
 			},
 		},
 		logger.Log,
@@ -62,10 +62,10 @@ func runTransfer(t *testing.T, source *mongodataagent.MongoSource, target *mongo
 	require.NoError(t, err)
 	helpers.AddTransformer(t, transfer, transformer)
 
-	err = tasks.ActivateDelivery(context.TODO(), nil, cpclient.NewFakeClient(), *transfer, helpers.EmptyRegistry())
+	err = tasks.ActivateDelivery(context.TODO(), nil, coordinator.NewFakeClient(), *transfer, helpers.EmptyRegistry())
 	require.NoError(t, err)
 
-	localWorker := local.NewLocalWorker(cpclient.NewFakeClient(), transfer, helpers.EmptyRegistry(), logger.Log)
+	localWorker := local.NewLocalWorker(coordinator.NewFakeClient(), transfer, helpers.EmptyRegistry(), logger.Log)
 	localWorker.Start()
 	return localWorker
 }
@@ -79,13 +79,13 @@ func Test_Group(t *testing.T) {
 
 func SimpleFromMultipleToCommon(t *testing.T) {
 	var (
-		Source = *mongodataagent.RecipeSource(
-			mongodataagent.WithCollections(
-				mongodataagent.MongoCollection{DatabaseName: FirstDbName, CollectionName: CollectionName},
-				mongodataagent.MongoCollection{DatabaseName: SecondDbName, CollectionName: CollectionName}))
-		Target = *mongodataagent.RecipeTarget(
-			mongodataagent.WithPrefix("DB0_"),
-			mongodataagent.WithDatabase(CommonDbName),
+		Source = *provider_mongo.RecipeSource(
+			provider_mongo.WithCollections(
+				provider_mongo.MongoCollection{DatabaseName: FirstDbName, CollectionName: CollectionName},
+				provider_mongo.MongoCollection{DatabaseName: SecondDbName, CollectionName: CollectionName}))
+		Target = *provider_mongo.RecipeTarget(
+			provider_mongo.WithPrefix("DB0_"),
+			provider_mongo.WithDatabase(CommonDbName),
 		)
 	)
 
@@ -170,11 +170,11 @@ func SimpleFromMultipleToCommon(t *testing.T) {
 
 func SimpleFromCommonToMultiple(t *testing.T) {
 	var (
-		Source = *mongodataagent.RecipeSource(
-			mongodataagent.WithCollections(
-				mongodataagent.MongoCollection{DatabaseName: CommonDbName, CollectionName: CollectionName}))
-		Target = *mongodataagent.RecipeTarget(
-			mongodataagent.WithPrefix("DB0_"),
+		Source = *provider_mongo.RecipeSource(
+			provider_mongo.WithCollections(
+				provider_mongo.MongoCollection{DatabaseName: CommonDbName, CollectionName: CollectionName}))
+		Target = *provider_mongo.RecipeTarget(
+			provider_mongo.WithPrefix("DB0_"),
 		)
 	)
 
@@ -260,13 +260,13 @@ func SimpleFromCommonToMultiple(t *testing.T) {
 
 func CompositeFromMultipleToCommon(t *testing.T) {
 	var (
-		Source = *mongodataagent.RecipeSource(
-			mongodataagent.WithCollections(
-				mongodataagent.MongoCollection{DatabaseName: FirstDbName, CollectionName: CollectionName},
-				mongodataagent.MongoCollection{DatabaseName: SecondDbName, CollectionName: CollectionName}))
-		Target = *mongodataagent.RecipeTarget(
-			mongodataagent.WithPrefix("DB0_"),
-			mongodataagent.WithDatabase(CommonDbName),
+		Source = *provider_mongo.RecipeSource(
+			provider_mongo.WithCollections(
+				provider_mongo.MongoCollection{DatabaseName: FirstDbName, CollectionName: CollectionName},
+				provider_mongo.MongoCollection{DatabaseName: SecondDbName, CollectionName: CollectionName}))
+		Target = *provider_mongo.RecipeTarget(
+			provider_mongo.WithPrefix("DB0_"),
+			provider_mongo.WithDatabase(CommonDbName),
 		)
 	)
 
@@ -349,11 +349,11 @@ func CompositeFromMultipleToCommon(t *testing.T) {
 
 func CompositeFromCommonToMultiple(t *testing.T) {
 	var (
-		Source = *mongodataagent.RecipeSource(
-			mongodataagent.WithCollections(
-				mongodataagent.MongoCollection{DatabaseName: CommonDbName, CollectionName: CollectionName}))
-		Target = *mongodataagent.RecipeTarget(
-			mongodataagent.WithPrefix("DB0_"),
+		Source = *provider_mongo.RecipeSource(
+			provider_mongo.WithCollections(
+				provider_mongo.MongoCollection{DatabaseName: CommonDbName, CollectionName: CollectionName}))
+		Target = *provider_mongo.RecipeTarget(
+			provider_mongo.WithPrefix("DB0_"),
 		)
 	)
 

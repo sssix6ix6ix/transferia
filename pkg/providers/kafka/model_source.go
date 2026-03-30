@@ -8,7 +8,7 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	kafkaConn "github.com/transferia/transferia/pkg/connection/kafka"
+	conn_kafka "github.com/transferia/transferia/pkg/connection/kafka"
 	"github.com/transferia/transferia/pkg/parsers"
 	"go.uber.org/zap/zapcore"
 )
@@ -89,7 +89,7 @@ func (s *KafkaSource) WithDefaults() {
 	if s.Auth == nil {
 		s.Auth = &KafkaAuth{
 			Enabled:   true,
-			Mechanism: kafkaConn.KafkaSaslSecurityMechanism_SCRAM_SHA512,
+			Mechanism: conn_kafka.KafkaSaslSecurityMechanism_SCRAM_SHA512,
 			User:      "",
 			Password:  "",
 		}

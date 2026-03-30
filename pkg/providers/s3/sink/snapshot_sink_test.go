@@ -16,8 +16,9 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/format"
-	s3_provider "github.com/transferia/transferia/pkg/providers/s3"
+	s3_model "github.com/transferia/transferia/pkg/providers/s3/model"
 	"github.com/transferia/transferia/pkg/providers/s3/s3recipe"
+	"github.com/transferia/transferia/pkg/providers/s3/s3util/s3sess"
 	"github.com/transferia/transferia/pkg/providers/s3/sink/testutil"
 	"github.com/transferia/transferia/pkg/stats"
 	"go.ytsaurus.tech/yt/go/schema"
@@ -61,7 +62,7 @@ func TestS3Sink(t *testing.T) {
 }
 
 func testS3SinkUploadTable(t *testing.T) {
-	cfg := s3recipe.PrepareS3(t, "TestS3SinkUploadTable", model.ParsingFormatCSV, s3_provider.GzipEncoding)
+	cfg := s3recipe.PrepareS3(t, "TestS3SinkUploadTable", model.ParsingFormatCSV, s3_model.GzipEncoding)
 	cp := testutil.NewFakeClientWithTransferState()
 	currSink, err := NewSnapshotSink(logger.Log, cfg, solomon.NewRegistry(solomon.NewRegistryOpts()), cp, "TestS3SinkUploadTable", 0)
 	require.NoError(t, err)
@@ -82,7 +83,7 @@ func testS3SinkUploadTable(t *testing.T) {
 }
 
 func testS3SinkUploadTableGzip(t *testing.T) {
-	cfg := s3recipe.PrepareS3(t, "TestS3SinkUploadTableGzip", model.ParsingFormatCSV, s3_provider.GzipEncoding)
+	cfg := s3recipe.PrepareS3(t, "TestS3SinkUploadTableGzip", model.ParsingFormatCSV, s3_model.GzipEncoding)
 	cfg.LayoutTZ = "UTC"
 	fixedTime := time.Date(2024, time.February, 3, 10, 20, 30, 0, time.UTC)
 
@@ -102,7 +103,7 @@ func testS3SinkUploadTableGzip(t *testing.T) {
 	}))
 	require.NoError(t, currSink.Close())
 
-	sess, err := s3_provider.NewAWSSession(logger.Log, cfg.Bucket, cfg.ConnectionConfig())
+	sess, err := s3sess.NewAWSSession(logger.Log, cfg.Bucket, cfg.ConnectionConfig())
 	require.NoError(t, err)
 	s3Client := s3.New(sess)
 
@@ -132,7 +133,7 @@ func testS3SinkUploadTableGzip(t *testing.T) {
 
 func testJsonSnapshot(t *testing.T) {
 	bucket := "testjsonnoencode"
-	cfg := s3recipe.PrepareS3(t, bucket, model.ParsingFormatJSON, s3_provider.NoEncoding)
+	cfg := s3recipe.PrepareS3(t, bucket, model.ParsingFormatJSON, s3_model.NoEncoding)
 	cfg.LayoutTZ = "UTC"
 	fixedTime := time.Date(2024, time.March, 4, 5, 6, 7, 0, time.UTC)
 	cp := testutil.NewFakeClientWithTransferState()
@@ -186,7 +187,7 @@ func testJsonSnapshot(t *testing.T) {
 				{Kind: abstract.DoneTableLoad, CommitTime: uint64(time.Now().UnixNano()), Table: table},
 			}))
 
-			sess, err := s3_provider.NewAWSSession(logger.Log, cfg.Bucket, cfg.ConnectionConfig())
+			sess, err := s3sess.NewAWSSession(logger.Log, cfg.Bucket, cfg.ConnectionConfig())
 			require.NoError(t, err)
 			s3Client := s3.New(sess)
 
@@ -205,9 +206,9 @@ func testJsonSnapshot(t *testing.T) {
 }
 
 func testDateLayoutSnapshot(t *testing.T) {
-	cfg := &s3_provider.S3Destination{
+	cfg := &s3_model.S3Destination{
 		OutputFormat:   model.ParsingFormatJSON,
-		OutputEncoding: s3_provider.NoEncoding,
+		OutputEncoding: s3_model.NoEncoding,
 		Layout:         "2006/01/02",
 		LayoutTZ:       "UTC",
 		Bucket:         "testDateLayoutSnapshot",
@@ -264,7 +265,7 @@ func testDateLayoutSnapshot(t *testing.T) {
 }
 
 func testLiteralLayoutSnapshot(t *testing.T) {
-	cfg := s3recipe.PrepareS3(t, "testliterallayoutsnapshot", model.ParsingFormatJSON, s3_provider.NoEncoding)
+	cfg := s3recipe.PrepareS3(t, "testliterallayoutsnapshot", model.ParsingFormatJSON, s3_model.NoEncoding)
 	cfg.Layout = "snapshot-prefix"
 	cfg.LayoutTZ = "UTC"
 	cp := testutil.NewFakeClientWithTransferState()
@@ -295,7 +296,7 @@ func testLiteralLayoutSnapshot(t *testing.T) {
 		{Kind: abstract.DoneTableLoad, CommitTime: uint64(time.Now().UnixNano()), Table: table},
 	}))
 
-	sess, err := s3_provider.NewAWSSession(logger.Log, cfg.Bucket, cfg.ConnectionConfig())
+	sess, err := s3sess.NewAWSSession(logger.Log, cfg.Bucket, cfg.ConnectionConfig())
 	require.NoError(t, err)
 	s3Client := s3.New(sess)
 
@@ -312,9 +313,9 @@ func testLiteralLayoutSnapshot(t *testing.T) {
 }
 
 func testRotationParquet(t *testing.T) {
-	cfg := &s3_provider.S3Destination{
+	cfg := &s3_model.S3Destination{
 		OutputFormat:   model.ParsingFormatPARQUET,
-		OutputEncoding: s3_provider.NoEncoding,
+		OutputEncoding: s3_model.NoEncoding,
 		BufferSize:     1 * 1024 * 1024,
 		BufferInterval: time.Second * 5,
 		Bucket:         "testRotationParquet",

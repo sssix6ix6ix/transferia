@@ -13,7 +13,7 @@ import (
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/transformer"
 	"gopkg.in/yaml.v3"
-	sig_yaml "sigs.k8s.io/yaml"
+	k8s_yaml "sigs.k8s.io/yaml"
 )
 
 func TransferFromYaml(params *string) (*model.Transfer, error) {
@@ -149,11 +149,11 @@ func ParseTransferYaml(rawData []byte) (*TransferYamlView, error) {
 	}
 	transfer.Dst.Params = substituteEnv(dstParams).(map[string]interface{})
 
-	res, err := sig_yaml.YAMLToJSON([]byte(transfer.Src.RawParams()))
+	res, err := k8s_yaml.YAMLToJSON([]byte(transfer.Src.RawParams()))
 	if err == nil {
 		transfer.Src.Params = string(res)
 	}
-	res, err = sig_yaml.YAMLToJSON([]byte(transfer.Dst.RawParams()))
+	res, err = k8s_yaml.YAMLToJSON([]byte(transfer.Dst.RawParams()))
 	if err == nil {
 		transfer.Dst.Params = string(res)
 	}

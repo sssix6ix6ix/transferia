@@ -5,9 +5,9 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3"
+	aws_credentials "github.com/aws/aws-sdk-go/aws/credentials"
+	aws_session "github.com/aws/aws-sdk-go/aws/session"
+	aws_s3 "github.com/aws/aws-sdk-go/service/s3"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	yslices "github.com/transferia/transferia/library/go/slices"
 	"github.com/transferia/transferia/pkg/util/iter"
@@ -34,7 +34,7 @@ func (s S3Config) isStoreConfig() {}
 
 type S3 struct {
 	config *S3Config
-	client *s3.S3
+	client *aws_s3.S3
 }
 
 func (s S3) Root() string {
@@ -42,13 +42,13 @@ func (s S3) Root() string {
 }
 
 func (s S3) Read(path string) (iter.Iter[string], error) {
-	data, err := s.client.GetObject(&s3.GetObjectInput{
+	data, err := s.client.GetObject(&aws_s3.GetObjectInput{
 		Bucket: aws.String(s.config.Bucket),
 		Key:    aws.String(path),
 	})
 	if aerr, ok := err.(awserr.Error); ok {
 		switch aerr.Code() {
-		case s3.ErrCodeNoSuchKey:
+		case aws_s3.ErrCodeNoSuchKey:
 			return nil, ErrFileNotFound
 		}
 	}
@@ -59,17 +59,17 @@ func (s S3) Read(path string) (iter.Iter[string], error) {
 }
 
 func (s S3) ListFrom(path string) (iter.Iter[*FileMeta], error) {
-	ls, err := s.client.ListObjects(&s3.ListObjectsInput{
+	ls, err := s.client.ListObjects(&aws_s3.ListObjectsInput{
 		Bucket: aws.String(s.config.Bucket),
 		Prefix: aws.String(filepath.Dir(path)),
 	})
 	if err != nil {
 		return nil, xerrors.Errorf("unable to list objects: %s: %w", path, err)
 	}
-	contents := yslices.Filter(ls.Contents, func(object *s3.Object) bool {
+	contents := yslices.Filter(ls.Contents, func(object *aws_s3.Object) bool {
 		return *object.Key > path
 	})
-	return iter.FromSlice(yslices.Map(contents, func(t *s3.Object) *FileMeta {
+	return iter.FromSlice(yslices.Map(contents, func(t *aws_s3.Object) *FileMeta {
 		return &FileMeta{
 			path:         *t.Key,
 			timeModified: *t.LastModified,
@@ -79,11 +79,11 @@ func (s S3) ListFrom(path string) (iter.Iter[*FileMeta], error) {
 }
 
 func NewStoreS3(config *S3Config) (*S3, error) {
-	sess, err := session.NewSession(&aws.Config{
+	sess, err := aws_session.NewSession(&aws.Config{
 		Endpoint:         aws.String(config.Endpoint),
 		Region:           aws.String(config.Region),
 		S3ForcePathStyle: aws.Bool(config.S3ForcePathStyle),
-		Credentials: credentials.NewStaticCredentials(
+		Credentials: aws_credentials.NewStaticCredentials(
 			config.AccessKey, config.Secret, "",
 		),
 	})
@@ -92,6 +92,6 @@ func NewStoreS3(config *S3Config) (*S3, error) {
 	}
 	return &S3{
 		config: config,
-		client: s3.New(sess),
+		client: aws_s3.New(sess),
 	}, nil
 }

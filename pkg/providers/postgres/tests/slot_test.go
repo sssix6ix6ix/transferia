@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/internal/logger"
-	"github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
 	"github.com/transferia/transferia/tests/helpers"
 )
@@ -16,12 +16,12 @@ func TestSlotHappyPath(t *testing.T) {
 	transferID := helpers.GenerateTransferID("TestSlotHappyPath")
 	src.SlotID = transferID
 
-	connConfig, err := postgres.MakeConnConfigFromSrc(logger.Log, src)
+	connConfig, err := provider_postgres.MakeConnConfigFromSrc(logger.Log, src)
 	require.NoError(t, err)
-	conn, err := postgres.NewPgConnPool(connConfig, logger.Log)
+	conn, err := provider_postgres.NewPgConnPool(connConfig, logger.Log)
 	require.NoError(t, err)
 
-	slot, err := postgres.NewSlot(conn, logger.Log, src)
+	slot, err := provider_postgres.NewSlot(conn, logger.Log, src)
 	require.NoError(t, err)
 	require.NoError(t, slot.Create())
 
@@ -42,12 +42,12 @@ func TestSlotBrokenConnection(t *testing.T) {
 	transferID := helpers.GenerateTransferID("TestSlotBrokenConnection")
 	src.SlotID = transferID
 
-	connConfig, err := postgres.MakeConnConfigFromSrc(logger.Log, src)
+	connConfig, err := provider_postgres.MakeConnConfigFromSrc(logger.Log, src)
 	require.NoError(t, err)
-	conn, err := postgres.NewPgConnPool(connConfig, logger.Log)
+	conn, err := provider_postgres.NewPgConnPool(connConfig, logger.Log)
 	require.NoError(t, err)
 
-	slot, err := postgres.NewSlot(conn, logger.Log, src)
+	slot, err := provider_postgres.NewSlot(conn, logger.Log, src)
 	require.NoError(t, err)
 	require.NoError(t, slot.Create())
 

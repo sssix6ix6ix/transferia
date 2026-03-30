@@ -8,14 +8,14 @@ import (
 
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	debeziumcommon "github.com/transferia/transferia/pkg/debezium/common"
-	"github.com/transferia/transferia/pkg/debezium/mysql"
+	debezium_common "github.com/transferia/transferia/pkg/debezium/common"
+	debezium_mysql "github.com/transferia/transferia/pkg/debezium/mysql"
 	"github.com/transferia/transferia/pkg/debezium/packer"
-	debeziumparameters "github.com/transferia/transferia/pkg/debezium/parameters"
-	"github.com/transferia/transferia/pkg/debezium/pg"
+	debezium_parameters "github.com/transferia/transferia/pkg/debezium/parameters"
+	debezium_pg "github.com/transferia/transferia/pkg/debezium/pg"
 	"github.com/transferia/transferia/pkg/debezium/typeutil"
-	"github.com/transferia/transferia/pkg/debezium/ydb"
-	"github.com/transferia/transferia/pkg/schemaregistry/format"
+	debezium_ydb "github.com/transferia/transferia/pkg/debezium/ydb"
+	schemaregistry_format "github.com/transferia/transferia/pkg/schemaregistry/format"
 	"github.com/transferia/transferia/pkg/util"
 	"github.com/transferia/transferia/tests/helpers/testsflag"
 	"go.ytsaurus.tech/library/go/core/log"
@@ -101,11 +101,11 @@ func arrColSchemaToFieldsDescr(arrColSchema []abstract.ColSchema, snapshot bool,
 	for _, el := range arrColSchema {
 		err := fields.AddFieldDescr(el, snapshot, connectorParameters)
 		if err != nil {
-			if debeziumcommon.IsUnknownTypeError(err) {
-				unknownTypePolicy := connectorParameters[debeziumparameters.UnknownTypesPolicy]
-				if unknownTypePolicy == debeziumparameters.UnknownTypesPolicySkip {
+			if debezium_common.IsUnknownTypeError(err) {
+				unknownTypePolicy := connectorParameters[debezium_parameters.UnknownTypesPolicy]
+				if unknownTypePolicy == debezium_parameters.UnknownTypesPolicySkip {
 					continue
-				} else if unknownTypePolicy == debeziumparameters.UnknownTypesPolicyToString {
+				} else if unknownTypePolicy == debezium_parameters.UnknownTypesPolicyToString {
 					colSchemaCopy := el
 					colSchemaCopy.DataType = ytschema.TypeString.String()
 					colSchemaCopy.OriginalType = ""
@@ -136,7 +136,7 @@ func arrColSchemaToFieldsDescrKeys(arrColSchema []abstract.ColSchema, snapshot b
 }
 
 // add - function for adding (with conversion) one field
-func add(colSchema *abstract.ColSchema, colName string, colVal interface{}, originalType string, ignoreUnknownSources, snapshot bool, connectorParameters map[string]string, result *debeziumcommon.Values) error {
+func add(colSchema *abstract.ColSchema, colName string, colVal interface{}, originalType string, ignoreUnknownSources, snapshot bool, connectorParameters map[string]string, result *debezium_common.Values) error {
 	if strings.HasPrefix(originalType, "pg:") {
 		if strings.HasSuffix(originalType, "[]") {
 			if colVal == nil {
@@ -155,8 +155,8 @@ func add(colSchema *abstract.ColSchema, colName string, colVal interface{}, orig
 			}
 			resultArrVal := make([]interface{}, 0, len(colValArr))
 			for _, el := range colValArr {
-				resultEl := debeziumcommon.NewValues(result.ConnectorParameters)
-				err := pg.AddPg(resultEl, colSchema, colName, el, strings.TrimSuffix(originalType, "[]"), true, connectorParameters)
+				resultEl := debezium_common.NewValues(result.ConnectorParameters)
+				err := debezium_pg.AddPg(resultEl, colSchema, colName, el, strings.TrimSuffix(originalType, "[]"), true, connectorParameters)
 				if err != nil {
 					return xerrors.Errorf("unable to convert pg event, err: %w", err)
 				}
@@ -164,18 +164,18 @@ func add(colSchema *abstract.ColSchema, colName string, colVal interface{}, orig
 			}
 			result.AddVal(colName, resultArrVal)
 		} else {
-			err := pg.AddPg(result, colSchema, colName, colVal, originalType, false, connectorParameters)
+			err := debezium_pg.AddPg(result, colSchema, colName, colVal, originalType, false, connectorParameters)
 			if err != nil {
 				return xerrors.Errorf("unable to convert pg event, err: %w", err)
 			}
 		}
 	} else if strings.HasPrefix(originalType, "mysql:") {
-		err := mysql.AddMysql(result, colName, colVal, originalType, snapshot, connectorParameters)
+		err := debezium_mysql.AddMysql(result, colName, colVal, originalType, snapshot, connectorParameters)
 		if err != nil {
 			return xerrors.Errorf("unable to convert mysql event, err: %w", err)
 		}
 	} else if strings.HasPrefix(originalType, "ydb:") {
-		err := ydb.AddYDB(result, colName, colVal, originalType, connectorParameters)
+		err := debezium_ydb.AddYDB(result, colName, colVal, originalType, connectorParameters)
 		if err != nil {
 			return xerrors.Errorf("unable to convert ydb event, err: %w", err)
 		}
@@ -205,13 +205,13 @@ func makeValuesWithUnpack(tableSchema []abstract.ColSchema, connectorParameters 
 }
 
 // makeValues - is used for build dict for both: 'after' and 'before'
-func makeValues(tableSchema []abstract.ColSchema, connectorParameters map[string]string, names []string, vals []interface{}, keysOnly, ignoreUnknownSources, snapshot bool) (*debeziumcommon.Values, error) {
+func makeValues(tableSchema []abstract.ColSchema, connectorParameters map[string]string, names []string, vals []interface{}, keysOnly, ignoreUnknownSources, snapshot bool) (*debezium_common.Values, error) {
 	mapColToIndex := make(map[string]int)
 	for i, col := range tableSchema {
 		mapColToIndex[col.ColumnName] = i
 	}
 
-	result := debeziumcommon.NewValues(connectorParameters)
+	result := debezium_common.NewValues(connectorParameters)
 
 	for i := range names {
 		colName := names[i]
@@ -226,11 +226,11 @@ func makeValues(tableSchema []abstract.ColSchema, connectorParameters map[string
 		originalType := tableSchema[index].OriginalType
 		err := add(&tableSchema[index], colName, colVal, originalType, ignoreUnknownSources, snapshot, connectorParameters, result)
 		if err != nil {
-			if debeziumcommon.IsUnknownTypeError(err) {
-				unknownTypePolicy := connectorParameters[debeziumparameters.UnknownTypesPolicy]
-				if unknownTypePolicy == debeziumparameters.UnknownTypesPolicySkip {
+			if debezium_common.IsUnknownTypeError(err) {
+				unknownTypePolicy := connectorParameters[debezium_parameters.UnknownTypesPolicy]
+				if unknownTypePolicy == debezium_parameters.UnknownTypesPolicySkip {
 					continue
-				} else if unknownTypePolicy == debeziumparameters.UnknownTypesPolicyToString {
+				} else if unknownTypePolicy == debezium_parameters.UnknownTypesPolicyToString {
 					val, err := typeutil.UnknownTypeToString(colVal)
 					if err != nil {
 						return nil, xerrors.Errorf("unable to serialize unknown type to string, colName: %s, err: %w", colName, err)
@@ -246,7 +246,7 @@ func makeValues(tableSchema []abstract.ColSchema, connectorParameters map[string
 }
 
 func (m *Emitter) MaxMessageSize() int {
-	return debeziumparameters.GetBatchingMaxSize(m.connectorParameters)
+	return debezium_parameters.GetBatchingMaxSize(m.connectorParameters)
 }
 
 func (m *Emitter) GetPackers() (packer.Packer, packer.Packer) {
@@ -256,7 +256,7 @@ func (m *Emitter) GetPackers() (packer.Packer, packer.Packer) {
 // makeKey - builds 'key' for kafka
 // for inserts/updates(without pkey changing) - just pkeys from 'after'
 // for deletes/update(with pkey changing) - extracts pkeys from OldKeys
-func (m *Emitter) makeKey(changeItem *abstract.ChangeItem, useAfter bool, ignoreUnknownSources, snapshot bool) (*debeziumcommon.Values, error) {
+func (m *Emitter) makeKey(changeItem *abstract.ChangeItem, useAfter bool, ignoreUnknownSources, snapshot bool) (*debezium_common.Values, error) {
 	if useAfter || changeItem.OldKeys.KeyNames == nil {
 		return buildKV(changeItem, m.connectorParameters, true, ignoreUnknownSources, snapshot)
 	}
@@ -294,7 +294,7 @@ func BuildKVMap(changeItem *abstract.ChangeItem, connectorParameters map[string]
 }
 
 // buildKV - builds 'after' k-v map
-func buildKV(changeItem *abstract.ChangeItem, connectorParameters map[string]string, keysOnly, ignoreUnknownSources, snapshot bool) (*debeziumcommon.Values, error) {
+func buildKV(changeItem *abstract.ChangeItem, connectorParameters map[string]string, keysOnly, ignoreUnknownSources, snapshot bool) (*debezium_common.Values, error) {
 	mapColNameToIndex := make(map[string]int)
 	for i, col := range changeItem.TableSchema.Columns() {
 		mapColNameToIndex[col.ColumnName] = i
@@ -318,7 +318,7 @@ func buildKV(changeItem *abstract.ChangeItem, connectorParameters map[string]str
 		for _, currColumn := range changeItem.TableSchema.Columns() {
 			if _, ok := notToastedColumns[currColumn.ColumnName]; !ok {
 				// TOASTed column
-				result.AddVal(currColumn.ColumnName, connectorParameters[debeziumparameters.UnavailableValuePlaceholder])
+				result.AddVal(currColumn.ColumnName, connectorParameters[debezium_parameters.UnavailableValuePlaceholder])
 			}
 		}
 	}
@@ -343,15 +343,15 @@ func (m *Emitter) buildSource(changeItem *abstract.ChangeItem, snapshot bool) ma
 		"table":    changeItem.Table,
 	}
 
-	switch debeziumparameters.GetSourceType(m.connectorParameters) {
-	case debeziumparameters.SourceTypePg:
+	switch debezium_parameters.GetSourceType(m.connectorParameters) {
+	case debezium_parameters.SourceTypePg:
 		result["db"] = m.database
 		result["connector"] = "postgresql"
 		result["lsn"] = changeItem.LSN
 		result["schema"] = changeItem.Schema
 		result["txId"] = changeItem.ID
 		result["xmin"] = nil
-	case debeziumparameters.SourceTypeMysql:
+	case debezium_parameters.SourceTypeMysql:
 		file, pos := typeutil.LSNToFileAndPos(changeItem.LSN)
 		result["db"] = changeItem.Schema
 		result["connector"] = "mysql"
@@ -422,7 +422,7 @@ func (m *Emitter) ToKafkaSchemaVal(changeItem *abstract.ChangeItem, snapshot boo
 	schemaFields := make([]interface{}, 0)
 	schemaFields = append(schemaFields, beforeSchema)
 	schemaFields = append(schemaFields, afterSchema)
-	schemaFields = append(schemaFields, buildSourceSchemaDescr(debeziumparameters.GetSourceType(m.connectorParameters)))
+	schemaFields = append(schemaFields, buildSourceSchemaDescr(debezium_parameters.GetSourceType(m.connectorParameters)))
 	schemaFields = append(schemaFields, opSchema)
 	schemaFields = append(schemaFields, tsMsSchema)
 	schemaFields = append(schemaFields, transactionSchema)
@@ -463,7 +463,7 @@ func (m *Emitter) valPayload(changeItem *abstract.ChangeItem, payloadTSMS time.T
 			before[el.ColumnName] = nil
 		}
 
-		if debeziumparameters.GetSourceType(m.connectorParameters) == debeziumparameters.SourceTypeMysql {
+		if debezium_parameters.GetSourceType(m.connectorParameters) == debezium_parameters.SourceTypeMysql {
 			result, err := makeValues(changeItem.TableSchema.Columns(), m.connectorParameters, changeItem.ColumnNames, changeItem.ColumnValues, false, m.ignoreUnknownSources, snapshot)
 			if err != nil {
 				return nil, xerrors.Errorf("unable to emit value, err: %w", err)
@@ -512,7 +512,7 @@ func (m *Emitter) valPayload(changeItem *abstract.ChangeItem, payloadTSMS time.T
 }
 
 func (m *Emitter) toConfluentSchema(schemaArr []byte, makeClosedContentModel bool) ([]byte, error) {
-	kafkaSchema, err := format.KafkaJSONSchemaFromArr(schemaArr)
+	kafkaSchema, err := schemaregistry_format.KafkaJSONSchemaFromArr(schemaArr)
 	if err != nil {
 		return nil, xerrors.Errorf("can't convert map into kafka json schema, err: %w", err)
 	}
@@ -528,7 +528,7 @@ func (m *Emitter) ToConfluentSchemaKey(changeItem *abstract.ChangeItem, snapshot
 	if err != nil {
 		return nil, xerrors.Errorf("can't build key schema, err: %w", err)
 	}
-	result, err := m.toConfluentSchema(keySchema, debeziumparameters.GetKeyConverterDTJSONGenerateClosedContentSchema(m.connectorParameters))
+	result, err := m.toConfluentSchema(keySchema, debezium_parameters.GetKeyConverterDTJSONGenerateClosedContentSchema(m.connectorParameters))
 	if err != nil {
 		return nil, xerrors.Errorf("can't convert key schema into confluent, err: %w", err)
 	}
@@ -540,7 +540,7 @@ func (m *Emitter) ToConfluentSchemaVal(changeItem *abstract.ChangeItem, snapshot
 	if err != nil {
 		return nil, xerrors.Errorf("can't build val schema, err: %w", err)
 	}
-	result, err := m.toConfluentSchema(valSchema, debeziumparameters.GetValueConverterDTJSONGenerateClosedContentSchema(m.connectorParameters))
+	result, err := m.toConfluentSchema(valSchema, debezium_parameters.GetValueConverterDTJSONGenerateClosedContentSchema(m.connectorParameters))
 	if err != nil {
 		return nil, xerrors.Errorf("can't convert val schema into confluent, err: %w", err)
 	}
@@ -548,7 +548,7 @@ func (m *Emitter) ToConfluentSchemaVal(changeItem *abstract.ChangeItem, snapshot
 }
 
 func (m *Emitter) skipTombstoneEvent() bool {
-	return debeziumparameters.GetTombstonesOnDelete(m.connectorParameters) == debeziumparameters.BoolFalse
+	return debezium_parameters.GetTombstonesOnDelete(m.connectorParameters) == debezium_parameters.BoolFalse
 }
 
 // emitOneDebeziumMessage - function which emit one debezium message, it is called only from EmitKV,
@@ -623,9 +623,9 @@ func (m *Emitter) emitOneDebeziumMessage(
 }
 
 // EmitKV - main exported method - generates kafka key & kafka value
-func (m *Emitter) emitKV(changeItem *abstract.ChangeItem, payloadTSMS time.Time, snapshot bool, sessionPackers packer.SessionPackers) ([]debeziumcommon.KeyValue, error) {
+func (m *Emitter) emitKV(changeItem *abstract.ChangeItem, payloadTSMS time.Time, snapshot bool, sessionPackers packer.SessionPackers) ([]debezium_common.KeyValue, error) {
 	if changeItem.Kind != abstract.InsertKind && changeItem.Kind != abstract.UpdateKind && changeItem.Kind != abstract.DeleteKind {
-		return []debeziumcommon.KeyValue{}, nil
+		return []debezium_common.KeyValue{}, nil
 	}
 
 	if sessionPackers == nil {
@@ -646,9 +646,9 @@ func (m *Emitter) emitKV(changeItem *abstract.ChangeItem, payloadTSMS time.Time,
 			return nil, xerrors.Errorf("unable to emit debezium event part 2, err: %w", err)
 		}
 		if m.skipTombstoneEvent() {
-			return []debeziumcommon.KeyValue{{DebeziumKey: key0, DebeziumVal: val0}, {DebeziumKey: key2, DebeziumVal: val2}}, nil
+			return []debezium_common.KeyValue{{DebeziumKey: key0, DebeziumVal: val0}, {DebeziumKey: key2, DebeziumVal: val2}}, nil
 		}
-		return []debeziumcommon.KeyValue{{DebeziumKey: key0, DebeziumVal: val0}, {DebeziumKey: key1, DebeziumVal: val1}, {DebeziumKey: key2, DebeziumVal: val2}}, nil
+		return []debezium_common.KeyValue{{DebeziumKey: key0, DebeziumVal: val0}, {DebeziumKey: key1, DebeziumVal: val1}, {DebeziumKey: key2, DebeziumVal: val2}}, nil
 	}
 
 	if changeItem.Kind == abstract.DeleteKind {
@@ -657,24 +657,24 @@ func (m *Emitter) emitKV(changeItem *abstract.ChangeItem, payloadTSMS time.Time,
 			return nil, xerrors.Errorf("unable to emit debezium event part 0, err: %w", err)
 		}
 		if m.skipTombstoneEvent() {
-			return []debeziumcommon.KeyValue{{DebeziumKey: key0, DebeziumVal: val0}}, nil
+			return []debezium_common.KeyValue{{DebeziumKey: key0, DebeziumVal: val0}}, nil
 		}
 		key1, val1, err := m.emitOneDebeziumMessage(changeItem, payloadTSMS, snapshot, tombstoneEventEmitType, sessionPackers)
 		if err != nil {
 			return nil, xerrors.Errorf("unable to emit debezium event part 1, err: %w", err)
 		}
-		return []debeziumcommon.KeyValue{{DebeziumKey: key0, DebeziumVal: val0}, {DebeziumKey: key1, DebeziumVal: val1}}, nil
+		return []debezium_common.KeyValue{{DebeziumKey: key0, DebeziumVal: val0}, {DebeziumKey: key1, DebeziumVal: val1}}, nil
 	}
 
 	key, val, err := m.emitOneDebeziumMessage(changeItem, payloadTSMS, snapshot, regularEmitType, sessionPackers)
 	if err != nil {
 		return nil, xerrors.Errorf("unable to emit debezium event, err: %w", err)
 	}
-	return []debeziumcommon.KeyValue{{DebeziumKey: key, DebeziumVal: val}}, nil
+	return []debezium_common.KeyValue{{DebeziumKey: key, DebeziumVal: val}}, nil
 }
 
 // EmitKV - main exported method - generates kafka key & kafka value
-func (m *Emitter) EmitKV(changeItem *abstract.ChangeItem, payloadTSMS time.Time, snapshot bool, sessionPackers packer.SessionPackers) ([]debeziumcommon.KeyValue, error) {
+func (m *Emitter) EmitKV(changeItem *abstract.ChangeItem, payloadTSMS time.Time, snapshot bool, sessionPackers packer.SessionPackers) ([]debezium_common.KeyValue, error) {
 	result, err := m.emitKV(changeItem, payloadTSMS, snapshot, sessionPackers)
 	if err != nil {
 		return nil, xerrors.Errorf("unable to emitKV, err: %w", err)
@@ -707,13 +707,13 @@ func NewMessagesEmitter(connectorParameters map[string]string, version string, d
 	if err != nil {
 		return nil, xerrors.Errorf("can't create value message processor, err: %w", err)
 	}
-	if err = debeziumparameters.Validate(connectorParameters, dropKeys); err != nil {
+	if err = debezium_parameters.Validate(connectorParameters, dropKeys); err != nil {
 		return nil, xerrors.Errorf("invalid debezium parameters, err: %w", err)
 	}
 	return &Emitter{
-		database:             debeziumparameters.GetDBName(connectorParameters),
-		databaseServerName:   debeziumparameters.GetTopicPrefix(connectorParameters),
-		connectorParameters:  debeziumparameters.EnrichedWithDefaults(connectorParameters),
+		database:             debezium_parameters.GetDBName(connectorParameters),
+		databaseServerName:   debezium_parameters.GetTopicPrefix(connectorParameters),
+		connectorParameters:  debezium_parameters.EnrichedWithDefaults(connectorParameters),
 		version:              version,
 		ignoreUnknownSources: false,
 		keyPacker:            keyPacker,

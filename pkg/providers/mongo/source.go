@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/changeitem"
@@ -15,12 +15,12 @@ import (
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/errors/coded"
-	"github.com/transferia/transferia/pkg/errors/codes"
+	error_codes "github.com/transferia/transferia/pkg/errors/codes"
 	"github.com/transferia/transferia/pkg/stats"
 	"github.com/transferia/transferia/pkg/util"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	mongo_driver "go.mongodb.org/mongo-driver/mongo"
+	mongo_options "go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"go.ytsaurus.tech/library/go/core/log"
 )
@@ -39,7 +39,7 @@ var (
 )
 
 func isFatalMongoCode(err error) bool {
-	mErr := new(mongo.CommandError)
+	mErr := new(mongo_driver.CommandError)
 	if !xerrors.As(err, &mErr) && !xerrors.As(err, mErr) {
 		return false
 	}
@@ -77,9 +77,9 @@ func (s *mongoSource) Run(sink abstract.AsyncSink) error {
 		lower := strings.ToLower(err.Error())
 		switch {
 		case strings.Contains(lower, "no such host"):
-			return coded.Errorf(codes.MongoDNSResolutionFailed, "failed to connect to MongoDB: %w", err)
+			return coded.Errorf(error_codes.MongoDNSResolutionFailed, "failed to connect to MongoDB: %w", err)
 		case strings.Contains(lower, "server selection error"), strings.Contains(lower, "server selection timeout"), strings.Contains(lower, "replicasetnoprimary"):
-			return coded.Errorf(codes.MongoServerSelectionFailed, "failed to connect to MongoDB: %w", err)
+			return coded.Errorf(error_codes.MongoServerSelectionFailed, "failed to connect to MongoDB: %w", err)
 		}
 		return xerrors.Errorf("failed to connect to MongoDB: %w", err)
 	}
@@ -229,9 +229,9 @@ func (s *mongoSource) watcherFallback(watcher ChangeStreamWatcher, pu Paralleliz
 			failingObjectName = fmt.Sprintf("%s, collection %q", puDB.String(), fullCollectionName.GetFullName())
 		}
 		if strings.Contains(reason.Error(), "Tried to create string longer than 16MB") {
-			return nil, abstract.NewFatalError(coded.Errorf(codes.MongoCollectionKeyTooLarge, "too large key detected in %s: %w", failingObjectName, reason))
+			return nil, abstract.NewFatalError(coded.Errorf(error_codes.MongoCollectionKeyTooLarge, "too large key detected in %s: %w", failingObjectName, reason))
 		}
-		return nil, abstract.NewFatalError(coded.Errorf(codes.MongoBSONObjectTooLarge, "too large object detected in %s: %w", failingObjectName, reason))
+		return nil, abstract.NewFatalError(coded.Errorf(error_codes.MongoBSONObjectTooLarge, "too large object detected in %s: %w", failingObjectName, reason))
 	}
 
 	// default: no watcher and original error
@@ -762,8 +762,8 @@ func (s *mongoSource) shutdown(shutdownErr error) {
 	})
 }
 
-func (s *mongoSource) makeDatabaseConnection(dbName string) (*mongo.Database, error) {
-	dbOpts := options.Database()
+func (s *mongoSource) makeDatabaseConnection(dbName string) (*mongo_driver.Database, error) {
+	dbOpts := mongo_options.Database()
 	if s.config.SecondaryPreferredMode {
 		readPref, err := readpref.New(readpref.SecondaryPreferredMode)
 		if err != nil {
@@ -792,7 +792,7 @@ func overrideFilter(filter MongoCollectionFilter, includeTables map[abstract.Tab
 	return filter
 }
 
-func NewSource(src *MongoSource, transferID string, objects *model.DataObjects, logger log.Logger, registry metrics.Registry, cp coordinator.Coordinator) (abstract.Source, error) {
+func NewSource(src *MongoSource, transferID string, objects *model.DataObjects, logger log.Logger, registry core_metrics.Registry, cp coordinator.Coordinator) (abstract.Source, error) {
 	includeObjects, err := abstract.BuildIncludeMap(objects.GetIncludeObjects(), ProviderType)
 	if err != nil {
 		return nil, abstract.NewFatalError(xerrors.Errorf("to build exclude map: %w", err))

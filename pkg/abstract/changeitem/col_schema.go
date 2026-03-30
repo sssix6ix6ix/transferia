@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 const (
@@ -28,7 +28,7 @@ type ColSchema struct {
 	Properties map[PropertyKey]interface{} `json:"properties,omitempty"`
 }
 
-func NewColSchema(columnName string, dataType schema.Type, isPrimaryKey bool) ColSchema {
+func NewColSchema(columnName string, dataType ytschema.Type, isPrimaryKey bool) ColSchema {
 	return ColSchema{
 		TableSchema:  "",
 		TableName:    "",
@@ -100,21 +100,21 @@ func (c *ColSchema) IsKey() bool {
 	return c.PrimaryKey
 }
 
-var numericTypes = map[schema.Type]bool{
-	schema.TypeFloat32: true,
-	schema.TypeFloat64: true,
-	schema.TypeInt64:   true,
-	schema.TypeInt32:   true,
-	schema.TypeInt16:   true,
-	schema.TypeInt8:    true,
-	schema.TypeUint64:  true,
-	schema.TypeUint32:  true,
-	schema.TypeUint16:  true,
-	schema.TypeUint8:   true,
+var numericTypes = map[ytschema.Type]bool{
+	ytschema.TypeFloat32: true,
+	ytschema.TypeFloat64: true,
+	ytschema.TypeInt64:   true,
+	ytschema.TypeInt32:   true,
+	ytschema.TypeInt16:   true,
+	ytschema.TypeInt8:    true,
+	ytschema.TypeUint64:  true,
+	ytschema.TypeUint32:  true,
+	ytschema.TypeUint16:  true,
+	ytschema.TypeUint8:   true,
 }
 
 func (c *ColSchema) Numeric() bool {
-	return numericTypes[schema.Type(c.DataType)]
+	return numericTypes[ytschema.Type(c.DataType)]
 }
 
 func (c *ColSchema) String() string {

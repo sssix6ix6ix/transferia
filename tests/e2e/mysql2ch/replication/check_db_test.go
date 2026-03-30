@@ -7,9 +7,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/pkg/abstract"
-	dp_model "github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/model"
-	"github.com/transferia/transferia/pkg/providers/mysql"
+	"github.com/transferia/transferia/pkg/abstract/model"
+	clickhouse_model "github.com/transferia/transferia/pkg/providers/clickhouse/model"
+	provider_mysql "github.com/transferia/transferia/pkg/providers/mysql"
 	"github.com/transferia/transferia/tests/e2e/mysql2ch"
 	"github.com/transferia/transferia/tests/e2e/pg2ch"
 	"github.com/transferia/transferia/tests/helpers"
@@ -17,16 +17,16 @@ import (
 
 var (
 	TransferType = abstract.TransferTypeSnapshotAndIncrement
-	Source       = mysql.MysqlSource{
+	Source       = provider_mysql.MysqlSource{
 		Host:     os.Getenv("RECIPE_MYSQL_HOST"),
 		User:     os.Getenv("RECIPE_MYSQL_USER"),
-		Password: dp_model.SecretString(os.Getenv("RECIPE_MYSQL_PASSWORD")),
+		Password: model.SecretString(os.Getenv("RECIPE_MYSQL_PASSWORD")),
 		Database: os.Getenv("RECIPE_MYSQL_SOURCE_DATABASE"),
 		Port:     helpers.GetIntFromEnv("RECIPE_MYSQL_PORT"),
 		ServerID: 1, // what is it?
 	}
-	Target = model.ChDestination{
-		ShardsList: []model.ClickHouseShard{
+	Target = clickhouse_model.ChDestination{
+		ShardsList: []clickhouse_model.ClickHouseShard{
 			{
 				Name: "_",
 				Hosts: []string{
@@ -63,9 +63,9 @@ func TestReplication(t *testing.T) {
 	//------------------------------------------------------------------------------------
 	// insert/update/delete several record
 
-	connParams, err := mysql.NewConnectionParams(Source.ToStorageParams())
+	connParams, err := provider_mysql.NewConnectionParams(Source.ToStorageParams())
 	require.NoError(t, err)
-	client, err := mysql.Connect(connParams, nil)
+	client, err := provider_mysql.Connect(connParams, nil)
 	require.NoError(t, err)
 
 	_, err = client.Exec("INSERT INTO mysql_replication (id, val1, val2, b1, b8, b11) VALUES (3, 3, 'c', NULL, NULL, NULL), (4, 4, 'd', b'0', b'00000000', b'00000000000'), (5, 5, 'e', b'1', b'11111111', b'11111111111')")

@@ -12,17 +12,17 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/parsers"
-	"github.com/transferia/transferia/pkg/parsers/registry/debezium"
-	"github.com/transferia/transferia/pkg/providers/kafka"
-	pgcommon "github.com/transferia/transferia/pkg/providers/postgres"
+	parser_debezium "github.com/transferia/transferia/pkg/parsers/registry/debezium"
+	provider_kafka "github.com/transferia/transferia/pkg/providers/kafka"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
 	"github.com/transferia/transferia/tests/helpers"
-	yt_helpers "github.com/transferia/transferia/tests/helpers/yt"
+	helpers_yt "github.com/transferia/transferia/tests/helpers/yt"
 )
 
 var (
 	Source = *pgrecipe.RecipeSource(pgrecipe.WithInitDir("init_source"))
-	Target = yt_helpers.RecipeYtTarget("//home/cdc/test/pg2kafka2yt_e2e_alters")
+	Target = helpers_yt.RecipeYtTarget("//home/cdc/test/pg2kafka2yt_e2e_alters")
 )
 
 func init() {
@@ -45,7 +45,7 @@ func TestSnapshotAndIncrement(t *testing.T) {
 	httpPort := os.Getenv("SR_HTTP_PORT")
 	schemaRegistryURL := fmt.Sprintf("http://localhost:%s", httpPort)
 
-	dst, err := kafka.DestinationRecipe()
+	dst, err := provider_kafka.DestinationRecipe()
 	require.NoError(t, err)
 	dst.Topic = topic
 	dst.FormatSettings = model.SerializationFormat{
@@ -75,7 +75,7 @@ func TestSnapshotAndIncrement(t *testing.T) {
 	//-----------------------------------------------------------------------------------------------------------------
 	// kafka -> pg
 
-	parserConfigStruct := &debezium.ParserConfigDebeziumCommon{
+	parserConfigStruct := &parser_debezium.ParserConfigDebeziumCommon{
 		SchemaRegistryURL: schemaRegistryURL,
 		SkipAuth:          true,
 		Username:          "",
@@ -85,12 +85,12 @@ func TestSnapshotAndIncrement(t *testing.T) {
 	parserConfigMap, err := parsers.ParserConfigStructToMap(parserConfigStruct)
 	require.NoError(t, err)
 
-	src := &kafka.KafkaSource{
-		Connection: &kafka.KafkaConnectionOptions{
+	src := &provider_kafka.KafkaSource{
+		Connection: &provider_kafka.KafkaConnectionOptions{
 			TLS:     model.DisabledTLS,
 			Brokers: []string{os.Getenv("KAFKA_RECIPE_BROKER_LIST")},
 		},
-		Auth:             &kafka.KafkaAuth{Enabled: false},
+		Auth:             &provider_kafka.KafkaAuth{Enabled: false},
 		Topic:            topic,
 		Transformer:      nil,
 		BufferSize:       model.BytesSize(1024),
@@ -116,7 +116,7 @@ func TestSnapshotAndIncrement(t *testing.T) {
 
 	//---
 
-	srcConn, err := pgcommon.MakeConnPoolFromSrc(&Source, logger.Log)
+	srcConn, err := provider_postgres.MakeConnPoolFromSrc(&Source, logger.Log)
 	require.NoError(t, err)
 	defer srcConn.Close()
 

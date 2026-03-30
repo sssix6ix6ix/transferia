@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
-	pgcommon "github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
 	"github.com/transferia/transferia/tests/helpers"
 )
@@ -104,13 +104,13 @@ func TestSnapshotAndIncrement(t *testing.T) {
 	))
 
 	transfer := helpers.MakeTransfer(helpers.TransferID, &Source, &Target, abstract.TransferTypeSnapshotAndIncrement)
-	transfer.Src.(*pgcommon.PgSource).NoHomo = true
+	transfer.Src.(*provider_postgres.PgSource).NoHomo = true
 	worker := helpers.Activate(t, transfer)
 	defer worker.Close(t)
 
 	//---
 
-	srcConn, err := pgcommon.MakeConnPoolFromSrc(&Source, logger.Log)
+	srcConn, err := provider_postgres.MakeConnPoolFromSrc(&Source, logger.Log)
 	require.NoError(t, err)
 	defer srcConn.Close()
 

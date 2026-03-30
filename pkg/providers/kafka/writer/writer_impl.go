@@ -9,9 +9,9 @@ import (
 	"sync"
 
 	"github.com/segmentio/kafka-go"
-	"github.com/segmentio/kafka-go/sasl"
+	segmentio_sasl "github.com/segmentio/kafka-go/sasl"
 	"github.com/transferia/transferia/library/go/core/xerrors"
-	"github.com/transferia/transferia/pkg/providers/kafka/client"
+	kafka_client "github.com/transferia/transferia/pkg/providers/kafka/client"
 	serializer "github.com/transferia/transferia/pkg/serializer/queue"
 	"go.ytsaurus.tech/library/go/core/log"
 )
@@ -20,7 +20,7 @@ var _ AbstractWriter = (*Writer)(nil)
 
 type Writer struct {
 	brokers       []string
-	saslMechanism sasl.Mechanism
+	saslMechanism segmentio_sasl.Mechanism
 	tlsConfig     *tls.Config
 	topicConfig   [][2]string
 
@@ -32,7 +32,7 @@ type Writer struct {
 	rawKafkaWriter *kafka.Writer
 }
 
-func NewWriter(brokers []string, compression kafka.Compression, saslMechanism sasl.Mechanism, tlsConfig *tls.Config, topicConfig [][2]string, batchBytes int64, dial func(ctx context.Context, network string, address string) (net.Conn, error)) *Writer {
+func NewWriter(brokers []string, compression kafka.Compression, saslMechanism segmentio_sasl.Mechanism, tlsConfig *tls.Config, topicConfig [][2]string, batchBytes int64, dial func(ctx context.Context, network string, address string) (net.Conn, error)) *Writer {
 	rawKafkaWriter := &kafka.Writer{
 		Addr:                            kafka.TCP(brokers...),
 		Balancer:                        &kafka.Hash{},
@@ -68,7 +68,7 @@ func (w *Writer) ensureTopicExists(lgr log.Logger, topic string) error {
 	if w.knownTopics[writerID] {
 		return nil
 	}
-	kafkaClient, err := client.NewClient(w.brokers, w.saslMechanism, w.tlsConfig, w.dial)
+	kafkaClient, err := kafka_client.NewClient(w.brokers, w.saslMechanism, w.tlsConfig, w.dial)
 	if err != nil {
 		return xerrors.Errorf("unable to create kafka client, err: %w", err)
 	}

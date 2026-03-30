@@ -3,12 +3,12 @@ package stats
 import (
 	"time"
 
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/metrics/solomon"
 )
 
 type RepositoryStat struct {
-	DecodeTransferWithEndpointsError metrics.Counter
+	DecodeTransferWithEndpointsError core_metrics.Counter
 }
 
 func NewRepositoryStat() *RepositoryStat {

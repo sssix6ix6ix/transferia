@@ -1,7 +1,7 @@
 package mysql
 
 import (
-	"database/sql/driver"
+	sql_driver "database/sql/driver"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -10,7 +10,7 @@ import (
 
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 func isUnsigned(rawColumnType string) bool {
@@ -43,20 +43,20 @@ func CastToMySQL(val interface{}, typ abstract.ColSchema) string {
 			return fmt.Sprintf("X'%v'", valueHexStr)
 		}
 	}
-	if typ.DataType == string(schema.TypeAny) {
+	if typ.DataType == string(ytschema.TypeAny) {
 		valueJSON, _ := json.Marshal(val)
 		return quoteString(string(valueJSON))
 	}
 
 	switch v := val.(type) {
-	case driver.Valuer:
+	case sql_driver.Valuer:
 		val, _ := v.Value()
 		return CastToMySQL(val, typ)
 	case string:
 		return strings.ToValidUTF8(quoteString(v), "�")
 	case time.Time:
 		switch typ.DataType {
-		case string(schema.TypeDate):
+		case string(ytschema.TypeDate):
 			return fmt.Sprintf("'%v'", v.Format(layoutDateMySQL))
 		default:
 			return fmt.Sprintf("'%v'", v.Format(layoutDatetimeMySQL))
@@ -114,83 +114,83 @@ func TypeToMySQL(column abstract.ColSchema) string {
 	if strings.HasPrefix(column.OriginalType, "mysql:") {
 		return strings.TrimPrefix(column.OriginalType, "mysql:")
 	}
-	switch schema.Type(column.DataType) {
-	case schema.TypeAny:
+	switch ytschema.Type(column.DataType) {
+	case ytschema.TypeAny:
 		return "JSON"
-	case schema.TypeBoolean:
+	case ytschema.TypeBoolean:
 		return "BIT(2)"
-	case schema.TypeString:
+	case ytschema.TypeString:
 		return "TEXT"
-	case schema.TypeInterval:
+	case ytschema.TypeInterval:
 		return "TEXT"
-	case schema.TypeBytes:
+	case ytschema.TypeBytes:
 		return "TEXT"
-	case schema.TypeInt8, schema.TypeUint8:
+	case ytschema.TypeInt8, ytschema.TypeUint8:
 		return "TINYINT"
-	case schema.TypeInt16, schema.TypeUint16:
+	case ytschema.TypeInt16, ytschema.TypeUint16:
 		return "SMALLINT"
-	case schema.TypeInt32, schema.TypeUint32:
+	case ytschema.TypeInt32, ytschema.TypeUint32:
 		return "INT"
-	case schema.TypeInt64, schema.TypeUint64:
+	case ytschema.TypeInt64, ytschema.TypeUint64:
 		return "BIGINT"
-	case schema.TypeFloat64, schema.TypeFloat32:
+	case ytschema.TypeFloat64, ytschema.TypeFloat32:
 		return "FLOAT"
-	case schema.TypeDate:
+	case ytschema.TypeDate:
 		return "DATE"
-	case schema.TypeDatetime, schema.TypeTimestamp:
+	case ytschema.TypeDatetime, ytschema.TypeTimestamp:
 		return "TIMESTAMP"
 	}
 	return column.DataType
 }
 
-func TypeToYt(rawColumnType string) schema.Type {
+func TypeToYt(rawColumnType string) ytschema.Type {
 	return typeToYt(abstract.TrimMySQLType(rawColumnType), rawColumnType)
 }
 
-func typeToYt(dataType string, rawColumnType string) schema.Type {
+func typeToYt(dataType string, rawColumnType string) ytschema.Type {
 	unsigned := isUnsigned(rawColumnType)
 
 	switch dataType {
 	case "tinyint":
 		if unsigned {
-			return schema.TypeUint8
+			return ytschema.TypeUint8
 		} else {
-			return schema.TypeInt8
+			return ytschema.TypeInt8
 		}
 	case "smallint":
 		if unsigned {
-			return schema.TypeUint16
+			return ytschema.TypeUint16
 		} else {
-			return schema.TypeInt16
+			return ytschema.TypeInt16
 		}
 	case "int", "mediumint":
 		if unsigned {
-			return schema.TypeUint32
+			return ytschema.TypeUint32
 		} else {
-			return schema.TypeInt32
+			return ytschema.TypeInt32
 		}
 	case "bigint":
 		if unsigned {
-			return schema.TypeUint64
+			return ytschema.TypeUint64
 		} else {
-			return schema.TypeInt64
+			return ytschema.TypeInt64
 		}
 	case "decimal", "double", "float":
-		return schema.TypeFloat64
+		return ytschema.TypeFloat64
 	case "date":
-		return schema.TypeDate
+		return ytschema.TypeDate
 	case "datetime", "timestamp":
-		return schema.TypeTimestamp // TODO: TM-2944
+		return ytschema.TypeTimestamp // TODO: TM-2944
 	case "tinytext", "text", "mediumtext", "longtext", "varchar", "char", "time", "year", "enum", "set":
-		return schema.TypeString
+		return ytschema.TypeString
 	case "tinyblob", "blob", "mediumblob", "longblob", "binary", "varbinary", "bit":
-		return schema.TypeBytes
+		return ytschema.TypeBytes
 	case "geometry", "geomcollection", "point", "multipoint", "linestring", "multilinestring", "polygon", "multipolygon":
-		return schema.TypeBytes
+		return ytschema.TypeBytes
 	case "json":
-		return schema.TypeAny
+		return ytschema.TypeAny
 	default:
 		logger.Log.Debugf("Unknown type '%v' on inferring stage", dataType)
-		return schema.TypeBytes
+		return ytschema.TypeBytes
 	}
 }

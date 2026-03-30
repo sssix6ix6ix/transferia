@@ -1,7 +1,7 @@
 package randutil
 
 import (
-	"crypto/rand"
+	crypto_rand "crypto/rand"
 )
 
 var AlphanumericValues string
@@ -20,7 +20,7 @@ func init() {
 func GenerateSample(values []byte, length int) []byte {
 	sample := make([]byte, length)
 	// TODO: check if it's okay to use global rand
-	_, _ = rand.Read(sample)
+	_, _ = crypto_rand.Read(sample)
 	for i := range sample {
 		sample[i] = values[int(sample[i])%len(values)]
 	}

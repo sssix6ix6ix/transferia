@@ -1,7 +1,7 @@
 package delta
 
 import (
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
@@ -29,7 +29,7 @@ var (
 
 type Provider struct {
 	logger   log.Logger
-	registry metrics.Registry
+	registry core_metrics.Registry
 	transfer *model.Transfer
 }
 

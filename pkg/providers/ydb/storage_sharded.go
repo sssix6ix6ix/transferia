@@ -7,9 +7,9 @@ import (
 
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	"github.com/ydb-platform/ydb-go-sdk/v3/scheme"
-	"github.com/ydb-platform/ydb-go-sdk/v3/table"
-	"github.com/ydb-platform/ydb-go-sdk/v3/table/options"
+	ydb_scheme "github.com/ydb-platform/ydb-go-sdk/v3/scheme"
+	ydb_table "github.com/ydb-platform/ydb-go-sdk/v3/table"
+	ydb_options "github.com/ydb-platform/ydb-go-sdk/v3/table/options"
 )
 
 const defaultCopyFolder = "data-transfer"
@@ -35,13 +35,13 @@ func (s *Storage) BeginSnapshot(ctx context.Context) error {
 		return xerrors.Errorf("failed to create copy directory: %w", err)
 	}
 
-	copyItems := make([]options.CopyTablesOption, len(tables))
+	copyItems := make([]ydb_options.CopyTablesOption, len(tables))
 	for i, tableName := range tables {
 		tablePath := path.Join(s.config.Database, tableName)
 		copyPath := s.makeTablePath("", s.modifyTableName(tableName))
-		copyItems[i] = options.CopyTablesItem(tablePath, copyPath, false)
+		copyItems[i] = ydb_options.CopyTablesItem(tablePath, copyPath, false)
 	}
-	return s.db.Table().Do(ctx, func(ctx context.Context, session table.Session) (err error) {
+	return s.db.Table().Do(ctx, func(ctx context.Context, session ydb_table.Session) (err error) {
 		err = session.CopyTables(ctx, copyItems...)
 		if err != nil {
 			return xerrors.Errorf("failed to copy tables to transfer directory: %w", err)
@@ -61,10 +61,10 @@ func (s *Storage) EndSnapshot(ctx context.Context) error {
 		return xerrors.Errorf("failed to list copy directory: %w", err)
 	}
 
-	err = s.db.Table().Do(ctx, func(ctx context.Context, session table.Session) (err error) {
+	err = s.db.Table().Do(ctx, func(ctx context.Context, session ydb_table.Session) (err error) {
 		for _, copyTable := range content.Children {
 			copyPath := s.makeTablePath("", copyTable.Name)
-			if copyTable.Type != scheme.EntryTable && copyTable.Type != scheme.EntryColumnTable {
+			if copyTable.Type != ydb_scheme.EntryTable && copyTable.Type != ydb_scheme.EntryColumnTable {
 				return xerrors.Errorf("only tables must be present in copy directory, found %v", copyPath)
 			}
 			if err = session.DropTable(ctx, copyPath); err != nil {
@@ -90,8 +90,8 @@ func (s *Storage) ShardTable(ctx context.Context, tableDesc abstract.TableDescri
 
 	copyPath := s.makeTablePath(tableDesc.Schema, tableDesc.Name)
 	var result []abstract.TableDescription
-	err := s.db.Table().Do(ctx, func(ctx context.Context, session table.Session) (err error) {
-		tableDescription, err := session.DescribeTable(ctx, copyPath, options.WithShardKeyBounds())
+	err := s.db.Table().Do(ctx, func(ctx context.Context, session ydb_table.Session) (err error) {
+		tableDescription, err := session.DescribeTable(ctx, copyPath, ydb_options.WithShardKeyBounds())
 		if err != nil {
 			return xerrors.Errorf("unable to describe table: %w", err)
 		}

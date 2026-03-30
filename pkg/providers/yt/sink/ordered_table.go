@@ -17,11 +17,11 @@ import (
 	"github.com/transferia/transferia/library/go/ptr"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/kv"
-	yt2 "github.com/transferia/transferia/pkg/providers/yt"
+	provider_yt "github.com/transferia/transferia/pkg/providers/yt"
 	"github.com/transferia/transferia/pkg/stats"
 	"go.ytsaurus.tech/library/go/core/log"
 	"go.ytsaurus.tech/yt/go/migrate"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 	"go.ytsaurus.tech/yt/go/ypath"
 	"go.ytsaurus.tech/yt/go/yson"
 	"go.ytsaurus.tech/yt/go/yt"
@@ -35,7 +35,7 @@ type OrderedTable struct {
 	logger                 log.Logger
 	metrics                *stats.SinkerStats
 	schema                 []abstract.ColSchema
-	config                 yt2.YtDestinationModel
+	config                 provider_yt.YtDestinationModel
 	mutex                  sync.Mutex
 	partitionToTabletIndex *kv.YtDynTableKVWrapper
 	lbOffsetToRowIndex     *kv.YtDynTableKVWrapper
@@ -120,11 +120,11 @@ func (t *OrderedTable) Init() error {
 		}
 	}
 
-	s := make([]schema.Column, len(t.schema))
+	s := make([]ytschema.Column, len(t.schema))
 	for i, col := range t.schema {
-		s[i] = schema.Column{
+		s[i] = ytschema.Column{
 			Name: col.ColumnName,
-			Type: schema.Type(col.DataType),
+			Type: ytschema.Type(col.DataType),
 		}
 	}
 
@@ -142,7 +142,7 @@ func (t *OrderedTable) Init() error {
 
 	ddlCommand := map[ypath.Path]migrate.Table{}
 	ddlCommand[t.path] = migrate.Table{
-		Schema: schema.Schema{
+		Schema: ytschema.Schema{
 			UniqueKeys: false,
 			Columns:    s,
 		},
@@ -435,7 +435,7 @@ func (t *OrderedTable) ensureTablets(maxTablet uint32) error {
 
 	t.logger.Infof("Reshard table, newTabletCount: %v, prev tabletsCount: %v", newTabletCount, t.tabletsCount)
 
-	if err := yt2.MountUnmountWrapper(ctx, t.ytClient, t.path, migrate.UnmountAndWait); err != nil {
+	if err := provider_yt.MountUnmountWrapper(ctx, t.ytClient, t.path, migrate.UnmountAndWait); err != nil {
 		return err
 	}
 
@@ -449,7 +449,7 @@ func (t *OrderedTable) ensureTablets(maxTablet uint32) error {
 
 	t.logger.Infof("table resharded")
 
-	if err := yt2.MountUnmountWrapper(ctx, t.ytClient, t.path, migrate.MountAndWait); err != nil {
+	if err := provider_yt.MountUnmountWrapper(ctx, t.ytClient, t.path, migrate.MountAndWait); err != nil {
 		//nolint:descriptiveerrors
 		return err
 	}
@@ -465,7 +465,7 @@ func (t *OrderedTable) ensureTablets(maxTablet uint32) error {
 	return nil
 }
 
-func NewOrderedTable(ytClient yt.Client, path ypath.Path, schema []abstract.ColSchema, cfg yt2.YtDestinationModel, metrics *stats.SinkerStats, logger log.Logger) (GenericTable, error) {
+func NewOrderedTable(ytClient yt.Client, path ypath.Path, schema []abstract.ColSchema, cfg provider_yt.YtDestinationModel, metrics *stats.SinkerStats, logger log.Logger) (GenericTable, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
@@ -479,7 +479,7 @@ func NewOrderedTable(ytClient yt.Client, path ypath.Path, schema []abstract.ColS
 	partitionToTabletIndex, err := kv.NewYtDynTableKVWrapper(
 		ctx,
 		ytClient,
-		yt2.SafeChild(dir, "meta", tableName+"__partition_to_tablet_index"),
+		provider_yt.SafeChild(dir, "meta", tableName+"__partition_to_tablet_index"),
 		*new(PartitionToTabletIndexKey),
 		*new(PartitionToTabletIndexVal),
 		cfg.CellBundle(),
@@ -496,7 +496,7 @@ func NewOrderedTable(ytClient yt.Client, path ypath.Path, schema []abstract.ColS
 	lbOffsetToRowIndex, err := kv.NewYtDynTableKVWrapper(
 		ctx,
 		ytClient,
-		yt2.SafeChild(dir, "meta", tableName+"__lb_offset_to_row_index"),
+		provider_yt.SafeChild(dir, "meta", tableName+"__lb_offset_to_row_index"),
 		*new(LbOffsetToRowIndexKey),
 		*new(LbOffsetToRowIndexVal),
 		cfg.CellBundle(),
@@ -523,7 +523,7 @@ func NewOrderedTable(ytClient yt.Client, path ypath.Path, schema []abstract.ColS
 		mutex:                  sync.Mutex{},
 		partitionToTabletIndex: partitionToTabletIndex,
 		lbOffsetToRowIndex:     lbOffsetToRowIndex,
-		pathToReshardLock:      yt2.SafeChild(dir, "meta", tableName+"__reshard_lock"),
+		pathToReshardLock:      provider_yt.SafeChild(dir, "meta", tableName+"__reshard_lock"),
 		tabletsCount:           1,
 		knownPartitions:        map[string]bool{},
 	}

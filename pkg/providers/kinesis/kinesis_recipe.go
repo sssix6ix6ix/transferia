@@ -4,18 +4,18 @@ import (
 	"context"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/kinesis"
-	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/network"
+	aws_credentials "github.com/aws/aws-sdk-go/aws/credentials"
+	aws_session "github.com/aws/aws-sdk-go/aws/session"
+	aws_kinesis "github.com/aws/aws-sdk-go/service/kinesis"
+	testcontainers_go "github.com/testcontainers/testcontainers-go"
+	tc_network "github.com/testcontainers/testcontainers-go/network"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	tc_localstack "github.com/transferia/transferia/tests/tcrecipes/localstack"
 )
 
 func Prepare(img string) (string, error) {
 	ctx := context.Background()
-	net, err := network.New(ctx)
+	net, err := tc_network.New(ctx)
 	if err != nil {
 		return "", xerrors.Errorf("Failed to create network: %w", err)
 	}
@@ -23,8 +23,8 @@ func Prepare(img string) (string, error) {
 	res, err := tc_localstack.Run(
 		ctx,
 		img,
-		network.WithNetwork([]string{"localstack"}, net),
-		testcontainers.WithEnv(map[string]string{"SERVICES": "kinesis"}),
+		tc_network.WithNetwork([]string{"localstack"}, net),
+		testcontainers_go.WithEnv(map[string]string{"SERVICES": "kinesis"}),
 	)
 	if err != nil {
 		return "", xerrors.Errorf("Failed to run localstack container: %w", err)
@@ -38,28 +38,28 @@ func Prepare(img string) (string, error) {
 	return endpoint, nil
 }
 
-func NewClient(src *KinesisSource) (*kinesis.Kinesis, error) {
-	session := session.Must(session.NewSession(
+func NewClient(src *KinesisSource) (*aws_kinesis.Kinesis, error) {
+	session := aws_session.Must(aws_session.NewSession(
 		&aws.Config{
 			Region: &src.Region,
-			Credentials: credentials.NewStaticCredentials(src.AccessKey,
+			Credentials: aws_credentials.NewStaticCredentials(src.AccessKey,
 				string(src.SecretKey), ""),
 			Endpoint: &src.Endpoint,
 		}),
 	)
 
-	client := *kinesis.New(session)
+	client := *aws_kinesis.New(session)
 	return &client, nil
 }
 
-func CreateStream(streamName string, client *kinesis.Kinesis) error {
-	if _, err := client.CreateStream(&kinesis.CreateStreamInput{
+func CreateStream(streamName string, client *aws_kinesis.Kinesis) error {
+	if _, err := client.CreateStream(&aws_kinesis.CreateStreamInput{
 		StreamName: &streamName,
 	}); err != nil {
 		return xerrors.Errorf("Failed to create stream: %w", err)
 	}
 
-	if err := client.WaitUntilStreamExists(&kinesis.DescribeStreamInput{
+	if err := client.WaitUntilStreamExists(&aws_kinesis.DescribeStreamInput{
 		StreamName: &streamName,
 	}); err != nil {
 		return xerrors.Errorf("Failed to create stream: %w", err)

@@ -3,19 +3,19 @@ package protoscanner
 import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	"github.com/transferia/transferia/pkg/parsers/scanner"
+	parsers_scanner "github.com/transferia/transferia/pkg/parsers/scanner"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/dynamicpb"
 )
 
 type SplitterScanner struct {
-	scanner scanner.EventScanner
+	scanner parsers_scanner.EventScanner
 	msgDesc protoreflect.MessageDescriptor
 }
 
 func NewSplitterScanner(lineSplitter abstract.LfLineSplitter, data []byte, msgDesc protoreflect.MessageDescriptor) (*SplitterScanner, error) {
-	sc, err := scanner.NewScanner(lineSplitter, data)
+	sc, err := parsers_scanner.NewScanner(lineSplitter, data)
 	if err != nil {
 		return nil, xerrors.Errorf("construct underlying scanner error: %w", err)
 	}

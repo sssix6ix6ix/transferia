@@ -5,7 +5,7 @@ import (
 
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/credentials"
-	v3credential "github.com/ydb-platform/ydb-go-sdk/v3/credentials"
+	ydb_credentials "github.com/ydb-platform/ydb-go-sdk/v3/credentials"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
@@ -42,7 +42,7 @@ func ResolveCredentials(
 	oauthToken string,
 	jwt JWTAuthParams,
 	serviceAccountID string,
-	oauthConfig *v3credential.OAuth2Config,
+	oauthConfig *ydb_credentials.OAuth2Config,
 	logger log.Logger,
 ) (TokenCredentials, error) {
 	if serviceAccountID != "" {
@@ -75,7 +75,7 @@ func ResolveCredentials(
 		if err != nil {
 			return nil, xerrors.Errorf("connot extract oauth2 options: %w", err)
 		}
-		cc, err := v3credential.NewOauth2TokenExchangeCredentials(opts...)
+		cc, err := ydb_credentials.NewOauth2TokenExchangeCredentials(opts...)
 		if err != nil {
 			return nil, xerrors.Errorf("cannot create oauth credentials: %w", err)
 		}
@@ -84,5 +84,5 @@ func ResolveCredentials(
 	if userDataAuth {
 		return credentials.NewIamCreds(logger)
 	}
-	return v3credential.NewAnonymousCredentials(), nil
+	return ydb_credentials.NewAnonymousCredentials(), nil
 }

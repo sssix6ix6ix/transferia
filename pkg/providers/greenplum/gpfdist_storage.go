@@ -8,7 +8,7 @@ import (
 
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/transferia/transferia/internal/logger"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/changeitem"
@@ -26,7 +26,7 @@ type GpfdistStorage struct {
 	params  gpfdistbin.GpfdistParams
 }
 
-func NewGpfdistStorage(src *GpSource, mRegistry metrics.Registry, params gpfdistbin.GpfdistParams) *GpfdistStorage {
+func NewGpfdistStorage(src *GpSource, mRegistry core_metrics.Registry, params gpfdistbin.GpfdistParams) *GpfdistStorage {
 	baseStorage := NewStorage(src, mRegistry)
 	baseStorage.overridePostgresesCfg(pgStorageConfig{
 		DisableCheckReplIdentity: true,

@@ -8,9 +8,9 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
-	cpclient "github.com/transferia/transferia/pkg/abstract/coordinator"
+	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/chrecipe"
-	pgcommon "github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
 	"github.com/transferia/transferia/pkg/runtime/local"
 	"github.com/transferia/transferia/pkg/worker/tasks"
@@ -36,9 +36,9 @@ func TestSnapshotAndIncrement(t *testing.T) {
 		))
 	}()
 
-	connConfig, err := pgcommon.MakeConnConfigFromSrc(logger.Log, &Source)
+	connConfig, err := provider_postgres.MakeConnConfigFromSrc(logger.Log, &Source)
 	require.NoError(t, err)
-	conn, err := pgcommon.NewPgConnPool(connConfig, logger.Log)
+	conn, err := provider_postgres.NewPgConnPool(connConfig, logger.Log)
 	require.NoError(t, err)
 
 	//------------------------------------------------------------------------------------
@@ -46,10 +46,10 @@ func TestSnapshotAndIncrement(t *testing.T) {
 
 	transfer := helpers.MakeTransfer(helpers.TransferID, &Source, &Target, TransferType)
 
-	err = tasks.ActivateDelivery(context.Background(), nil, cpclient.NewFakeClient(), *transfer, helpers.EmptyRegistry())
+	err = tasks.ActivateDelivery(context.Background(), nil, coordinator.NewFakeClient(), *transfer, helpers.EmptyRegistry())
 	require.NoError(t, err)
 
-	localWorker := local.NewLocalWorker(cpclient.NewFakeClient(), transfer, helpers.EmptyRegistry(), logger.Log)
+	localWorker := local.NewLocalWorker(coordinator.NewFakeClient(), transfer, helpers.EmptyRegistry(), logger.Log)
 	localWorker.Start()
 	defer localWorker.Stop() //nolint
 

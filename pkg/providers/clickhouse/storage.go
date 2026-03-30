@@ -14,24 +14,24 @@ import (
 	"github.com/cenkalti/backoff/v4"
 	"github.com/dustin/go-humanize"
 	"github.com/transferia/transferia/internal/logger"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/metrics/solomon"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	yslices "github.com/transferia/transferia/library/go/slices"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/changeitem"
-	dp_model "github.com/transferia/transferia/pkg/abstract/model"
+	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/conn"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/errors"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/model"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/schema"
+	clickhouse_errors "github.com/transferia/transferia/pkg/providers/clickhouse/errors"
+	clickhouse_model "github.com/transferia/transferia/pkg/providers/clickhouse/model"
+	clickhouse_schema "github.com/transferia/transferia/pkg/providers/clickhouse/schema"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/topology"
 	"github.com/transferia/transferia/pkg/stats"
 	"github.com/transferia/transferia/pkg/util"
 	"github.com/transferia/transferia/pkg/util/set"
 	"github.com/transferia/transferia/pkg/util/size"
 	"go.ytsaurus.tech/library/go/core/log"
-	"golang.org/x/exp/maps"
+	xmaps "golang.org/x/exp/maps"
 )
 
 var (
@@ -58,7 +58,7 @@ var (
 
 type ClickhouseStorage interface {
 	abstract.ChecksumableStorage
-	LoadTablesDDL(tables []abstract.TableID) ([]*schema.TableDDL, error)
+	LoadTablesDDL(tables []abstract.TableID) ([]*clickhouse_schema.TableDDL, error)
 	BuildTableQuery(table abstract.TableDescription) (*abstract.TableSchema, string, string, error)
 	GetRowsCount(tableID abstract.TableID) (uint64, error)
 	TableParts(ctx context.Context, table abstract.TableID) ([]TablePart, error)
@@ -539,7 +539,7 @@ func (s *Storage) parsePkeys(raw string) []string {
 
 func (s *Storage) discoverTableSchema(t table) (*abstract.TableInfo, error) {
 	cols, err := backoff.RetryWithData[*abstract.TableSchema](func() (*abstract.TableSchema, error) {
-		return schema.DescribeTable(s.db, t.database, t.name, t.primaryKeys)
+		return clickhouse_schema.DescribeTable(s.db, t.database, t.name, t.primaryKeys)
 	}, backoff.NewExponentialBackOff())
 	if err != nil {
 		return nil, xerrors.Errorf("unable to describe table: %s: %w", t.ToTableID(), err)
@@ -591,7 +591,7 @@ func (s *Storage) TableList(includeTableFilter abstract.IncludeTableList) (abstr
 }
 
 func (s *Storage) checkTables(tables abstract.TableMap) error {
-	ddls, err := s.LoadTablesDDL(maps.Keys(tables))
+	ddls, err := s.LoadTablesDDL(xmaps.Keys(tables))
 	if err != nil {
 		return xerrors.Errorf(": %w", err)
 	}
@@ -658,10 +658,10 @@ func makeFilters(tables []abstract.TableID) (string, string) {
 	return dbs, names
 }
 
-func (s *Storage) LoadTablesDDL(tables []abstract.TableID) ([]*schema.TableDDL, error) {
+func (s *Storage) LoadTablesDDL(tables []abstract.TableID) ([]*clickhouse_schema.TableDDL, error) {
 	dbFilter, nameFilter := makeFilters(tables)
 	q := fmt.Sprintf("select database, name, create_table_query, engine from system.tables where database in %v and name in %v", dbFilter, nameFilter)
-	foundDdls := make(map[abstract.TableID]*schema.TableDDL)
+	foundDdls := make(map[abstract.TableID]*clickhouse_schema.TableDDL)
 	if err := backoff.Retry(func() error {
 		tablesRes, err := s.db.Query(q)
 		if err != nil {
@@ -678,7 +678,7 @@ func (s *Storage) LoadTablesDDL(tables []abstract.TableID) ([]*schema.TableDDL, 
 				Namespace: database,
 				Name:      name,
 			}
-			foundDdls[tID] = schema.NewTableDDL(
+			foundDdls[tID] = clickhouse_schema.NewTableDDL(
 				abstract.TableID{Namespace: database, Name: name},
 				createDDL,
 				engine,
@@ -692,9 +692,9 @@ func (s *Storage) LoadTablesDDL(tables []abstract.TableID) ([]*schema.TableDDL, 
 		return nil, xerrors.Errorf("unable to load table DDL: %w", err)
 	}
 
-	ddls := make([]*schema.TableDDL, 0)
+	ddls := make([]*clickhouse_schema.TableDDL, 0)
 	missedTables := make([]string, 0)
-	materializedViews := make([]*schema.TableDDL, 0)
+	materializedViews := make([]*clickhouse_schema.TableDDL, 0)
 	for _, tID := range tables {
 		ddl, ok := foundDdls[tID]
 		if !ok {
@@ -714,12 +714,12 @@ func (s *Storage) LoadTablesDDL(tables []abstract.TableID) ([]*schema.TableDDL, 
 	return ddls, nil
 }
 
-func MakeConnection(cfg *model.ChStorageParams) (*sql.DB, error) {
+func MakeConnection(cfg *clickhouse_model.ChStorageParams) (*sql.DB, error) {
 	return makeShardConnection(cfg, "")
 }
 
-func makeShardConnection(cfg *model.ChStorageParams, shardName string) (*sql.DB, error) {
-	hosts, err := model.ConnectionHosts(cfg, shardName)
+func makeShardConnection(cfg *clickhouse_model.ChStorageParams, shardName string) (*sql.DB, error) {
+	hosts, err := clickhouse_model.ConnectionHosts(cfg, shardName)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to resolve ClickHouse configuration to a list of hosts: %w", err)
 	}
@@ -814,7 +814,7 @@ func WithShardName(shardName string) StorageOpt {
 	}
 }
 
-func WithMetrics(registry metrics.Registry) StorageOpt {
+func WithMetrics(registry core_metrics.Registry) StorageOpt {
 	return func(storage *Storage) *Storage {
 		storage.metrics = stats.NewSourceStats(registry)
 		return storage
@@ -863,7 +863,7 @@ func parseSemver(version string) (*semver.Version, error) {
 	}, nil
 }
 
-func NewStorage(config *model.ChStorageParams, transfer *dp_model.Transfer, opts ...StorageOpt) (ClickhouseStorage, error) {
+func NewStorage(config *clickhouse_model.ChStorageParams, transfer *model.Transfer, opts ...StorageOpt) (ClickhouseStorage, error) {
 	singleHost := false
 	if len(config.ConnectionParams.Shards) > 1 {
 		res, err := NewShardedFromUrls(config, transfer, opts...)
@@ -883,7 +883,7 @@ func NewStorage(config *model.ChStorageParams, transfer *dp_model.Transfer, opts
 		var version string
 
 		if err := db.QueryRow("select version();").Scan(&version); err != nil {
-			if errors.IsFatalClickhouseError(err) {
+			if clickhouse_errors.IsFatalClickhouseError(err) {
 				return "", backoff.Permanent(xerrors.Errorf("unable to select clickhouse version: %w", err))
 			}
 			return "", xerrors.Errorf("unable to select clickhouse %s version: %w", config.String(), err)

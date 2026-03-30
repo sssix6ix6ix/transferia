@@ -5,9 +5,9 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/transferia/transferia/cmd/trcli/activate"
-	"github.com/transferia/transferia/cmd/trcli/config"
+	trcli_config "github.com/transferia/transferia/cmd/trcli/config"
 	"github.com/transferia/transferia/internal/logger"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
@@ -16,7 +16,7 @@ import (
 	"github.com/transferia/transferia/pkg/runtime/local"
 )
 
-func ReplicateCommand(cp *coordinator.Coordinator, rt abstract.Runtime, registry metrics.Registry) *cobra.Command {
+func ReplicateCommand(cp *coordinator.Coordinator, rt abstract.Runtime, registry core_metrics.Registry) *cobra.Command {
 	var transferParams string
 	var metricsPrefix string
 
@@ -30,9 +30,9 @@ func ReplicateCommand(cp *coordinator.Coordinator, rt abstract.Runtime, registry
 	return replicationCommand
 }
 
-func replicate(cp *coordinator.Coordinator, rt abstract.Runtime, transferYaml *string, registry metrics.Registry, metricsPrefix string) func(cmd *cobra.Command, args []string) error {
+func replicate(cp *coordinator.Coordinator, rt abstract.Runtime, transferYaml *string, registry core_metrics.Registry, metricsPrefix string) func(cmd *cobra.Command, args []string) error {
 	return func(cmd *cobra.Command, args []string) error {
-		transfer, err := config.TransferFromYaml(transferYaml)
+		transfer, err := trcli_config.TransferFromYaml(transferYaml)
 		if err != nil {
 			return xerrors.Errorf("unable to load transfer: %w", err)
 		}
@@ -46,7 +46,7 @@ func replicate(cp *coordinator.Coordinator, rt abstract.Runtime, transferYaml *s
 	}
 }
 
-func RunReplication(cp coordinator.Coordinator, transfer *model.Transfer, registry metrics.Registry) error {
+func RunReplication(cp coordinator.Coordinator, transfer *model.Transfer, registry core_metrics.Registry) error {
 	if err := provideradapter.ApplyForTransfer(transfer); err != nil {
 		return xerrors.Errorf("unable to adapt transfer: %w", err)
 	}

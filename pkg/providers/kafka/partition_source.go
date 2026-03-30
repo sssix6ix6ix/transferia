@@ -5,11 +5,11 @@ import (
 	"errors"
 	"time"
 
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	queue_to_s3_parsequeue "github.com/transferia/transferia/pkg/parsequeue/queue_to_s3"
-	"github.com/transferia/transferia/pkg/providers/kafka/reader"
+	kafka_reader "github.com/transferia/transferia/pkg/providers/kafka/reader"
 	"github.com/transferia/transferia/pkg/util/queues/sequencer"
 	"github.com/transferia/transferia/pkg/util/throttler"
 	"go.ytsaurus.tech/library/go/core/log"
@@ -100,7 +100,7 @@ type PartitionDescription struct {
 	Partition int32
 }
 
-func NewPartitionSource(transferID string, cfg *KafkaSource, partitionDesc PartitionDescription, logger log.Logger, registry metrics.Registry) (*PartitionSource, error) {
+func NewPartitionSource(transferID string, cfg *KafkaSource, partitionDesc PartitionDescription, logger log.Logger, registry core_metrics.Registry) (*PartitionSource, error) {
 	opts, err := kafkaClientCommonOptions(cfg)
 	if err != nil {
 		return nil, xerrors.Errorf("unable to build options for partition source: %w", err)
@@ -121,7 +121,7 @@ func NewPartitionSource(transferID string, cfg *KafkaSource, partitionDesc Parti
 
 	topic := cfg.Topic
 	partition := partitionDesc.Partition
-	r, err := reader.NewPartitionReader(transferID, partition, topic, opts)
+	r, err := kafka_reader.NewPartitionReader(transferID, partition, topic, opts)
 	if err != nil {
 		return nil, xerrors.Errorf("unable to create reader for partition: %w", err)
 	}

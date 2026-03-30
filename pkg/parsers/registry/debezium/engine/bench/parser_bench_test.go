@@ -9,7 +9,7 @@ import (
 
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/parsers"
-	"github.com/transferia/transferia/pkg/parsers/registry/debezium/engine"
+	debezium_engine "github.com/transferia/transferia/pkg/parsers/registry/debezium/engine"
 )
 
 //go:embed parser_test.jsonl
@@ -20,7 +20,7 @@ func BenchmarkParsingViaMultithreading(b *testing.B) {
 	b.ResetTimer()
 	for _, size := range batchSizes {
 		for threads := 1; threads <= runtime.NumCPU()*8; threads *= 2 {
-			parser := engine.NewDebeziumImpl(logger.Log, nil, uint64(threads))
+			parser := debezium_engine.NewDebeziumImpl(logger.Log, nil, uint64(threads))
 			batch := makeBenchBatch(size)
 			b.ResetTimer()
 			b.Run(fmt.Sprintf("process %d messages in batch in %d threads", size, threads), func(b *testing.B) {

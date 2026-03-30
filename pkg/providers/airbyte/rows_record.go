@@ -13,7 +13,7 @@ import (
 	"github.com/transferia/transferia/pkg/abstract2/adapter"
 	"github.com/transferia/transferia/pkg/abstract2/events"
 	"github.com/transferia/transferia/pkg/abstract2/types"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 type RowsRecord struct {
@@ -66,8 +66,8 @@ func (s *RowsRecord) ToOldChangeItem() (*abstract.ChangeItem, error) {
 }
 
 func restore(col abstract.ColSchema, val interface{}) (interface{}, error) {
-	switch schema.Type(col.DataType) {
-	case schema.TypeInt64:
+	switch ytschema.Type(col.DataType) {
+	case ytschema.TypeInt64:
 		switch v := val.(type) {
 		case string:
 			parsedInt, err := strconv.Atoi(v)

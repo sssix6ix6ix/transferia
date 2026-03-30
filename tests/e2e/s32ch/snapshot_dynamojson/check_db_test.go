@@ -6,17 +6,17 @@ import (
 	"testing"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
+	aws_credentials "github.com/aws/aws-sdk-go/aws/credentials"
+	aws_session "github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/pkg/abstract"
-	dp_model "github.com/transferia/transferia/pkg/abstract/model"
+	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/chrecipe"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/model"
-	"github.com/transferia/transferia/pkg/providers/s3"
+	clickhouse_model "github.com/transferia/transferia/pkg/providers/clickhouse/model"
+	s3_model "github.com/transferia/transferia/pkg/providers/s3/model"
 	"github.com/transferia/transferia/pkg/providers/s3/s3recipe"
-	"github.com/transferia/transferia/tests/canon/reference"
+	canon_reference "github.com/transferia/transferia/tests/canon/reference"
 	"github.com/transferia/transferia/tests/helpers"
 	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
@@ -27,12 +27,12 @@ var (
 	fname   = "dynamo.jsonl"
 )
 
-func buildSourceModel(t *testing.T) *s3.S3Source {
+func buildSourceModel(t *testing.T) *s3_model.S3Source {
 	src := s3recipe.PrepareCfg(t, "", "")
 	src.TableNamespace = "example"
 	src.TableName = "data"
-	src.InputFormat = dp_model.ParsingFormatJSON
-	src.Format.JSONLSetting = new(s3.JSONLSetting)
+	src.InputFormat = model.ParsingFormatJSON
+	src.Format.JSONLSetting = new(s3_model.JSONLSetting)
 	src.Format.JSONLSetting.BlockSize = 1 * 1024 * 1024
 	src.OutputSchema = []abstract.ColSchema{
 		{ColumnName: "OrderID", DataType: ytschema.TypeString.String(), Path: "Item.OrderID.S", PrimaryKey: true},
@@ -44,14 +44,14 @@ func buildSourceModel(t *testing.T) *s3.S3Source {
 	return src
 }
 
-func testNativeS3(t *testing.T, src *s3.S3Source) {
+func testNativeS3(t *testing.T, src *s3_model.S3Source) {
 	dst := *chrecipe.MustTarget(chrecipe.WithInitFile("initdb.sql"), chrecipe.WithDatabase("example"))
 
-	sess, err := session.NewSession(&aws.Config{
+	sess, err := aws_session.NewSession(&aws.Config{
 		Endpoint:         aws.String(src.ConnectionConfig.Endpoint),
 		Region:           aws.String(src.ConnectionConfig.Region),
 		S3ForcePathStyle: aws.Bool(src.ConnectionConfig.S3ForcePathStyle),
-		Credentials: credentials.NewStaticCredentials(
+		Credentials: aws_credentials.NewStaticCredentials(
 			src.ConnectionConfig.AccessKey, string(src.ConnectionConfig.SecretKey), "",
 		),
 	})
@@ -71,9 +71,9 @@ func testNativeS3(t *testing.T, src *s3.S3Source) {
 	helpers.Activate(t, transfer)
 	helpers.CheckRowsCount(t, &dst, "example", "data", 2)
 
-	reference.Dump(t, &model.ChSource{
+	canon_reference.Dump(t, &clickhouse_model.ChSource{
 		Database:   "example",
-		ShardsList: []model.ClickHouseShard{{Name: "_", Hosts: []string{"localhost"}}},
+		ShardsList: []clickhouse_model.ClickHouseShard{{Name: "_", Hosts: []string{"localhost"}}},
 		NativePort: dst.NativePort,
 		HTTPPort:   dst.HTTPPort,
 		User:       dst.User,

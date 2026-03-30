@@ -7,10 +7,10 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/pkg/abstract"
-	"github.com/transferia/transferia/pkg/connection/clickhouse"
+	conn_clickhouse "github.com/transferia/transferia/pkg/connection/clickhouse"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/chrecipe"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/conn"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/model"
+	clickhouse_model "github.com/transferia/transferia/pkg/providers/clickhouse/model"
 	"github.com/transferia/transferia/tests/helpers"
 	proxy "github.com/transferia/transferia/tests/helpers/proxies/http_proxy"
 )
@@ -60,7 +60,7 @@ func TestSnapshot(t *testing.T) {
 
 	t.Run("drop", func(t *testing.T) {
 		transfer := helpers.MakeTransfer("fake", &Source, &Target, abstract.TransferTypeSnapshotOnly)
-		host := &clickhouse.Host{
+		host := &conn_clickhouse.Host{
 			Name:       "localhost",
 			NativePort: Target.NativePort,
 			HTTPPort:   Target.HTTPPort,
@@ -83,7 +83,7 @@ func TestSnapshot(t *testing.T) {
 	})
 
 	t.Run("JSONCompactEachRow case", func(t *testing.T) {
-		Source.IOHomoFormat = model.ClickhouseIOFormatJSONCompact
+		Source.IOHomoFormat = clickhouse_model.ClickhouseIOFormatJSONCompact
 		transfer := helpers.MakeTransfer("fake", &Source, &Target, abstract.TransferTypeSnapshotOnly)
 		helpers.Activate(t, transfer)
 		require.NoError(t, helpers.CompareStorages(t, Source, Target, helpers.NewCompareStorageParams()))

@@ -20,7 +20,7 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/format"
-	s3_provider "github.com/transferia/transferia/pkg/providers/s3"
+	s3_model "github.com/transferia/transferia/pkg/providers/s3/model"
 	"github.com/transferia/transferia/pkg/providers/s3/s3recipe"
 	"github.com/transferia/transferia/pkg/providers/s3/sink/testutil"
 	"go.ytsaurus.tech/yt/go/schema"
@@ -46,7 +46,7 @@ func canonFile(t *testing.T, client *s3.S3, bucket, file string) {
 	})
 }
 
-func cleanup(t *testing.T, currSink *ReplicationSink, cfg *s3_provider.S3Destination, objects *s3.ListObjectsOutput) {
+func cleanup(t *testing.T, currSink *ReplicationSink, cfg *s3_model.S3Destination, objects *s3.ListObjectsOutput) {
 	if os.Getenv("S3_ACCESS_KEY") == "" {
 		return
 	}
@@ -111,7 +111,7 @@ func generateRawMessages(table string, part, from, to int) []abstract.ChangeItem
 //
 
 func TestRawReplication(t *testing.T) {
-	cfg := s3recipe.PrepareS3(t, "testrawgzip", model.ParsingFormatRaw, s3_provider.GzipEncoding)
+	cfg := s3recipe.PrepareS3(t, "testrawgzip", model.ParsingFormatRaw, s3_model.GzipEncoding)
 	cfg.Layout = "test_raw_gzip"
 	cp := testutil.NewFakeClientWithTransferState()
 	currSink, err := NewReplicationSink(logger.Log, cfg, solomon.NewRegistry(solomon.NewRegistryOpts()), cp, "TestRawReplication")
@@ -155,7 +155,7 @@ func TestRawReplication(t *testing.T) {
 }
 
 func TestReplicationWithWorkerFailure(t *testing.T) {
-	cfg := s3recipe.PrepareS3(t, "TestReplicationWithWorkerFailure", model.ParsingFormatCSV, s3_provider.GzipEncoding)
+	cfg := s3recipe.PrepareS3(t, "TestReplicationWithWorkerFailure", model.ParsingFormatCSV, s3_model.GzipEncoding)
 	cp := testutil.NewFakeClientWithTransferState()
 	currSink, err := NewReplicationSink(logger.Log, cfg, solomon.NewRegistry(solomon.NewRegistryOpts()), cp, "TestReplicationWithWorkerFailure")
 	require.NoError(t, err)
@@ -204,7 +204,7 @@ func TestReplicationWithWorkerFailure(t *testing.T) {
 }
 
 func TestCustomColLayautFailures(t *testing.T) {
-	cfg := s3recipe.PrepareS3(t, t.Name(), model.ParsingFormatCSV, s3_provider.GzipEncoding)
+	cfg := s3recipe.PrepareS3(t, t.Name(), model.ParsingFormatCSV, s3_model.GzipEncoding)
 	cfg.LayoutColumn = "logical_time"
 
 	cp := testutil.NewFakeClientWithTransferState()
@@ -259,7 +259,7 @@ func TestCustomColLayautFailures(t *testing.T) {
 }
 
 func TestParquetReplication(t *testing.T) {
-	cfg := s3recipe.PrepareS3(t, t.Name(), model.ParsingFormatPARQUET, s3_provider.GzipEncoding)
+	cfg := s3recipe.PrepareS3(t, t.Name(), model.ParsingFormatPARQUET, s3_model.GzipEncoding)
 	cfg.LayoutColumn = "logical_time"
 
 	cp := testutil.NewFakeClientWithTransferState()
@@ -290,7 +290,7 @@ func TestParquetReplication(t *testing.T) {
 }
 
 func TestParquetReadAfterWrite(t *testing.T) {
-	cfg := s3recipe.PrepareS3(t, t.Name(), model.ParsingFormatPARQUET, s3_provider.NoEncoding)
+	cfg := s3recipe.PrepareS3(t, t.Name(), model.ParsingFormatPARQUET, s3_model.NoEncoding)
 	cfg.LayoutColumn = "logical_time"
 
 	cp := testutil.NewFakeClientWithTransferState()
@@ -307,7 +307,7 @@ func TestParquetReadAfterWrite(t *testing.T) {
 }
 
 func TestRawReplicationHugeFiles(t *testing.T) {
-	cfg := s3recipe.PrepareS3(t, "hugereplfiles", model.ParsingFormatRaw, s3_provider.NoEncoding)
+	cfg := s3recipe.PrepareS3(t, "hugereplfiles", model.ParsingFormatRaw, s3_model.NoEncoding)
 	cfg.BufferSize = 5 * 1024 * 1024
 	cfg.Layout = "huge_repl_files"
 

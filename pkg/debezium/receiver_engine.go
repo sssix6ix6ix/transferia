@@ -8,26 +8,26 @@ import (
 
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	debeziumcommon "github.com/transferia/transferia/pkg/debezium/common"
-	"github.com/transferia/transferia/pkg/debezium/mysql"
-	"github.com/transferia/transferia/pkg/debezium/pg"
-	"github.com/transferia/transferia/pkg/debezium/ydb"
+	debezium_common "github.com/transferia/transferia/pkg/debezium/common"
+	debezium_mysql "github.com/transferia/transferia/pkg/debezium/mysql"
+	debezium_pg "github.com/transferia/transferia/pkg/debezium/pg"
+	debezium_ydb "github.com/transferia/transferia/pkg/debezium/ydb"
 )
 
-var prefixToNotDefaultReceiver map[string]debeziumcommon.NotDefaultReceiverDescription
+var prefixToNotDefaultReceiver map[string]debezium_common.NotDefaultReceiverDescription
 
 func init() {
 	// init this map into init() to avoid 'initialization loop'
-	prefixToNotDefaultReceiver = map[string]debeziumcommon.NotDefaultReceiverDescription{
-		"pg:":    pg.KafkaTypeToOriginalTypeToFieldReceiverFunc,
-		"ydb:":   ydb.KafkaTypeToOriginalTypeToFieldReceiverFunc,
-		"mysql:": mysql.KafkaTypeToOriginalTypeToFieldReceiverFunc,
+	prefixToNotDefaultReceiver = map[string]debezium_common.NotDefaultReceiverDescription{
+		"pg:":    debezium_pg.KafkaTypeToOriginalTypeToFieldReceiverFunc,
+		"ydb:":   debezium_ydb.KafkaTypeToOriginalTypeToFieldReceiverFunc,
+		"mysql:": debezium_mysql.KafkaTypeToOriginalTypeToFieldReceiverFunc,
 	}
 }
 
-func handleFieldReceiverMatchers(fieldReceiver debeziumcommon.FieldReceiver, originalType *debeziumcommon.OriginalTypeInfo, schema *debeziumcommon.Schema) debeziumcommon.FieldReceiver {
+func handleFieldReceiverMatchers(fieldReceiver debezium_common.FieldReceiver, originalType *debezium_common.OriginalTypeInfo, schema *debezium_common.Schema) debezium_common.FieldReceiver {
 	switch t := fieldReceiver.(type) {
-	case *debeziumcommon.FieldReceiverMatchers:
+	case *debezium_common.FieldReceiverMatchers:
 		checkFieldReceiverArr := t.Matchers
 		for _, matcher := range checkFieldReceiverArr {
 			if matcher.IsMatched(originalType, schema) {
@@ -40,11 +40,11 @@ func handleFieldReceiverMatchers(fieldReceiver debeziumcommon.FieldReceiver, ori
 	}
 }
 
-func findFieldReceiver(in debeziumcommon.NotDefaultReceiverDescription, originalType *debeziumcommon.OriginalTypeInfo, schema *debeziumcommon.Schema) debeziumcommon.FieldReceiver {
+func findFieldReceiver(in debezium_common.NotDefaultReceiverDescription, originalType *debezium_common.OriginalTypeInfo, schema *debezium_common.Schema) debezium_common.FieldReceiver {
 	if in == nil {
 		return nil
 	}
-	originalTypeToFieldReceiverFunc, ok := in[debeziumcommon.KafkaType(schema.Type)]
+	originalTypeToFieldReceiverFunc, ok := in[debezium_common.KafkaType(schema.Type)]
 	if !ok {
 		return nil
 	}
@@ -59,14 +59,14 @@ func findFieldReceiver(in debeziumcommon.NotDefaultReceiverDescription, original
 			}
 		}
 
-		if fieldReceiver, ok := originalTypeToFieldReceiverFunc[debeziumcommon.DTMatchByFunc]; ok { // match by matcher
+		if fieldReceiver, ok := originalTypeToFieldReceiverFunc[debezium_common.DTMatchByFunc]; ok { // match by matcher
 			return handleFieldReceiverMatchers(fieldReceiver, originalType, schema)
 		}
 		return nil
 	}
 }
 
-func getDatabaseSpecificReceiver(originalType string) (debeziumcommon.NotDefaultReceiverDescription, error) {
+func getDatabaseSpecificReceiver(originalType string) (debezium_common.NotDefaultReceiverDescription, error) {
 	if originalType == "" {
 		return nil, nil
 	}
@@ -80,7 +80,7 @@ func getDatabaseSpecificReceiver(originalType string) (debeziumcommon.NotDefault
 	return prefixToNotDefaultReceiver[prefix], nil
 }
 
-func receiveFieldChecked(ytType string, inSchemaDescr *debeziumcommon.Schema, val interface{}, originalType *debeziumcommon.OriginalTypeInfo) (interface{}, bool, error) {
+func receiveFieldChecked(ytType string, inSchemaDescr *debezium_common.Schema, val interface{}, originalType *debezium_common.OriginalTypeInfo) (interface{}, bool, error) {
 	val, isAbsentVal, err := receiveField(inSchemaDescr, val, originalType, false)
 	if err != nil {
 		return nil, false, xerrors.Errorf("unable to receive value, field: %s, err: %w", inSchemaDescr.Field, err)
@@ -88,8 +88,8 @@ func receiveFieldChecked(ytType string, inSchemaDescr *debeziumcommon.Schema, va
 	if isAbsentVal {
 		return nil, true, nil
 	}
-	inType := debeziumcommon.KafkaType(inSchemaDescr.Type)
-	resultTypes, ok := debeziumcommon.KafkaTypeToResultYTTypes[inType]
+	inType := debezium_common.KafkaType(inSchemaDescr.Type)
+	resultTypes, ok := debezium_common.KafkaTypeToResultYTTypes[inType]
 	if !ok {
 		return nil, false, xerrors.Errorf("unknown kafka_type, field: %s", inSchemaDescr.Type)
 	}
@@ -97,7 +97,7 @@ func receiveFieldChecked(ytType string, inSchemaDescr *debeziumcommon.Schema, va
 	return val, false, nil
 }
 
-func receiveFieldColSchema(inSchemaDescr *debeziumcommon.Schema, originalType *debeziumcommon.OriginalTypeInfo) (*abstract.ColSchema, error) {
+func receiveFieldColSchema(inSchemaDescr *debezium_common.Schema, originalType *debezium_common.OriginalTypeInfo) (*abstract.ColSchema, error) {
 	colSchema := &abstract.ColSchema{
 		TableSchema:  "",
 		TableName:    "",
@@ -111,7 +111,7 @@ func receiveFieldColSchema(inSchemaDescr *debeziumcommon.Schema, originalType *d
 		OriginalType: originalType.OriginalType, // for sure is empty - bcs we don't have OriginalType info
 		Properties:   nil,
 	}
-	if debeziumcommon.KafkaType(inSchemaDescr.Type) == debeziumcommon.KafkaTypeArray {
+	if debezium_common.KafkaType(inSchemaDescr.Type) == debezium_common.KafkaTypeArray {
 		colSchema.DataType = "any"
 	} else {
 		receiverDescription, err := getDatabaseSpecificReceiver(originalType.OriginalType)
@@ -120,7 +120,7 @@ func receiveFieldColSchema(inSchemaDescr *debeziumcommon.Schema, originalType *d
 		}
 		fieldReceiverFunc := findFieldReceiver(receiverDescription, originalType, inSchemaDescr)
 		if fieldReceiverFunc == nil {
-			fieldReceiverFunc = debeziumcommon.TypeToDefault[debeziumcommon.KafkaType(inSchemaDescr.Type)]
+			fieldReceiverFunc = debezium_common.TypeToDefault[debezium_common.KafkaType(inSchemaDescr.Type)]
 			if fieldReceiverFunc != nil {
 				fieldReceiverFunc = handleFieldReceiverMatchers(fieldReceiverFunc, originalType, inSchemaDescr)
 			}
@@ -129,7 +129,7 @@ func receiveFieldColSchema(inSchemaDescr *debeziumcommon.Schema, originalType *d
 			return nil, xerrors.Errorf("unable to find field receiver - even default, for kafka type: %s", inSchemaDescr.Type)
 		}
 
-		if additionalInfo, ok := fieldReceiverFunc.(debeziumcommon.ContainsColSchemaAdditionalInfo); ok {
+		if additionalInfo, ok := fieldReceiverFunc.(debezium_common.ContainsColSchemaAdditionalInfo); ok {
 			additionalInfo.AddInfo(inSchemaDescr, colSchema)
 		}
 		colSchema.DataType = fieldReceiverFunc.YTType()
@@ -137,7 +137,7 @@ func receiveFieldColSchema(inSchemaDescr *debeziumcommon.Schema, originalType *d
 	return colSchema, nil
 }
 
-func receiveField(inSchemaDescr *debeziumcommon.Schema, val interface{}, originalType *debeziumcommon.OriginalTypeInfo, intoArr bool) (interface{}, bool, error) {
+func receiveField(inSchemaDescr *debezium_common.Schema, val interface{}, originalType *debezium_common.OriginalTypeInfo, intoArr bool) (interface{}, bool, error) {
 	if val == nil {
 		return nil, false, nil
 	}
@@ -147,7 +147,7 @@ func receiveField(inSchemaDescr *debeziumcommon.Schema, val interface{}, origina
 		}
 	}
 
-	if debeziumcommon.KafkaType(inSchemaDescr.Type) == debeziumcommon.KafkaTypeArray {
+	if debezium_common.KafkaType(inSchemaDescr.Type) == debezium_common.KafkaTypeArray {
 		outVal, err := arrayReceive(inSchemaDescr, val, originalType, intoArr)
 		if err != nil {
 			return nil, false, xerrors.Errorf("unable to receive data from array")
@@ -163,7 +163,7 @@ func receiveField(inSchemaDescr *debeziumcommon.Schema, val interface{}, origina
 	}
 	fieldReceiverFunc := findFieldReceiver(receiverDescription, originalType, inSchemaDescr)
 	if fieldReceiverFunc == nil {
-		fieldReceiverFunc = debeziumcommon.TypeToDefault[debeziumcommon.KafkaType(inSchemaDescr.Type)]
+		fieldReceiverFunc = debezium_common.TypeToDefault[debezium_common.KafkaType(inSchemaDescr.Type)]
 		if fieldReceiverFunc != nil {
 			fieldReceiverFunc = handleFieldReceiverMatchers(fieldReceiverFunc, originalType, inSchemaDescr)
 		}
@@ -185,7 +185,7 @@ func receiveField(inSchemaDescr *debeziumcommon.Schema, val interface{}, origina
 
 	if valInt64 == nil && valBoolean == nil && valString == nil && valFloat64 == nil {
 		switch fieldReceiverFunc.(type) {
-		case debeziumcommon.StructToFloat64, debeziumcommon.StructToString, debeziumcommon.AnyToDouble, debeziumcommon.AnyToAny:
+		case debezium_common.StructToFloat64, debezium_common.StructToString, debezium_common.AnyToDouble, debezium_common.AnyToAny:
 		default:
 			inSchemaDescrStr, _ := json.Marshal(inSchemaDescr)
 			valStr, _ := json.Marshal(val)
@@ -201,7 +201,7 @@ func receiveField(inSchemaDescr *debeziumcommon.Schema, val interface{}, origina
 }
 
 func extractVal(
-	receiver debeziumcommon.FieldReceiver,
+	receiver debezium_common.FieldReceiver,
 	val interface{},
 	valInt64 **int64,
 	valBoolean **bool,
@@ -209,17 +209,17 @@ func extractVal(
 	valFloat64 **float64,
 ) error {
 	switch receiver.(type) {
-	case debeziumcommon.Int8ToInt8,
-		debeziumcommon.Int8ToUint8,
-		debeziumcommon.Int16ToInt16,
-		debeziumcommon.IntToInt32,
-		debeziumcommon.IntToUint16,
-		debeziumcommon.IntToUint32,
-		debeziumcommon.IntToString,
-		debeziumcommon.Int64ToInt64,
-		debeziumcommon.Int64ToTime,
-		debeziumcommon.DurationToInt64,
-		debeziumcommon.Int64ToUint64: // uint64 is stored in int64
+	case debezium_common.Int8ToInt8,
+		debezium_common.Int8ToUint8,
+		debezium_common.Int16ToInt16,
+		debezium_common.IntToInt32,
+		debezium_common.IntToUint16,
+		debezium_common.IntToUint32,
+		debezium_common.IntToString,
+		debezium_common.Int64ToInt64,
+		debezium_common.Int64ToTime,
+		debezium_common.DurationToInt64,
+		debezium_common.Int64ToUint64: // uint64 is stored in int64
 		switch v := val.(type) {
 		case json.Number:
 			valInt64Tmp, err := v.Int64()
@@ -228,18 +228,18 @@ func extractVal(
 			}
 			*valInt64 = &valInt64Tmp
 		}
-	case debeziumcommon.BooleanToBoolean,
-		debeziumcommon.BooleanToInt8,
-		debeziumcommon.BooleanToBytes,
-		debeziumcommon.BooleanToString:
+	case debezium_common.BooleanToBoolean,
+		debezium_common.BooleanToInt8,
+		debezium_common.BooleanToBytes,
+		debezium_common.BooleanToString:
 		switch v := val.(type) {
 		case bool:
 			*valBoolean = &v
 		}
-	case debeziumcommon.StringToString,
-		debeziumcommon.StringToTime,
-		debeziumcommon.StringToAny,
-		debeziumcommon.StringToBytes:
+	case debezium_common.StringToString,
+		debezium_common.StringToTime,
+		debezium_common.StringToAny,
+		debezium_common.StringToBytes:
 		switch v := val.(type) {
 		case string:
 			*valString = &v
@@ -247,8 +247,8 @@ func extractVal(
 			valStr := v.String()
 			*valString = &valStr
 		}
-	case debeziumcommon.Float64ToFloat32,
-		debeziumcommon.Float64ToFloat64:
+	case debezium_common.Float64ToFloat32,
+		debezium_common.Float64ToFloat64:
 		switch v := val.(type) {
 		case json.Number:
 			valFloat64Tmp, err := v.Float64()
@@ -257,10 +257,10 @@ func extractVal(
 			}
 			*valFloat64 = &valFloat64Tmp
 		}
-	case debeziumcommon.StructToFloat64:
-	case debeziumcommon.StructToString:
-	case debeziumcommon.AnyToDouble:
-	case debeziumcommon.AnyToAny:
+	case debezium_common.StructToFloat64:
+	case debezium_common.StructToString:
+	case debezium_common.AnyToDouble:
+	case debezium_common.AnyToAny:
 	default:
 		return xerrors.Errorf("unknown receiver type: %T", receiver)
 	}
@@ -268,10 +268,10 @@ func extractVal(
 }
 
 func convertVal(
-	receiver debeziumcommon.FieldReceiver,
-	inSchemaDescr *debeziumcommon.Schema,
+	receiver debezium_common.FieldReceiver,
+	inSchemaDescr *debezium_common.Schema,
 	val interface{},
-	originalType *debeziumcommon.OriginalTypeInfo,
+	originalType *debezium_common.OriginalTypeInfo,
 	intoArr bool,
 	valInt64 *int64,
 	valBoolean *bool,
@@ -282,55 +282,55 @@ func convertVal(
 	var err error
 
 	switch fieldReceiverObj := receiver.(type) {
-	case debeziumcommon.Int8ToInt8:
+	case debezium_common.Int8ToInt8:
 		result, err = fieldReceiverObj.Do(*valInt64, originalType, inSchemaDescr, intoArr)
-	case debeziumcommon.Int8ToUint8:
+	case debezium_common.Int8ToUint8:
 		result, err = fieldReceiverObj.Do(*valInt64, originalType, inSchemaDescr, intoArr)
-	case debeziumcommon.Int16ToInt16:
+	case debezium_common.Int16ToInt16:
 		result, err = fieldReceiverObj.Do(*valInt64, originalType, inSchemaDescr, intoArr)
-	case debeziumcommon.IntToInt32:
+	case debezium_common.IntToInt32:
 		result, err = fieldReceiverObj.Do(*valInt64, originalType, inSchemaDescr, intoArr)
-	case debeziumcommon.IntToUint32:
+	case debezium_common.IntToUint32:
 		result, err = fieldReceiverObj.Do(*valInt64, originalType, inSchemaDescr, intoArr)
-	case debeziumcommon.IntToUint16:
+	case debezium_common.IntToUint16:
 		result, err = fieldReceiverObj.Do(*valInt64, originalType, inSchemaDescr, intoArr)
-	case debeziumcommon.IntToString:
+	case debezium_common.IntToString:
 		result, err = fieldReceiverObj.Do(*valInt64, originalType, inSchemaDescr, intoArr)
-	case debeziumcommon.Int64ToInt64:
+	case debezium_common.Int64ToInt64:
 		result, err = fieldReceiverObj.Do(*valInt64, originalType, inSchemaDescr, intoArr)
-	case debeziumcommon.Int64ToUint64:
+	case debezium_common.Int64ToUint64:
 		result, err = fieldReceiverObj.Do(*valInt64, originalType, inSchemaDescr, intoArr)
-	case debeziumcommon.DurationToInt64:
+	case debezium_common.DurationToInt64:
 		result, err = fieldReceiverObj.Do(time.Duration(*valInt64), originalType, inSchemaDescr, intoArr)
-	case debeziumcommon.Int64ToTime:
+	case debezium_common.Int64ToTime:
 		result, err = fieldReceiverObj.Do(*valInt64, originalType, inSchemaDescr, intoArr)
-	case debeziumcommon.BooleanToBoolean:
+	case debezium_common.BooleanToBoolean:
 		result, err = fieldReceiverObj.Do(*valBoolean, originalType, inSchemaDescr, intoArr)
-	case debeziumcommon.BooleanToInt8:
+	case debezium_common.BooleanToInt8:
 		result, err = fieldReceiverObj.Do(*valBoolean, originalType, inSchemaDescr, intoArr)
-	case debeziumcommon.BooleanToBytes:
+	case debezium_common.BooleanToBytes:
 		result, err = fieldReceiverObj.Do(*valBoolean, originalType, inSchemaDescr, intoArr)
-	case debeziumcommon.BooleanToString:
+	case debezium_common.BooleanToString:
 		result, err = fieldReceiverObj.Do(*valBoolean, originalType, inSchemaDescr, intoArr)
-	case debeziumcommon.StringToString:
+	case debezium_common.StringToString:
 		result, err = fieldReceiverObj.Do(*valString, originalType, inSchemaDescr, intoArr)
-	case debeziumcommon.StringToTime:
+	case debezium_common.StringToTime:
 		result, err = fieldReceiverObj.Do(*valString, originalType, inSchemaDescr, intoArr)
-	case debeziumcommon.StringToBytes:
+	case debezium_common.StringToBytes:
 		result, err = fieldReceiverObj.Do(*valString, originalType, inSchemaDescr, intoArr)
-	case debeziumcommon.StringToAny:
+	case debezium_common.StringToAny:
 		result, err = fieldReceiverObj.Do(*valString, originalType, inSchemaDescr, intoArr)
-	case debeziumcommon.Float64ToFloat32:
+	case debezium_common.Float64ToFloat32:
 		result, err = fieldReceiverObj.Do(*valFloat64, originalType, inSchemaDescr, intoArr)
-	case debeziumcommon.Float64ToFloat64:
+	case debezium_common.Float64ToFloat64:
 		result, err = fieldReceiverObj.Do(*valFloat64, originalType, inSchemaDescr, intoArr)
-	case debeziumcommon.StructToFloat64:
+	case debezium_common.StructToFloat64:
 		result, err = fieldReceiverObj.Do(val, originalType, inSchemaDescr, intoArr)
-	case debeziumcommon.StructToString:
+	case debezium_common.StructToString:
 		result, err = fieldReceiverObj.Do(val, originalType, inSchemaDescr, intoArr)
-	case debeziumcommon.AnyToDouble:
+	case debezium_common.AnyToDouble:
 		result, err = fieldReceiverObj.Do(val, originalType, inSchemaDescr, intoArr)
-	case debeziumcommon.AnyToAny:
+	case debezium_common.AnyToAny:
 		result, err = fieldReceiverObj.Do(val, originalType, inSchemaDescr, intoArr)
 	default:
 		return nil, xerrors.Errorf("unknown receiver type: %T", receiver)
@@ -341,13 +341,13 @@ func convertVal(
 	return result, nil
 }
 
-func arrayReceive(s *debeziumcommon.Schema, v interface{}, originalType *debeziumcommon.OriginalTypeInfo, _ bool) (interface{}, error) {
+func arrayReceive(s *debezium_common.Schema, v interface{}, originalType *debezium_common.OriginalTypeInfo, _ bool) (interface{}, error) {
 	if v == nil {
 		return nil, nil
 	}
 	resultVal := make([]interface{}, 0)
 	vArr := v.([]interface{})
-	items := debeziumcommon.Schema(*s.Items)
+	items := debezium_common.Schema(*s.Items)
 	for _, el := range vArr {
 		elVal, isAbsent, err := receiveField(&items, el, originalType.GetArrElemTypeDescr(), true)
 		if err != nil {

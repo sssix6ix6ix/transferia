@@ -9,17 +9,17 @@ import (
 	"time"
 
 	"github.com/transferia/transferia/internal/logger"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	yt2 "github.com/transferia/transferia/pkg/providers/yt"
+	provider_yt "github.com/transferia/transferia/pkg/providers/yt"
 	"github.com/transferia/transferia/pkg/stats"
 	"go.ytsaurus.tech/library/go/core/log"
 	"go.ytsaurus.tech/yt/go/mapreduce"
 	"go.ytsaurus.tech/yt/go/mapreduce/spec"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 	"go.ytsaurus.tech/yt/go/ypath"
 	"go.ytsaurus.tech/yt/go/yt"
 )
@@ -33,7 +33,7 @@ type StaticTable struct {
 	wrMutex       sync.Mutex
 	tablesWriters map[abstract.TableID]*tableWriter
 	spec          map[string]interface{}
-	config        yt2.YtDestinationModel
+	config        provider_yt.YtDestinationModel
 	metrics       *stats.SinkerStats
 }
 
@@ -139,7 +139,7 @@ func (t *StaticTable) commit(tableID abstract.TableID) error {
 			return xerrors.Errorf("unable to merge: %w", err)
 		}
 
-		moveOptions := yt2.ResolveMoveOptions(twr.runningTx, twr.tmp, false)
+		moveOptions := provider_yt.ResolveMoveOptions(twr.runningTx, twr.tmp, false)
 		if _, err := twr.runningTx.MoveNode(ctx, twr.tmp, twr.target, moveOptions); err != nil {
 			t.logger.Error("cannot move tmp table, aborting transaction", log.Any("table", tableID.Fqtn()), log.Any("transaction", twr.runningTx.ID()), log.Any("path", twr.tmp))
 			_ = twr.runningTx.Abort()
@@ -186,8 +186,8 @@ func (t *StaticTable) mergeIfNeeded(ctx context.Context, tableWriter *tableWrite
 	return err
 }
 
-func staticYTSchema(item abstract.ChangeItem) []schema.Column {
-	result := yt2.ToYtSchema(item.TableSchema.Columns(), false)
+func staticYTSchema(item abstract.ChangeItem) []ytschema.Column {
+	result := provider_yt.ToYtSchema(item.TableSchema.Columns(), false)
 
 	for i := range result {
 		// Static table should not be ordered
@@ -303,11 +303,11 @@ func (t *StaticTable) getWriter(tID abstract.TableID) (twr *tableWriter, ok bool
 
 func (t *StaticTable) getTableName(tID abstract.TableID, item abstract.ChangeItem) ypath.Path {
 	if t.config == nil {
-		return yt2.SafeChild(t.path, getNameFromTableID(tID))
+		return provider_yt.SafeChild(t.path, getNameFromTableID(tID))
 	} else {
-		target := yt2.SafeChild(t.path, t.config.GetTableAltName(getNameFromTableID(tID)))
+		target := provider_yt.SafeChild(t.path, t.config.GetTableAltName(getNameFromTableID(tID)))
 		if t.config != nil && t.config.Rotation() != nil {
-			target = yt2.SafeChild(t.path, t.config.Rotation().AnnotateWithTimeFromColumn(t.config.GetTableAltName(getNameFromTableID(tID)), item))
+			target = provider_yt.SafeChild(t.path, t.config.Rotation().AnnotateWithTimeFromColumn(t.config.GetTableAltName(getNameFromTableID(tID)), item))
 		}
 		return target
 	}
@@ -387,7 +387,7 @@ func getRandomPostfix() string {
 	return fmt.Sprintf("transited_at_%v", time.Now().Format("2006-01-02_15:04:05"))
 }
 
-func NewStaticTableFromConfig(ytClient yt.Client, cfg yt2.YtDestinationModel, registry metrics.Registry, lgr log.Logger, cp coordinator.Coordinator, transferID string) *StaticTable {
+func NewStaticTableFromConfig(ytClient yt.Client, cfg provider_yt.YtDestinationModel, registry core_metrics.Registry, lgr log.Logger, cp coordinator.Coordinator, transferID string) *StaticTable {
 	return &StaticTable{
 		ytClient:      ytClient,
 		path:          ypath.Path(cfg.Path()),
@@ -402,7 +402,7 @@ func NewStaticTableFromConfig(ytClient yt.Client, cfg yt2.YtDestinationModel, re
 	}
 }
 
-func NewStaticTable(ytClient yt.Client, path ypath.Path, ytSpec map[string]interface{}, registry metrics.Registry) *StaticTable {
+func NewStaticTable(ytClient yt.Client, path ypath.Path, ytSpec map[string]interface{}, registry core_metrics.Registry) *StaticTable {
 	return &StaticTable{
 		ytClient:      ytClient,
 		path:          path,

@@ -10,9 +10,9 @@ import (
 	"github.com/transferia/transferia/library/go/test/yatest"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/debezium"
-	debeziumcommon "github.com/transferia/transferia/pkg/debezium/common"
-	debeziumparameters "github.com/transferia/transferia/pkg/debezium/parameters"
-	"github.com/transferia/transferia/pkg/debezium/testutil"
+	debezium_common "github.com/transferia/transferia/pkg/debezium/common"
+	debezium_parameters "github.com/transferia/transferia/pkg/debezium/parameters"
+	debezium_testutil "github.com/transferia/transferia/pkg/debezium/testutil"
 )
 
 func TestReplicaIdentityFullUpdate(t *testing.T) {
@@ -22,10 +22,10 @@ func TestReplicaIdentityFullUpdate(t *testing.T) {
 	require.NoError(t, err)
 
 	emitter, err := debezium.NewMessagesEmitter(map[string]string{
-		debeziumparameters.DatabaseDBName:   "public",
-		debeziumparameters.TopicPrefix:      "fullfillment",
-		debeziumparameters.AddOriginalTypes: "false",
-		debeziumparameters.SourceType:       "pg",
+		debezium_parameters.DatabaseDBName:   "public",
+		debezium_parameters.TopicPrefix:      "fullfillment",
+		debezium_parameters.AddOriginalTypes: "false",
+		debezium_parameters.SourceType:       "pg",
 	}, "1.1.2.Final", false, logger.Log)
 	require.NoError(t, err)
 	emitter.TestSetIgnoreUnknownSources(true)
@@ -40,9 +40,9 @@ func TestReplicaIdentityFullUpdate(t *testing.T) {
 	require.NoError(t, err)
 	debeziumValStr := string(debeziumVal)
 
-	testSuite := []debeziumcommon.ChangeItemCanon{{
+	testSuite := []debezium_common.ChangeItemCanon{{
 		ChangeItem: originalChangeItem,
-		DebeziumEvents: []debeziumcommon.KeyValue{
+		DebeziumEvents: []debezium_common.KeyValue{
 			{
 				DebeziumKey: debeziumKeyStr,
 				DebeziumVal: &debeziumValStr,
@@ -50,9 +50,9 @@ func TestReplicaIdentityFullUpdate(t *testing.T) {
 		},
 	}}
 
-	testSuite = testutil.FixTestSuite(t, testSuite, "fullfillment", "pguser", "pg")
+	testSuite = debezium_testutil.FixTestSuite(t, testSuite, "fullfillment", "pguser", "pg")
 	for _, testCase := range testSuite {
-		testutil.CheckCanonizedDebeziumEvent(t, testCase.ChangeItem, "fullfillment", "public", "pg", false, currDebeziumKV)
+		debezium_testutil.CheckCanonizedDebeziumEvent(t, testCase.ChangeItem, "fullfillment", "public", "pg", false, currDebeziumKV)
 	}
 }
 
@@ -63,10 +63,10 @@ func TestReplicaIdentityFullDelete(t *testing.T) {
 	require.NoError(t, err)
 
 	emitter, err := debezium.NewMessagesEmitter(map[string]string{
-		debeziumparameters.DatabaseDBName:   "public",
-		debeziumparameters.TopicPrefix:      "fullfillment",
-		debeziumparameters.AddOriginalTypes: "false",
-		debeziumparameters.SourceType:       "pg",
+		debezium_parameters.DatabaseDBName:   "public",
+		debezium_parameters.TopicPrefix:      "fullfillment",
+		debezium_parameters.AddOriginalTypes: "false",
+		debezium_parameters.SourceType:       "pg",
 	}, "1.1.2.Final", false, logger.Log)
 	require.NoError(t, err)
 	emitter.TestSetIgnoreUnknownSources(true)
@@ -81,9 +81,9 @@ func TestReplicaIdentityFullDelete(t *testing.T) {
 	require.NoError(t, err)
 	debeziumValStr := string(debeziumVal)
 
-	testSuite := []debeziumcommon.ChangeItemCanon{{
+	testSuite := []debezium_common.ChangeItemCanon{{
 		ChangeItem: originalChangeItem,
-		DebeziumEvents: []debeziumcommon.KeyValue{
+		DebeziumEvents: []debezium_common.KeyValue{
 			{
 				DebeziumKey: debeziumKeyStr,
 				DebeziumVal: &debeziumValStr,
@@ -95,8 +95,8 @@ func TestReplicaIdentityFullDelete(t *testing.T) {
 		},
 	}}
 
-	testSuite = testutil.FixTestSuite(t, testSuite, "fullfillment", "pguser", "pg")
+	testSuite = debezium_testutil.FixTestSuite(t, testSuite, "fullfillment", "pguser", "pg")
 	for _, testCase := range testSuite {
-		testutil.CheckCanonizedDebeziumEvent(t, testCase.ChangeItem, "fullfillment", "public", "pg", false, currDebeziumKV)
+		debezium_testutil.CheckCanonizedDebeziumEvent(t, testCase.ChangeItem, "fullfillment", "public", "pg", false, currDebeziumKV)
 	}
 }

@@ -7,8 +7,8 @@ import (
 
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract2"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/format"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/model"
+	clickhouse_format "github.com/transferia/transferia/pkg/providers/clickhouse/format"
+	clickhouse_model "github.com/transferia/transferia/pkg/providers/clickhouse/model"
 )
 
 type HTTPEventsBatch struct {
@@ -18,7 +18,7 @@ type HTTPEventsBatch struct {
 	Part        *TablePartA2
 	ColNames    []string
 	readerStart time.Time
-	Format      model.ClickhouseIOFormat
+	Format      clickhouse_model.ClickhouseIOFormat
 	RowCount    int
 	SizeBytes   int
 }
@@ -45,10 +45,10 @@ func (b *HTTPEventsBatch) Size() int {
 
 func (b *HTTPEventsBatch) Event() (abstract2.Event, error) {
 	row := b.scanner.Bytes()
-	return format.NewEvent(b.Format, row, b.Cols, b.ColNames, b.Part.TableID, b.readerStart)
+	return clickhouse_format.NewEvent(b.Format, row, b.Cols, b.ColNames, b.Part.TableID, b.readerStart)
 }
 
-func NewHTTPEventsBatch(part *TablePartA2, data []byte, cols *abstract.TableSchema, readerStart time.Time, format model.ClickhouseIOFormat, count int, size int) *HTTPEventsBatch {
+func NewHTTPEventsBatch(part *TablePartA2, data []byte, cols *abstract.TableSchema, readerStart time.Time, format clickhouse_model.ClickhouseIOFormat, count int, size int) *HTTPEventsBatch {
 	scanner := bufio.NewScanner(bytes.NewReader(data))
 	var colNames []string
 	for _, col := range cols.Columns() {

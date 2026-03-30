@@ -3,25 +3,25 @@ package provider
 import (
 	"context"
 
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	cpclient "github.com/transferia/transferia/pkg/abstract/coordinator"
+	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/middlewares"
 	"github.com/transferia/transferia/pkg/providers"
-	"github.com/transferia/transferia/pkg/providers/s3"
 	_ "github.com/transferia/transferia/pkg/providers/s3/fallback"
+	s3_model "github.com/transferia/transferia/pkg/providers/s3/model"
 	"github.com/transferia/transferia/pkg/providers/s3/s3util/object_fetcher"
 	s3_sink "github.com/transferia/transferia/pkg/providers/s3/sink"
 	"github.com/transferia/transferia/pkg/providers/s3/sink/queue_to_s3_sink"
-	"github.com/transferia/transferia/pkg/providers/s3/source"
-	"github.com/transferia/transferia/pkg/providers/s3/storage"
+	s3_source "github.com/transferia/transferia/pkg/providers/s3/source"
+	s3_storage "github.com/transferia/transferia/pkg/providers/s3/storage"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
 func init() {
-	providers.Register(s3.ProviderType, New)
+	providers.Register(s3_model.ProviderType, New)
 }
 
 // To verify providers contract implementation
@@ -35,8 +35,8 @@ var (
 
 type Provider struct {
 	logger   log.Logger
-	registry metrics.Registry
-	cp       cpclient.Coordinator
+	registry core_metrics.Registry
+	cp       coordinator.Coordinator
 	transfer *model.Transfer
 
 	operation *model.TransferOperation
@@ -55,7 +55,7 @@ func (p *Provider) Activate(ctx context.Context, task *model.TransferOperation, 
 		}
 	} else {
 		// if increment only
-		srcModel, ok := p.transfer.Src.(*s3.S3Source)
+		srcModel, ok := p.transfer.Src.(*s3_model.S3Source)
 		if !ok {
 			return xerrors.Errorf("unexpected source type: %T", p.transfer.Src)
 		}
@@ -70,19 +70,19 @@ func (p *Provider) Activate(ctx context.Context, task *model.TransferOperation, 
 }
 
 func (p *Provider) Storage() (abstract.Storage, error) {
-	src, ok := p.transfer.Src.(*s3.S3Source)
+	src, ok := p.transfer.Src.(*s3_model.S3Source)
 	if !ok {
 		return nil, xerrors.Errorf("unexpected source type: %T", p.transfer.Src)
 	}
-	return storage.New(src, p.transfer.ID, p.logger, p.registry)
+	return s3_storage.New(src, p.transfer.ID, p.logger, p.registry)
 }
 
 func (p *Provider) Type() abstract.ProviderType {
-	return s3.ProviderType
+	return s3_model.ProviderType
 }
 
 func (p *Provider) Source() (abstract.Source, error) {
-	src, ok := p.transfer.Src.(*s3.S3Source)
+	src, ok := p.transfer.Src.(*s3_model.S3Source)
 	if !ok {
 		return nil, xerrors.Errorf("unexpected source type: %T", p.transfer.Src)
 	}
@@ -90,11 +90,11 @@ func (p *Provider) Source() (abstract.Source, error) {
 	if !ok {
 		return nil, xerrors.Errorf("s3 source not supported non-sharding runtime: %T", p.transfer.Runtime)
 	}
-	return source.NewSource(src, p.transfer.ID, p.logger, p.registry, p.cp, shardingRuntime)
+	return s3_source.NewSource(src, p.transfer.ID, p.logger, p.registry, p.cp, shardingRuntime)
 }
 
 func (p *Provider) Sink(middlewares.Config) (abstract.Sinker, error) {
-	dst, ok := p.transfer.Dst.(*s3.S3Destination)
+	dst, ok := p.transfer.Dst.(*s3_model.S3Destination)
 	if !ok {
 		return nil, xerrors.Errorf("unexpected target type: %T", p.transfer.Dst)
 	}
@@ -121,7 +121,7 @@ func (p *Provider) Sink(middlewares.Config) (abstract.Sinker, error) {
 }
 
 func (p *Provider) AsyncV2Sink(middlewares.Config) (abstract.QueueToS3Sink, error) {
-	dst, ok := p.transfer.Dst.(*s3.S3Destination)
+	dst, ok := p.transfer.Dst.(*s3_model.S3Destination)
 	if !ok {
 		return nil, xerrors.Errorf("unexpected target type: %T", p.transfer.Dst)
 	}
@@ -133,7 +133,7 @@ func (p *Provider) AsyncV2Sink(middlewares.Config) (abstract.QueueToS3Sink, erro
 	return sink, nil
 }
 
-func New(lgr log.Logger, registry metrics.Registry, cp cpclient.Coordinator, transfer *model.Transfer, operation *model.TransferOperation) providers.Provider {
+func New(lgr log.Logger, registry core_metrics.Registry, cp coordinator.Coordinator, transfer *model.Transfer, operation *model.TransferOperation) providers.Provider {
 	return &Provider{
 		logger:   lgr,
 		registry: registry,

@@ -9,24 +9,24 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/ydb-platform/ydb-go-sdk/v3"
-	"github.com/ydb-platform/ydb-go-sdk/v3/credentials"
+	ydb_go_sdk "github.com/ydb-platform/ydb-go-sdk/v3"
+	ydb_credentials "github.com/ydb-platform/ydb-go-sdk/v3/credentials"
 	"github.com/ydb-platform/ydb-go-sdk/v3/sugar"
 )
 
-func Driver(t *testing.T, opts ...ydb.Option) *ydb.Driver {
+func Driver(t *testing.T, opts ...ydb_go_sdk.Option) *ydb_go_sdk.Driver {
 	instance, port, database, creds := InstancePortDatabaseCreds(t)
 	dsn := sugar.DSN(fmt.Sprintf("%s:%d", instance, port), database)
 	if creds != nil {
-		opts = append(opts, ydb.WithCredentials(creds))
+		opts = append(opts, ydb_go_sdk.WithCredentials(creds))
 	}
-	driver, err := ydb.Open(context.Background(), dsn, opts...)
+	driver, err := ydb_go_sdk.Open(context.Background(), dsn, opts...)
 	require.NoError(t, err)
 
 	return driver
 }
 
-func InstancePortDatabaseCreds(t *testing.T) (string, int, string, credentials.Credentials) {
+func InstancePortDatabaseCreds(t *testing.T) (string, int, string, ydb_credentials.Credentials) {
 	parts := strings.Split(os.Getenv("YDB_ENDPOINT"), ":")
 	require.Len(t, parts, 2)
 
@@ -39,10 +39,10 @@ func InstancePortDatabaseCreds(t *testing.T) (string, int, string, credentials.C
 		database = "local"
 	}
 
-	var creds credentials.Credentials
+	var creds ydb_credentials.Credentials
 	token := Token()
 	if token != "" {
-		creds = credentials.NewAccessTokenCredentials(token)
+		creds = ydb_credentials.NewAccessTokenCredentials(token)
 	}
 
 	return instance, port, database, creds

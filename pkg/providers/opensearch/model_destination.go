@@ -5,7 +5,7 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/elastic"
+	provider_elastic "github.com/transferia/transferia/pkg/providers/elastic"
 	"go.uber.org/zap/zapcore"
 )
 
@@ -41,12 +41,12 @@ func (d *OpenSearchDestination) MDBClusterID() string {
 	return d.ClusterID
 }
 
-func (d *OpenSearchDestination) ToElasticSearchDestination() (*elastic.ElasticSearchDestination, elastic.ServerType) {
-	dataNodes := make([]elastic.ElasticSearchHostPort, 0)
+func (d *OpenSearchDestination) ToElasticSearchDestination() (*provider_elastic.ElasticSearchDestination, provider_elastic.ServerType) {
+	dataNodes := make([]provider_elastic.ElasticSearchHostPort, 0)
 	for _, el := range d.DataNodes {
-		dataNodes = append(dataNodes, elastic.ElasticSearchHostPort(el))
+		dataNodes = append(dataNodes, provider_elastic.ElasticSearchHostPort(el))
 	}
-	return &elastic.ElasticSearchDestination{
+	return &provider_elastic.ElasticSearchDestination{
 		ClusterID:        d.ClusterID,
 		DataNodes:        dataNodes,
 		User:             d.User,
@@ -59,7 +59,7 @@ func (d *OpenSearchDestination) ToElasticSearchDestination() (*elastic.ElasticSe
 		SanitizeDocKeys:  d.SanitizeDocKeys,
 		ConnectionID:     d.ConnectionID,
 		UserEnabledTls:   d.UserEnabledTls,
-	}, elastic.OpenSearch
+	}, provider_elastic.OpenSearch
 }
 
 func (d *OpenSearchDestination) Hosts() []string {

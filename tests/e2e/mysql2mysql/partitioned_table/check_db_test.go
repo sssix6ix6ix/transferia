@@ -8,7 +8,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/pkg/abstract"
-	"github.com/transferia/transferia/pkg/providers/mysql"
+	provider_mysql "github.com/transferia/transferia/pkg/providers/mysql"
 	"github.com/transferia/transferia/pkg/providers/mysql/mysqlrecipe"
 	"github.com/transferia/transferia/tests/helpers"
 )
@@ -53,11 +53,11 @@ func TestPartitionedTable(t *testing.T) {
 	require.NoError(t, helpers.CompareStorages(t, Source, Target, helpers.NewCompareStorageParams()))
 }
 
-func connectToMysql(t *testing.T, storageParams *mysql.MysqlStorageParams) *sql.DB {
-	connParams, err := mysql.NewConnectionParams(storageParams)
+func connectToMysql(t *testing.T, storageParams *provider_mysql.MysqlStorageParams) *sql.DB {
+	connParams, err := provider_mysql.NewConnectionParams(storageParams)
 	require.NoError(t, err)
 
-	db, err := mysql.Connect(connParams, nil)
+	db, err := provider_mysql.Connect(connParams, nil)
 	require.NoError(t, err)
 	return db
 }

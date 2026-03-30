@@ -6,9 +6,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/internal/logger"
-	"github.com/transferia/transferia/internal/metrics"
+	dt_metrics "github.com/transferia/transferia/internal/metrics"
 	"github.com/transferia/transferia/pkg/abstract"
-	parsersfactory "github.com/transferia/transferia/pkg/parsers"
+	"github.com/transferia/transferia/pkg/parsers"
 	"github.com/transferia/transferia/pkg/stats"
 	"github.com/transferia/transferia/tests/canon/parser/testcase"
 	"github.com/transferia/transferia/tests/canon/validator"
@@ -23,7 +23,7 @@ func TestGenericParsers(t *testing.T) {
 	for tc := range cases {
 		t.Run(tc, func(t *testing.T) {
 			currCase := cases[tc]
-			parser, err := parsersfactory.NewParserFromParserConfig(currCase.ParserConfig, false, logger.Log, stats.NewSourceStats(metrics.NewRegistry().WithTags(map[string]string{
+			parser, err := parsers.NewParserFromParserConfig(currCase.ParserConfig, false, logger.Log, stats.NewSourceStats(dt_metrics.NewRegistry().WithTags(map[string]string{
 				"id": "TestParser_Do",
 			})))
 			require.NoError(t, err)

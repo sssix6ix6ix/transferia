@@ -3,7 +3,7 @@ package types
 import (
 	"bytes"
 	"database/sql"
-	"database/sql/driver"
+	sql_driver "database/sql/driver"
 
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/util/jsonx"
@@ -13,7 +13,7 @@ type JSON struct {
 	value interface{}
 }
 
-var _ driver.Valuer = (*JSON)(nil)
+var _ sql_driver.Valuer = (*JSON)(nil)
 var _ sql.Scanner = (*JSON)(nil)
 
 func (j *JSON) Scan(src any) error { // Implements sql.Scanner
@@ -34,6 +34,6 @@ func (j *JSON) Scan(src any) error { // Implements sql.Scanner
 	return nil
 }
 
-func (j *JSON) Value() (driver.Value, error) {
+func (j *JSON) Value() (sql_driver.Value, error) {
 	return j.value, nil
 }

@@ -7,7 +7,7 @@ import (
 	"github.com/jhump/protoreflect/desc"
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/library/go/core/xerrors"
-	"github.com/transferia/transferia/pkg/parsers/registry/protobuf"
+	parser_protobuf "github.com/transferia/transferia/pkg/parsers/registry/protobuf"
 	sample_protopb "github.com/transferia/transferia/tests/canon/parser/samples/dynamic/sample_proto/sample_proto"
 	"github.com/transferia/transferia/tests/canon/parser/testcase"
 	"go.ytsaurus.tech/library/go/core/log"
@@ -83,12 +83,12 @@ func makeData() []byte {
 	return out.Bytes()
 }
 
-func makeParser() *protobuf.ParserConfigProtoLb {
+func makeParser() *parser_protobuf.ParserConfigProtoLb {
 	descFile, err := makeDesc()
 	if err != nil {
 		panic(err)
 	}
-	return &protobuf.ParserConfigProtoLb{
+	return &parser_protobuf.ParserConfigProtoLb{
 		DescFile:         descFile,
 		DescResourceName: "",
 		MessageName:      "SampleProto",

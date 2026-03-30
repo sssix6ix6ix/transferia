@@ -4,17 +4,17 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/typesystem"
-	"github.com/transferia/transferia/pkg/providers/yt"
-	"go.ytsaurus.tech/yt/go/schema"
+	provider_yt "github.com/transferia/transferia/pkg/providers/yt"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 func patchTableSchema(ci *abstract.ChangeItem) *abstract.TableSchema {
 	patchedTableSchema := ci.TableSchema.Copy()
 
 	for i := 0; i < len(ci.TableSchema.Columns()); i++ {
-		schemaType := schema.Type(ci.TableSchema.Columns()[i].DataType)
-		if schemaType == schema.TypeBytes {
-			patchedTableSchema.Columns()[i].DataType = schema.TypeString.String()
+		schemaType := ytschema.Type(ci.TableSchema.Columns()[i].DataType)
+		if schemaType == ytschema.TypeBytes {
+			patchedTableSchema.Columns()[i].DataType = ytschema.TypeString.String()
 		}
 	}
 	return patchedTableSchema
@@ -50,8 +50,8 @@ func FallbackBytesAsStringGoType(ci *abstract.ChangeItem, cache map[string]*abst
 
 	columnNamesToIndices := ci.ColumnNameIndices()
 	for i := 0; i < len(ci.TableSchema.Columns()); i++ {
-		schemaType := schema.Type(ci.TableSchema.Columns()[i].DataType)
-		if schemaType == schema.TypeBytes {
+		schemaType := ytschema.Type(ci.TableSchema.Columns()[i].DataType)
+		if schemaType == ytschema.TypeBytes {
 			colName := ci.TableSchema.Columns()[i].ColumnName
 			colIndex := columnNamesToIndices[colName]
 			colValue := ci.ColumnValues[colIndex]
@@ -80,7 +80,7 @@ func init() {
 		tableSchemaCache := map[string]*abstract.TableSchema{}
 		return typesystem.Fallback{
 			To:     7,
-			Picker: typesystem.ProviderType(yt.ProviderType),
+			Picker: typesystem.ProviderType(provider_yt.ProviderType),
 			Function: func(ci *abstract.ChangeItem) (*abstract.ChangeItem, error) {
 				return FallbackBytesAsStringGoType(ci, tableSchemaCache)
 			},

@@ -11,8 +11,8 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/errors/coded"
-	"github.com/transferia/transferia/pkg/errors/codes"
-	"github.com/transferia/transferia/pkg/providers/postgres"
+	error_codes "github.com/transferia/transferia/pkg/errors/codes"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/util"
 	"go.ytsaurus.tech/library/go/core/log"
 )
@@ -98,7 +98,7 @@ func (d *GpfdistDDLExecutor) RunExternalTableTransaction(
 			"more urls than segments",
 			"more urls than available primary segments",
 		) {
-			return 0, coded.Errorf(codes.GreenplumExternalUrlsExceedSegments, "%s: %w", msg, err)
+			return 0, coded.Errorf(error_codes.GreenplumExternalUrlsExceedSegments, "%s: %w", msg, err)
 		}
 		return 0, xerrors.Errorf("%s: %w", msg, err)
 	}
@@ -128,7 +128,7 @@ func (d *GpfdistDDLExecutor) buildCreateExtTableQuery(
 			colType = strings.ReplaceAll(colType, "USER-DEFINED", "TEXT")
 		} else {
 			var err error
-			colType, err = postgres.DataToOriginal(col.DataType)
+			colType, err = provider_postgres.DataToOriginal(col.DataType)
 			if err != nil {
 				return "", xerrors.Errorf("unable to convert column %s to GP type: %w", col.ColumnName, err)
 			}

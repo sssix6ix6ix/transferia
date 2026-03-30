@@ -3,7 +3,7 @@ package types
 import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract2"
-	yt_schema "go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 type BigFloatValue interface {
@@ -35,8 +35,8 @@ func (typ *BigFloatType) Validate(value abstract2.Value) error {
 	return err
 }
 
-func (typ *BigFloatType) ToOldType() (yt_schema.Type, error) {
-	return yt_schema.TypeString, nil
+func (typ *BigFloatType) ToOldType() (ytschema.Type, error) {
+	return ytschema.TypeString, nil
 }
 
 func (typ *BigFloatType) Precision() int {

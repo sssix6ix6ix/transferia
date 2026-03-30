@@ -2,7 +2,7 @@ package types
 
 import (
 	"database/sql"
-	"database/sql/driver"
+	sql_driver "database/sql/driver"
 
 	"github.com/transferia/transferia/library/go/core/xerrors"
 )
@@ -12,7 +12,7 @@ type NullUint64 struct {
 	Valid  bool // Valid is true if Int64 is not NULL
 }
 
-var _ driver.Valuer = (*NullUint64)(nil)
+var _ sql_driver.Valuer = (*NullUint64)(nil)
 var _ sql.Scanner = (*NullUint64)(nil)
 
 func (n *NullUint64) Scan(value interface{}) error {
@@ -35,7 +35,7 @@ func (n *NullUint64) Scan(value interface{}) error {
 	return nil
 }
 
-func (n *NullUint64) Value() (driver.Value, error) {
+func (n *NullUint64) Value() (sql_driver.Value, error) {
 	if !n.Valid {
 		return nil, nil
 	}

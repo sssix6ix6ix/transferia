@@ -8,7 +8,7 @@ import (
 	"sync"
 
 	"github.com/transferia/transferia/library/go/core/xerrors"
-	"github.com/ydb-platform/ydb-go-sdk/v3"
+	ydb_go_sdk "github.com/ydb-platform/ydb-go-sdk/v3"
 	"github.com/ydb-platform/ydb-go-sdk/v3/topic/topicoptions"
 	"github.com/ydb-platform/ydb-go-sdk/v3/topic/topicreader"
 	"github.com/ydb-platform/ydb-go-sdk/v3/trace"
@@ -46,7 +46,7 @@ func (r *readerThreadSafe) Close(ctx context.Context) error {
 	return r.readerImpl.Close(ctx)
 }
 
-func newReader(feedName, consumerName, dbname string, tables []string, ydbClient *ydb.Driver, commitMode topicoptions.CommitMode, logger log.Logger) (*readerThreadSafe, error) {
+func newReader(feedName, consumerName, dbname string, tables []string, ydbClient *ydb_go_sdk.Driver, commitMode topicoptions.CommitMode, logger log.Logger) (*readerThreadSafe, error) {
 	dbname = strings.TrimLeft(dbname, "/")
 	selectors := make([]topicoptions.ReadSelector, len(tables))
 	for i, table := range tables {

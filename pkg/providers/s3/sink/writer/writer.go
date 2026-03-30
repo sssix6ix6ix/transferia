@@ -6,7 +6,7 @@ import (
 	"io"
 
 	"github.com/transferia/transferia/library/go/core/xerrors"
-	s3_provider "github.com/transferia/transferia/pkg/providers/s3"
+	s3_model "github.com/transferia/transferia/pkg/providers/s3/model"
 )
 
 type Writer struct {
@@ -41,11 +41,11 @@ func withCloser(w io.WriteCloser, closer io.Closer) io.WriteCloser {
 	}
 }
 
-func NewWriter(outputEncoding s3_provider.Encoding, rawWriter io.WriteCloser) io.WriteCloser {
+func NewWriter(outputEncoding s3_model.Encoding, rawWriter io.WriteCloser) io.WriteCloser {
 	switch outputEncoding {
-	case s3_provider.GzipEncoding:
+	case s3_model.GzipEncoding:
 		return withCloser(gzip.NewWriter(rawWriter), rawWriter)
-	case s3_provider.ZlibEncoding:
+	case s3_model.ZlibEncoding:
 		return withCloser(zlib.NewWriter(rawWriter), rawWriter)
 	default:
 		// without compression

@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
+	aws_session "github.com/aws/aws-sdk-go/aws/session"
 	aws_s3 "github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
@@ -18,25 +18,25 @@ import (
 	"github.com/transferia/transferia/pkg/abstract/changeitem"
 	"github.com/transferia/transferia/pkg/abstract/changeitem/strictify"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/parsers/scanner"
-	"github.com/transferia/transferia/pkg/providers/s3"
-	chunk_pusher "github.com/transferia/transferia/pkg/providers/s3/pusher"
-	abstract_reader "github.com/transferia/transferia/pkg/providers/s3/reader"
+	parsers_scanner "github.com/transferia/transferia/pkg/parsers/scanner"
+	s3_model "github.com/transferia/transferia/pkg/providers/s3/model"
+	s3_pusher "github.com/transferia/transferia/pkg/providers/s3/pusher"
+	s3_reader "github.com/transferia/transferia/pkg/providers/s3/reader"
 	"github.com/transferia/transferia/pkg/providers/s3/reader/s3raw"
 	"github.com/transferia/transferia/pkg/providers/s3/s3util"
 	"github.com/transferia/transferia/pkg/stats"
 	"github.com/transferia/transferia/pkg/util"
 	"go.ytsaurus.tech/library/go/core/log"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 var (
-	_ abstract_reader.Reader             = (*LineReader)(nil)
-	_ abstract_reader.RowsCountEstimator = (*LineReader)(nil)
+	_ s3_reader.Reader             = (*LineReader)(nil)
+	_ s3_reader.RowsCountEstimator = (*LineReader)(nil)
 )
 
 func init() {
-	abstract_reader.RegisterReader(model.ParsingFormatLine, NewLineReader)
+	s3_reader.RegisterReader(model.ParsingFormatLine, NewLineReader)
 }
 
 type LineReader struct {
@@ -81,13 +81,13 @@ func (r *LineReader) EstimateRowsCountOneObject(ctx context.Context, obj *aws_s3
 func (r *LineReader) estimateRows(ctx context.Context, files []*aws_s3.Object) (uint64, error) {
 	res := uint64(0)
 
-	totalSize, sampleReader, err := abstract_reader.EstimateTotalSize(ctx, r.logger, files, r.newS3RawReader)
+	totalSize, sampleReader, err := s3_reader.EstimateTotalSize(ctx, r.logger, files, r.newS3RawReader)
 	if err != nil {
 		return 0, xerrors.Errorf("unable to estimate rows: %w", err)
 	}
 
 	if totalSize > 0 && sampleReader != nil {
-		chunkReader := abstract_reader.NewChunkReader(sampleReader, int(r.blockSize), r.logger)
+		chunkReader := s3_reader.NewChunkReader(sampleReader, int(r.blockSize), r.logger)
 		defer chunkReader.Close()
 		err := chunkReader.ReadNextChunk()
 		if err != nil && !xerrors.Is(err, io.EOF) {
@@ -117,7 +117,7 @@ func (r *LineReader) newS3RawReader(ctx context.Context, filePath string) (s3raw
 	return sr, nil
 }
 
-func (r *LineReader) Read(ctx context.Context, filePath string, pusher chunk_pusher.Pusher) error {
+func (r *LineReader) Read(ctx context.Context, filePath string, pusher s3_pusher.Pusher) error {
 	s3RawReader, err := r.newS3RawReader(ctx, filePath)
 	if err != nil {
 		return xerrors.Errorf("unable to open reader: %w", err)
@@ -127,7 +127,7 @@ func (r *LineReader) Read(ctx context.Context, filePath string, pusher chunk_pus
 	lineCounter := uint64(1)
 	var readBytes int
 	var lines []string
-	chunkReader := abstract_reader.NewChunkReader(s3RawReader, int(r.blockSize), r.logger)
+	chunkReader := s3_reader.NewChunkReader(s3RawReader, int(r.blockSize), r.logger)
 	defer chunkReader.Close()
 
 	for lastRound := false; !lastRound; {
@@ -168,7 +168,7 @@ func (r *LineReader) Read(ctx context.Context, filePath string, pusher chunk_pus
 			buff = append(buff, *ci)
 
 			if len(buff) > r.batchSize {
-				if err := abstract_reader.FlushChunk(ctx, filePath, lineCounter, currentSize, buff, pusher); err != nil {
+				if err := s3_reader.FlushChunk(ctx, filePath, lineCounter, currentSize, buff, pusher); err != nil {
 					return xerrors.Errorf("unable to push line batch: %w", err)
 				}
 				currentSize = 0
@@ -176,7 +176,7 @@ func (r *LineReader) Read(ctx context.Context, filePath string, pusher chunk_pus
 			}
 		}
 
-		if err := abstract_reader.FlushChunk(ctx, filePath, lineCounter, currentSize, buff, pusher); err != nil {
+		if err := s3_reader.FlushChunk(ctx, filePath, lineCounter, currentSize, buff, pusher); err != nil {
 			return xerrors.Errorf("unable to push line last batch: %w", err)
 		}
 	}
@@ -229,7 +229,7 @@ func (r *LineReader) constructCI(line string, fname string, lastModified time.Ti
 }
 
 func readLines(content []byte) ([]string, int, error) {
-	currScanner := scanner.NewLineBreakScanner(content)
+	currScanner := parsers_scanner.NewLineBreakScanner(content)
 	scannedLines, err := currScanner.ScanAll()
 	if err != nil {
 		return nil, 0, xerrors.Errorf("failed to split all read lines: %w", err)
@@ -243,11 +243,11 @@ func readLines(content []byte) ([]string, int, error) {
 	return scannedLines, bytesRead, nil
 }
 
-func (r *LineReader) ParsePassthrough(chunk chunk_pusher.Chunk) []abstract.ChangeItem {
+func (r *LineReader) ParsePassthrough(chunk s3_pusher.Chunk) []abstract.ChangeItem {
 	return chunk.Items
 }
 
-func (r *LineReader) ObjectsFilter() abstract_reader.ObjectsFilter { return abstract_reader.IsNotEmpty }
+func (r *LineReader) ObjectsFilter() s3_reader.ObjectsFilter { return s3_reader.IsNotEmpty }
 
 func (r *LineReader) ResolveSchema(ctx context.Context) (*abstract.TableSchema, error) {
 	if r.tableSchema != nil && len(r.tableSchema.Columns()) != 0 {
@@ -263,10 +263,10 @@ func (r *LineReader) ResolveSchema(ctx context.Context) (*abstract.TableSchema, 
 		return nil, xerrors.Errorf("unable to resolve schema, no files found: %s", r.pathPrefix)
 	}
 
-	return abstract.NewTableSchema([]abstract.ColSchema{abstract.NewColSchema("row", schema.TypeBytes, false)}), nil
+	return abstract.NewTableSchema([]abstract.ColSchema{abstract.NewColSchema("row", ytschema.TypeBytes, false)}), nil
 }
 
-func NewLineReader(src *s3.S3Source, lgr log.Logger, sess *session.Session, metrics *stats.SourceStats) (abstract_reader.Reader, error) {
+func NewLineReader(src *s3_model.S3Source, lgr log.Logger, sess *aws_session.Session, metrics *stats.SourceStats) (s3_reader.Reader, error) {
 	reader := &LineReader{
 		table: abstract.TableID{
 			Namespace: src.TableNamespace,
@@ -299,7 +299,7 @@ func NewLineReader(src *s3.S3Source, lgr log.Logger, sess *session.Session, metr
 	if !reader.hideSystemCols {
 		cols := reader.tableSchema.Columns()
 		userDefinedSchemaHasPkey := reader.tableSchema.Columns().HasPrimaryKey()
-		reader.tableSchema = abstract_reader.AppendSystemColsTableSchema(cols, !userDefinedSchemaHasPkey)
+		reader.tableSchema = s3_reader.AppendSystemColsTableSchema(cols, !userDefinedSchemaHasPkey)
 	}
 
 	reader.ColumnNames = yslices.Map(reader.tableSchema.Columns(), func(t abstract.ColSchema) string { return t.ColumnName })

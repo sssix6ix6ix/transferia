@@ -1,7 +1,7 @@
 package errors
 
 import (
-	"github.com/ClickHouse/clickhouse-go/v2"
+	clickhouse_go "github.com/ClickHouse/clickhouse-go/v2"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 )
 
@@ -12,12 +12,12 @@ var NonRetryableCode = map[int32]bool{
 }
 
 func IsClickhouseError(err error) bool {
-	var exception *clickhouse.Exception
+	var exception *clickhouse_go.Exception
 	return xerrors.As(err, &exception)
 }
 
 func IsFatalClickhouseError(err error) bool {
-	exception := new(clickhouse.Exception)
+	exception := new(clickhouse_go.Exception)
 	if !xerrors.As(err, &exception) {
 		return false
 	}

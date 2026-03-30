@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/kikimr/public/sdk/go/persqueue"
-	"github.com/transferia/transferia/kikimr/public/sdk/go/persqueue/recipe"
+	persqueue_recipe "github.com/transferia/transferia/kikimr/public/sdk/go/persqueue/recipe"
 	"github.com/transferia/transferia/pkg/util/jsonx"
 )
 
@@ -21,7 +21,7 @@ func MessageDataForCanon(t *testing.T, msg persqueue.ReadMessage) map[string]any
 	return asMap
 }
 
-func initAndStartReader(t *testing.T, lbEnv *recipe.Env, database, topic string) (persqueue.Reader, context.CancelFunc) {
+func initAndStartReader(t *testing.T, lbEnv *persqueue_recipe.Env, database, topic string) (persqueue.Reader, context.CancelFunc) {
 	readerOptions := lbEnv.ConsumerOptions()
 	readerOptions.Database = database
 	readerOptions.Topics = []persqueue.TopicInfo{{Topic: topic}}
@@ -38,7 +38,7 @@ type MessageHandler func(topic string, index int, msg persqueue.ReadMessage)
 
 var stubMessageHandler MessageHandler = func(_ string, _ int, _ persqueue.ReadMessage) {}
 
-func LoadMessages(t *testing.T, lbEnv *recipe.Env, database, topic string, expectedNum int, handler MessageHandler) {
+func LoadMessages(t *testing.T, lbEnv *persqueue_recipe.Env, database, topic string, expectedNum int, handler MessageHandler) {
 	if handler == nil {
 		handler = stubMessageHandler
 	}
@@ -76,7 +76,7 @@ func LoadMessages(t *testing.T, lbEnv *recipe.Env, database, topic string, expec
 	require.NoError(t, err)
 }
 
-func CheckData(t *testing.T, lbEnv *recipe.Env, database, topic string, checkFunc func(msg string) bool, maxDuration time.Duration) {
+func CheckData(t *testing.T, lbEnv *persqueue_recipe.Env, database, topic string, checkFunc func(msg string) bool, maxDuration time.Duration) {
 	sleepTime := 100 * time.Millisecond
 	startTime := time.Now()
 

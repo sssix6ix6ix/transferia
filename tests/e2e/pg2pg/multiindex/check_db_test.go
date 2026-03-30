@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
-	pg_provider "github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
 	"github.com/transferia/transferia/tests/helpers"
 )
@@ -18,13 +18,13 @@ import (
 var (
 	TransferType = abstract.TransferTypeIncrementOnly
 
-	SourceBasic = *pgrecipe.RecipeSource(pgrecipe.WithInitDir("init_source"), pgrecipe.WithDBTables("public.test_basic"), pgrecipe.WithEdit(func(pg *pg_provider.PgSource) {
-		pg.PreSteps = &pg_provider.PgDumpSteps{}
+	SourceBasic = *pgrecipe.RecipeSource(pgrecipe.WithInitDir("init_source"), pgrecipe.WithDBTables("public.test_basic"), pgrecipe.WithEdit(func(pg *provider_postgres.PgSource) {
+		pg.PreSteps = &provider_postgres.PgDumpSteps{}
 	}))
 	TargetBasic = *pgrecipe.RecipeTarget(pgrecipe.WithInitDir("init_target"))
 
-	SourceChangePkey = *pgrecipe.RecipeSource(pgrecipe.WithInitDir("init_source"), pgrecipe.WithDBTables("public.test_change_pkey"), pgrecipe.WithEdit(func(pg *pg_provider.PgSource) {
-		pg.PreSteps = &pg_provider.PgDumpSteps{}
+	SourceChangePkey = *pgrecipe.RecipeSource(pgrecipe.WithInitDir("init_source"), pgrecipe.WithDBTables("public.test_change_pkey"), pgrecipe.WithEdit(func(pg *provider_postgres.PgSource) {
+		pg.PreSteps = &provider_postgres.PgDumpSteps{}
 	}))
 	TargetChangePkey = *pgrecipe.RecipeTarget(pgrecipe.WithInitDir("init_target"))
 )
@@ -45,10 +45,10 @@ func TestMultiindexBasic(t *testing.T) {
 	helpers.InitSrcDst(transferID, &SourceBasic, &TargetBasic, TransferType) // to WithDefaults() & FillDependentFields(): IsHomo, helpers.TransferID, IsUpdateable
 	transfer := helpers.MakeTransfer(transferID, &SourceBasic, &TargetBasic, TransferType)
 
-	srcConn, err := pg_provider.MakeConnPoolFromSrc(&SourceBasic, logger.Log)
+	srcConn, err := provider_postgres.MakeConnPoolFromSrc(&SourceBasic, logger.Log)
 	require.NoError(t, err)
 	defer srcConn.Close()
-	dstConn, err := pg_provider.MakeConnPoolFromDst(&TargetBasic, logger.Log)
+	dstConn, err := provider_postgres.MakeConnPoolFromDst(&TargetBasic, logger.Log)
 	require.NoError(t, err)
 	defer dstConn.Close()
 
@@ -99,10 +99,10 @@ func TestMultiindexPkeyChange(t *testing.T) {
 	helpers.InitSrcDst(transferID, &SourceChangePkey, &TargetChangePkey, TransferType) // to WithDefaults() & FillDependentFields(): IsHomo, helpers.TransferID, IsUpdateable
 	transfer := helpers.MakeTransfer(transferID, &SourceChangePkey, &TargetChangePkey, TransferType)
 
-	srcConn, err := pg_provider.MakeConnPoolFromSrc(&SourceChangePkey, logger.Log)
+	srcConn, err := provider_postgres.MakeConnPoolFromSrc(&SourceChangePkey, logger.Log)
 	require.NoError(t, err)
 	defer srcConn.Close()
-	dstConn, err := pg_provider.MakeConnPoolFromDst(&TargetChangePkey, logger.Log)
+	dstConn, err := provider_postgres.MakeConnPoolFromDst(&TargetChangePkey, logger.Log)
 	require.NoError(t, err)
 	defer dstConn.Close()
 

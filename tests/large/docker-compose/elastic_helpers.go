@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/library/go/core/xerrors"
-	"github.com/transferia/transferia/pkg/providers/elastic"
+	provider_elastic "github.com/transferia/transferia/pkg/providers/elastic"
 	"github.com/transferia/transferia/pkg/util/jsonx"
 )
 
@@ -22,7 +22,7 @@ func createElasticIndex(t *testing.T, esClient *elasticsearch.Client, indexName 
 		esClient.Indices.Create.WithBody(strings.NewReader(indexParamsRawJSON)),
 	)
 	require.NoError(t, err)
-	err = elastic.WaitForIndexToExist(esClient, indexName, time.Second*30)
+	err = provider_elastic.WaitForIndexToExist(esClient, indexName, time.Second*30)
 	require.NoError(t, err)
 	require.False(t, res.IsError(), res.String())
 	_, err = elasticGetAllDocuments(esClient, indexName)
@@ -55,26 +55,26 @@ func dumpElasticIndexParams(t *testing.T, esClient *elasticsearch.Client, indexN
 	asMap, ok := indexParams.(map[string]interface{})
 	require.True(t, ok)
 
-	elastic.DeleteSystemFieldsFromIndexParams(asMap)
+	provider_elastic.DeleteSystemFieldsFromIndexParams(asMap)
 
 	return asMap
 }
 
-func createTestElasticClientFromSrc(t *testing.T, elasticLike elastic.IsElasticLikeSource) *elasticsearch.Client {
+func createTestElasticClientFromSrc(t *testing.T, elasticLike provider_elastic.IsElasticLikeSource) *elasticsearch.Client {
 	src, serverType := elasticLike.ToElasticSearchSource()
 	dst := src.SourceToElasticSearchDestination()
-	config, err := elastic.ConfigFromDestination(logger.Log, dst, serverType)
+	config, err := provider_elastic.ConfigFromDestination(logger.Log, dst, serverType)
 	require.NoError(t, err)
-	client, err := elastic.WithLogger(*config, logger.Log, serverType)
+	client, err := provider_elastic.WithLogger(*config, logger.Log, serverType)
 	require.NoError(t, err)
 	return client
 }
 
-func createTestElasticClientFromDst(t *testing.T, elasticLike elastic.IsElasticLikeDestination) *elasticsearch.Client {
+func createTestElasticClientFromDst(t *testing.T, elasticLike provider_elastic.IsElasticLikeDestination) *elasticsearch.Client {
 	dst, serverType := elasticLike.ToElasticSearchDestination()
-	config, err := elastic.ConfigFromDestination(logger.Log, dst, serverType)
+	config, err := provider_elastic.ConfigFromDestination(logger.Log, dst, serverType)
 	require.NoError(t, err)
-	client, err := elastic.WithLogger(*config, logger.Log, serverType)
+	client, err := provider_elastic.WithLogger(*config, logger.Log, serverType)
 	require.NoError(t, err)
 	return client
 }

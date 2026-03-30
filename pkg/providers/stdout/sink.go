@@ -3,7 +3,7 @@ package stdout
 import (
 	"time"
 
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/pkg/abstract"
 	"go.ytsaurus.tech/library/go/core/log"
 )
@@ -52,7 +52,7 @@ func (s sinker) Close() error {
 	return nil
 }
 
-func NewSinker(lgr log.Logger, config *StdoutDestination, registry metrics.Registry) abstract.Sinker {
+func NewSinker(lgr log.Logger, config *StdoutDestination, registry core_metrics.Registry) abstract.Sinker {
 	return &sinker{
 		logger:      lgr,
 		config:      config,

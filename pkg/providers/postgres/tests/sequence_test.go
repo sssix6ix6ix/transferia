@@ -14,7 +14,7 @@ import (
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/pkg/abstract"
-	"github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
 )
 
@@ -60,7 +60,7 @@ func TestListSequencesInParallel(t *testing.T) {
 	txOptions := pgx.TxOptions{IsoLevel: pgx.ReadCommitted, AccessMode: pgx.ReadWrite, DeferrableMode: pgx.NotDeferrable}
 
 	testListSequences := func(tx pgx.Tx) {
-		_, err := postgres.ListSequencesWithDependants(ctx, tx.Conn(), "public")
+		_, err := provider_postgres.ListSequencesWithDependants(ctx, tx.Conn(), "public")
 		require.NoError(t, err)
 	}
 
@@ -88,7 +88,7 @@ func TestListSequences(t *testing.T) {
 		require.NoError(t, tx.Rollback(ctx))
 	}()
 
-	sequences, err := postgres.ListSequencesWithDependants(ctx, tx.Conn(), "public")
+	sequences, err := provider_postgres.ListSequencesWithDependants(ctx, tx.Conn(), "public")
 	require.NoError(t, err)
 
 	seq, ok := sequences[*abstract.NewTableID("public", "test_table_with_serial_id_seq")]
@@ -122,7 +122,7 @@ func TestListSequences(t *testing.T) {
 		*abstract.NewTableID("public", "table_with_gbdai_seq"),
 	}, seq.DependentTables)
 	// check value of the last sequence
-	lastValue, isCalled, err := postgres.GetCurrentStateOfSequence(ctx, tx.Conn(), seq.SequenceID)
+	lastValue, isCalled, err := provider_postgres.GetCurrentStateOfSequence(ctx, tx.Conn(), seq.SequenceID)
 	require.NoError(t, err)
 	require.Equal(t, int64(3), lastValue)
 	require.True(t, isCalled)

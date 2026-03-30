@@ -9,9 +9,9 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
-	cpclient "github.com/transferia/transferia/pkg/abstract/coordinator"
+	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/mongo"
+	provider_mongo "github.com/transferia/transferia/pkg/providers/mongo"
 	"github.com/transferia/transferia/pkg/randutil"
 	"github.com/transferia/transferia/pkg/runtime/local"
 	"github.com/transferia/transferia/pkg/worker/tasks"
@@ -36,8 +36,8 @@ var (
 	userPassword = os.Getenv("MONGO_LOCAL_PASSWORD")
 )
 
-func getSource(collection ...mongo.MongoCollection) *mongo.MongoSource {
-	return &mongo.MongoSource{
+func getSource(collection ...provider_mongo.MongoCollection) *provider_mongo.MongoSource {
+	return &provider_mongo.MongoSource{
 		Hosts:       []string{"localhost"},
 		Port:        port,
 		User:        userName,
@@ -46,7 +46,7 @@ func getSource(collection ...mongo.MongoCollection) *mongo.MongoSource {
 	}
 }
 
-func getTransfer(source *mongo.MongoSource) model.Transfer {
+func getTransfer(source *provider_mongo.MongoSource) model.Transfer {
 	tr := model.Transfer{
 		ID:   transferSlotID,
 		Type: abstract.TransferTypeSnapshotAndIncrement,
@@ -60,15 +60,15 @@ func getTransfer(source *mongo.MongoSource) model.Transfer {
 	return tr
 }
 
-func connect(source *mongo.MongoSource) (*mongo.MongoClientWrapper, error) {
-	client, err := mongo.Connect(context.TODO(), source.ConnectionOptions([]string{}), nil)
+func connect(source *provider_mongo.MongoSource) (*provider_mongo.MongoClientWrapper, error) {
+	client, err := provider_mongo.Connect(context.TODO(), source.ConnectionOptions([]string{}), nil)
 	if err != nil {
 		return nil, err
 	}
 	return client, nil
 }
 
-func setOplogSize(ctx context.Context, client *mongo.MongoClientWrapper, sizeInSeconds, sizeInMegabytes int) error {
+func setOplogSize(ctx context.Context, client *provider_mongo.MongoClientWrapper, sizeInSeconds, sizeInMegabytes int) error {
 	hourOplogSize := float64(sizeInSeconds) / (60.0 * 60.0)
 
 	cmdParams := bson.D{
@@ -91,7 +91,7 @@ func (m mockSinker) Push(items []abstract.ChangeItem) error { return nil }
 
 // controlplane that catches replication failure
 type mockCPFailRepl struct {
-	cpclient.CoordinatorNoOp
+	coordinator.CoordinatorNoOp
 	err error
 }
 
@@ -107,7 +107,7 @@ func (f *mockCPFailRepl) FailReplication(transferID string, err error) error {
 	return nil
 }
 
-func snapshotPhase(t *testing.T, ctx context.Context, source *mongo.MongoSource) {
+func snapshotPhase(t *testing.T, ctx context.Context, source *provider_mongo.MongoSource) {
 	sourceDBs := []string{}
 	for _, coll := range source.Collections {
 		sourceDBs = append(sourceDBs, coll.DatabaseName)
@@ -125,7 +125,7 @@ func snapshotPhase(t *testing.T, ctx context.Context, source *mongo.MongoSource)
 
 	// drop slot info
 	for _, sourceDB := range allDBs {
-		_ = client.Database(sourceDB).Collection(mongo.ClusterTimeCollName).Drop(context.Background())
+		_ = client.Database(sourceDB).Collection(provider_mongo.ClusterTimeCollName).Drop(context.Background())
 	}
 
 	// insert first records
@@ -145,12 +145,12 @@ func snapshotPhase(t *testing.T, ctx context.Context, source *mongo.MongoSource)
 	// start worker
 	transfer := getTransfer(source)
 
-	err = tasks.ActivateDelivery(context.TODO(), nil, cpclient.NewFakeClient(), transfer, helpers.EmptyRegistry())
+	err = tasks.ActivateDelivery(context.TODO(), nil, coordinator.NewFakeClient(), transfer, helpers.EmptyRegistry())
 	require.NoError(t, err)
 }
 
-func incrementPhaseWithRestart(t *testing.T, ctx context.Context, source *mongo.MongoSource,
-	updatableCollections []string, sourceAfterRestart *mongo.MongoSource) error {
+func incrementPhaseWithRestart(t *testing.T, ctx context.Context, source *provider_mongo.MongoSource,
+	updatableCollections []string, sourceAfterRestart *provider_mongo.MongoSource) error {
 
 	client, err := connect(source)
 	require.NoError(t, err)
@@ -160,7 +160,7 @@ func incrementPhaseWithRestart(t *testing.T, ctx context.Context, source *mongo.
 
 	// start replication
 	func() {
-		localWorker := local.NewLocalWorker(cpclient.NewFakeClient(), &transfer, helpers.EmptyRegistry(), logger.Log)
+		localWorker := local.NewLocalWorker(coordinator.NewFakeClient(), &transfer, helpers.EmptyRegistry(), logger.Log)
 		localWorker.Start()
 		defer localWorker.Stop() //nolint
 
@@ -178,9 +178,9 @@ func incrementPhaseWithRestart(t *testing.T, ctx context.Context, source *mongo.
 			}
 
 			// note: admin rights required
-			oplogFromTS, _, err := mongo.GetLocalOplogInterval(ctx, client)
+			oplogFromTS, _, err := provider_mongo.GetLocalOplogInterval(ctx, client)
 			require.NoError(t, err)
-			if timeStart.Before(mongo.FromMongoTimestamp(oplogFromTS)) {
+			if timeStart.Before(provider_mongo.FromMongoTimestamp(oplogFromTS)) {
 				// when oplog rotation happened -- terminate
 				break
 			}
@@ -210,7 +210,7 @@ func incrementPhaseWithRestart(t *testing.T, ctx context.Context, source *mongo.
 func findSlots(
 	t *testing.T,
 	ctx context.Context,
-	source *mongo.MongoSource,
+	source *provider_mongo.MongoSource,
 ) (primitive.Timestamp, primitive.Timestamp, primitive.Timestamp) {
 	client, err := connect(source)
 	require.NoError(t, err)
@@ -223,11 +223,11 @@ func findSlots(
 		testDB2: &oplog2,
 		testDB3: &oplog3,
 	} {
-		var pu mongo.ParallelizationUnit
-		if source.ReplicationSource == mongo.MongoReplicationSourceOplog {
-			pu = mongo.MakeParallelizationUnitOplog(source.TechnicalDatabase, source.SlotID)
+		var pu provider_mongo.ParallelizationUnit
+		if source.ReplicationSource == provider_mongo.MongoReplicationSourceOplog {
+			pu = provider_mongo.MakeParallelizationUnitOplog(source.TechnicalDatabase, source.SlotID)
 		} else {
-			pu = mongo.MakeParallelizationUnitDatabase(source.TechnicalDatabase, source.SlotID, dbName)
+			pu = provider_mongo.MakeParallelizationUnitDatabase(source.TechnicalDatabase, source.SlotID, dbName)
 		}
 		clusterTime, err := pu.GetClusterTime(ctx, client)
 		if err == nil {
@@ -241,15 +241,15 @@ func TestMongoSlot(t *testing.T) {
 	ctx := context.Background()
 	t.Run("StaleDB", func(t *testing.T) {
 		source := getSource(
-			mongo.MongoCollection{
+			provider_mongo.MongoCollection{
 				DatabaseName:   testDB1,
 				CollectionName: collectionName,
 			},
-			mongo.MongoCollection{
+			provider_mongo.MongoCollection{
 				DatabaseName:   testDB2,
 				CollectionName: collectionName,
 			},
-			mongo.MongoCollection{
+			provider_mongo.MongoCollection{
 				DatabaseName:   testDB3,
 				CollectionName: collectionName,
 			})
@@ -282,11 +282,11 @@ func TestMongoSlot(t *testing.T) {
 	})
 	t.Run("StaleDBOplog", func(t *testing.T) {
 		source := getSource(
-			mongo.MongoCollection{
+			provider_mongo.MongoCollection{
 				DatabaseName:   testDB3,
 				CollectionName: collectionName,
 			})
-		source.ReplicationSource = mongo.MongoReplicationSourceOplog
+		source.ReplicationSource = provider_mongo.MongoReplicationSourceOplog
 		source.WithDefaults()
 
 		// start snapshot phase
@@ -309,21 +309,21 @@ func TestMongoSlot(t *testing.T) {
 	})
 	// this needed for checking ChangeStreamHistoryLost
 	t.Run("CheckOplogFailure", func(t *testing.T) {
-		sourceBefore := getSource(mongo.MongoCollection{
+		sourceBefore := getSource(provider_mongo.MongoCollection{
 			DatabaseName:   testDB1,
 			CollectionName: collectionName,
-		}, mongo.MongoCollection{
+		}, provider_mongo.MongoCollection{
 			DatabaseName:   testDB2,
 			CollectionName: collectionName,
 		})
 		sourceBefore.WithDefaults()
-		sourceAfter := getSource(mongo.MongoCollection{
+		sourceAfter := getSource(provider_mongo.MongoCollection{
 			DatabaseName:   testDB1,
 			CollectionName: collectionName,
-		}, mongo.MongoCollection{
+		}, provider_mongo.MongoCollection{
 			DatabaseName:   testDB2,
 			CollectionName: collectionName,
-		}, mongo.MongoCollection{
+		}, provider_mongo.MongoCollection{
 			DatabaseName:   testDB3,
 			CollectionName: collectionName,
 		})

@@ -16,15 +16,15 @@ import (
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/abstract/typesystem"
 	"github.com/transferia/transferia/pkg/middlewares"
-	"github.com/transferia/transferia/pkg/providers/yt"
-	"github.com/transferia/transferia/pkg/sink"
+	provider_yt "github.com/transferia/transferia/pkg/providers/yt"
+	"github.com/transferia/transferia/pkg/sink_factory"
 	"github.com/transferia/transferia/pkg/worker/tasks"
 	"github.com/transferia/transferia/tests/helpers"
 )
 
 func constructSinkCleanupAndPush(t *testing.T, transfer *model.Transfer, tables abstract.TableMap, itemBatches ...[]abstract.ChangeItem) {
 	cp := coordinator.NewStatefulFakeClient()
-	as, err := sink.MakeAsyncSink(transfer, &model.TransferOperation{}, logger.Log, solomon.NewRegistry(solomon.NewRegistryOpts()), cp, middlewares.MakeConfig(middlewares.WithNoData))
+	as, err := sink_factory.MakeAsyncSink(transfer, &model.TransferOperation{}, logger.Log, solomon.NewRegistry(solomon.NewRegistryOpts()), cp, middlewares.MakeConfig(middlewares.WithNoData))
 	require.NoError(t, err)
 	defer func() { require.NoError(t, as.Close()) }()
 
@@ -35,7 +35,7 @@ func constructSinkCleanupAndPush(t *testing.T, transfer *model.Transfer, tables 
 		errCh := as.AsyncPush(itemBatches[i])
 		require.NoError(t, <-errCh)
 	}
-	baseSink, err := sink.ConstructBaseSink(transfer, &model.TransferOperation{}, logger.Log, solomon.NewRegistry(solomon.NewRegistryOpts()), cp, middlewares.MakeConfig(middlewares.WithNoData))
+	baseSink, err := sink_factory.ConstructBaseSink(transfer, &model.TransferOperation{}, logger.Log, solomon.NewRegistry(solomon.NewRegistryOpts()), cp, middlewares.MakeConfig(middlewares.WithNoData))
 	defer func() {
 		require.NoError(t, baseSink.Close())
 	}()
@@ -62,7 +62,7 @@ func ReferenceTestFn(transfer *model.Transfer, sinkAsSource model.Source, itemBa
 	return func(t *testing.T) {
 		startVersion := 1
 		// In dynamic table scenario mount/unmount operations take ~1sec, it takes too long to test all reference cases for all typesystems
-		if ytDst, ok := transfer.Dst.(*yt.YtDestinationWrapper); ok && !ytDst.Static() {
+		if ytDst, ok := transfer.Dst.(*provider_yt.YtDestinationWrapper); ok && !ytDst.Static() {
 			startVersion = typesystem.LatestVersion
 		}
 

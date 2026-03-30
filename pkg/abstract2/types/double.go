@@ -4,7 +4,7 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract2"
 	"github.com/transferia/transferia/pkg/util/castx"
-	yt_schema "go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 type DoubleValue interface {
@@ -32,8 +32,8 @@ func (typ *DoubleType) Validate(value abstract2.Value) error {
 	return err
 }
 
-func (typ *DoubleType) ToOldType() (yt_schema.Type, error) {
-	return yt_schema.TypeFloat64, nil
+func (typ *DoubleType) ToOldType() (ytschema.Type, error) {
+	return ytschema.TypeFloat64, nil
 }
 
 type DefaultDoubleValue struct {

@@ -14,10 +14,10 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/debezium"
-	debeziumcommon "github.com/transferia/transferia/pkg/debezium/common"
-	debeziumparameters "github.com/transferia/transferia/pkg/debezium/parameters"
+	debezium_common "github.com/transferia/transferia/pkg/debezium/common"
+	debezium_parameters "github.com/transferia/transferia/pkg/debezium/parameters"
 	"github.com/transferia/transferia/pkg/debezium/typeutil"
-	pgcommon "github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/util/jsonx"
 )
 
@@ -125,12 +125,12 @@ func sortJSON(in string) string {
 	return string(keySorted)
 }
 
-func CheckCanonizedDebeziumEvent(t *testing.T, changeItem *abstract.ChangeItem, databaseServerName, database, sourceType string, isSnapshot bool, canonEvents []debeziumcommon.KeyValue) {
+func CheckCanonizedDebeziumEvent(t *testing.T, changeItem *abstract.ChangeItem, databaseServerName, database, sourceType string, isSnapshot bool, canonEvents []debezium_common.KeyValue) {
 	generator, err := debezium.NewMessagesEmitter(map[string]string{
-		debeziumparameters.DatabaseDBName:   database,
-		debeziumparameters.TopicPrefix:      databaseServerName,
-		debeziumparameters.AddOriginalTypes: debeziumparameters.BoolFalse,
-		debeziumparameters.SourceType:       sourceType,
+		debezium_parameters.DatabaseDBName:   database,
+		debezium_parameters.TopicPrefix:      databaseServerName,
+		debezium_parameters.AddOriginalTypes: debezium_parameters.BoolFalse,
+		debezium_parameters.SourceType:       sourceType,
 	}, "1.1.2.Final", false, logger.Log)
 	require.NoError(t, err)
 	resultKV, err := generator.EmitKV(changeItem, debezium.GetPayloadTSMS(changeItem), isSnapshot, nil)
@@ -147,7 +147,7 @@ func CheckCanonizedDebeziumEvent(t *testing.T, changeItem *abstract.ChangeItem, 
 	}
 }
 
-func CheckCanonizedDebeziumEvent2(t *testing.T, key string, value *string, canonEvent debeziumcommon.KeyValue) {
+func CheckCanonizedDebeziumEvent2(t *testing.T, key string, value *string, canonEvent debezium_common.KeyValue) {
 	realEventKey := sortJSON(key)
 	canonEventKey := sortJSON(canonEvent.DebeziumKey)
 
@@ -158,7 +158,7 @@ func CheckCanonizedDebeziumEvent2(t *testing.T, key string, value *string, canon
 	}
 }
 
-func FixTestSuite(t *testing.T, testSuite []debeziumcommon.ChangeItemCanon, databaseServerName, database, sourceType string) []debeziumcommon.ChangeItemCanon {
+func FixTestSuite(t *testing.T, testSuite []debezium_common.ChangeItemCanon, databaseServerName, database, sourceType string) []debezium_common.ChangeItemCanon {
 	for i, testCase := range testSuite {
 		if i == 0 || i == 1 || i == 2 {
 			newVal := strings.ReplaceAll(*testSuite[i].DebeziumEvents[0].DebeziumVal, `"oid_":null`, `"oid_":2`)
@@ -274,7 +274,7 @@ func CompareYTTypesOriginalAndRecovered(t *testing.T, l, r *abstract.ChangeItem)
 		rType := fmt.Sprintf("%T", rValWrapped)
 		originalType := l.TableSchema.Columns()[lColNameToColSchemaIndex[currColumnName]].OriginalType
 
-		if pgcommon.IsPgTypeTimestampWithoutTimeZone(originalType) { // debezium is corrupting this type on timezone
+		if provider_postgres.IsPgTypeTimestampWithoutTimeZone(originalType) { // debezium is corrupting this type on timezone
 			continue
 		}
 		if strings.HasSuffix(originalType, "[]") { // in array
@@ -321,7 +321,7 @@ func CompareYTTypesOriginalAndRecovered(t *testing.T, l, r *abstract.ChangeItem)
 			checked = true
 		}
 		// known case - we are losing timezone into "pg:time with time zone" conversion
-		if pgcommon.IsPgTypeTimeWithTimeZone(originalType) {
+		if provider_postgres.IsPgTypeTimeWithTimeZone(originalType) {
 			// I'm too lazy to convert tz from string here. Let it check checksum - here I just compare type
 			require.Equal(t, lType, rType, fmt.Sprintf("columnName: %s", currColumnName))
 			checked = true

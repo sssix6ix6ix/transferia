@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/pkg/abstract"
-	"github.com/transferia/transferia/pkg/providers/mysql"
+	provider_mysql "github.com/transferia/transferia/pkg/providers/mysql"
 	"github.com/transferia/transferia/pkg/providers/mysql/mysqlrecipe"
 	"github.com/transferia/transferia/tests/helpers"
 )
@@ -153,9 +153,9 @@ func TestSnapshotAndIncrement(t *testing.T) {
 
 	//---
 
-	connParams, err := mysql.NewConnectionParams(Source.ToStorageParams())
+	connParams, err := provider_mysql.NewConnectionParams(Source.ToStorageParams())
 	require.NoError(t, err)
-	db, err := mysql.Connect(connParams, nil)
+	db, err := provider_mysql.Connect(connParams, nil)
 	require.NoError(t, err)
 
 	_, err = db.Exec(insertStmt)

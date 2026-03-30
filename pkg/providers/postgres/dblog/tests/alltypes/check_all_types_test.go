@@ -13,8 +13,8 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/dblog"
 	"github.com/transferia/transferia/pkg/dblog/tablequery"
-	"github.com/transferia/transferia/pkg/providers/postgres"
-	pg_dblog "github.com/transferia/transferia/pkg/providers/postgres/dblog"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
+	postgres_dblog "github.com/transferia/transferia/pkg/providers/postgres/dblog"
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
 	"github.com/transferia/transferia/tests/helpers"
 	"github.com/transferia/transferia/tests/helpers/yatestx"
@@ -140,7 +140,7 @@ func TestIncrementalSnapshot(t *testing.T) {
 		))
 	}()
 
-	storage, err := postgres.NewStorage(Source.ToStorageParams(nil))
+	storage, err := provider_postgres.NewStorage(Source.ToStorageParams(nil))
 	require.NoError(t, err)
 
 	conn, err := storage.Conn.Acquire(context.TODO())
@@ -152,7 +152,7 @@ func TestIncrementalSnapshot(t *testing.T) {
 	tableNames := make([]string, 0, len(postgresTypes))
 
 	for _, pgType := range postgresTypes {
-		require.Equal(t, dblog.TypeSupported, pg_dblog.CheckTypeCompatibility(pgType), "pgType: %s", pgType)
+		require.Equal(t, dblog.TypeSupported, postgres_dblog.CheckTypeCompatibility(pgType), "pgType: %s", pgType)
 
 		tableName := createTableNameForType(pgType)
 		tableNames = append(tableNames, tableName)
@@ -297,7 +297,7 @@ func TestIncrementalSnapshot(t *testing.T) {
 			storage,
 			tableQuery,
 			signalTable,
-			postgres.Represent,
+			provider_postgres.Represent,
 			primaryKey,
 			nil,
 			defaultLimit,

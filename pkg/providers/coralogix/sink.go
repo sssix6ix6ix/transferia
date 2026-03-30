@@ -3,13 +3,13 @@ package coralogix
 import (
 	"context"
 	"strings"
-	"text/template"
+	text_template "text/template"
 	"time"
 
 	"github.com/araddon/dateparse"
 	"github.com/cenkalti/backoff/v4"
 	"github.com/spf13/cast"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	yslices "github.com/transferia/transferia/library/go/slices"
 	"github.com/transferia/transferia/pkg/abstract"
@@ -21,11 +21,11 @@ import (
 type Sink struct {
 	cfg      *CoralogixDestination
 	logger   log.Logger
-	registry metrics.Registry
+	registry core_metrics.Registry
 	cancel   context.CancelFunc
 	ctx      context.Context
 	metrics  *stats.SinkerStats
-	tmpl     *template.Template
+	tmpl     *text_template.Template
 }
 
 var (
@@ -110,8 +110,8 @@ func (s *Sink) inferSeverity(severity string) Severity {
 	return res
 }
 
-func NewSink(cfg *CoralogixDestination, logger log.Logger, registry metrics.Registry) (abstract.Sinker, error) {
-	tmpl, err := template.New("log").Parse(cfg.MessageTemplate)
+func NewSink(cfg *CoralogixDestination, logger log.Logger, registry core_metrics.Registry) (abstract.Sinker, error) {
+	tmpl, err := text_template.New("log").Parse(cfg.MessageTemplate)
 	if err != nil {
 		return nil, xerrors.Errorf("unable to compile log template: %w", err)
 	}

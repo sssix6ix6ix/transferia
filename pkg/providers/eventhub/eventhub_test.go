@@ -12,14 +12,14 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs/v2"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
-	"github.com/transferia/transferia/internal/metrics"
+	dt_metrics "github.com/transferia/transferia/internal/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	eventhub2 "github.com/transferia/transferia/pkg/providers/eventhub"
+	provider_eventhub "github.com/transferia/transferia/pkg/providers/eventhub"
 	mocksink "github.com/transferia/transferia/tests/helpers/mock_sink"
 	"go.ytsaurus.tech/library/go/core/log"
-	"go.ytsaurus.tech/library/go/core/log/zap"
+	ya_zap "go.ytsaurus.tech/library/go/core/log/zap"
 )
 
 const (
@@ -76,13 +76,13 @@ func TestNewSource(t *testing.T) {
 	transferID, err := uuid.NewUUID()
 	require.NoError(t, err)
 
-	cfg := &eventhub2.EventHubSource{
+	cfg := &provider_eventhub.EventHubSource{
 		ConsumerGroup:  consumerGroup,
 		NamespaceName:  namespace,
 		HubName:        hub,
 		StartingOffset: firstEventOffset,
-		Auth: &eventhub2.EventHubAuth{
-			Method:   eventhub2.EventHubAuthSAS,
+		Auth: &provider_eventhub.EventHubAuth{
+			Method:   provider_eventhub.EventHubAuthSAS,
 			KeyName:  os.Getenv("EVENTHUB_KEY_NAME"),
 			KeyValue: model.SecretString(os.Getenv("EVENTHUB_KEY_VALUE")),
 		},
@@ -90,10 +90,10 @@ func TestNewSource(t *testing.T) {
 
 	ctx := context.Background()
 
-	logger, err := zap.New(zap.CLIConfig(log.DebugLevel))
+	logger, err := ya_zap.New(ya_zap.CLIConfig(log.DebugLevel))
 	require.NoError(t, err)
 
-	src, err := eventhub2.NewSource(transferID.String(), cfg, logger, metrics.NewRegistry())
+	src, err := provider_eventhub.NewSource(transferID.String(), cfg, logger, dt_metrics.NewRegistry())
 	require.NoError(t, err)
 	logger.Info("eventhub source was initialized")
 
@@ -174,7 +174,7 @@ func TestNewSource(t *testing.T) {
 	})
 }
 
-func newEventhubSender(cfg *eventhub2.EventHubSource) (*eventhubSender, error) {
+func newEventhubSender(cfg *provider_eventhub.EventHubSource) (*eventhubSender, error) {
 	connString := buildConnectionString(cfg)
 	client, err := azeventhubs.NewProducerClientFromConnectionString(connString, cfg.HubName, nil)
 	if err != nil {
@@ -183,7 +183,7 @@ func newEventhubSender(cfg *eventhub2.EventHubSource) (*eventhubSender, error) {
 	return &eventhubSender{client: client}, nil
 }
 
-func buildConnectionString(cfg *eventhub2.EventHubSource) string {
+func buildConnectionString(cfg *provider_eventhub.EventHubSource) string {
 	namespace := strings.TrimSpace(cfg.NamespaceName)
 	namespace = strings.TrimPrefix(namespace, "sb://")
 	namespace = strings.TrimSuffix(namespace, "/")

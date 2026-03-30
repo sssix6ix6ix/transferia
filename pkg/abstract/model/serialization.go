@@ -3,7 +3,7 @@ package model
 import (
 	"time"
 
-	debeziumparameters "github.com/transferia/transferia/pkg/debezium/parameters"
+	debezium_parameters "github.com/transferia/transferia/pkg/debezium/parameters"
 )
 
 type SerializationFormatName string
@@ -62,7 +62,7 @@ func (f *SerializationFormat) Copy() *SerializationFormat {
 func (f *SerializationFormat) SanitizeSecrets() {
 	for i := range f.SettingsKV {
 		key := f.SettingsKV[i][0]
-		if debeziumparameters.IsSensitiveParam(key) {
+		if debezium_parameters.IsSensitiveParam(key) {
 			f.SettingsKV[i][1] = "***SENSITIVE***"
 		}
 	}

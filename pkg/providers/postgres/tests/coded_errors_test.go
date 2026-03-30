@@ -12,17 +12,17 @@ import (
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/errors/coded"
-	"github.com/transferia/transferia/pkg/errors/codes"
+	error_codes "github.com/transferia/transferia/pkg/errors/codes"
 	"github.com/transferia/transferia/pkg/middlewares"
-	"github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
-	"github.com/transferia/transferia/pkg/sink"
+	"github.com/transferia/transferia/pkg/sink_factory"
 )
 
 func TestCodedErrors_DropTableWithDependencies(t *testing.T) {
 	target := pgrecipe.RecipeTarget(pgrecipe.WithPrefix(""))
 	time.Sleep(10 * time.Second)
-	storage, err := postgres.NewStorage(target.ToStorageParams())
+	storage, err := provider_postgres.NewStorage(target.ToStorageParams())
 	require.NoError(t, err)
 
 	ctx := context.Background()
@@ -62,7 +62,7 @@ func TestCodedErrors_DropTableWithDependencies(t *testing.T) {
 	transfer := &model.Transfer{
 		Dst: target,
 	}
-	sink, err := sink.ConstructBaseSink(
+	sink, err := sink_factory.ConstructBaseSink(
 		transfer,
 		&model.TransferOperation{},
 		logger.Log,
@@ -75,5 +75,5 @@ func TestCodedErrors_DropTableWithDependencies(t *testing.T) {
 	require.Error(t, err)
 	var codedErr coded.CodedError
 	require.ErrorAs(t, err, &codedErr)
-	require.Equal(t, codes.PostgresDropTableWithDependencies, codedErr.Code())
+	require.Equal(t, error_codes.PostgresDropTableWithDependencies, codedErr.Code())
 }

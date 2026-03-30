@@ -10,7 +10,7 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/changeitem"
 	"github.com/transferia/transferia/pkg/util"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 //go:embed data/iot-data.json
@@ -52,17 +52,17 @@ var (
 	_ StreamingData = (*IotData)(nil)
 
 	iotDataColumnSchema = abstract.NewTableSchema([]abstract.ColSchema{
-		{ColumnName: sampleSourceEventID, DataType: schema.TypeString.String(), Required: true, PrimaryKey: true},
-		{ColumnName: sampleSourceTimeColumn, DataType: schema.TypeTimestamp.String(), Required: true, PrimaryKey: true},
-		{ColumnName: sampleSourceEventType, DataType: schema.TypeString.String(), Required: true},
-		{ColumnName: sampleSourceDeviceID, DataType: schema.TypeString.String(), Required: true},
-		{ColumnName: sampleSourceDeviceType, DataType: schema.TypeString.String(), Required: true},
-		{ColumnName: sampleSourceMetricValue, DataType: schema.TypeFloat64.String(), Required: true},
-		{ColumnName: sampleSourceMetricType, DataType: schema.TypeString.String(), Required: true},
-		{ColumnName: sampleSourceLocationID, DataType: schema.TypeInt64.String(), Required: true},
-		{ColumnName: sampleSourceDeviceStatus, DataType: schema.TypeString.String(), Required: true},
-		{ColumnName: sampleSourceEventSeverity, DataType: schema.TypeString.String(), Required: true},
-		{ColumnName: sampleSourceEventSource, DataType: schema.TypeString.String(), Required: true},
+		{ColumnName: sampleSourceEventID, DataType: ytschema.TypeString.String(), Required: true, PrimaryKey: true},
+		{ColumnName: sampleSourceTimeColumn, DataType: ytschema.TypeTimestamp.String(), Required: true, PrimaryKey: true},
+		{ColumnName: sampleSourceEventType, DataType: ytschema.TypeString.String(), Required: true},
+		{ColumnName: sampleSourceDeviceID, DataType: ytschema.TypeString.String(), Required: true},
+		{ColumnName: sampleSourceDeviceType, DataType: ytschema.TypeString.String(), Required: true},
+		{ColumnName: sampleSourceMetricValue, DataType: ytschema.TypeFloat64.String(), Required: true},
+		{ColumnName: sampleSourceMetricType, DataType: ytschema.TypeString.String(), Required: true},
+		{ColumnName: sampleSourceLocationID, DataType: ytschema.TypeInt64.String(), Required: true},
+		{ColumnName: sampleSourceDeviceStatus, DataType: ytschema.TypeString.String(), Required: true},
+		{ColumnName: sampleSourceEventSeverity, DataType: ytschema.TypeString.String(), Required: true},
+		{ColumnName: sampleSourceEventSource, DataType: ytschema.TypeString.String(), Required: true},
 	})
 	iotDataColumns = []string{
 		sampleSourceEventID,

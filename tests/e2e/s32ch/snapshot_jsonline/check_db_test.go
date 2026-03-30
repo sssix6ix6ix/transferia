@@ -9,9 +9,9 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	dp_model "github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/model"
-	"github.com/transferia/transferia/pkg/providers/s3"
+	"github.com/transferia/transferia/pkg/abstract/model"
+	clickhouse_model "github.com/transferia/transferia/pkg/providers/clickhouse/model"
+	s3_model "github.com/transferia/transferia/pkg/providers/s3/model"
 	"github.com/transferia/transferia/pkg/providers/s3/s3recipe"
 	"github.com/transferia/transferia/tests/helpers"
 	mocksink "github.com/transferia/transferia/tests/helpers/mock_sink"
@@ -23,7 +23,7 @@ func init() {
 
 const testCasePath = "test_jsonline_large"
 
-func buildSourceModel(t *testing.T) *s3.S3Source {
+func buildSourceModel(t *testing.T) *s3_model.S3Source {
 	src := s3recipe.PrepareCfg(t, "", "")
 	src.PathPrefix = testCasePath
 	if os.Getenv("S3MDS_PORT") != "" { // for local recipe we need to upload test case to internet
@@ -34,15 +34,15 @@ func buildSourceModel(t *testing.T) *s3.S3Source {
 	}
 	src.TableNamespace = "example"
 	src.TableName = "data"
-	src.InputFormat = dp_model.ParsingFormatJSONLine
+	src.InputFormat = model.ParsingFormatJSONLine
 	src.WithDefaults()
 	src.Format.JSONLSetting.BlockSize = 1 * 1024 * 1024
 	return src
 }
 
-func testNativeS3(t *testing.T, src *s3.S3Source) {
-	dst := model.ChDestination{
-		ShardsList: []model.ClickHouseShard{
+func testNativeS3(t *testing.T, src *s3_model.S3Source) {
+	dst := clickhouse_model.ChDestination{
+		ShardsList: []clickhouse_model.ClickHouseShard{
 			{
 				Name: "_",
 				Hosts: []string{
@@ -56,7 +56,7 @@ func testNativeS3(t *testing.T, src *s3.S3Source) {
 		HTTPPort:            helpers.GetIntFromEnv("RECIPE_CLICKHOUSE_HTTP_PORT"),
 		NativePort:          helpers.GetIntFromEnv("RECIPE_CLICKHOUSE_NATIVE_PORT"),
 		ProtocolUnspecified: true,
-		Cleanup:             dp_model.Drop,
+		Cleanup:             model.Drop,
 	}
 	dst.WithDefaults()
 	transfer := helpers.MakeTransfer("fake", src, &dst, abstract.TransferTypeSnapshotOnly)
@@ -64,7 +64,7 @@ func testNativeS3(t *testing.T, src *s3.S3Source) {
 	helpers.CheckRowsCount(t, &dst, "example", "data", 500000)
 }
 
-func testNativeS3ManualSchemaWithPkey(t *testing.T, src *s3.S3Source) {
+func testNativeS3ManualSchemaWithPkey(t *testing.T, src *s3_model.S3Source) {
 	sink := mocksink.NewMockSink(nil)
 	sink.PushCallback = func(input []abstract.ChangeItem) error {
 		for _, el := range input {
@@ -86,9 +86,9 @@ func testNativeS3ManualSchemaWithPkey(t *testing.T, src *s3.S3Source) {
 		}
 		return nil
 	}
-	dst := &dp_model.MockDestination{
+	dst := &model.MockDestination{
 		SinkerFactory: func() abstract.Sinker { return sink },
-		Cleanup:       dp_model.DisabledCleanup,
+		Cleanup:       model.DisabledCleanup,
 	}
 
 	transfer := helpers.MakeTransfer("fake", src, dst, abstract.TransferTypeSnapshotOnly)

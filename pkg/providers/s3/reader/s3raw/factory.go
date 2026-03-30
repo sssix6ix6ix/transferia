@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/s3"
+	aws_s3 "github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/stats"
@@ -21,7 +21,7 @@ func NewS3RawReader(ctx context.Context, client s3iface.S3API, bucket, key strin
 
 	// Check ContentEncoding from S3 metadata to avoid double decompression
 	// If ContentEncoding is set, AWS SDK automatically decompresses, so we shouldn't apply wrapper
-	headObj, err := client.HeadObjectWithContext(ctx, &s3.HeadObjectInput{
+	headObj, err := client.HeadObjectWithContext(ctx, &aws_s3.HeadObjectInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(key),
 	})

@@ -14,13 +14,13 @@ import (
 
 	"github.com/jackc/pgx/v4"
 	"github.com/stretchr/testify/require"
-	"github.com/testcontainers/testcontainers-go"
+	testcontainers_go "github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/connection"
-	"github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/tests/helpers/yatestx"
 	"github.com/transferia/transferia/tests/tcrecipes"
 	tc_postgres "github.com/transferia/transferia/tests/tcrecipes/postgres"
@@ -89,7 +89,7 @@ func withPrefix(prefix string) ContainerOption {
 }
 
 type RecipeParams struct {
-	endpointOptions  []func(pg *postgres.PgSource)
+	endpointOptions  []func(pg *provider_postgres.PgSource)
 	containerOptions []ContainerOption
 	prefix           string
 	connectionID     string
@@ -119,7 +119,7 @@ func WithInitFiles(files ...string) RecipeOption {
 	}
 }
 
-func WithEdit(f func(pg *postgres.PgSource)) RecipeOption {
+func WithEdit(f func(pg *provider_postgres.PgSource)) RecipeOption {
 	return func(opt *RecipeParams) {
 		opt.endpointOptions = append(opt.endpointOptions, f)
 	}
@@ -132,7 +132,7 @@ func WithConnection(connID string) RecipeOption {
 }
 
 func WithDBTables(tables ...string) RecipeOption {
-	return WithEdit(func(pg *postgres.PgSource) {
+	return WithEdit(func(pg *provider_postgres.PgSource) {
 		pg.DBTables = tables
 	})
 }
@@ -173,7 +173,7 @@ func ManagedConnection(opts ...RecipeOption) *connection.ConnectionPG {
 	}
 }
 
-func RecipeSource(opts ...RecipeOption) *postgres.PgSource {
+func RecipeSource(opts ...RecipeOption) *provider_postgres.PgSource {
 	params := new(RecipeParams)
 	params.prefix = "SOURCE_"
 	for _, f := range opts {
@@ -187,7 +187,7 @@ func RecipeSource(opts ...RecipeOption) *postgres.PgSource {
 		}
 	}
 
-	v := new(postgres.PgSource)
+	v := new(provider_postgres.PgSource)
 
 	if params.connectionID == "" {
 		srcPort, _ := strconv.Atoi(os.Getenv(params.prefix + "PG_LOCAL_PORT"))
@@ -210,7 +210,7 @@ func RecipeSource(opts ...RecipeOption) *postgres.PgSource {
 	return v
 }
 
-func RecipeTarget(opts ...RecipeOption) *postgres.PgDestination {
+func RecipeTarget(opts ...RecipeOption) *provider_postgres.PgDestination {
 	params := new(RecipeParams)
 	params.prefix = "TARGET_"
 	for _, f := range opts {
@@ -224,7 +224,7 @@ func RecipeTarget(opts ...RecipeOption) *postgres.PgDestination {
 		}
 	}
 
-	v := new(postgres.PgDestination)
+	v := new(provider_postgres.PgDestination)
 	if params.connectionID == "" {
 		dstPort, _ := strconv.Atoi(os.Getenv(params.prefix + "PG_LOCAL_PORT"))
 		v.Hosts = []string{"localhost"}
@@ -268,7 +268,7 @@ max_replication_slots = 64       # max number of replication slots (change requi
 		tc_postgres.WithPassword("123"),
 		tc_postgres.WithImage("debezium/postgres:11-alpine"),
 		tc_postgres.WithInitScripts(runOpts.initScripts...),
-		testcontainers.WithWaitStrategy(
+		testcontainers_go.WithWaitStrategy(
 			wait.ForLog("database system is ready to accept connections").
 				WithOccurrence(2).
 				WithStartupTimeout(60*time.Second)),

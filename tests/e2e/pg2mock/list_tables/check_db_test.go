@@ -8,7 +8,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/pkg/abstract"
-	"github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
 	"github.com/transferia/transferia/tests/helpers"
 )
@@ -35,7 +35,7 @@ var SourceAllPrivileges = *pgrecipe.RecipeSource(pgrecipe.WithPrefix(""), pgreci
 var SourceRestrictedPrivileges = *pgrecipe.RecipeSource(
 	pgrecipe.WithPrefix(""),
 	pgrecipe.WithInitDir("dump"),
-	pgrecipe.WithEdit(func(pg *postgres.PgSource) {
+	pgrecipe.WithEdit(func(pg *provider_postgres.PgSource) {
 		pg.User = "blockeduser"
 		pg.Password = "sim-sim@OPEN"
 	}),
@@ -70,7 +70,7 @@ func TestTableListStarAllPrivileges(t *testing.T) {
 		helpers.LabeledPort{Label: "PG source", Port: src.Port},
 	))
 
-	storage, err := postgres.NewStorage(src.ToStorageParams(nil))
+	storage, err := provider_postgres.NewStorage(src.ToStorageParams(nil))
 	require.NoError(t, err)
 
 	extract, err := storage.TableList(nil)
@@ -96,7 +96,7 @@ func TestTableListStarRestrictedPrivileges(t *testing.T) {
 		helpers.LabeledPort{Label: "PG source", Port: src.Port},
 	))
 
-	storage, err := postgres.NewStorage(src.ToStorageParams(nil))
+	storage, err := provider_postgres.NewStorage(src.ToStorageParams(nil))
 	require.NoError(t, err)
 
 	extract, err := storage.TableList(nil)
@@ -122,7 +122,7 @@ func TestTableListPublicAllPrivileges(t *testing.T) {
 		helpers.LabeledPort{Label: "PG source", Port: src.Port},
 	))
 
-	storage, err := postgres.NewStorage(src.ToStorageParams(nil))
+	storage, err := provider_postgres.NewStorage(src.ToStorageParams(nil))
 	require.NoError(t, err)
 
 	extract, err := storage.TableList(nil)

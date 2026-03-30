@@ -6,17 +6,17 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	dp_model "github.com/transferia/transferia/pkg/abstract/model"
+	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/middlewares/synchronizer/bufferer"
-	ch_model "github.com/transferia/transferia/pkg/providers/clickhouse/model"
-	"github.com/transferia/transferia/pkg/providers/postgres"
+	clickhouse_model "github.com/transferia/transferia/pkg/providers/clickhouse/model"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"go.uber.org/zap/zapcore"
 )
 
 type GpDestination struct {
 	Connection GpConnection `log:"true"`
 
-	CleanupPolicy dp_model.CleanupType `log:"true"`
+	CleanupPolicy model.CleanupType `log:"true"`
 
 	SubnetID         string   `log:"true"`
 	SecurityGroupIDs []string `log:"true"`
@@ -29,9 +29,9 @@ type GpDestination struct {
 	EnableGpfdist bool `log:"true"` // EnableGpfdist could be set by FillDependentFields based on the source settings.
 }
 
-var _ dp_model.Destination = (*GpDestination)(nil)
-var _ dp_model.WithConnectionID = (*GpDestination)(nil)
-var _ dp_model.LegacyFillDependentFields = (*GpDestination)(nil)
+var _ model.Destination = (*GpDestination)(nil)
+var _ model.WithConnectionID = (*GpDestination)(nil)
+var _ model.LegacyFillDependentFields = (*GpDestination)(nil)
 
 func (d *GpDestination) MarshalLogObject(enc zapcore.ObjectEncoder) error {
 	return logger.MarshalSanitizedObject(d, enc)
@@ -54,15 +54,15 @@ func (d *GpDestination) WithDefaults() {
 	d.Connection.WithDefaults()
 
 	if d.CleanupPolicy.IsValid() != nil {
-		d.CleanupPolicy = dp_model.DisabledCleanup
+		d.CleanupPolicy = model.DisabledCleanup
 	}
 
 	if d.BufferTriggingSize == 0 {
-		d.BufferTriggingSize = ch_model.BufferTriggingSizeDefault
+		d.BufferTriggingSize = clickhouse_model.BufferTriggingSizeDefault
 	}
 
 	if d.QueryTimeout == 0 {
-		d.QueryTimeout = postgres.PGDefaultQueryTimeout
+		d.QueryTimeout = provider_postgres.PGDefaultQueryTimeout
 	}
 }
 
@@ -98,7 +98,7 @@ func (d *GpDestination) Transformer() map[string]string {
 	return make(map[string]string)
 }
 
-func (d *GpDestination) CleanupMode() dp_model.CleanupType {
+func (d *GpDestination) CleanupMode() model.CleanupType {
 	return d.CleanupPolicy
 }
 
@@ -118,7 +118,7 @@ func (d *GpDestination) ToGpSource() *GpSource {
 	}
 }
 
-func (d *GpDestination) FillDependentFields(transfer *dp_model.Transfer) {
+func (d *GpDestination) FillDependentFields(transfer *model.Transfer) {
 	if src, isHomo := transfer.Src.(*GpSource); isHomo {
 		d.EnableGpfdist = !src.AdvancedProps.DisableGpfdist
 	} else {

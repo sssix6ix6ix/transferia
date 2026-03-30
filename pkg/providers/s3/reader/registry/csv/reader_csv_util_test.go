@@ -6,11 +6,11 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/pkg/abstract"
-	"github.com/transferia/transferia/pkg/providers/s3"
+	s3_model "github.com/transferia/transferia/pkg/providers/s3/model"
 )
 
 func TestParseFloatValue(t *testing.T) {
-	r := &CSVReader{additionalReaderOptions: s3.AdditionalOptions{DecimalPoint: ","}}
+	r := &CSVReader{additionalReaderOptions: s3_model.AdditionalOptions{DecimalPoint: ","}}
 
 	// Test case 1: Valid float value with DecimalPoint "," original value is changed
 	originalValue := "123,456"
@@ -41,7 +41,7 @@ func TestParseFloatValue(t *testing.T) {
 
 func TestParseNullValues(t *testing.T) {
 	r := &CSVReader{
-		additionalReaderOptions: s3.AdditionalOptions{
+		additionalReaderOptions: s3_model.AdditionalOptions{
 			StringsCanBeNull:       true,
 			QuotedStringsCanBeNull: true,
 			NullValues:             []string{"NULL", "NA"},
@@ -92,7 +92,7 @@ func TestParseNullValues(t *testing.T) {
 
 func TestParseDateValue(t *testing.T) {
 	r := &CSVReader{
-		additionalReaderOptions: s3.AdditionalOptions{
+		additionalReaderOptions: s3_model.AdditionalOptions{
 			TimestampParsers: []string{
 				"2006-01-02",      // yyyy-mm-dd
 				"02-Jan-2006",     // dd-Mon-yyyy
@@ -127,7 +127,7 @@ func TestParseDateValue(t *testing.T) {
 
 func TestParseBooleanValue(t *testing.T) {
 	r := &CSVReader{
-		additionalReaderOptions: s3.AdditionalOptions{
+		additionalReaderOptions: s3_model.AdditionalOptions{
 			StringsCanBeNull: true,
 			NullValues:       []string{"NULL", "NA"},
 			TrueValues:       []string{"true", "yes", "1"},

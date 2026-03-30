@@ -7,7 +7,7 @@ import (
 
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/logging/batching_logger"
-	"github.com/transferia/transferia/pkg/providers/s3/reader"
+	s3_reader "github.com/transferia/transferia/pkg/providers/s3/reader"
 	"github.com/transferia/transferia/pkg/providers/s3/s3util/file"
 	"github.com/transferia/transferia/pkg/util/set"
 	"go.ytsaurus.tech/library/go/core/log"
@@ -30,7 +30,7 @@ func (w *ObjectFetcherContractor) RunBackgroundThreads(errCh chan error) {
 	w.impl.RunBackgroundThreads(errCh)
 }
 
-func (w *ObjectFetcherContractor) FetchObjects(reader reader.Reader) ([]file.File, error) {
+func (w *ObjectFetcherContractor) FetchObjects(reader s3_reader.Reader) ([]file.File, error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 

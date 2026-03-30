@@ -8,23 +8,23 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/mysql"
+	provider_mysql "github.com/transferia/transferia/pkg/providers/mysql"
 	"github.com/transferia/transferia/tests/helpers"
-	yt_helpers "github.com/transferia/transferia/tests/helpers/yt"
+	helpers_yt "github.com/transferia/transferia/tests/helpers/yt"
 	"go.ytsaurus.tech/yt/go/ypath"
-	yt_main "go.ytsaurus.tech/yt/go/yt"
+	"go.ytsaurus.tech/yt/go/yt"
 	"go.ytsaurus.tech/yt/go/yttest"
 )
 
 var (
-	source = mysql.MysqlSource{
+	source = provider_mysql.MysqlSource{
 		Host:     os.Getenv("RECIPE_MYSQL_HOST"),
 		User:     os.Getenv("RECIPE_MYSQL_USER"),
 		Password: model.SecretString(os.Getenv("RECIPE_MYSQL_PASSWORD")),
 		Database: os.Getenv("RECIPE_MYSQL_SOURCE_DATABASE"),
 		Port:     helpers.GetIntFromEnv("RECIPE_MYSQL_PORT"),
 	}
-	target = yt_helpers.RecipeYtTarget("//home/cdc/test/mysql2yt_e2e_snapshot")
+	target = helpers_yt.RecipeYtTarget("//home/cdc/test/mysql2yt_e2e_snapshot")
 )
 
 func init() {
@@ -47,9 +47,9 @@ func TestGroup(t *testing.T) {
 	ytEnv, cancel := yttest.NewEnv(t)
 	defer cancel()
 
-	_, err = ytEnv.YT.CreateNode(ctx, ypath.Path("//home/cdc/test/mysql2yt_e2e_snapshot"), yt_main.NodeMap, &yt_main.CreateNodeOptions{Recursive: true})
+	_, err = ytEnv.YT.CreateNode(ctx, ypath.Path("//home/cdc/test/mysql2yt_e2e_snapshot"), yt.NodeMap, &yt.CreateNodeOptions{Recursive: true})
 	defer func() {
-		err := ytEnv.YT.RemoveNode(ctx, ypath.Path("//home/cdc/test/mysql2yt_e2e_snapshot"), &yt_main.RemoveNodeOptions{Recursive: true})
+		err := ytEnv.YT.RemoveNode(ctx, ypath.Path("//home/cdc/test/mysql2yt_e2e_snapshot"), &yt.RemoveNodeOptions{Recursive: true})
 		require.NoError(t, err)
 	}()
 	require.NoError(t, err)

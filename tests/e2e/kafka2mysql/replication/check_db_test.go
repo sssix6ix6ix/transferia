@@ -11,19 +11,19 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/parsers"
-	jsonparser "github.com/transferia/transferia/pkg/parsers/registry/json"
-	kafkasink "github.com/transferia/transferia/pkg/providers/kafka"
+	parser_json "github.com/transferia/transferia/pkg/parsers/registry/json"
+	provider_kafka "github.com/transferia/transferia/pkg/providers/kafka"
 	"github.com/transferia/transferia/tests/helpers"
 	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 var (
-	source = kafkasink.KafkaSource{
-		Connection: &kafkasink.KafkaConnectionOptions{
+	source = provider_kafka.KafkaSource{
+		Connection: &provider_kafka.KafkaConnectionOptions{
 			TLS:     model.DisabledTLS,
 			Brokers: []string{os.Getenv("KAFKA_RECIPE_BROKER_LIST")},
 		},
-		Auth:             &kafkasink.KafkaAuth{Enabled: false},
+		Auth:             &provider_kafka.KafkaAuth{Enabled: false},
 		Topic:            "topic1",
 		Transformer:      nil,
 		BufferSize:       model.BytesSize(1024),
@@ -36,7 +36,7 @@ var (
 func TestReplication(t *testing.T) {
 	// prepare source
 
-	parserConfigStruct := &jsonparser.ParserConfigJSONCommon{
+	parserConfigStruct := &parser_json.ParserConfigJSONCommon{
 		Fields: []abstract.ColSchema{
 			{ColumnName: "id", DataType: ytschema.TypeInt32.String(), PrimaryKey: true},
 			{ColumnName: "level", DataType: ytschema.TypeString.String()},
@@ -56,8 +56,8 @@ func TestReplication(t *testing.T) {
 	k := []byte(`any_key`)
 	v := []byte(`{"id": "1", "level": "my_level", "caller": "my_caller", "msg": "my_msg"}`)
 
-	srcSink, err := kafkasink.NewReplicationSink(
-		&kafkasink.KafkaDestination{
+	srcSink, err := provider_kafka.NewReplicationSink(
+		&provider_kafka.KafkaDestination{
 			Connection: source.Connection,
 			Auth:       source.Auth,
 			Topic:      source.Topic,

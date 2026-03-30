@@ -14,11 +14,11 @@ import (
 
 	"github.com/elastic/go-elasticsearch/v7"
 	"github.com/elastic/go-elasticsearch/v7/esutil"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/errors/coded"
-	"github.com/transferia/transferia/pkg/errors/codes"
+	error_codes "github.com/transferia/transferia/pkg/errors/codes"
 	"github.com/transferia/transferia/pkg/stats"
 	"github.com/transferia/transferia/pkg/util"
 	"github.com/transferia/transferia/pkg/util/jsonx"
@@ -103,7 +103,7 @@ func (s *Sink) applyIndexDump(item abstract.ChangeItem) error {
 	if err != nil {
 		// classify SSL/transport errors during existence check
 		if isSSLError(err) {
-			return coded.Errorf(codes.OpenSearchSSLRequired, "ssl/transport error on exists(%q): %v", indexName, err)
+			return coded.Errorf(error_codes.OpenSearchSSLRequired, "ssl/transport error on exists(%q): %v", indexName, err)
 		}
 		return xerrors.Errorf("unable to check if index %q exists: %w", indexName, err)
 	}
@@ -116,7 +116,7 @@ func (s *Sink) applyIndexDump(item abstract.ChangeItem) error {
 	if response.StatusCode != http.StatusNotFound {
 		// try detect SSL required by response text
 		if containsSSLRequired(response.String()) {
-			return coded.Errorf(codes.OpenSearchSSLRequired, "ssl required when checking index %q: %s", indexName, response.String())
+			return coded.Errorf(error_codes.OpenSearchSSLRequired, "ssl required when checking index %q: %s", indexName, response.String())
 		}
 		return xerrors.Errorf("wrong status code when checking index %q: %s", indexName, response.String())
 	}
@@ -134,13 +134,13 @@ func (s *Sink) applyIndexDump(item abstract.ChangeItem) error {
 	)
 	if err != nil {
 		if isSSLError(err) {
-			return coded.Errorf(codes.OpenSearchSSLRequired, "ssl/transport error on create(%q): %v", indexName, err)
+			return coded.Errorf(error_codes.OpenSearchSSLRequired, "ssl/transport error on create(%q): %v", indexName, err)
 		}
 		return xerrors.Errorf("unable to create the index %q: %w", indexName, err)
 	}
 	if res.IsError() {
 		if containsSSLRequired(res.String()) {
-			return coded.Errorf(codes.OpenSearchSSLRequired, "ssl required on create(%q): %s", indexName, res.String())
+			return coded.Errorf(error_codes.OpenSearchSSLRequired, "ssl required on create(%q): %s", indexName, res.String())
 		}
 		return xerrors.Errorf("error on creating the index %q: %s", indexName, res.String())
 	}
@@ -274,7 +274,7 @@ func (s *Sink) classifyBulkFailure(bulkItem esutil.BulkIndexerItem, responseItem
 	// Transport-layer error
 	if err != nil {
 		if isSSLError(err) {
-			return coded.Errorf(codes.OpenSearchSSLRequired, "ssl/transport error (index:%v, body:%v): %v", bulkItem.Index, util.Sample(bulkBody, 8*1024), err)
+			return coded.Errorf(error_codes.OpenSearchSSLRequired, "ssl/transport error (index:%v, body:%v): %v", bulkItem.Index, util.Sample(bulkBody, 8*1024), err)
 		}
 		return xerrors.Errorf("bulk item (index name:%v, body:%v) indexation error: %w", bulkItem.Index, util.Sample(bulkBody, 8*1024), err)
 	}
@@ -286,28 +286,28 @@ func (s *Sink) classifyBulkFailure(bulkItem esutil.BulkIndexerItem, responseItem
 
 	// invalid document keys (already existed path)
 	if util.ContainsAnySubstrings(errText, "object field starting or ending with a [.] makes object resolution ambiguous", "index -1 out of bounds for length 0") {
-		return coded.Errorf(codes.OpenSearchInvalidDocumentKeys,
+		return coded.Errorf(error_codes.OpenSearchInvalidDocumentKeys,
 			"invalid document keys for a bulk item (index:%v, body:%v) http:%v, err:%v",
 			bulkItem.Index, util.Sample(bulkBody, 8*1024), responseItem.Status, responseItem.Error)
 	}
 
 	// total fields limit exceeded
 	if responseItem.Error.Type == "illegal_argument_exception" || util.ContainsAnySubstrings(errText, "limit of total fields") {
-		return coded.Errorf(codes.OpenSearchTotalFieldsLimitExceeded,
+		return coded.Errorf(error_codes.OpenSearchTotalFieldsLimitExceeded,
 			"total fields limit exceeded (index:%v, body:%v) http:%v, err:%v",
 			bulkItem.Index, util.Sample(bulkBody, 8*1024), responseItem.Status, responseItem.Error)
 	}
 
 	// mapper parsing exception
 	if responseItem.Error.Type == "mapper_parsing_exception" || util.ContainsAnySubstrings(errText, "mapper_parsing_exception", "failed to parse field") {
-		return coded.Errorf(codes.OpenSearchMapperParsingException,
+		return coded.Errorf(error_codes.OpenSearchMapperParsingException,
 			"mapper parsing failed (index:%v, body:%v) http:%v, err:%v",
 			bulkItem.Index, util.Sample(bulkBody, 8*1024), responseItem.Status, responseItem.Error)
 	}
 
 	// ssl required hints surfaced at response level (rare)
 	if containsSSLRequired(reason) || containsSSLRequired(cause) {
-		return coded.Errorf(codes.OpenSearchSSLRequired,
+		return coded.Errorf(error_codes.OpenSearchSSLRequired,
 			"ssl required (index:%v, body:%v) http:%v, err:%v",
 			bulkItem.Index, util.Sample(bulkBody, 8*1024), responseItem.Status, responseItem.Error)
 	}
@@ -456,7 +456,7 @@ func (s *Sink) Close() error {
 	return nil
 }
 
-func NewSinkImpl(cfg *ElasticSearchDestination, logger log.Logger, registry metrics.Registry, client *elasticsearch.Client) (abstract.Sinker, error) {
+func NewSinkImpl(cfg *ElasticSearchDestination, logger log.Logger, registry core_metrics.Registry, client *elasticsearch.Client) (abstract.Sinker, error) {
 	return &Sink{
 		cfg:                cfg,
 		client:             client,
@@ -467,7 +467,7 @@ func NewSinkImpl(cfg *ElasticSearchDestination, logger log.Logger, registry metr
 	}, nil
 }
 
-func NewSink(cfg *ElasticSearchDestination, logger log.Logger, registry metrics.Registry) (abstract.Sinker, error) {
+func NewSink(cfg *ElasticSearchDestination, logger log.Logger, registry core_metrics.Registry) (abstract.Sinker, error) {
 	config, err := ConfigFromDestination(logger, cfg, ElasticSearch)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to create elastic configuration: %w", err)

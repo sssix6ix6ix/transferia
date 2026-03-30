@@ -4,11 +4,11 @@ import (
 	"github.com/jackc/pgtype"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	"github.com/transferia/transferia/pkg/providers/mongo"
+	provider_mongo "github.com/transferia/transferia/pkg/providers/mongo"
 	"github.com/transferia/transferia/pkg/transformer"
-	"github.com/transferia/transferia/pkg/transformer/registry/filter"
+	transformer_filter "github.com/transferia/transferia/pkg/transformer/registry/filter"
 	"go.ytsaurus.tech/library/go/core/log"
-	yts "go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 const Type = abstract.TransformerType("filter_rows_by_ids")
@@ -22,14 +22,14 @@ func init() {
 }
 
 type Config struct {
-	Tables     filter.Tables  `json:"tables"`
-	Columns    filter.Columns `json:"columns"`
-	AllowedIDs []string       `json:"allowedIDs"`
+	Tables     transformer_filter.Tables  `json:"tables"`
+	Columns    transformer_filter.Columns `json:"columns"`
+	AllowedIDs []string                   `json:"allowedIDs"`
 }
 
 type FilterRowsByIDsTransformer struct {
-	Tables  filter.Filter
-	Columns filter.Filter
+	Tables  transformer_filter.Filter
+	Columns transformer_filter.Filter
 	// prefixes length -> set of prefixes
 	// Optimized specifically for use by Taxi team, where we want to check
 	// whether column values start with allowed IDs.
@@ -40,11 +40,11 @@ type FilterRowsByIDsTransformer struct {
 }
 
 func NewFilterRowsByIDsTransformer(cfg Config, lgr log.Logger) (*FilterRowsByIDsTransformer, error) {
-	tbls, err := filter.NewFilter(cfg.Tables.IncludeTables, cfg.Tables.ExcludeTables)
+	tbls, err := transformer_filter.NewFilter(cfg.Tables.IncludeTables, cfg.Tables.ExcludeTables)
 	if err != nil {
 		return nil, xerrors.Errorf("unable to create tables filter: %w", err)
 	}
-	cols, err := filter.NewFilter(cfg.Columns.IncludeColumns, cfg.Columns.ExcludeColumns)
+	cols, err := transformer_filter.NewFilter(cfg.Columns.IncludeColumns, cfg.Columns.ExcludeColumns)
 	if err != nil {
 		return nil, xerrors.Errorf("unable to create columns filter: %w", err)
 	}
@@ -130,7 +130,7 @@ func (t *FilterRowsByIDsTransformer) shouldKeep(item abstract.ChangeItem) bool {
 }
 
 func (t *FilterRowsByIDsTransformer) processMongoDocument(value interface{}) bool {
-	dValue, ok := value.(mongo.DValue)
+	dValue, ok := value.(provider_mongo.DValue)
 	if !ok {
 		return false
 	}
@@ -168,7 +168,7 @@ func (t *FilterRowsByIDsTransformer) isIDAllowed(ID string) bool {
 }
 
 func (t *FilterRowsByIDsTransformer) Suitable(table abstract.TableID, schema *abstract.TableSchema) bool {
-	if !filter.MatchAnyTableNameVariant(t.Tables, table) {
+	if !transformer_filter.MatchAnyTableNameVariant(t.Tables, table) {
 		return false
 	}
 
@@ -184,11 +184,11 @@ func (t *FilterRowsByIDsTransformer) Suitable(table abstract.TableID, schema *ab
 }
 
 func (t *FilterRowsByIDsTransformer) isMongoDocumentColumn(colSchema abstract.ColSchema) bool {
-	return colSchema.ColumnName == document && colSchema.DataType == yts.TypeAny.String()
+	return colSchema.ColumnName == document && colSchema.DataType == ytschema.TypeAny.String()
 }
 
 func (t *FilterRowsByIDsTransformer) checkColumnSuitable(colSchema abstract.ColSchema) bool {
-	if colSchema.DataType != yts.TypeString.String() && colSchema.DataType != yts.TypeBytes.String() && colSchema.DataType != yts.TypeAny.String() {
+	if colSchema.DataType != ytschema.TypeString.String() && colSchema.DataType != ytschema.TypeBytes.String() && colSchema.DataType != ytschema.TypeAny.String() {
 		return false
 	}
 

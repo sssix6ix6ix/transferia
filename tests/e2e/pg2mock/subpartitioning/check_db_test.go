@@ -9,7 +9,7 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
 	"github.com/transferia/transferia/tests/helpers"
 	mocksink "github.com/transferia/transferia/tests/helpers/mock_sink"
@@ -22,7 +22,7 @@ var (
 	Source = pgrecipe.RecipeSource(
 		pgrecipe.WithPrefix(""),
 		pgrecipe.WithInitDir("dump"),
-		pgrecipe.WithEdit(func(pg *postgres.PgSource) {
+		pgrecipe.WithEdit(func(pg *provider_postgres.PgSource) {
 			pg.CollapseInheritTables = true
 			pg.UseFakePrimaryKey = true
 		}))
@@ -69,7 +69,7 @@ func TestSnapshotAndIncrement(t *testing.T) {
 	require.Equal(t, 8, len(result))
 
 	// replication
-	sinkToSource, err := postgres.NewSink(logger.Log, helpers.TransferID, Source.ToSinkParams(), helpers.EmptyRegistry())
+	sinkToSource, err := provider_postgres.NewSink(logger.Log, helpers.TransferID, Source.ToSinkParams(), helpers.EmptyRegistry())
 	require.NoError(t, err)
 
 	schema := abstract.NewTableSchema([]abstract.ColSchema{

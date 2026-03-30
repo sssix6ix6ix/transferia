@@ -1,7 +1,7 @@
 package postgres
 
 import (
-	"database/sql/driver"
+	sql_driver "database/sql/driver"
 	"errors"
 	"strings"
 	"time"
@@ -54,7 +54,7 @@ func (t *Timestamp) DecodeText(ci *pgtype.ConnInfo, src []byte) error {
 	return nil
 }
 
-func (t *Timestamp) Value() (driver.Value, error) {
+func (t *Timestamp) Value() (sql_driver.Value, error) {
 	return t.Timestamp.Value()
 }
 

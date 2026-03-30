@@ -11,12 +11,12 @@ import (
 	"github.com/transferia/transferia/library/go/test/canon"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/ydb"
-	"github.com/transferia/transferia/pkg/transformer/registry/filter"
-	filterrowsbyids "github.com/transferia/transferia/pkg/transformer/registry/filter_rows_by_ids"
+	provider_ydb "github.com/transferia/transferia/pkg/providers/ydb"
+	transformer_filter "github.com/transferia/transferia/pkg/transformer/registry/filter"
+	transformer_filter_rows_by_ids "github.com/transferia/transferia/pkg/transformer/registry/filter_rows_by_ids"
 	"github.com/transferia/transferia/tests/helpers"
 	"github.com/transferia/transferia/tests/helpers/serde"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 var path = "dectest/test-src"
@@ -50,9 +50,9 @@ func ydbInsertChangeItem(tablePath string, values []interface{}) abstract.Change
 		Table:      tablePath,
 		TableSchema: abstract.NewTableSchema([]abstract.ColSchema{
 			{PrimaryKey: true, Required: false, ColumnName: "id", DataType: "uint64", OriginalType: "ydb:Uint64"},
-			{PrimaryKey: false, Required: true, ColumnName: "id2", DataType: string(schema.TypeBytes), OriginalType: "ydb:String"},
-			{PrimaryKey: false, Required: false, ColumnName: "id3", DataType: string(schema.TypeString), OriginalType: "ydb:Utf8"},
-			{PrimaryKey: false, Required: false, ColumnName: "value", DataType: string(schema.TypeInt32), OriginalType: "ydb:Int32"},
+			{PrimaryKey: false, Required: true, ColumnName: "id2", DataType: string(ytschema.TypeBytes), OriginalType: "ydb:String"},
+			{PrimaryKey: false, Required: false, ColumnName: "id3", DataType: string(ytschema.TypeString), OriginalType: "ydb:Utf8"},
+			{PrimaryKey: false, Required: false, ColumnName: "value", DataType: string(ytschema.TypeInt32), OriginalType: "ydb:Int32"},
 		}),
 		ColumnNames:  []string{"id", "id2", "id3", "value"},
 		ColumnValues: values,
@@ -66,7 +66,7 @@ func ydbUpdateChangeItem(tablePath string, values []interface{}) abstract.Change
 }
 
 func TestSnapshotAndReplication(t *testing.T) {
-	src := &ydb.YdbSource{
+	src := &provider_ydb.YdbSource{
 		Token:              model.SecretString(os.Getenv("YDB_TOKEN")),
 		Database:           helpers.GetEnvOfFail(t, "YDB_DATABASE"),
 		Instance:           helpers.GetEnvOfFail(t, "YDB_ENDPOINT"),
@@ -76,22 +76,22 @@ func TestSnapshotAndReplication(t *testing.T) {
 		Underlay:           false,
 		UseFullPaths:       true,
 		ServiceAccountID:   "",
-		ChangeFeedMode:     ydb.ChangeFeedModeNewImage,
+		ChangeFeedMode:     provider_ydb.ChangeFeedModeNewImage,
 	}
 
-	Target := &ydb.YdbDestination{
+	Target := &provider_ydb.YdbDestination{
 		Database: src.Database,
 		Token:    src.Token,
 		Instance: src.Instance,
 	}
 	Target.WithDefaults()
-	sinker, err := ydb.NewSinker(logger.Log, Target, solomon.NewRegistry(solomon.NewRegistryOpts()))
+	sinker, err := provider_ydb.NewSinker(logger.Log, Target, solomon.NewRegistry(solomon.NewRegistryOpts()))
 	require.NoError(t, err)
 
 	currChangeItem := ydbInsertChangeItem(path, []interface{}{1, []byte("ID0_suffix"), "ID2_0", 1})
 	require.NoError(t, sinker.Push([]abstract.ChangeItem{currChangeItem}))
 
-	dst := &ydb.YdbDestination{
+	dst := &provider_ydb.YdbDestination{
 		Token:    model.SecretString(os.Getenv("YDB_TOKEN")),
 		Database: helpers.GetEnvOfFail(t, "YDB_DATABASE"),
 		Instance: helpers.GetEnvOfFail(t, "YDB_ENDPOINT"),
@@ -102,12 +102,12 @@ func TestSnapshotAndReplication(t *testing.T) {
 	fixPathTransformer := helpers.NewSimpleTransformer(t, makeYdb2YdbFixPathUdf(), serde.AnyTablesUdf)
 	helpers.AddTransformer(t, transfer, fixPathTransformer)
 
-	transformer, err := filterrowsbyids.NewFilterRowsByIDsTransformer(
-		filterrowsbyids.Config{
-			Tables: filter.Tables{
+	transformer, err := transformer_filter_rows_by_ids.NewFilterRowsByIDsTransformer(
+		transformer_filter_rows_by_ids.Config{
+			Tables: transformer_filter.Tables{
 				IncludeTables: []string{},
 			},
-			Columns: filter.Columns{
+			Columns: transformer_filter.Columns{
 				IncludeColumns: []string{"id2", "id3"},
 			},
 			AllowedIDs: []string{

@@ -3,7 +3,7 @@ package clickhouse
 import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/typesystem"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 func init() {
@@ -25,9 +25,9 @@ func init() {
 				fallbackApplied := false
 				for i := 0; i < len(ci.TableSchema.Columns()); i++ {
 					switch ci.TableSchema.Columns()[i].DataType {
-					case schema.TypeTimestamp.String():
+					case ytschema.TypeTimestamp.String():
 						fallbackApplied = true
-						ci.TableSchema.Columns()[i].DataType = schema.TypeDatetime.String()
+						ci.TableSchema.Columns()[i].DataType = ytschema.TypeDatetime.String()
 					default:
 						// do nothing
 					}

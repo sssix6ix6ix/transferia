@@ -14,8 +14,8 @@ import (
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/providers"
-	"github.com/transferia/transferia/pkg/providers/s3"
-	s3provider "github.com/transferia/transferia/pkg/providers/s3/provider"
+	s3_model "github.com/transferia/transferia/pkg/providers/s3/model"
+	provider_s3 "github.com/transferia/transferia/pkg/providers/s3/provider"
 	"github.com/transferia/transferia/pkg/providers/s3/s3recipe"
 	"github.com/transferia/transferia/pkg/worker/tasks"
 	mocksink "github.com/transferia/transferia/tests/helpers/mock_sink"
@@ -23,7 +23,7 @@ import (
 )
 
 func init() {
-	providers.Register(s3.ProviderType, s3provider.New)
+	providers.Register(s3_model.ProviderType, provider_s3.New)
 }
 
 const line0 = `{"Item":{"OrderID":{"S":"0"},"OrderDate":{"S":"2023-07-01T12:00:00Z"},"CustomerName":{"S":"John Doe0"},"OrderAmount":{"N":"3540"}}}
@@ -32,12 +32,12 @@ const line0 = `{"Item":{"OrderID":{"S":"0"},"OrderDate":{"S":"2023-07-01T12:00:0
 const line1 = `{"Item":{"OrderID":{"S":"1"},"OrderDate":{"S":"2023-07-01T12:00:00Z"},"CustomerName":{"S":"John Doe1"},"OrderAmount":{"N":"3540"}}}
 `
 
-func buildSourceModel(t *testing.T) *s3.S3Source {
+func buildSourceModel(t *testing.T) *s3_model.S3Source {
 	src := s3recipe.PrepareCfg(t, "", "")
 	src.TableNamespace = "example"
 	src.TableName = "data"
 	src.InputFormat = model.ParsingFormatJSON
-	src.Format.JSONLSetting = new(s3.JSONLSetting)
+	src.Format.JSONLSetting = new(s3_model.JSONLSetting)
 	src.Format.JSONLSetting.BlockSize = 1 * 1024 * 1024
 	src.OutputSchema = []abstract.ColSchema{
 		{ColumnName: "OrderID", DataType: ytschema.TypeString.String(), Path: "Item.OrderID.S", PrimaryKey: true},

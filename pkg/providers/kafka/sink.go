@@ -6,15 +6,15 @@ import (
 	"time"
 
 	"github.com/segmentio/kafka-go"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/kafka/writer"
+	kafka_writer "github.com/transferia/transferia/pkg/providers/kafka/writer"
 	serializer "github.com/transferia/transferia/pkg/serializer/queue"
 	"github.com/transferia/transferia/pkg/stats"
 	"github.com/transferia/transferia/pkg/util"
-	"github.com/transferia/transferia/pkg/util/queues"
+	util_queues "github.com/transferia/transferia/pkg/util/queues"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
@@ -27,7 +27,7 @@ type sink struct {
 	logger     log.Logger
 	metrics    *stats.SinkerStats
 	serializer serializer.Serializer
-	writer     writer.AbstractWriter
+	writer     kafka_writer.AbstractWriter
 }
 
 func (s *sink) Push(input []abstract.ChangeItem) error {
@@ -62,12 +62,12 @@ func (s *sink) Push(input []abstract.ChangeItem) error {
 	ctx, cancel := context.WithTimeout(context.Background(), pushTimeout)
 	defer cancel()
 
-	timings := queues.NewTimingsStatCollector()
+	timings := util_queues.NewTimingsStatCollector()
 	err = util.ParallelDoWithContextAbort(ctx, len(pushTasks), s.config.ParralelWriterCount, func(i int, ctx context.Context) error {
 		currTablePartID := pushTasks[i]
 		currMessages := tableToMessages[pushTasks[i]]
 		timings.Started(currTablePartID)
-		topicName := queues.GetTopicName(s.config.Topic, s.config.TopicPrefix, currTablePartID)
+		topicName := util_queues.GetTopicName(s.config.Topic, s.config.TopicPrefix, currTablePartID)
 
 		if err := s.writer.WriteMessages(ctx, s.logger, topicName, currMessages); err != nil {
 			switch t := err.(type) {
@@ -98,7 +98,7 @@ func (s *sink) Close() error {
 	return nil
 }
 
-func NewSinkImpl(cfg *KafkaDestination, registry metrics.Registry, lgr log.Logger, writerFactory writer.AbstractWriterFactory, isSnapshot bool) (abstract.Sinker, error) {
+func NewSinkImpl(cfg *KafkaDestination, registry core_metrics.Registry, lgr log.Logger, writerFactory kafka_writer.AbstractWriterFactory, isSnapshot bool) (abstract.Sinker, error) {
 	if err := cfg.WithConnectionID(); err != nil {
 		return nil, xerrors.Errorf("unable to resolve connection for sink: %w", err)
 	}
@@ -120,7 +120,7 @@ func NewSinkImpl(cfg *KafkaDestination, registry metrics.Registry, lgr log.Logge
 	if err != nil {
 		return nil, xerrors.Errorf("unable to get password: %w", err)
 	}
-	_, err = queues.NewTopicDefinition(cfg.Topic, cfg.TopicPrefix)
+	_, err = util_queues.NewTopicDefinition(cfg.Topic, cfg.TopicPrefix)
 	if err != nil {
 		return nil, xerrors.Errorf("unable to validate topic settings: %w", err)
 	}
@@ -146,10 +146,10 @@ func NewSinkImpl(cfg *KafkaDestination, registry metrics.Registry, lgr log.Logge
 	return &result, nil
 }
 
-func NewReplicationSink(cfg *KafkaDestination, registry metrics.Registry, lgr log.Logger) (abstract.Sinker, error) {
-	return NewSinkImpl(cfg, registry, lgr, writer.NewWriterFactory(lgr), false)
+func NewReplicationSink(cfg *KafkaDestination, registry core_metrics.Registry, lgr log.Logger) (abstract.Sinker, error) {
+	return NewSinkImpl(cfg, registry, lgr, kafka_writer.NewWriterFactory(lgr), false)
 }
 
-func NewSnapshotSink(cfg *KafkaDestination, registry metrics.Registry, lgr log.Logger) (abstract.Sinker, error) {
-	return NewSinkImpl(cfg, registry, lgr, writer.NewWriterFactory(lgr), true)
+func NewSnapshotSink(cfg *KafkaDestination, registry core_metrics.Registry, lgr log.Logger) (abstract.Sinker, error) {
+	return NewSinkImpl(cfg, registry, lgr, kafka_writer.NewWriterFactory(lgr), true)
 }

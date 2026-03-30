@@ -4,7 +4,7 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/changeitem"
-	"github.com/transferia/transferia/pkg/parsers/registry/blank"
+	parser_blank "github.com/transferia/transferia/pkg/parsers/registry/blank"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
@@ -53,13 +53,13 @@ func (s *MirrorSerializer) Serialize(input []abstract.ChangeItem) (map[abstract.
 
 func (s *MirrorSerializer) SerializeLB(changeItem *abstract.ChangeItem) ([]SerializedMessage, error) {
 	isBlankChangedItem := func(item abstract.ChangeItem) bool {
-		return len(item.ColumnNames) == len(blank.BlankCols) &&
-			item.ColumnNames[blank.BlankColsIDX[blank.RawMessageColumn]] == blank.RawMessageColumn
+		return len(item.ColumnNames) == len(parser_blank.BlankCols) &&
+			item.ColumnNames[parser_blank.BlankColsIDX[parser_blank.RawMessageColumn]] == parser_blank.RawMessageColumn
 	}
 	if !isBlankChangedItem(*changeItem) {
 		return nil, xerrors.Errorf("MirrorSerializer should be used only with BlankChangedItems")
 	}
-	rawData, ok := changeItem.ColumnValues[blank.BlankColsIDX[blank.RawMessageColumn]].([]byte)
+	rawData, ok := changeItem.ColumnValues[parser_blank.BlankColsIDX[parser_blank.RawMessageColumn]].([]byte)
 	if !ok {
 		return nil, xerrors.New("raw data must be presented for blank change item")
 	}
@@ -84,7 +84,7 @@ func (s *MirrorSerializer) GroupAndSerializeLB(input []abstract.ChangeItem) (map
 		if len(group) == 0 {
 			continue
 		}
-		sourceID, ok := changeItem.ColumnValues[blank.BlankColsIDX[blank.SourceIDColumn]].(string)
+		sourceID, ok := changeItem.ColumnValues[parser_blank.BlankColsIDX[parser_blank.SourceIDColumn]].(string)
 		if !ok {
 			return nil, nil, xerrors.New("Source ID must be presented for blank delivery")
 		}
@@ -96,7 +96,7 @@ func (s *MirrorSerializer) GroupAndSerializeLB(input []abstract.ChangeItem) (map
 			PartID: "",
 		}
 		idToGroup[tableID] = append(idToGroup[tableID], group...)
-		extras[tableID] = changeItem.ColumnValues[blank.BlankColsIDX[blank.ExtrasColumn]].(map[string]string)
+		extras[tableID] = changeItem.ColumnValues[parser_blank.BlankColsIDX[parser_blank.ExtrasColumn]].(map[string]string)
 	}
 	return idToGroup, extras, nil
 }

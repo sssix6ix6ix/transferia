@@ -11,29 +11,29 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/library/go/test/canon"
 	"github.com/transferia/transferia/pkg/abstract"
-	dp_model "github.com/transferia/transferia/pkg/abstract/model"
+	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/httpclient"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/model"
-	ytprovider "github.com/transferia/transferia/pkg/providers/yt"
+	clickhouse_model "github.com/transferia/transferia/pkg/providers/clickhouse/model"
+	provider_yt "github.com/transferia/transferia/pkg/providers/yt"
 	"github.com/transferia/transferia/pkg/providers/yt/yt_client"
 	"github.com/transferia/transferia/tests/helpers"
-	yt_helpers "github.com/transferia/transferia/tests/helpers/yt"
-	"go.ytsaurus.tech/yt/go/schema"
+	helpers_yt "github.com/transferia/transferia/tests/helpers/yt"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 	"go.ytsaurus.tech/yt/go/ypath"
 	"go.ytsaurus.tech/yt/go/yt"
 )
 
 var (
 	TransferType        = abstract.TransferTypeSnapshotOnly
-	YtColumns, TestData = yt_helpers.YtTypesTestData()
-	Source              = ytprovider.YtSource{
+	YtColumns, TestData = helpers_yt.YtTypesTestData()
+	Source              = provider_yt.YtSource{
 		Cluster: os.Getenv("YT_PROXY"),
 		YtProxy: os.Getenv("YT_PROXY"),
 		Paths:   []string{"//home/cdc/junk/types_test"},
 		YtToken: "",
 	}
-	Target = model.ChDestination{
-		ShardsList:          []model.ClickHouseShard{{Name: "_", Hosts: []string{"localhost"}}},
+	Target = clickhouse_model.ChDestination{
+		ShardsList:          []clickhouse_model.ClickHouseShard{{Name: "_", Hosts: []string{"localhost"}}},
 		User:                "default",
 		Password:            "",
 		Database:            "default",
@@ -41,7 +41,7 @@ var (
 		NativePort:          helpers.GetIntFromEnv("RECIPE_CLICKHOUSE_NATIVE_PORT"),
 		ProtocolUnspecified: true,
 		SSLEnabled:          false,
-		Cleanup:             dp_model.DisabledCleanup,
+		Cleanup:             model.DisabledCleanup,
 	}
 )
 
@@ -56,7 +56,7 @@ func initYTTable(t *testing.T) {
 	require.NoError(t, err)
 	_ = ytc.RemoveNode(context.Background(), ypath.NewRich(Source.Paths[0]).YPath(), nil)
 
-	sch := schema.Schema{
+	sch := ytschema.Schema{
 		Strict:     nil,
 		UniqueKeys: false,
 		Columns:    YtColumns,
@@ -83,7 +83,7 @@ func initCHTable(t *testing.T) {
 	q := `DROP TABLE IF EXISTS types_test`
 	_ = chClient.Exec(context.Background(), logger.Log, host, q)
 
-	q = fmt.Sprintf(`CREATE TABLE types_test (%s) ENGINE MergeTree() ORDER BY id`, yt_helpers.ChSchemaForYtTypesTestData())
+	q = fmt.Sprintf(`CREATE TABLE types_test (%s) ENGINE MergeTree() ORDER BY id`, helpers_yt.ChSchemaForYtTypesTestData())
 	require.NoError(t, chClient.Exec(context.Background(), logger.Log, host, q))
 }
 

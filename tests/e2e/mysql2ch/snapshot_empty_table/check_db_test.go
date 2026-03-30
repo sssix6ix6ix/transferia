@@ -6,24 +6,24 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/pkg/abstract"
-	dp_model "github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/model"
-	"github.com/transferia/transferia/pkg/providers/mysql"
+	"github.com/transferia/transferia/pkg/abstract/model"
+	clickhouse_model "github.com/transferia/transferia/pkg/providers/clickhouse/model"
+	provider_mysql "github.com/transferia/transferia/pkg/providers/mysql"
 	"github.com/transferia/transferia/tests/e2e/pg2ch"
 	"github.com/transferia/transferia/tests/helpers"
 )
 
 var (
 	TransferType = abstract.TransferTypeSnapshotOnly
-	Source       = mysql.MysqlSource{
+	Source       = provider_mysql.MysqlSource{
 		Host:     os.Getenv("RECIPE_MYSQL_HOST"),
 		User:     os.Getenv("RECIPE_MYSQL_USER"),
-		Password: dp_model.SecretString(os.Getenv("RECIPE_MYSQL_PASSWORD")),
+		Password: model.SecretString(os.Getenv("RECIPE_MYSQL_PASSWORD")),
 		Database: os.Getenv("RECIPE_MYSQL_SOURCE_DATABASE"),
 		Port:     helpers.GetIntFromEnv("RECIPE_MYSQL_PORT"),
 	}
-	Target = model.ChDestination{
-		ShardsList: []model.ClickHouseShard{
+	Target = clickhouse_model.ChDestination{
+		ShardsList: []clickhouse_model.ClickHouseShard{
 			{
 				Name: "_",
 				Hosts: []string{

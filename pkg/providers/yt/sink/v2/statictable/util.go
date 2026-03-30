@@ -5,13 +5,13 @@ import (
 	"time"
 
 	"github.com/transferia/transferia/pkg/abstract"
-	yt2 "github.com/transferia/transferia/pkg/providers/yt"
+	provider_yt "github.com/transferia/transferia/pkg/providers/yt"
 	"github.com/transferia/transferia/pkg/util"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 	"go.ytsaurus.tech/yt/go/ypath"
 	"go.ytsaurus.tech/yt/go/yson"
 	"go.ytsaurus.tech/yt/go/yt"
-	"golang.org/x/exp/maps"
+	xmaps "golang.org/x/exp/maps"
 )
 
 const (
@@ -30,8 +30,8 @@ func makeTablePath(path ypath.Path, infix, postfix string) ypath.Path {
 	return ypath.Path(fmt.Sprintf("%s_%s_%s", path.String(), infix, postfix))
 }
 
-func createNodeOptions(scheme schema.Schema, optimizeFor string, customAttributes map[string]any) yt.CreateNodeOptions {
-	maps.Copy(customAttributes, map[string]any{
+func createNodeOptions(scheme ytschema.Schema, optimizeFor string, customAttributes map[string]any) yt.CreateNodeOptions {
+	xmaps.Copy(customAttributes, map[string]any{
 		"schema":       scheme,
 		"optimize_for": optimizeFor,
 		"strict":       true,
@@ -53,14 +53,14 @@ func transactionOptions(id yt.TxID) *yt.TransactionOptions {
 	}
 }
 
-func makeYtSchema(scheme []abstract.ColSchema) schema.Schema {
-	ytCols := yt2.ToYtSchema(scheme, false)
-	return schema.Schema{
+func makeYtSchema(scheme []abstract.ColSchema) ytschema.Schema {
+	ytCols := provider_yt.ToYtSchema(scheme, false)
+	return ytschema.Schema{
 		Columns: ytCols,
 		Strict:  util.TruePtr(),
 	}
 }
 
-func isSorted(scheme schema.Schema) bool {
+func isSorted(scheme ytschema.Schema) bool {
 	return len(scheme.KeyColumns()) > 0
 }

@@ -9,11 +9,11 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
-	cpclient "github.com/transferia/transferia/pkg/abstract/coordinator"
-	mongodataagent "github.com/transferia/transferia/pkg/providers/mongo"
+	"github.com/transferia/transferia/pkg/abstract/coordinator"
+	provider_mongo "github.com/transferia/transferia/pkg/providers/mongo"
 	"github.com/transferia/transferia/pkg/runtime/local"
-	"github.com/transferia/transferia/pkg/transformer/registry/filter"
-	filterrowsbyids "github.com/transferia/transferia/pkg/transformer/registry/filter_rows_by_ids"
+	transformer_filter "github.com/transferia/transferia/pkg/transformer/registry/filter"
+	transformer_filter_rows_by_ids "github.com/transferia/transferia/pkg/transformer/registry/filter_rows_by_ids"
 	"github.com/transferia/transferia/pkg/worker/tasks"
 	"github.com/transferia/transferia/tests/helpers"
 	"go.mongodb.org/mongo-driver/bson"
@@ -25,7 +25,7 @@ var (
 	SourceDbName   = "source"
 )
 
-func initEndpoints(t *testing.T, source *mongodataagent.MongoSource, target *mongodataagent.MongoDestination) (*mongodataagent.MongoClientWrapper, *mongodataagent.MongoClientWrapper) {
+func initEndpoints(t *testing.T, source *provider_mongo.MongoSource, target *provider_mongo.MongoDestination) (*provider_mongo.MongoClientWrapper, *provider_mongo.MongoClientWrapper) {
 	_ = os.Setenv("YC", "1")
 
 	defer func() {
@@ -35,24 +35,24 @@ func initEndpoints(t *testing.T, source *mongodataagent.MongoSource, target *mon
 		))
 	}()
 
-	srcClient, err := mongodataagent.Connect(context.Background(), source.ConnectionOptions([]string{}), nil)
+	srcClient, err := provider_mongo.Connect(context.Background(), source.ConnectionOptions([]string{}), nil)
 	require.NoError(t, err)
 
-	targetClient, err := mongodataagent.Connect(context.Background(), target.ConnectionOptions([]string{}), nil)
+	targetClient, err := provider_mongo.Connect(context.Background(), target.ConnectionOptions([]string{}), nil)
 	require.NoError(t, err)
 
 	return srcClient, targetClient
 }
 
-func runTransfer(t *testing.T, source *mongodataagent.MongoSource, target *mongodataagent.MongoDestination) *local.LocalWorker {
+func runTransfer(t *testing.T, source *provider_mongo.MongoSource, target *provider_mongo.MongoDestination) *local.LocalWorker {
 	transfer := helpers.MakeTransfer(helpers.TransferID, source, target, abstract.TransferTypeSnapshotAndIncrement)
 
-	transformer, err := filterrowsbyids.NewFilterRowsByIDsTransformer(
-		filterrowsbyids.Config{
-			Tables: filter.Tables{
+	transformer, err := transformer_filter_rows_by_ids.NewFilterRowsByIDsTransformer(
+		transformer_filter_rows_by_ids.Config{
+			Tables: transformer_filter.Tables{
 				IncludeTables: []string{"source.collection"},
 			},
-			Columns: filter.Columns{
+			Columns: transformer_filter.Columns{
 				IncludeColumns: []string{"_id", "nested_id"},
 			},
 			AllowedIDs: []string{
@@ -71,10 +71,10 @@ func runTransfer(t *testing.T, source *mongodataagent.MongoSource, target *mongo
 	require.NoError(t, err)
 	helpers.AddTransformer(t, transfer, transformer)
 
-	err = tasks.ActivateDelivery(context.TODO(), nil, cpclient.NewFakeClient(), *transfer, helpers.EmptyRegistry())
+	err = tasks.ActivateDelivery(context.TODO(), nil, coordinator.NewFakeClient(), *transfer, helpers.EmptyRegistry())
 	require.NoError(t, err)
 
-	localWorker := local.NewLocalWorker(cpclient.NewFakeClient(), transfer, helpers.EmptyRegistry(), logger.Log)
+	localWorker := local.NewLocalWorker(coordinator.NewFakeClient(), transfer, helpers.EmptyRegistry(), logger.Log)
 	localWorker.Start()
 	return localWorker
 }
@@ -85,11 +85,11 @@ func Test_Group(t *testing.T) {
 
 func FilterRowsByIDs(t *testing.T) {
 	var (
-		Source = *mongodataagent.RecipeSource(
-			mongodataagent.WithCollections(
-				mongodataagent.MongoCollection{DatabaseName: SourceDbName, CollectionName: CollectionName}))
-		Target = *mongodataagent.RecipeTarget(
-			mongodataagent.WithDatabase(TargetDbName),
+		Source = *provider_mongo.RecipeSource(
+			provider_mongo.WithCollections(
+				provider_mongo.MongoCollection{DatabaseName: SourceDbName, CollectionName: CollectionName}))
+		Target = *provider_mongo.RecipeTarget(
+			provider_mongo.WithDatabase(TargetDbName),
 		)
 	)
 

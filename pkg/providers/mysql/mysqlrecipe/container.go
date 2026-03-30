@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/testcontainers/testcontainers-go"
+	testcontainers_go "github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 	"github.com/transferia/transferia/library/go/core/xerrors"
-	"github.com/transferia/transferia/pkg/providers/mysql"
+	provider_mysql "github.com/transferia/transferia/pkg/providers/mysql"
 	"github.com/transferia/transferia/tests/tcrecipes"
 )
 
@@ -25,14 +25,14 @@ const (
 
 // MySQLContainer represents the MySQL container type used in the module
 type MySQLContainer struct {
-	testcontainers.Container
+	testcontainers_go.Container
 	username string
 	password string
 	database string
 }
 
-func WithDefaultCredentials() testcontainers.CustomizeRequestOption {
-	return func(req *testcontainers.GenericContainerRequest) error {
+func WithDefaultCredentials() testcontainers_go.CustomizeRequestOption {
+	return func(req *testcontainers_go.GenericContainerRequest) error {
 		username := req.Env["MYSQL_USER"]
 		password := req.Env["MYSQL_PASSWORD"]
 		if strings.EqualFold(rootUser, username) {
@@ -62,10 +62,10 @@ func PrepareContainer(ctx context.Context) {
 }
 
 // Run creates an instance of the MySQL container type
-func Run(ctx context.Context, img string, opts ...testcontainers.ContainerCustomizer) (*MySQLContainer, error) {
+func Run(ctx context.Context, img string, opts ...testcontainers_go.ContainerCustomizer) (*MySQLContainer, error) {
 	tz, _ := time.Now().Zone()
 
-	req := testcontainers.ContainerRequest{
+	req := testcontainers_go.ContainerRequest{
 		Image: img,
 		Env: map[string]string{
 			"MYSQL_ALLOW_EMPTY_PASSWORD": "yes",
@@ -99,13 +99,13 @@ SET GLOBAL time_zone = "%[5]s";
 		return nil, xerrors.Errorf("unable to write init script: %w", err)
 	}
 
-	req.Files = append(req.Files, testcontainers.ContainerFile{
+	req.Files = append(req.Files, testcontainers_go.ContainerFile{
 		HostFilePath:      f.Name(),
 		ContainerFilePath: "/docker-entrypoint-initdb.d/0000001_init_src_dst.sql",
 		FileMode:          0o755,
 	})
 
-	genericContainerReq := testcontainers.GenericContainerRequest{
+	genericContainerReq := testcontainers_go.GenericContainerRequest{
 		ContainerRequest: req,
 		Started:          true,
 	}
@@ -128,7 +128,7 @@ SET GLOBAL time_zone = "%[5]s";
 		return nil, xerrors.New("empty password can be used only with the root user")
 	}
 
-	container, err := testcontainers.GenericContainer(ctx, genericContainerReq)
+	container, err := testcontainers_go.GenericContainer(ctx, genericContainerReq)
 	if err != nil {
 		return nil, xerrors.Errorf("generic container: %w", err)
 	}
@@ -176,7 +176,7 @@ func InitScripts() error {
 		"source",
 		"src",
 	}
-	srcParams, err := mysql.NewConnectionParams(RecipeMysqlSource().ToStorageParams())
+	srcParams, err := provider_mysql.NewConnectionParams(RecipeMysqlSource().ToStorageParams())
 	if err != nil {
 		return xerrors.Errorf("unable to build conn params: %w", err)
 	}

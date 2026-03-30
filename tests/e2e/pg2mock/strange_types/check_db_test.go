@@ -11,7 +11,7 @@ import (
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
 	"github.com/transferia/transferia/tests/helpers"
 	mocksink "github.com/transferia/transferia/tests/helpers/mock_sink"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 var (
@@ -51,7 +51,7 @@ func TestSnapshot(t *testing.T) {
 			if changeItem.Kind == abstract.InsertKind && changeItem.Table == "udt" {
 				checksTriggered++
 				require.Equal(t, "RUB", changeItem.AsMap()["mycurrency"])
-				require.Equal(t, schema.TypeString.String(), tableSchema.NameToTableSchema(t, "mycurrency").DataType)
+				require.Equal(t, ytschema.TypeString.String(), tableSchema.NameToTableSchema(t, "mycurrency").DataType)
 				require.Equal(t, "pg:currency", tableSchema.NameToTableSchema(t, "mycurrency").OriginalType)
 			}
 		}

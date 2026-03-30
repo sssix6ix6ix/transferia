@@ -1,16 +1,16 @@
 package async
 
 import (
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/library/go/core/xerrors/multierr"
 	"github.com/transferia/transferia/pkg/abstract"
-	dp_model "github.com/transferia/transferia/pkg/abstract/model"
+	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/async/dao"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/async/model/db"
+	ch_db_model "github.com/transferia/transferia/pkg/providers/clickhouse/async/model/db"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/async/model/parts"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/errors"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/model"
+	clickhouse_errors "github.com/transferia/transferia/pkg/providers/clickhouse/errors"
+	clickhouse_model "github.com/transferia/transferia/pkg/providers/clickhouse/model"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/sharding"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/topology"
 	"github.com/transferia/transferia/pkg/util"
@@ -18,7 +18,7 @@ import (
 )
 
 type sink struct {
-	cfg        model.ChSinkParams
+	cfg        clickhouse_model.ChSinkParams
 	dao        *dao.DDLDAO
 	parts      parts.PartMap
 	resBacklog map[abstract.TablePartID][]chan error
@@ -237,7 +237,7 @@ func (s *sink) pushDataRows(items []abstract.ChangeItem) (resCh chan error) {
 			// note: if InitShardedTableLoad with such partID is received, the part will be created again from scratch
 			delete(s.parts, partID)
 
-			if !errors.IsFatalClickhouseError(err) && !db.IsMarshallingError(err) {
+			if !clickhouse_errors.IsFatalClickhouseError(err) && !ch_db_model.IsMarshallingError(err) {
 				err = abstract.NewRetriablePartUploadError(err)
 			}
 			return err
@@ -247,7 +247,7 @@ func (s *sink) pushDataRows(items []abstract.ChangeItem) (resCh chan error) {
 }
 
 func NewSink(
-	transfer *dp_model.Transfer, dst *model.ChDestination, lgr log.Logger, mtrcs metrics.Registry, mw abstract.Middleware,
+	transfer *model.Transfer, dst *clickhouse_model.ChDestination, lgr log.Logger, mtrcs core_metrics.Registry, mw abstract.Middleware,
 ) (abstract.AsyncSink, error) {
 	lgr.Infof("Using async clickhouse sink with parts")
 	params, err := dst.ToSinkParams(transfer)

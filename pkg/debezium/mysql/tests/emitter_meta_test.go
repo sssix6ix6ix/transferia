@@ -9,7 +9,7 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/debezium"
-	debeziumparameters "github.com/transferia/transferia/pkg/debezium/parameters"
+	debezium_parameters "github.com/transferia/transferia/pkg/debezium/parameters"
 )
 
 func TestTxInfo(t *testing.T) {
@@ -49,9 +49,9 @@ func TestTxInfo(t *testing.T) {
 	// check if conversation works
 
 	params := map[string]string{
-		debeziumparameters.TopicPrefix:      "my_topic",
-		debeziumparameters.AddOriginalTypes: "true",
-		debeziumparameters.SourceType:       "mysql",
+		debezium_parameters.TopicPrefix:      "my_topic",
+		debezium_parameters.AddOriginalTypes: "true",
+		debezium_parameters.SourceType:       "mysql",
 	}
 	emitter, err := debezium.NewMessagesEmitter(params, "1.1.2.Final", false, logger.Log)
 	require.NoError(t, err)

@@ -7,7 +7,7 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/changeitem"
 	"github.com/transferia/transferia/pkg/abstract2"
-	"github.com/transferia/transferia/pkg/providers/yt/provider/types"
+	yt_provider_types "github.com/transferia/transferia/pkg/providers/yt/provider/types"
 	"go.ytsaurus.tech/yt/go/yson"
 )
 
@@ -105,7 +105,7 @@ func (e *event) NewValue(i int) (abstract2.Value, error) {
 	if !ok {
 		return nil, xerrors.Errorf("expected column %s to be present in row from YT", col.Name())
 	}
-	val, err := types.Cast(raw, col)
+	val, err := yt_provider_types.Cast(raw, col)
 	if err != nil {
 		return nil, xerrors.Errorf("unable to cast column %s with raw type %T to type system: %w", col.Name(), raw, err)
 	}

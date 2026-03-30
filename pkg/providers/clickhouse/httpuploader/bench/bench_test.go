@@ -8,9 +8,9 @@ import (
 	"github.com/transferia/transferia/pkg/abstract/changeitem"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/columntypes"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/httpuploader"
-	"github.com/transferia/transferia/pkg/providers/mysql"
-	"github.com/transferia/transferia/pkg/providers/postgres"
-	"github.com/transferia/transferia/tests/canon"
+	provider_mysql "github.com/transferia/transferia/pkg/providers/mysql"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
+	canon_test "github.com/transferia/transferia/tests/canon"
 )
 
 var (
@@ -18,12 +18,12 @@ var (
 )
 
 func init() {
-	for _, tc := range canon.All(postgres.ProviderType) {
+	for _, tc := range canon_test.All(provider_postgres.ProviderType) {
 		for _, row := range tc.Data {
 			tables[row.TableID()] = append(tables[row.TableID()], row)
 		}
 	}
-	for _, tc := range canon.All(mysql.ProviderType) {
+	for _, tc := range canon_test.All(provider_mysql.ProviderType) {
 		for _, row := range tc.Data {
 			tables[row.TableID()] = append(tables[row.TableID()], row)
 		}

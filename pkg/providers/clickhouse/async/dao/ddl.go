@@ -9,15 +9,15 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	yslices "github.com/transferia/transferia/library/go/slices"
 	"github.com/transferia/transferia/pkg/abstract"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/async/model/db"
+	ch_db_model "github.com/transferia/transferia/pkg/providers/clickhouse/async/model/db"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/columntypes"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/schema/engines"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
 type DDLClient interface {
-	db.Client
-	db.DDLExecutor
+	ch_db_model.Client
+	ch_db_model.DDLExecutor
 }
 
 type DDLDAO struct {

@@ -8,7 +8,7 @@ import (
 	"github.com/blang/semver/v4"
 	"github.com/cenkalti/backoff/v4"
 	"github.com/transferia/transferia/internal/logger"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/metrics/solomon"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	yslices "github.com/transferia/transferia/library/go/slices"
@@ -17,11 +17,11 @@ import (
 	"github.com/transferia/transferia/pkg/stats"
 	"github.com/transferia/transferia/pkg/util"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	mongo_driver "go.mongodb.org/mongo-driver/mongo"
+	mongo_options "go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readconcern"
 	"go.ytsaurus.tech/library/go/core/log"
-	goslice "golang.org/x/exp/slices"
+	xslices "golang.org/x/exp/slices"
 )
 
 var (
@@ -76,7 +76,7 @@ func (s *Storage) LoadTable(ctx context.Context, table abstract.TableDescription
 	st := util.GetTimestampFromContextOrNow(ctx)
 	if s.version.GE(MongoVersion4_0) && !s.Client.IsDocDB {
 		sess, err := s.Client.StartSession(
-			options.Session().
+			mongo_options.Session().
 				SetDefaultReadConcern(
 					readconcern.Snapshot(),
 				),
@@ -85,7 +85,7 @@ func (s *Storage) LoadTable(ctx context.Context, table abstract.TableDescription
 			return xerrors.Errorf("unable to start snapshot session: %w", err)
 		}
 		defer sess.EndSession(ctx)
-		ctx = mongo.NewSessionContext(ctx, sess)
+		ctx = mongo_driver.NewSessionContext(ctx, sess)
 	}
 
 	coll := s.Client.Database(table.Schema).Collection(table.Name)
@@ -96,7 +96,7 @@ func (s *Storage) LoadTable(ctx context.Context, table abstract.TableDescription
 
 	// no cursor timeout is unavailable for lower price tiers in atlas
 	// https://www.mongodb.com/docs/atlas/reference/free-shared-limitations/
-	findOptions := options.Find().SetMaxTime(606461538 * time.Millisecond) // 1 week
+	findOptions := mongo_options.Find().SetMaxTime(606461538 * time.Millisecond) // 1 week
 
 	if table.Offset > 0 {
 		findOptions.SetSkip(int64(table.Offset))
@@ -108,7 +108,7 @@ func (s *Storage) LoadTable(ctx context.Context, table abstract.TableDescription
 		return xerrors.Errorf("cannot get mongo filter by table description: %w", err)
 	}
 
-	var cursor *mongo.Cursor
+	var cursor *mongo_driver.Cursor
 	if err := backoff.Retry(func() error {
 		cursor, err = coll.Find(ctx, filter, findOptions)
 
@@ -186,7 +186,7 @@ func (s *Storage) TableList(includeTableFilter abstract.IncludeTableList) (abstr
 	return model.FilteredMap(tables, includeTableFilter), nil
 }
 
-func filterSystemCollections(specs []*mongo.CollectionSpecification) ([]string, error) {
+func filterSystemCollections(specs []*mongo_driver.CollectionSpecification) ([]string, error) {
 	var filteredCollections []string
 	for _, spec := range specs {
 		if spec.Type == "view" {
@@ -223,7 +223,7 @@ func (s *Storage) makeDBList(ctx context.Context, schemaName string) ([]string, 
 
 func filterSystemDBs(allDBNames []string, systemDBs []string) []string {
 	return yslices.Filter(allDBNames, func(db string) bool {
-		return !goslice.Contains(systemDBs, db)
+		return !xslices.Contains(systemDBs, db)
 	})
 }
 
@@ -269,7 +269,7 @@ func (s *Storage) TableExists(table abstract.TableID) (bool, error) {
 
 type StorageOpt func(storage *Storage) *Storage
 
-func WithMetrics(registry metrics.Registry) StorageOpt {
+func WithMetrics(registry core_metrics.Registry) StorageOpt {
 	return func(storage *Storage) *Storage {
 		storage.metrics = stats.NewSourceStats(registry)
 		return storage

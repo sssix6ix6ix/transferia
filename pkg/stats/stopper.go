@@ -1,18 +1,18 @@
 package stats
 
 import (
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 )
 
 type StopperStats struct {
-	TotalTransfers          metrics.IntGauge
-	WarningLabeledTransfers metrics.IntGauge
-	ErrorLabeledTransfers   metrics.IntGauge
+	TotalTransfers          core_metrics.IntGauge
+	WarningLabeledTransfers core_metrics.IntGauge
+	ErrorLabeledTransfers   core_metrics.IntGauge
 
-	pm metrics.Registry
+	pm core_metrics.Registry
 }
 
-func NewStopperStats(mtrc metrics.Registry) *StopperStats {
+func NewStopperStats(mtrc core_metrics.Registry) *StopperStats {
 	pm := mtrc.WithTags(map[string]string{
 		"component": "regular_stopper",
 	})

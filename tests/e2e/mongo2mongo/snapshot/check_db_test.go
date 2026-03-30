@@ -7,41 +7,41 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/pkg/abstract"
-	mongocommon "github.com/transferia/transferia/pkg/providers/mongo"
+	provider_mongo "github.com/transferia/transferia/pkg/providers/mongo"
 	"github.com/transferia/transferia/tests/helpers"
 )
 
 const databaseName string = "db"
 
 var (
-	Source = *mongocommon.RecipeSource(
-		mongocommon.WithCollections(
-			mongocommon.MongoCollection{DatabaseName: databaseName, CollectionName: "timmyb32r_test"},
-			mongocommon.MongoCollection{DatabaseName: databaseName, CollectionName: "empty"},
+	Source = *provider_mongo.RecipeSource(
+		provider_mongo.WithCollections(
+			provider_mongo.MongoCollection{DatabaseName: databaseName, CollectionName: "timmyb32r_test"},
+			provider_mongo.MongoCollection{DatabaseName: databaseName, CollectionName: "empty"},
 		),
 	)
-	Target = *mongocommon.RecipeTarget(mongocommon.WithPrefix("DB0_"))
+	Target = *provider_mongo.RecipeTarget(provider_mongo.WithPrefix("DB0_"))
 )
 
 //---------------------------------------------------------------------------------------------------------------------
 // utils
 
-func LogMongoSource(s *mongocommon.MongoSource) {
+func LogMongoSource(s *provider_mongo.MongoSource) {
 	fmt.Printf("Source.Hosts: %v\n", s.Hosts)
 	fmt.Printf("Source.Port: %v\n", s.Port)
 	fmt.Printf("Source.User: %v\n", s.User)
 	fmt.Printf("Source.Password: %v\n", s.Password)
 }
 
-func LogMongoDestination(s *mongocommon.MongoDestination) {
+func LogMongoDestination(s *provider_mongo.MongoDestination) {
 	fmt.Printf("Target.Hosts: %v\n", s.Hosts)
 	fmt.Printf("Target.Port: %v\n", s.Port)
 	fmt.Printf("Target.User: %v\n", s.User)
 	fmt.Printf("Target.Password: %v\n", s.Password)
 }
 
-func MakeDstClient(t *mongocommon.MongoDestination) (*mongocommon.MongoClientWrapper, error) {
-	return mongocommon.Connect(context.Background(), t.ConnectionOptions([]string{}), nil)
+func MakeDstClient(t *provider_mongo.MongoDestination) (*provider_mongo.MongoClientWrapper, error) {
+	return provider_mongo.Connect(context.Background(), t.ConnectionOptions([]string{}), nil)
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -63,7 +63,7 @@ func TestGroup(t *testing.T) {
 func Ping(t *testing.T) {
 	// ping src
 	LogMongoSource(&Source)
-	client, err := mongocommon.Connect(context.Background(), Source.ConnectionOptions([]string{}), nil)
+	client, err := provider_mongo.Connect(context.Background(), Source.ConnectionOptions([]string{}), nil)
 	require.NoError(t, err)
 	err = client.Ping(context.TODO(), nil)
 	require.NoError(t, err)
@@ -77,7 +77,7 @@ func Ping(t *testing.T) {
 }
 
 func Snapshot(t *testing.T) {
-	client, err := mongocommon.Connect(context.Background(), Source.ConnectionOptions([]string{}), nil)
+	client, err := provider_mongo.Connect(context.Background(), Source.ConnectionOptions([]string{}), nil)
 	require.NoError(t, err)
 
 	//------------------------------------------------------------------------------------

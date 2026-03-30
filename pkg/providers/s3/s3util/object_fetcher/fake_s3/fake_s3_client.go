@@ -5,7 +5,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/request"
-	"github.com/aws/aws-sdk-go/service/s3"
+	aws_s3 "github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/pkg/util/set"
@@ -17,13 +17,13 @@ type FakeS3Client struct {
 	files []*File
 }
 
-func (c *FakeS3Client) ListObjectsPagesWithContext(_ aws.Context, _ *s3.ListObjectsInput, callback func(*s3.ListObjectsOutput, bool) bool, _ ...request.Option) error {
-	inputForCallback := s3.ListObjectsOutput{
-		Contents: []*s3.Object{},
+func (c *FakeS3Client) ListObjectsPagesWithContext(_ aws.Context, _ *aws_s3.ListObjectsInput, callback func(*aws_s3.ListObjectsOutput, bool) bool, _ ...request.Option) error {
+	inputForCallback := aws_s3.ListObjectsOutput{
+		Contents: []*aws_s3.Object{},
 	}
 	for _, currFile := range c.files {
 		size := int64(len(currFile.Body))
-		newObject := &s3.Object{
+		newObject := &aws_s3.Object{
 			Key:          &currFile.FileName,
 			Size:         &size,
 			LastModified: &currFile.LastModified,

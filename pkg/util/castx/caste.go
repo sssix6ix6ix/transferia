@@ -2,7 +2,7 @@ package castx
 
 import (
 	"fmt"
-	"html/template"
+	html_template "html/template"
 	"strconv"
 	"time"
 
@@ -84,15 +84,15 @@ func ToStringE(i interface{}) (string, error) {
 		return s.String(), nil
 	case []byte:
 		return string(s), nil
-	case template.HTML:
+	case html_template.HTML:
 		return string(s), nil
-	case template.URL:
+	case html_template.URL:
 		return string(s), nil
-	case template.JS:
+	case html_template.JS:
 		return string(s), nil
-	case template.CSS:
+	case html_template.CSS:
 		return string(s), nil
-	case template.HTMLAttr:
+	case html_template.HTMLAttr:
 		return string(s), nil
 	case nil:
 		return "", nil

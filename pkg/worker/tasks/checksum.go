@@ -17,7 +17,7 @@ import (
 	"github.com/araddon/dateparse"
 	"github.com/jackc/pgtype"
 	"github.com/transferia/transferia/internal/logger"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
@@ -25,7 +25,7 @@ import (
 	"github.com/transferia/transferia/pkg/errors"
 	"github.com/transferia/transferia/pkg/errors/categories"
 	"github.com/transferia/transferia/pkg/providers"
-	"github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/util"
 	"github.com/transferia/transferia/pkg/util/jsonx"
 	"go.ytsaurus.tech/library/go/core/log"
@@ -138,7 +138,7 @@ func (p *ChecksumParameters) GetPriorityComparators() []ChecksumComparator {
 	return p.PriorityComparators
 }
 
-func Checksum(transfer model.Transfer, lgr log.Logger, registry metrics.Registry, params *ChecksumParameters, task *model.TransferOperation) error {
+func Checksum(transfer model.Transfer, lgr log.Logger, registry core_metrics.Registry, params *ChecksumParameters, task *model.TransferOperation) error {
 	var err error
 	var srcStorage, dstStorage abstract.ChecksumableStorage
 	var tables []abstract.TableDescription
@@ -208,7 +208,7 @@ func CompareChecksum(
 	dst abstract.ChecksumableStorage,
 	tables []abstract.TableDescription,
 	lgr log.Logger,
-	registry metrics.Registry,
+	registry core_metrics.Registry,
 	equalDataTypes func(lDataType, rDataType string) bool,
 	params *ChecksumParameters,
 ) error {
@@ -920,10 +920,10 @@ func tryCompare(lVal interface{}, lSchema abstract.ColSchema, rVal interface{}, 
 	if lOriginalIsPG || rOriginalIsPG {
 		var lPGType, rPGType string
 		if lOriginalIsPG {
-			lPGType = postgres.ClearOriginalType(lSchema.OriginalType)
+			lPGType = provider_postgres.ClearOriginalType(lSchema.OriginalType)
 		}
 		if rOriginalIsPG {
-			rPGType = postgres.ClearOriginalType(rSchema.OriginalType)
+			rPGType = provider_postgres.ClearOriginalType(rSchema.OriginalType)
 		}
 
 		if anyOfAmong(lPGType, rPGType, "BYTEA") {
@@ -1028,22 +1028,22 @@ func tryCompareTemporals(lVal interface{}, lSchema abstract.ColSchema, rVal inte
 	castsToString := lSOk && rSOk
 
 	switch {
-	case postgres.IsPgTypeTimeWithTimeZone(lSchema.OriginalType) && postgres.IsPgTypeTimeWithTimeZone(rSchema.OriginalType):
+	case provider_postgres.IsPgTypeTimeWithTimeZone(lSchema.OriginalType) && provider_postgres.IsPgTypeTimeWithTimeZone(rSchema.OriginalType):
 		{
 			if !castsToString {
 				return false, false, nil
 			}
-			lT, err := postgres.TimeWithTimeZoneToTime(lS)
+			lT, err := provider_postgres.TimeWithTimeZoneToTime(lS)
 			if err != nil {
 				return false, false, xerrors.Errorf("failed to represent %q as time.Time: %w", lS, err)
 			}
-			rT, err := postgres.TimeWithTimeZoneToTime(rS)
+			rT, err := provider_postgres.TimeWithTimeZoneToTime(rS)
 			if err != nil {
 				return false, false, xerrors.Errorf("failed to represent %q as time.Time: %w", rS, err)
 			}
 			return true, lT.Equal(rT), nil
 		}
-	case postgres.IsPgTypeTimestampWithTimeZone(lSchema.OriginalType) && postgres.IsPgTypeTimestampWithTimeZone(rSchema.OriginalType):
+	case provider_postgres.IsPgTypeTimestampWithTimeZone(lSchema.OriginalType) && provider_postgres.IsPgTypeTimestampWithTimeZone(rSchema.OriginalType):
 		{
 			lT, lOk := lVal.(time.Time)
 			rT, rOk := rVal.(time.Time)

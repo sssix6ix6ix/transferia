@@ -6,7 +6,7 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/parsers"
-	"github.com/transferia/transferia/pkg/providers/ydb"
+	provider_ydb "github.com/transferia/transferia/pkg/providers/ydb"
 	"github.com/transferia/transferia/pkg/providers/yds/yds_type"
 	"go.uber.org/zap/zapcore"
 )
@@ -34,7 +34,7 @@ type YDSSource struct {
 	Underlay     bool                   `log:"true"`
 
 	// Auth properties
-	Credentials           ydb.TokenCredentials
+	Credentials           provider_ydb.TokenCredentials
 	ServiceAccountID      string `model:"ServiceAccountId" log:"true"`
 	SAKeyContent          string
 	TokenServiceURL       string `log:"true"`

@@ -18,8 +18,8 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/conn"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/errors"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/model"
+	clickhouse_errors "github.com/transferia/transferia/pkg/providers/clickhouse/errors"
+	clickhouse_model "github.com/transferia/transferia/pkg/providers/clickhouse/model"
 	"github.com/transferia/transferia/pkg/stats"
 	"github.com/transferia/transferia/pkg/util"
 	"go.ytsaurus.tech/library/go/core/log"
@@ -30,7 +30,7 @@ type SinkServer struct {
 	logger        log.Logger
 	host          string
 	metrics       *stats.ChStats
-	config        model.ChSinkServerParams
+	config        clickhouse_model.ChSinkServerParams
 	getTableMutex sync.Mutex
 	tables        map[string]*sinkTable
 	closeCh       chan struct{}
@@ -63,7 +63,7 @@ func (s *SinkServer) mergeQ() {
 }
 
 func (s *SinkServer) ping() {
-	ctx, cancel := context.WithTimeout(context.Background(), errors.ClickhouseReadTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), clickhouse_errors.ClickhouseReadTimeout)
 	defer cancel()
 	row := s.db.QueryRowContext(ctx, `select 1+1;`)
 	var q int
@@ -103,20 +103,20 @@ func (s *SinkServer) ExecDDL(ctx context.Context, ddl string) error {
 	timeout, err := s.queryDistributedDDLTimeout()
 	if err != nil {
 		s.logger.Warn("Error reading DDL timeout, using default value", log.Error(err))
-		timeout = errors.ClickhouseDDLTimeout
+		timeout = clickhouse_errors.ClickhouseDDLTimeout
 	}
 	s.logger.Infof("Using DDL Timeout %d seconds", timeout)
 	err = backoff.Retry(func() error {
-		ctx, cancel := context.WithTimeout(ctx, time.Duration(timeout+errors.DDLTimeoutCorrection)*time.Second)
+		ctx, cancel := context.WithTimeout(ctx, time.Duration(timeout+clickhouse_errors.DDLTimeoutCorrection)*time.Second)
 		defer cancel()
 		_, err := s.db.ExecContext(ctx, ddl)
 		if err != nil {
-			if errors.IsFatalClickhouseError(err) {
+			if clickhouse_errors.IsFatalClickhouseError(err) {
 				//nolint:descriptiveerrors
 				return backoff.Permanent(abstract.NewFatalError(err))
 			}
 			s.logger.Warnf("failed to execute DDL %q: %v", ddl, err)
-			if ddlErr := errors.AsDistributedDDLTimeout(err); ddlErr != nil {
+			if ddlErr := clickhouse_errors.AsDistributedDDLTimeout(err); ddlErr != nil {
 				s.logger.Warn("Got distributed DDL timeout, skipping retries")
 				err = backoff.Permanent(ddlErr)
 			}
@@ -129,7 +129,7 @@ func (s *SinkServer) ExecDDL(ctx context.Context, ddl string) error {
 		return nil
 	}
 
-	if e, ok := err.(*errors.ErrDistributedDDLTimeout); ok {
+	if e, ok := err.(*clickhouse_errors.ErrDistributedDDLTimeout); ok {
 		taskPath := e.ZKTaskPath
 		err = s.checkDDLTask(taskPath)
 	}
@@ -139,7 +139,7 @@ func (s *SinkServer) ExecDDL(ctx context.Context, ddl string) error {
 
 func (s *SinkServer) checkDDLTask(taskPath string) error {
 	s.logger.Warnf("Checking DDL task %s", taskPath)
-	ctx, cancel := context.WithTimeout(context.Background(), errors.ClickhouseReadTimeout*2)
+	ctx, cancel := context.WithTimeout(context.Background(), clickhouse_errors.ClickhouseReadTimeout*2)
 	defer cancel()
 	hostRows, err := s.db.QueryContext(ctx, `SELECT name FROM system.zookeeper WHERE path = ?`, taskPath+"/finished")
 	if err != nil {
@@ -181,7 +181,7 @@ func (s *SinkServer) checkDDLTask(taskPath string) error {
 
 	s.logger.Infof("DDL task %s is executed on %d shards of %d", taskPath, execShards, totalShards)
 	if totalShards != execShards {
-		return errors.DDLTaskError{
+		return clickhouse_errors.DDLTaskError{
 			ExecShards:  execShards,
 			TotalShards: totalShards,
 		}
@@ -292,7 +292,7 @@ ORDER BY
 
 func querySingleValue(db *sql.DB, query string, target interface{}) error {
 	return backoff.Retry(func() error {
-		ctx, cancel := context.WithTimeout(context.Background(), errors.ClickhouseReadTimeout)
+		ctx, cancel := context.WithTimeout(context.Background(), clickhouse_errors.ClickhouseReadTimeout)
 		defer cancel()
 		if err := db.QueryRowContext(ctx, query).Scan(target); err != nil {
 			return xerrors.Errorf("query error: %w", err)
@@ -328,7 +328,7 @@ func resolveServerTimezone(db *sql.DB) (*time.Location, error) {
 
 // separate "shalow" constructor needed for tests only
 func NewSinkServerImpl(
-	cfg model.ChSinkServerParams,
+	cfg clickhouse_model.ChSinkServerParams,
 	db *sql.DB,
 	version semver.Version,
 	timezone *time.Location,
@@ -360,7 +360,7 @@ func (s *SinkServer) RunGoroutines() {
 	go s.mergeQ()
 }
 
-func NewSinkServer(cfg model.ChSinkServerParams, lgr log.Logger, metrics *stats.ChStats, cluster *sinkCluster) (*SinkServer, error) {
+func NewSinkServer(cfg clickhouse_model.ChSinkServerParams, lgr log.Logger, metrics *stats.ChStats, cluster *sinkCluster) (*SinkServer, error) {
 	host := cfg.Host()
 	db, err := conn.ConnectNative(host, cfg)
 	if err != nil {

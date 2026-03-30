@@ -3,7 +3,7 @@ package types
 import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract2"
-	yt_schema "go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 type UInt64Value interface {
@@ -32,8 +32,8 @@ func (typ *UInt64Type) Validate(value abstract2.Value) error {
 	return err
 }
 
-func (typ *UInt64Type) ToOldType() (yt_schema.Type, error) {
-	return yt_schema.TypeUint64, nil
+func (typ *UInt64Type) ToOldType() (ytschema.Type, error) {
+	return ytschema.TypeUint64, nil
 }
 
 type DefaultUInt64Value struct {

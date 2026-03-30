@@ -6,69 +6,69 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract2"
 	"github.com/transferia/transferia/pkg/abstract2/types"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
-func resolvePrimitive(t schema.Type) (abstract2.Type, error) {
+func resolvePrimitive(t ytschema.Type) (abstract2.Type, error) {
 	switch t {
-	case schema.TypeInt8:
+	case ytschema.TypeInt8:
 		return types.NewInt8Type(), nil
-	case schema.TypeInt16:
+	case ytschema.TypeInt16:
 		return types.NewInt16Type(), nil
-	case schema.TypeInt32:
+	case ytschema.TypeInt32:
 		return types.NewInt32Type(), nil
-	case schema.TypeInt64:
+	case ytschema.TypeInt64:
 		return types.NewInt64Type(), nil
-	case schema.TypeUint8:
+	case ytschema.TypeUint8:
 		return types.NewUInt8Type(), nil
-	case schema.TypeUint16:
+	case ytschema.TypeUint16:
 		return types.NewUInt16Type(), nil
-	case schema.TypeUint32:
+	case ytschema.TypeUint32:
 		return types.NewUInt32Type(), nil
-	case schema.TypeUint64:
+	case ytschema.TypeUint64:
 		return types.NewUInt64Type(), nil
-	case schema.TypeBytes:
+	case ytschema.TypeBytes:
 		return types.NewBytesType(), nil
-	case schema.TypeString:
+	case ytschema.TypeString:
 		return types.NewStringType(math.MaxInt64), nil
-	case schema.TypeBoolean:
+	case ytschema.TypeBoolean:
 		return types.NewBoolType(), nil
-	case schema.TypeFloat32:
+	case ytschema.TypeFloat32:
 		return types.NewFloatType(), nil
-	case schema.TypeFloat64:
+	case ytschema.TypeFloat64:
 		return types.NewDoubleType(), nil
-	case schema.TypeDate:
+	case ytschema.TypeDate:
 		return types.NewDateType(), nil
-	case schema.TypeDatetime:
+	case ytschema.TypeDatetime:
 		return types.NewDateTimeType(), nil
-	case schema.TypeInterval:
+	case ytschema.TypeInterval:
 		return types.NewIntervalType(), nil
-	case schema.TypeTimestamp:
+	case ytschema.TypeTimestamp:
 		return types.NewTimestampType(6), nil
-	case schema.TypeAny:
+	case ytschema.TypeAny:
 		return types.NewJSONType(), nil
 	default:
 		return nil, xerrors.Errorf("unknown yt primitive type %s", t)
 	}
 }
 
-func UnwrapOptional(ytType schema.ComplexType) (schema.ComplexType, bool) {
-	if unwrapped, isOptional := ytType.(schema.Optional); isOptional {
+func UnwrapOptional(ytType ytschema.ComplexType) (ytschema.ComplexType, bool) {
+	if unwrapped, isOptional := ytType.(ytschema.Optional); isOptional {
 		v, _ := UnwrapOptional(unwrapped.Item)
 		return v, true
 	}
 	return ytType, false
 }
 
-func Resolve(typ schema.ComplexType) (abstract2.Type, error) {
+func Resolve(typ ytschema.ComplexType) (abstract2.Type, error) {
 	switch t := typ.(type) {
-	case schema.Type:
+	case ytschema.Type:
 		if result, err := resolvePrimitive(t); err != nil {
 			return nil, xerrors.Errorf("cannot resolve yt primitive type: %w", err)
 		} else {
 			return result, nil
 		}
-	case schema.List, schema.Struct, schema.Tuple, schema.Variant, schema.Dict, schema.Tagged:
+	case ytschema.List, ytschema.Struct, ytschema.Tuple, ytschema.Variant, ytschema.Dict, ytschema.Tagged:
 		return types.NewJSONType(), nil
 	default:
 		return nil, xerrors.Errorf("yt type %T is not supported", typ)

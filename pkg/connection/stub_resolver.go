@@ -6,8 +6,8 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	"github.com/transferia/transferia/pkg/connection/clickhouse"
-	"github.com/transferia/transferia/pkg/connection/kafka"
+	conn_clickhouse "github.com/transferia/transferia/pkg/connection/clickhouse"
+	conn_kafka "github.com/transferia/transferia/pkg/connection/kafka"
 )
 
 var _ ConnResolver = (*StubConnectionResolver)(nil)
@@ -35,12 +35,12 @@ func (d *StubConnectionResolver) ResolveConnection(ctx context.Context, connecti
 		}
 		return nil, xerrors.Errorf("Unable to cast mysql connection %s", connectionID)
 	case "ch":
-		if chConn, ok := res.(*clickhouse.Connection); ok {
+		if chConn, ok := res.(*conn_clickhouse.Connection); ok {
 			return chConn, nil
 		}
 		return nil, xerrors.Errorf("Unable to cast ch connection %s", connectionID)
 	case "kafka":
-		if kafkaConn, ok := res.(*kafka.Connection); ok {
+		if kafkaConn, ok := res.(*conn_kafka.Connection); ok {
 			return kafkaConn, nil
 		}
 		return nil, xerrors.Errorf("Unable to cast kafka connection %s", connectionID)

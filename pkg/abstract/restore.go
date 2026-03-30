@@ -10,11 +10,11 @@ import (
 	"time"
 
 	"github.com/araddon/dateparse"
-	"github.com/gofrs/uuid"
+	gofrs_uuid "github.com/gofrs/uuid"
 	"github.com/spf13/cast"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/util/jsonx"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 func Restore(column ColSchema, value interface{}) interface{} {
@@ -28,11 +28,11 @@ func Restore(column ColSchema, value interface{}) interface{} {
 			return v
 		}
 		return Restore(column, *v)
-	case uuid.UUID:
+	case gofrs_uuid.UUID:
 		return v.String()
 	case time.Time:
 		switch column.DataType {
-		case string(schema.TypeDate), string(schema.TypeDatetime), string(schema.TypeTimestamp):
+		case string(ytschema.TypeDate), string(ytschema.TypeDatetime), string(ytschema.TypeTimestamp):
 			return v
 		case "int64":
 			return -v.UnixNano()
@@ -54,7 +54,7 @@ func Restore(column ColSchema, value interface{}) interface{} {
 	}
 
 	switch column.DataType {
-	case string(schema.TypeInterval):
+	case string(ytschema.TypeInterval):
 		switch v := value.(type) {
 		case time.Duration:
 			return v
@@ -72,7 +72,7 @@ func Restore(column ColSchema, value interface{}) interface{} {
 			// for now it works
 			panic(fmt.Sprintf("impossible value: %T %v", v, v))
 		}
-	case string(schema.TypeDate), string(schema.TypeDatetime), string(schema.TypeTimestamp):
+	case string(ytschema.TypeDate), string(ytschema.TypeDatetime), string(ytschema.TypeTimestamp):
 		switch v := value.(type) {
 		case string:
 			t, err := time.Parse(time.RFC3339Nano, v)
@@ -89,13 +89,13 @@ func Restore(column ColSchema, value interface{}) interface{} {
 		case int64:
 			// this is for backward compatibility, some of our transfer copy data from mysql to LB, see: TM-4015
 			// remove in march
-			switch schema.Type(column.DataType) {
-			case schema.TypeDate:
-				return schema.Date(v).Time().UTC()
-			case schema.TypeTimestamp:
-				return schema.Timestamp(v).Time().UTC()
-			case schema.TypeDatetime:
-				return schema.Datetime(v).Time().UTC()
+			switch ytschema.Type(column.DataType) {
+			case ytschema.TypeDate:
+				return ytschema.Date(v).Time().UTC()
+			case ytschema.TypeTimestamp:
+				return ytschema.Timestamp(v).Time().UTC()
+			case ytschema.TypeDatetime:
+				return ytschema.Datetime(v).Time().UTC()
 			}
 		case json.Number:
 			if s, err := strconv.ParseInt(v.String(), 10, 64); err == nil {

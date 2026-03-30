@@ -6,8 +6,8 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/util"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	mongo_driver "go.mongodb.org/mongo-driver/mongo"
+	mongo_options "go.mongodb.org/mongo-driver/mongo/options"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
@@ -17,8 +17,8 @@ import (
 // Assumed, that it reads the same failed keyEvent from previously failed change stream
 type oneshotNamespaceRetriever struct {
 	logger       log.Logger
-	database     *mongo.Database
-	changeStream *mongo.ChangeStream
+	database     *mongo_driver.Database
+	changeStream *mongo_driver.ChangeStream
 }
 
 // TODO can be used for skipping bad documents
@@ -81,7 +81,7 @@ func NewOneshotNamespaceRetriever(s *mongoSource, resumeToken bson.Raw, dbName s
 	})
 
 	// Build change stream options for full document mode
-	opts := &options.ChangeStreamOptions{}
+	opts := &mongo_options.ChangeStreamOptions{}
 	// we expect failed document to be returned
 	opts.SetBatchSize(1)
 

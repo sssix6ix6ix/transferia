@@ -10,7 +10,7 @@ import (
 	"github.com/transferia/transferia/library/go/core/metrics/solomon"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/ydb"
+	provider_ydb "github.com/transferia/transferia/pkg/providers/ydb"
 	"github.com/transferia/transferia/tests/helpers"
 	mocksink "github.com/transferia/transferia/tests/helpers/mock_sink"
 )
@@ -48,7 +48,7 @@ func anyTablesUdf(table abstract.TableID, schema abstract.TableColumns) bool {
 //---------------------------------------------------------------------------------------------------------------------
 
 func TestGroup(t *testing.T) {
-	src := &ydb.YdbSource{
+	src := &provider_ydb.YdbSource{
 		Token:              model.SecretString(os.Getenv("YDB_TOKEN")),
 		Database:           helpers.GetEnvOfFail(t, "YDB_DATABASE"),
 		Instance:           helpers.GetEnvOfFail(t, "YDB_ENDPOINT"),
@@ -60,20 +60,20 @@ func TestGroup(t *testing.T) {
 	}
 
 	t.Run("init source database", func(t *testing.T) {
-		Target := &ydb.YdbDestination{
+		Target := &provider_ydb.YdbDestination{
 			Database: src.Database,
 			Token:    src.Token,
 			Instance: src.Instance,
 		}
 		Target.WithDefaults()
-		sinker, err := ydb.NewSinker(logger.Log, Target, solomon.NewRegistry(solomon.NewRegistryOpts()))
+		sinker, err := provider_ydb.NewSinker(logger.Log, Target, solomon.NewRegistry(solomon.NewRegistryOpts()))
 		require.NoError(t, err)
 
 		currChangeItem := helpers.YDBInitChangeItem(path)
 		require.NoError(t, sinker.Push([]abstract.ChangeItem{*currChangeItem}))
 	})
 
-	dst := &ydb.YdbDestination{
+	dst := &provider_ydb.YdbDestination{
 		Token:    model.SecretString(os.Getenv("YDB_TOKEN")),
 		Database: helpers.GetEnvOfFail(t, "YDB_DATABASE"),
 		Instance: helpers.GetEnvOfFail(t, "YDB_ENDPOINT"),

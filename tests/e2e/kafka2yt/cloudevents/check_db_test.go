@@ -17,29 +17,29 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/parsers"
-	"github.com/transferia/transferia/pkg/parsers/registry/cloudevents"
+	parser_cloudevents "github.com/transferia/transferia/pkg/parsers/registry/cloudevents"
 	"github.com/transferia/transferia/pkg/parsers/registry/cloudevents/engine/testutils"
-	"github.com/transferia/transferia/pkg/providers/kafka"
+	provider_kafka "github.com/transferia/transferia/pkg/providers/kafka"
 	yt_storage "github.com/transferia/transferia/pkg/providers/yt/storage"
 	"github.com/transferia/transferia/tests/helpers"
 	confluentsrmock "github.com/transferia/transferia/tests/helpers/confluent_schema_registry_mock"
-	yt_helpers "github.com/transferia/transferia/tests/helpers/yt"
+	helpers_yt "github.com/transferia/transferia/tests/helpers/yt"
 )
 
 var (
-	currSource = kafka.KafkaSource{
-		Connection: &kafka.KafkaConnectionOptions{
+	currSource = provider_kafka.KafkaSource{
+		Connection: &provider_kafka.KafkaConnectionOptions{
 			TLS:     model.DisabledTLS,
 			Brokers: []string{os.Getenv("KAFKA_RECIPE_BROKER_LIST")},
 		},
-		Auth:             &kafka.KafkaAuth{Enabled: false},
+		Auth:             &provider_kafka.KafkaAuth{Enabled: false},
 		Topic:            "",
 		Transformer:      nil,
 		BufferSize:       model.BytesSize(1024),
 		SecurityGroupIDs: nil,
 		ParserConfig:     nil,
 	}
-	target = yt_helpers.RecipeYtTarget("//home/cdc/test/pg2yt_e2e_replication")
+	target = helpers_yt.RecipeYtTarget("//home/cdc/test/pg2yt_e2e_replication")
 )
 
 var idToBuf = make(map[int]string)
@@ -63,7 +63,7 @@ func init() {
 	}
 }
 
-func checkCase(t *testing.T, currSource *kafka.KafkaSource, topicName string, msg []byte) []abstract.ChangeItem {
+func checkCase(t *testing.T, currSource *provider_kafka.KafkaSource, topicName string, msg []byte) []abstract.ChangeItem {
 	currSource.Topic = topicName
 
 	// SR mock
@@ -75,7 +75,7 @@ func checkCase(t *testing.T, currSource *kafka.KafkaSource, topicName string, ms
 
 	// prepare currSource
 
-	parserConfigMap, err := parsers.ParserConfigStructToMap(&cloudevents.ParserConfigCloudEventsCommon{
+	parserConfigMap, err := parsers.ParserConfigStructToMap(&parser_cloudevents.ParserConfigCloudEventsCommon{
 		SkipAuth: true,
 	})
 	require.NoError(t, err)
@@ -89,8 +89,8 @@ func checkCase(t *testing.T, currSource *kafka.KafkaSource, topicName string, ms
 
 	// write to currSource topic
 
-	srcSink, err := kafka.NewReplicationSink(
-		&kafka.KafkaDestination{
+	srcSink, err := provider_kafka.NewReplicationSink(
+		&provider_kafka.KafkaDestination{
 			Connection: currSource.Connection,
 			Auth:       currSource.Auth,
 			Topic:      currSource.Topic,

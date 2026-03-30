@@ -4,41 +4,41 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 )
 
 const LabelRuntimeStatus = "runtime_status"
 
 type PoolStats struct {
-	DroppedTransfers metrics.Counter
+	DroppedTransfers core_metrics.Counter
 
-	RunningOperations                             metrics.IntGauge
-	StartedOperations                             metrics.Counter
-	FailedInitOperationsServer                    metrics.Counter
-	FailedInitOperationsUser                      metrics.Counter
-	FailedStopTransfers                           metrics.Counter
-	FailedStopOperations                          metrics.Counter
-	PendingOperations                             metrics.IntGauge
-	StaleTransfers                                metrics.Gauge
-	TransferLastPingTime                          metrics.Timer
-	TransferErrors                                metrics.Counter
-	OperationLastPingTime                         metrics.Timer
-	StaleOperations                               metrics.Gauge
-	StatusCount                                   map[string]metrics.Gauge
-	OperationStartLatency                         metrics.Timer
-	TransfersCount                                metrics.IntGaugeVec
-	RegularSnapshotPlanIterations                 metrics.Counter
-	RegularSnapshotPlanSuccess                    metrics.Counter
-	RegularSnapshotPlanErrors                     metrics.Counter
-	RegularSnapshotTasksScheduled                 metrics.Counter
-	RegularSnapshotTasksScheduleErrors            metrics.Counter
-	DeactivateFreetierTransfersIterations         metrics.Counter
-	DeactivateFreetierTransfersSuccess            metrics.Counter
-	DeactivateFreetierTransfersErrors             metrics.Counter
-	DeactivateFreetierTransfersDeactivated        metrics.Counter
-	DeactivateFreetierTransfersDeactivationErrors metrics.Counter
+	RunningOperations                             core_metrics.IntGauge
+	StartedOperations                             core_metrics.Counter
+	FailedInitOperationsServer                    core_metrics.Counter
+	FailedInitOperationsUser                      core_metrics.Counter
+	FailedStopTransfers                           core_metrics.Counter
+	FailedStopOperations                          core_metrics.Counter
+	PendingOperations                             core_metrics.IntGauge
+	StaleTransfers                                core_metrics.Gauge
+	TransferLastPingTime                          core_metrics.Timer
+	TransferErrors                                core_metrics.Counter
+	OperationLastPingTime                         core_metrics.Timer
+	StaleOperations                               core_metrics.Gauge
+	StatusCount                                   map[string]core_metrics.Gauge
+	OperationStartLatency                         core_metrics.Timer
+	TransfersCount                                core_metrics.IntGaugeVec
+	RegularSnapshotPlanIterations                 core_metrics.Counter
+	RegularSnapshotPlanSuccess                    core_metrics.Counter
+	RegularSnapshotPlanErrors                     core_metrics.Counter
+	RegularSnapshotTasksScheduled                 core_metrics.Counter
+	RegularSnapshotTasksScheduleErrors            core_metrics.Counter
+	DeactivateFreetierTransfersIterations         core_metrics.Counter
+	DeactivateFreetierTransfersSuccess            core_metrics.Counter
+	DeactivateFreetierTransfersErrors             core_metrics.Counter
+	DeactivateFreetierTransfersDeactivated        core_metrics.Counter
+	DeactivateFreetierTransfersDeactivationErrors core_metrics.Counter
 
-	pm                                            metrics.Registry
+	pm                                            core_metrics.Registry
 	operationScheduleRoundStartTime               atomic.Value // time.Time
 	regularSnapshotIterationStartTime             atomic.Value // time.Time
 	deactivateFreetierTransfersIterationStartTime atomic.Value // time.Time
@@ -54,7 +54,7 @@ func (s PoolStats) SetStatusCount(status string, count int) {
 	s.StatusCount[status].Set(float64(count))
 }
 
-var operationStartDurationBuckets = metrics.NewDurationBuckets(
+var operationStartDurationBuckets = core_metrics.NewDurationBuckets(
 	10*time.Millisecond,
 	50*time.Millisecond,
 	100*time.Millisecond,
@@ -71,7 +71,7 @@ var operationStartDurationBuckets = metrics.NewDurationBuckets(
 	10*time.Minute,
 )
 
-func NewPoolStats(mtrc metrics.Registry) *PoolStats {
+func NewPoolStats(mtrc core_metrics.Registry) *PoolStats {
 	pm := mtrc.WithTags(map[string]string{
 		"component": "pool",
 	})
@@ -90,7 +90,7 @@ func NewPoolStats(mtrc metrics.Registry) *PoolStats {
 		TransferErrors:                                pm.Counter("transfer.total_retries"),
 		OperationLastPingTime:                         pm.Timer("operations.ping_delay"),
 		StaleOperations:                               pm.Gauge("operations.stale"),
-		StatusCount:                                   map[string]metrics.Gauge{},
+		StatusCount:                                   map[string]core_metrics.Gauge{},
 		OperationStartLatency:                         pm.DurationHistogram("operations.start_latency", operationStartDurationBuckets),
 		TransfersCount:                                pm.IntGaugeVec("transfers.count", []string{LabelRuntimeStatus}),
 		RegularSnapshotPlanIterations:                 pm.Counter("regular_snapshots.iterations"),

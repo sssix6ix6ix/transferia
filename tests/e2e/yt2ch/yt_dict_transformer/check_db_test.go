@@ -11,14 +11,14 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/library/go/test/canon"
 	"github.com/transferia/transferia/pkg/abstract"
-	dp_model "github.com/transferia/transferia/pkg/abstract/model"
+	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/httpclient"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/model"
-	ytprovider "github.com/transferia/transferia/pkg/providers/yt"
+	clickhouse_model "github.com/transferia/transferia/pkg/providers/clickhouse/model"
+	provider_yt "github.com/transferia/transferia/pkg/providers/yt"
 	"github.com/transferia/transferia/pkg/providers/yt/yt_client"
 	"github.com/transferia/transferia/tests/helpers"
-	yt_helpers "github.com/transferia/transferia/tests/helpers/yt"
-	"go.ytsaurus.tech/yt/go/schema"
+	helpers_yt "github.com/transferia/transferia/tests/helpers/yt"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 	"go.ytsaurus.tech/yt/go/ypath"
 	"go.ytsaurus.tech/yt/go/yt"
 )
@@ -30,8 +30,8 @@ const (
 )
 
 var (
-	YtColumns, TestData = yt_helpers.YtTypesTestData()
-	Source              = ytprovider.YtSource{
+	YtColumns, TestData = helpers_yt.YtTypesTestData()
+	Source              = provider_yt.YtSource{
 		Cluster: os.Getenv("YT_PROXY"),
 		YtProxy: os.Getenv("YT_PROXY"),
 		Paths: []string{
@@ -39,14 +39,14 @@ var (
 			fmt.Sprintf("//home/cdc/junk/%s", NotTransformedTableName),
 		},
 	}
-	Target = model.ChDestination{
-		ShardsList:          []model.ClickHouseShard{{Name: "_", Hosts: []string{"localhost"}}},
+	Target = clickhouse_model.ChDestination{
+		ShardsList:          []clickhouse_model.ClickHouseShard{{Name: "_", Hosts: []string{"localhost"}}},
 		User:                "default",
 		Database:            "default",
 		HTTPPort:            helpers.GetIntFromEnv("RECIPE_CLICKHOUSE_HTTP_PORT"),
 		NativePort:          helpers.GetIntFromEnv("RECIPE_CLICKHOUSE_NATIVE_PORT"),
 		ProtocolUnspecified: true,
-		Cleanup:             dp_model.DisabledCleanup,
+		Cleanup:             model.DisabledCleanup,
 	}
 	Timeout = 300 * time.Second
 )
@@ -60,7 +60,7 @@ func init() {
 func initYTTable(t *testing.T) {
 	ytc, err := yt_client.NewYtClientWrapper(yt_client.HTTP, nil, &yt.Config{Proxy: Source.YtProxy})
 	require.NoError(t, err)
-	opts := yt.WithCreateOptions(yt.WithSchema(schema.Schema{Columns: YtColumns}), yt.WithRecursive())
+	opts := yt.WithCreateOptions(yt.WithSchema(ytschema.Schema{Columns: YtColumns}), yt.WithRecursive())
 	for _, path := range Source.Paths {
 		_ = ytc.RemoveNode(context.Background(), ypath.NewRich(path).YPath(), nil)
 		wr, err := yt.WriteTable(context.Background(), ytc, ypath.NewRich(path).YPath(), opts)

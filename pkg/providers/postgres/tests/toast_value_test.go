@@ -12,7 +12,7 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
 	"github.com/transferia/transferia/tests/helpers"
 	mocksink "github.com/transferia/transferia/tests/helpers/mock_sink"
@@ -43,12 +43,12 @@ func TestToastValuesFromOldKeys(t *testing.T) {
 	source := *pgrecipe.RecipeSource(
 		pgrecipe.WithPrefix(""),
 		pgrecipe.WithInitDir("init_source"),
-		pgrecipe.WithEdit(func(pg *postgres.PgSource) {
+		pgrecipe.WithEdit(func(pg *provider_postgres.PgSource) {
 			pg.SlotID = "testslot_toast_value"
 			pg.DBTables = []string{"test_toast_table"}
 		}),
 	)
-	srcConn, err := postgres.MakeConnPoolFromSrc(&source, logger.Log)
+	srcConn, err := provider_postgres.MakeConnPoolFromSrc(&source, logger.Log)
 	require.NoError(t, err)
 	defer srcConn.Close()
 

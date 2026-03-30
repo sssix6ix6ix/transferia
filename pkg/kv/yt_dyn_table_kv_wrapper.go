@@ -9,7 +9,7 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/util"
 	"go.ytsaurus.tech/yt/go/migrate"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 	"go.ytsaurus.tech/yt/go/ypath"
 	"go.ytsaurus.tech/yt/go/yt"
 )
@@ -161,7 +161,7 @@ func (l *YtDynTableKVWrapper) DeleteRows(ctx context.Context, keys []interface{}
 	return tx.Commit()
 }
 
-func createDynTableAndMount(ctx context.Context, yc yt.Client, path ypath.YPath, schema schema.Schema, bundle string, attrs map[string]interface{}) error {
+func createDynTableAndMount(ctx context.Context, yc yt.Client, path ypath.YPath, schema ytschema.Schema, bundle string, attrs map[string]interface{}) error {
 	finalAttrs := make(map[string]interface{})
 	finalAttrs["dynamic"] = true
 	finalAttrs["schema"] = schema
@@ -205,7 +205,7 @@ func NewYtDynTableKVWrapper(ctx context.Context, client yt.Client, path ypath.Pa
 		}
 		if !exist {
 			keyValStruct := util.MakeUnitedStructByKeyVal(false, key, val)
-			return createDynTableAndMount(ctx, client, path, schema.MustInfer(keyValStruct), bundle, attrs)
+			return createDynTableAndMount(ctx, client, path, ytschema.MustInfer(keyValStruct), bundle, attrs)
 		}
 		return nil
 	}, backoff.WithMaxRetries(backoff.NewConstantBackOff(time.Second), 3)); err != nil {

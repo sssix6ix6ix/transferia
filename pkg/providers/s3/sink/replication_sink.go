@@ -8,22 +8,23 @@ import (
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/s3"
+	aws_s3 "github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	s3_provider "github.com/transferia/transferia/pkg/providers/s3"
+	s3_model "github.com/transferia/transferia/pkg/providers/s3/model"
+	"github.com/transferia/transferia/pkg/providers/s3/s3util/s3sess"
 	"github.com/transferia/transferia/pkg/stats"
 	"go.ytsaurus.tech/library/go/core/log"
 	"golang.org/x/sync/semaphore"
 )
 
 type ReplicationSink struct {
-	client              *s3.S3
-	cfg                 *s3_provider.S3Destination
+	client              *aws_s3.S3
+	cfg                 *s3_model.S3Destination
 	logger              log.Logger
 	uploader            *s3manager.Uploader
 	metrics             *stats.SinkerStats
@@ -61,7 +62,7 @@ func (s *ReplicationSink) pushItem(row *abstract.ChangeItem, buckets buckets) er
 	case abstract.DropTableKind:
 		key := s.bucketKey(*row)
 		s.logger.Info("drop table", log.String("table", fullTableName))
-		res, err := s.client.DeleteObject(&s3.DeleteObjectInput{
+		res, err := s.client.DeleteObject(&aws_s3.DeleteObjectInput{
 			Bucket: aws.String(s.cfg.Bucket),
 			Key:    key,
 		})
@@ -214,7 +215,7 @@ func (s *ReplicationSink) bucketKey(row abstract.ChangeItem) *string {
 	fileName := RowFqtn(row.TableID())
 	bucketKey := aws.String(fmt.Sprintf("%s/%s.%s", extractRowBucket(row, s.cfg.LayoutColumn, s.cfg.Layout), fileName, strings.ToLower(string(s.cfg.OutputFormat))))
 
-	if s.cfg.OutputEncoding == s3_provider.GzipEncoding {
+	if s.cfg.OutputEncoding == s3_model.GzipEncoding {
 		bucketKey = aws.String(*bucketKey + ".gz")
 	}
 	return bucketKey
@@ -224,8 +225,8 @@ func (s *ReplicationSink) UpdateOutputFormat(f model.ParsingFormat) {
 	s.cfg.OutputFormat = f
 }
 
-func NewReplicationSink(lgr log.Logger, cfg *s3_provider.S3Destination, mtrcs metrics.Registry, cp coordinator.Coordinator, transferID string) (*ReplicationSink, error) {
-	sess, err := s3_provider.NewAWSSession(lgr, cfg.Bucket, cfg.ConnectionConfig())
+func NewReplicationSink(lgr log.Logger, cfg *s3_model.S3Destination, mtrcs core_metrics.Registry, cp coordinator.Coordinator, transferID string) (*ReplicationSink, error) {
+	sess, err := s3sess.NewAWSSession(lgr, cfg.Bucket, cfg.ConnectionConfig())
 	if err != nil {
 		return nil, xerrors.Errorf("unable to create session to s3 bucket: %w", err)
 	}
@@ -236,7 +237,7 @@ func NewReplicationSink(lgr log.Logger, cfg *s3_provider.S3Destination, mtrcs me
 		uploader: s3manager.NewUploader(sess),
 	}
 
-	s3Client := s3.New(sess)
+	s3Client := aws_s3.New(sess)
 	uploader := s3manager.NewUploader(sess)
 	uploader.PartSize = cfg.PartSize
 

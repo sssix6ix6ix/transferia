@@ -1,14 +1,14 @@
 package mysql
 
 import (
-	"github.com/go-sql-driver/mysql"
+	mysql_driver2 "github.com/go-sql-driver/mysql"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 )
 
 func init() {}
 
 func IsErrorCode(err error, errNumber uint16) bool {
-	var mErr = new(mysql.MySQLError)
+	var mErr = new(mysql_driver2.MySQLError)
 	if !xerrors.As(err, &mErr) {
 		return false
 	}
@@ -16,7 +16,7 @@ func IsErrorCode(err error, errNumber uint16) bool {
 }
 
 func IsErrorCodes(err error, codes map[int]bool) bool {
-	var mErr = new(mysql.MySQLError)
+	var mErr = new(mysql_driver2.MySQLError)
 	if !xerrors.As(err, &mErr) {
 		return false
 	}

@@ -1,7 +1,7 @@
 package eventhub
 
 import (
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
@@ -28,7 +28,7 @@ var (
 
 type Provider struct {
 	logger   log.Logger
-	registry metrics.Registry
+	registry core_metrics.Registry
 	cp       coordinator.Coordinator
 	transfer *model.Transfer
 }
@@ -45,7 +45,7 @@ func (p *Provider) Source() (abstract.Source, error) {
 	return NewSource(p.transfer.ID, src, p.logger, p.registry)
 }
 
-func New(lgr log.Logger, registry metrics.Registry, cp coordinator.Coordinator, transfer *model.Transfer, _ *model.TransferOperation) providers.Provider {
+func New(lgr log.Logger, registry core_metrics.Registry, cp coordinator.Coordinator, transfer *model.Transfer, _ *model.TransferOperation) providers.Provider {
 	return &Provider{
 		logger:   lgr,
 		registry: registry,

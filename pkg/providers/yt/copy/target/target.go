@@ -7,13 +7,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/abstract2"
 	baseevent "github.com/transferia/transferia/pkg/abstract2/events"
-	yt_provider "github.com/transferia/transferia/pkg/providers/yt"
-	"github.com/transferia/transferia/pkg/providers/yt/copy/events"
+	provider_yt "github.com/transferia/transferia/pkg/providers/yt"
+	yt_copy_events "github.com/transferia/transferia/pkg/providers/yt/copy/events"
 	"github.com/transferia/transferia/pkg/providers/yt/yt_client"
 	"github.com/transferia/transferia/pkg/util"
 	"github.com/transferia/transferia/pkg/util/worker_pool"
@@ -24,12 +24,12 @@ import (
 )
 
 type YtCopyTarget struct {
-	cfg        *yt_provider.YtCopyDestination
+	cfg        *provider_yt.YtCopyDestination
 	yt         yt.Client
 	snapshotTX yt.Tx
 	pool       worker_pool.WorkerPool
 	logger     log.Logger
-	metrics    metrics.Registry
+	metrics    core_metrics.Registry
 	transferID string
 }
 
@@ -43,7 +43,7 @@ type ytMimimalClient interface {
 const ContentRevisionAttr = "__dt_content_revision"
 
 type copyTask struct {
-	evt      events.TableEvent
+	evt      yt_copy_events.TableEvent
 	yt       ytMimimalClient
 	onFinish func(error)
 }
@@ -143,7 +143,7 @@ func (t *YtCopyTarget) AsyncPush(in abstract2.EventBatch) chan error {
 
 	t.logger.Debug("Got new EventBatch")
 	switch input := in.(type) {
-	case *events.EventBatch:
+	case *yt_copy_events.EventBatch:
 		var ytTxClient ytMimimalClient = t.yt
 		if t.cfg.UsePushTransaction {
 			tx, err := t.yt.BeginTx(context.Background(), nil)
@@ -175,7 +175,7 @@ func (t *YtCopyTarget) AsyncPush(in abstract2.EventBatch) chan error {
 			if err != nil {
 				return util.MakeChanWithError(xerrors.Errorf("cannot get event from batch: %w", err))
 			}
-			evt, ok := rawEvt.(events.TableEvent)
+			evt, ok := rawEvt.(yt_copy_events.TableEvent)
 			if !ok {
 				return util.MakeChanWithError(xerrors.Errorf("unknown event type: %v", evt))
 			}
@@ -229,7 +229,7 @@ func (t *YtCopyTarget) Close() error {
 	return err
 }
 
-func NewTarget(logger log.Logger, metrics metrics.Registry, cfg *yt_provider.YtCopyDestination, transferID string) (abstract2.EventTarget, error) {
+func NewTarget(logger log.Logger, metrics core_metrics.Registry, cfg *provider_yt.YtCopyDestination, transferID string) (abstract2.EventTarget, error) {
 	y, err := yt_client.FromConnParams(cfg, logger)
 	if err != nil {
 		return nil, xerrors.Errorf("error creating ytrpc client: %w", err)

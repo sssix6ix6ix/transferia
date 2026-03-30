@@ -11,28 +11,28 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
-	cpclient "github.com/transferia/transferia/pkg/abstract/coordinator"
+	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	mongodataagent "github.com/transferia/transferia/pkg/providers/mongo"
+	provider_mongo "github.com/transferia/transferia/pkg/providers/mongo"
 	yt_storage "github.com/transferia/transferia/pkg/providers/yt/storage"
 	"github.com/transferia/transferia/pkg/runtime/local"
 	"github.com/transferia/transferia/pkg/worker/tasks"
 	"github.com/transferia/transferia/tests/helpers"
-	yt_helpers "github.com/transferia/transferia/tests/helpers/yt"
+	helpers_yt "github.com/transferia/transferia/tests/helpers/yt"
 	"go.ytsaurus.tech/yt/go/ypath"
 	"go.ytsaurus.tech/yt/go/yttest"
 )
 
 var (
 	TransferType = abstract.TransferTypeIncrementOnly
-	Source       = mongodataagent.MongoSource{
+	Source       = provider_mongo.MongoSource{
 		Hosts:             []string{"localhost"},
 		Port:              helpers.GetIntFromEnv("MONGO_LOCAL_PORT"),
 		User:              os.Getenv("MONGO_LOCAL_USER"),
 		Password:          model.SecretString(os.Getenv("MONGO_LOCAL_PASSWORD")),
-		ReplicationSource: mongodataagent.MongoReplicationSourcePerDatabaseUpdateDocument,
+		ReplicationSource: provider_mongo.MongoReplicationSourcePerDatabaseUpdateDocument,
 	}
-	Target = yt_helpers.RecipeYtTarget("//home/cdc/test/mongo2yt_e2e")
+	Target = helpers_yt.RecipeYtTarget("//home/cdc/test/mongo2yt_e2e")
 )
 
 func init() {
@@ -42,7 +42,7 @@ func init() {
 //---------------------------------------------------------------------------------------------------------------------
 // utils
 
-func LogMongoSource(s *mongodataagent.MongoSource) {
+func LogMongoSource(s *provider_mongo.MongoSource) {
 	fmt.Printf("Source.Hosts: %v\n", s.Hosts)
 	fmt.Printf("Source.Port: %v\n", s.Port)
 	fmt.Printf("Source.User: %v\n", s.User)
@@ -67,7 +67,7 @@ func TestGroup(t *testing.T) {
 func Ping(t *testing.T) {
 	// ping src
 	LogMongoSource(&Source)
-	client, err := mongodataagent.Connect(context.Background(), Source.ConnectionOptions([]string{}), nil)
+	client, err := provider_mongo.Connect(context.Background(), Source.ConnectionOptions([]string{}), nil)
 	defer func() { _ = client.Close(context.Background()) }()
 	require.NoError(t, err)
 	err = client.Ping(context.TODO(), nil)
@@ -81,7 +81,7 @@ type Trainer struct {
 }
 
 func Load(t *testing.T) {
-	client, err := mongodataagent.Connect(context.Background(), Source.ConnectionOptions([]string{}), nil)
+	client, err := provider_mongo.Connect(context.Background(), Source.ConnectionOptions([]string{}), nil)
 	require.NoError(t, err)
 	defer func() { _ = client.Close(context.Background()) }()
 
@@ -117,10 +117,10 @@ func Load(t *testing.T) {
 	}
 	transfer.DataObjects = &model.DataObjects{IncludeObjects: []string{"db.test_incl"}}
 
-	err = tasks.ActivateDelivery(context.TODO(), nil, cpclient.NewFakeClient(), transfer, helpers.EmptyRegistry())
+	err = tasks.ActivateDelivery(context.TODO(), nil, coordinator.NewFakeClient(), transfer, helpers.EmptyRegistry())
 	require.NoError(t, err)
 
-	localWorker := local.NewLocalWorker(cpclient.NewFakeClient(), &transfer, helpers.EmptyRegistry(), logger.Log)
+	localWorker := local.NewLocalWorker(coordinator.NewFakeClient(), &transfer, helpers.EmptyRegistry(), logger.Log)
 	localWorker.Start()
 	defer localWorker.Stop() //nolint
 

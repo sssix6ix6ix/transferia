@@ -6,9 +6,9 @@ import (
 	"os"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3"
+	aws_credentials "github.com/aws/aws-sdk-go/aws/credentials"
+	aws_session "github.com/aws/aws-sdk-go/aws/session"
+	aws_s3 "github.com/aws/aws-sdk-go/service/s3"
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/tests/tcrecipes"
@@ -38,18 +38,18 @@ func NewS3Recipe(bucket string) (*CoordinatorS3, error) {
 
 	if bucket == "" {
 		bucket = "coordinator"
-		sess, err := session.NewSession(&aws.Config{
+		sess, err := aws_session.NewSession(&aws.Config{
 			Endpoint:         aws.String(endpoint),
 			Region:           aws.String(region),
 			S3ForcePathStyle: aws.Bool(true),
-			Credentials: credentials.NewStaticCredentials(
+			Credentials: aws_credentials.NewStaticCredentials(
 				accessKey, secret, "",
 			),
 		})
 		if err != nil {
 			return nil, xerrors.Errorf("unable to init session: %w", err)
 		}
-		res, err := s3.New(sess).CreateBucket(&s3.CreateBucketInput{
+		res, err := aws_s3.New(sess).CreateBucket(&aws_s3.CreateBucketInput{
 			Bucket: aws.String(bucket),
 		})
 		// No need to check error because maybe the bucket already exists
@@ -60,7 +60,7 @@ func NewS3Recipe(bucket string) (*CoordinatorS3, error) {
 		logger.Log,
 		&aws.Config{
 			Region:           aws.String(region),
-			Credentials:      credentials.NewStaticCredentials(accessKey, secret, ""),
+			Credentials:      aws_credentials.NewStaticCredentials(accessKey, secret, ""),
 			Endpoint:         aws.String(endpoint),
 			S3ForcePathStyle: aws.Bool(true), // Enable path-style access
 		},

@@ -19,7 +19,7 @@ import (
 	"github.com/transferia/transferia/library/go/test/canon"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/s3"
+	s3_model "github.com/transferia/transferia/pkg/providers/s3/model"
 	"github.com/transferia/transferia/pkg/providers/s3/pusher"
 	"github.com/transferia/transferia/pkg/providers/s3/reader"
 	"github.com/transferia/transferia/pkg/providers/s3/s3recipe"
@@ -114,7 +114,7 @@ func TestCanonJsonline(t *testing.T) {
 		logger.Log.Info("dir uploaded")
 	}
 	cfg.ReadBatchSize = 100_000
-	cfg.Format.JSONLSetting = new(s3.JSONLSetting)
+	cfg.Format.JSONLSetting = new(s3_model.JSONLSetting)
 	cfg.Format.JSONLSetting.BlockSize = 100_000
 	storage, err := New(cfg, "", logger.Log, solomon.NewRegistry(solomon.NewRegistryOpts()))
 	require.NoError(t, err)
@@ -190,7 +190,7 @@ func TestCanonCsv(t *testing.T) {
 		logger.Log.Info("dir uploaded")
 	}
 	cfg.ReadBatchSize = 100_000_0
-	cfg.Format.CSVSetting = new(s3.CSVSetting)
+	cfg.Format.CSVSetting = new(s3_model.CSVSetting)
 	cfg.Format.CSVSetting.BlockSize = 100_000_0
 	cfg.Format.CSVSetting.Delimiter = ","
 	cfg.Format.CSVSetting.QuoteChar = "\""
@@ -271,12 +271,12 @@ func TestEstimateTableRowsCount(t *testing.T) {
 		logger.Log.Info("dir uploaded")
 	}
 	cfg.ReadBatchSize = 100_000_0
-	cfg.Format.CSVSetting = new(s3.CSVSetting)
+	cfg.Format.CSVSetting = new(s3_model.CSVSetting)
 	cfg.Format.CSVSetting.BlockSize = 100_000_0
 	cfg.Format.CSVSetting.Delimiter = ","
 	cfg.Format.CSVSetting.QuoteChar = "\""
 	cfg.Format.CSVSetting.EscapeChar = "\\"
-	cfg.EventSource.SQS = &s3.SQS{
+	cfg.EventSource.SQS = &s3_model.SQS{
 		QueueName: "test",
 	}
 
@@ -311,7 +311,7 @@ func (m *mockReader) Read(ctx context.Context, filePath string, inPusher pusher.
 
 func TestReadFileCorrectPartID(t *testing.T) {
 	storage := &Storage{
-		cfg: &s3.S3Source{
+		cfg: &s3_model.S3Source{
 			TableNamespace: "test",
 			TableName:      "name",
 		},

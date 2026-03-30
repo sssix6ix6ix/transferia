@@ -12,14 +12,14 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/container"
 	"github.com/transferia/transferia/pkg/errors/coded"
-	"github.com/transferia/transferia/pkg/errors/codes"
+	error_codes "github.com/transferia/transferia/pkg/errors/codes"
 	"github.com/transferia/transferia/pkg/format"
 	"github.com/transferia/transferia/pkg/stats"
 	"github.com/transferia/transferia/pkg/util"
@@ -31,7 +31,7 @@ const AirbyteStateKey = "airbyte_state"
 var _ abstract.Storage = (*Storage)(nil)
 
 type Storage struct {
-	registry metrics.Registry
+	registry core_metrics.Registry
 	cp       coordinator.Coordinator
 	logger   log.Logger
 	config   *AirbyteSource
@@ -339,7 +339,7 @@ func (a *Storage) check() error {
 		return xerrors.New("empty connection status")
 	}
 	if resp.ConnectionStatus.Status != "SUCCEEDED" {
-		return coded.Errorf(codes.AirbyteConnectionFailed, "unexpected connection status: %v: %v", resp.ConnectionStatus.Status, resp.ConnectionStatus.Message)
+		return coded.Errorf(error_codes.AirbyteConnectionFailed, "unexpected connection status: %v: %v", resp.ConnectionStatus.Status, resp.ConnectionStatus.Message)
 	}
 	return nil
 }
@@ -483,7 +483,7 @@ func (a *Storage) storeState(id abstract.TableID, state json.RawMessage) error {
 	return nil
 }
 
-func NewStorage(lgr log.Logger, registry metrics.Registry, cp coordinator.Coordinator, cfg *AirbyteSource, transfer *model.Transfer) (*Storage, error) {
+func NewStorage(lgr log.Logger, registry core_metrics.Registry, cp coordinator.Coordinator, cfg *AirbyteSource, transfer *model.Transfer) (*Storage, error) {
 	state, err := cp.GetTransferState(transfer.ID)
 	if err != nil {
 		return nil, xerrors.Errorf("unable to extract transfer state: %w", err)

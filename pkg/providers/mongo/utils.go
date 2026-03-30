@@ -10,15 +10,15 @@ import (
 	"github.com/transferia/transferia/pkg/abstract/changeitem"
 	"github.com/transferia/transferia/pkg/abstract/changeitem/strictify"
 	"github.com/transferia/transferia/pkg/errors/coded"
-	"github.com/transferia/transferia/pkg/errors/codes"
+	error_codes "github.com/transferia/transferia/pkg/errors/codes"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
+	mongo_driver "go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/x/bsonx/bsoncore"
 )
 
 func (s Storage) readRowsAndPushByChunks(
 	ctx context.Context,
-	cursor *mongo.Cursor,
+	cursor *mongo_driver.Cursor,
 	st time.Time,
 	table abstract.TableDescription,
 	chunkSize uint64,
@@ -33,7 +33,7 @@ func (s Storage) readRowsAndPushByChunks(
 		var item bson.D
 		if err := cursor.Decode(&item); err != nil {
 			if xerrors.Is(err, bsoncore.ErrInvalidLength) || strings.Contains(err.Error(), "invalid length") {
-				return coded.Errorf(codes.MongoInvalidDeprecatedBinarySubtype, "cursor.Decode returned error: %w", err)
+				return coded.Errorf(error_codes.MongoInvalidDeprecatedBinarySubtype, "cursor.Decode returned error: %w", err)
 			}
 			return xerrors.Errorf("cursor.Decode returned error: %w", err)
 		}

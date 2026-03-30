@@ -12,12 +12,12 @@ import (
 
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
-	"github.com/transferia/transferia/pkg/providers/clickhouse"
-	"github.com/transferia/transferia/pkg/providers/mysql"
-	"github.com/transferia/transferia/pkg/providers/postgres"
-	"github.com/transferia/transferia/pkg/providers/ydb"
-	ytprovider "github.com/transferia/transferia/pkg/providers/yt"
-	"golang.org/x/exp/slices"
+	provider_clickhouse "github.com/transferia/transferia/pkg/providers/clickhouse"
+	provider_mysql "github.com/transferia/transferia/pkg/providers/mysql"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
+	provider_ydb "github.com/transferia/transferia/pkg/providers/ydb"
+	provider_yt "github.com/transferia/transferia/pkg/providers/yt"
+	xslices "golang.org/x/exp/slices"
 )
 
 var (
@@ -43,15 +43,15 @@ func init() {
 
 var (
 	AllCanon = map[abstract.ProviderType]embed.FS{
-		postgres.ProviderType:   PostgresCanon,
-		mysql.ProviderType:      MysqlCanon,
-		clickhouse.ProviderType: ClickhouseCanon,
-		ytprovider.ProviderType: YtCanon,
-		ydb.ProviderType:        YdbCanon,
+		provider_postgres.ProviderType:   PostgresCanon,
+		provider_mysql.ProviderType:      MysqlCanon,
+		provider_clickhouse.ProviderType: ClickhouseCanon,
+		provider_yt.ProviderType:         YtCanon,
+		provider_ydb.ProviderType:        YdbCanon,
 	}
 	Roots = map[abstract.ProviderType]string{
-		postgres.ProviderType:   "postgres",
-		clickhouse.ProviderType: "clickhouse",
+		provider_postgres.ProviderType:   "postgres",
+		provider_clickhouse.ProviderType: "clickhouse",
 	}
 )
 
@@ -115,7 +115,7 @@ func All(sources ...abstract.ProviderType) []CanonizedCase {
 			logger.Log.Fatalf("unable to walk all extracted stuff: %v", err)
 		}
 	}
-	slices.SortFunc(res, func(a, b CanonizedCase) int {
+	xslices.SortFunc(res, func(a, b CanonizedCase) int {
 		return -strings.Compare(a.Name, b.Name)
 	})
 	return res

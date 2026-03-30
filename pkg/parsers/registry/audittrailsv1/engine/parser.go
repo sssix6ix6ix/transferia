@@ -9,8 +9,8 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/changeitem"
 	"github.com/transferia/transferia/pkg/parsers"
-	"github.com/transferia/transferia/pkg/parsers/generic"
-	jsonparser "github.com/transferia/transferia/pkg/parsers/registry/json"
+	generic_parser "github.com/transferia/transferia/pkg/parsers/generic"
+	parser_json "github.com/transferia/transferia/pkg/parsers/registry/json"
 	"github.com/transferia/transferia/pkg/stats"
 	"github.com/transferia/transferia/pkg/util/jsonx"
 	"go.ytsaurus.tech/library/go/core/log"
@@ -145,7 +145,7 @@ func (p *AuditTrailsV1ParserImpl) Do(msg parsers.Message, partition abstract.Par
 	for i, line := range lines {
 		dict, err := p.parseLine(line)
 		if err != nil {
-			result = append(result, generic.NewUnparsed(
+			result = append(result, generic_parser.NewUnparsed(
 				partition, partition.Topic, []byte(line), err.Error(), i, msg.Offset, msg.WriteTime,
 			))
 			continue
@@ -278,7 +278,7 @@ func NewAuditTrailsV1ParserImpl(
 	}
 
 	if !useElasticSchema {
-		config := &jsonparser.ParserConfigJSONCommon{
+		config := &parser_json.ParserConfigJSONCommon{
 			Fields:               getNotElasticFields(),
 			SchemaResourceName:   "",
 			NullKeysAllowed:      false,
@@ -290,7 +290,7 @@ func NewAuditTrailsV1ParserImpl(
 			Timezone:             "",
 		}
 		var err error
-		res.parser, err = jsonparser.NewParserJSON(config, sniff, logger, registry)
+		res.parser, err = parser_json.NewParserJSON(config, sniff, logger, registry)
 		if err != nil {
 			return nil, xerrors.Errorf("unable to create AuditTrails parser: unable to create JSON parser: %s", err)
 		}

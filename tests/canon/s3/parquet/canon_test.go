@@ -12,7 +12,7 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/s3"
+	provider_s3 "github.com/transferia/transferia/pkg/providers/s3"
 	"github.com/transferia/transferia/pkg/providers/s3/s3recipe"
 	"github.com/transferia/transferia/tests/canon/validator"
 	"github.com/transferia/transferia/tests/helpers"
@@ -113,7 +113,7 @@ func TestCanonSource(t *testing.T) {
 								validator.InitDone(t),
 								validator.ValuesTypeChecker,
 								validator.Canonizator(t),
-								validator.TypesystemChecker(s3.ProviderType, func(colSchema abstract.ColSchema) string {
+								validator.TypesystemChecker(provider_s3.ProviderType, func(colSchema abstract.ColSchema) string {
 									clearType := strings.ReplaceAll(colSchema.OriginalType, "optional", "")
 									re := regexp.MustCompile(`\(.*\)$`) // Matches the last parenthesis and its contents
 									return re.ReplaceAllString(clearType, "")

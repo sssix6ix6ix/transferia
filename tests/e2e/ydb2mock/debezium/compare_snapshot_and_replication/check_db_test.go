@@ -14,12 +14,12 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/debezium"
-	debeziumparameters "github.com/transferia/transferia/pkg/debezium/parameters"
-	"github.com/transferia/transferia/pkg/providers/ydb"
+	debezium_parameters "github.com/transferia/transferia/pkg/debezium/parameters"
+	provider_ydb "github.com/transferia/transferia/pkg/providers/ydb"
 	"github.com/transferia/transferia/tests/helpers"
 	mocksink "github.com/transferia/transferia/tests/helpers/mock_sink"
 	"github.com/transferia/transferia/tests/helpers/serde"
-	simple_transformer "github.com/transferia/transferia/tests/helpers/transformer"
+	helpers_transformer "github.com/transferia/transferia/tests/helpers/transformer"
 )
 
 var path = "dectest/test-src"
@@ -28,7 +28,7 @@ func TestCompareSnapshotAndReplication(t *testing.T) {
 	var extractedFromReplication []abstract.ChangeItem
 	var extractedFromSnapshot []abstract.ChangeItem
 
-	src := &ydb.YdbSource{
+	src := &provider_ydb.YdbSource{
 		Token:              model.SecretString(os.Getenv("YDB_TOKEN")),
 		Database:           helpers.GetEnvOfFail(t, "YDB_DATABASE"),
 		Instance:           helpers.GetEnvOfFail(t, "YDB_ENDPOINT"),
@@ -38,16 +38,16 @@ func TestCompareSnapshotAndReplication(t *testing.T) {
 		Underlay:           false,
 		UseFullPaths:       true,
 		ServiceAccountID:   "",
-		ChangeFeedMode:     ydb.ChangeFeedModeNewImage,
+		ChangeFeedMode:     provider_ydb.ChangeFeedModeNewImage,
 	}
 
-	Target := &ydb.YdbDestination{
+	Target := &provider_ydb.YdbDestination{
 		Database: src.Database,
 		Token:    src.Token,
 		Instance: src.Instance,
 	}
 	Target.WithDefaults()
-	sinker, err := ydb.NewSinker(logger.Log, Target, solomon.NewRegistry(solomon.NewRegistryOpts()))
+	sinker, err := provider_ydb.NewSinker(logger.Log, Target, solomon.NewRegistry(solomon.NewRegistryOpts()))
 	require.NoError(t, err)
 	require.NoError(t, sinker.Push([]abstract.ChangeItem{
 		*helpers.YDBStmtInsert(t, path, 1),
@@ -74,14 +74,14 @@ func TestCompareSnapshotAndReplication(t *testing.T) {
 
 	transfer := helpers.MakeTransfer("fake", src, &targetMock, abstract.TransferTypeIncrementOnly)
 	emitter, err := debezium.NewMessagesEmitter(map[string]string{
-		debeziumparameters.DatabaseDBName:   "public",
-		debeziumparameters.TopicPrefix:      "my_topic",
-		debeziumparameters.AddOriginalTypes: "true",
+		debezium_parameters.DatabaseDBName:   "public",
+		debezium_parameters.TopicPrefix:      "my_topic",
+		debezium_parameters.AddOriginalTypes: "true",
 	}, "1.1.2.Final", false, logger.Log)
 	require.NoError(t, err)
 
 	receiver := debezium.NewReceiver(nil, nil)
-	debeziumSerDeTransformer := simple_transformer.NewSimpleTransformer(t, serde.MakeDebeziumSerDeUdfWithoutCheck(emitter, receiver), serde.AnyTablesUdf)
+	debeziumSerDeTransformer := helpers_transformer.NewSimpleTransformer(t, serde.MakeDebeziumSerDeUdfWithoutCheck(emitter, receiver), serde.AnyTablesUdf)
 	require.NoError(t, transfer.AddExtraTransformer(debeziumSerDeTransformer))
 
 	worker := helpers.Activate(t, transfer)

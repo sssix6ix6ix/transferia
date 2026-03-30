@@ -10,17 +10,17 @@ import (
 	"testing"
 	"time"
 
-	mysqlDriver "github.com/go-sql-driver/mysql"
+	mysql_driver2 "github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
-	server "github.com/transferia/transferia/pkg/abstract/model"
-	mysqlSource "github.com/transferia/transferia/pkg/providers/mysql"
+	"github.com/transferia/transferia/pkg/abstract/model"
+	provider_mysql "github.com/transferia/transferia/pkg/providers/mysql"
 	"github.com/transferia/transferia/pkg/runtime/local"
 	"github.com/transferia/transferia/tests/helpers"
-	yt_helpers "github.com/transferia/transferia/tests/helpers/yt"
+	helpers_yt "github.com/transferia/transferia/tests/helpers/yt"
 	"go.ytsaurus.tech/library/go/core/log"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 	"go.ytsaurus.tech/yt/go/ypath"
 	"go.ytsaurus.tech/yt/go/yt"
 )
@@ -28,7 +28,7 @@ import (
 var (
 	Source            = helpers.WithMysqlInclude(helpers.RecipeMysqlSource(), []string{"test_table"})
 	ytTestPath        = "//home/cdc/test/mysql2yt_all_types"
-	Target            = yt_helpers.RecipeYtTarget(ytTestPath)
+	Target            = helpers_yt.RecipeYtTarget(ytTestPath)
 	insertRowsRequest = strings.ReplaceAll(`
                         INSERT INTO test_table
                         (%stinyint%s, %stinyint_def%s, %stinyint_u%s, %stinyint_z%s, %ssmallint%s, %ssmallint_u%s, %ssmallint_z%s, %smediumint%s, %smediumint_u%s, %smediumint_z%s, %sint%s       , %sint_u%s    , %sint_z%s    , %sbigint%s            , %sbigint_u%s        , %sbigint_z%s       ,  %sbool%s, %sfixed%s,%sdecimal_10_2%s  ,%sdecimal_65_30%s, %sdecimal_65_0%s, %sdec%s   , %snumeric%s      , %sfloat%s        , %sfloat_z%s  , %sfloat_53%s, %sreal%s    , %sdouble%s                 , %sdouble_precision%s, %sbit%s, %sbit_5%s, %sdate%s       , %sdatetime%s            , %sdatetime_6%s          ,  %stimestamp%s          , %stimestamp_2%s      ,  %stime%s      , %stime_2%s     , %syear%s, %schar%s, %svarchar%s, %svarchar_def%s, %sbinary%s, %svarbinary%s, %stinyblob%s, %sblob%s, %smediumblob%s, %slongblob%s, %stinytext%s, %stext%s, %smediumtext%s, %slongtext%s, %senum%s , %sset%s, %sjson%s,    %sid%s                        )
@@ -172,7 +172,7 @@ func init() {
 func TestReplication(t *testing.T) {
 	ctx := context.Background()
 
-	transfer := server.Transfer{
+	transfer := model.Transfer{
 		ID:  "mysql2yt",
 		Src: Source,
 		Dst: Target,
@@ -180,15 +180,15 @@ func TestReplication(t *testing.T) {
 
 	fakeClient := coordinator.NewStatefulFakeClient()
 	syncBinlogPosition := func() {
-		err := mysqlSource.SyncBinlogPosition(Source, transfer.ID, fakeClient)
+		err := provider_mysql.SyncBinlogPosition(Source, transfer.ID, fakeClient)
 		require.NoError(t, err)
 	}
 	syncBinlogPosition()
 
-	ytEnv := yt_helpers.NewEnvWithNode(t, ytTestPath)
+	ytEnv := helpers_yt.NewEnvWithNode(t, ytTestPath)
 
 	// check
-	conn, err := mysqlDriver.NewConnector(makeMysqlConfig(Source))
+	conn, err := mysql_driver2.NewConnector(makeMysqlConfig(Source))
 	require.NoError(t, err)
 	db := sql.OpenDB(conn)
 	defer func(db *sql.DB) {
@@ -277,11 +277,11 @@ type TestTableRow struct {
 	Bit  string `yson:"bit"`
 	Bit5 string `yson:"bit_5"`
 
-	Date       schema.Date      `yson:"date"`
-	DateTime   schema.Timestamp `yson:"datetime"`
-	DateTime6  schema.Timestamp `yson:"datetime_6"`
-	Timestamp  schema.Timestamp `yson:"timestamp"`
-	Timestamp2 schema.Timestamp `yson:"timestamp_2"`
+	Date       ytschema.Date      `yson:"date"`
+	DateTime   ytschema.Timestamp `yson:"datetime"`
+	DateTime6  ytschema.Timestamp `yson:"datetime_6"`
+	Timestamp  ytschema.Timestamp `yson:"timestamp"`
+	Timestamp2 ytschema.Timestamp `yson:"timestamp_2"`
 
 	Time  string `yson:"time"`
 	Time2 string `yson:"time_2"`
@@ -339,7 +339,7 @@ func readAllRows(t *testing.T, ytClient yt.Client, ctx context.Context, ytPath y
 		return []TestTableRow{}
 	}
 
-	var scheme schema.Schema
+	var scheme ytschema.Schema
 	if err := ytClient.GetNode(ctx, ytPath.Attr("schema"), &scheme, nil); err != nil {
 		return []TestTableRow{}
 	}
@@ -364,7 +364,7 @@ func readAllRows(t *testing.T, ytClient yt.Client, ctx context.Context, ytPath y
 	return rows
 }
 
-func startWorker(transfer server.Transfer, cp coordinator.Coordinator) *local.LocalWorker {
+func startWorker(transfer model.Transfer, cp coordinator.Coordinator) *local.LocalWorker {
 	w := local.NewLocalWorker(cp, &transfer, helpers.EmptyRegistry(), logger.Log)
 	w.Start()
 	return w
@@ -377,8 +377,8 @@ func stopWorker(worker *local.LocalWorker) {
 	}
 }
 
-func makeMysqlConfig(mysqlSrc *mysqlSource.MysqlSource) *mysqlDriver.Config {
-	cfg := mysqlDriver.NewConfig()
+func makeMysqlConfig(mysqlSrc *provider_mysql.MysqlSource) *mysql_driver2.Config {
+	cfg := mysql_driver2.NewConfig()
 	cfg.Addr = fmt.Sprintf("%v:%v", mysqlSrc.Host, mysqlSrc.Port)
 	cfg.User = mysqlSrc.User
 	cfg.Passwd = string(mysqlSrc.Password)

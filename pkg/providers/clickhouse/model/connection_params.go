@@ -2,7 +2,7 @@ package model
 
 import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
-	"github.com/transferia/transferia/pkg/connection/clickhouse"
+	conn_clickhouse "github.com/transferia/transferia/pkg/connection/clickhouse"
 )
 
 type connectionParams struct {
@@ -12,11 +12,11 @@ type connectionParams struct {
 	Database       string
 	Secure         bool
 	PemFileContent string
-	Hosts          []*clickhouse.Host
-	Shards         map[string][]*clickhouse.Host
+	Hosts          []*conn_clickhouse.Host
+	Shards         map[string][]*conn_clickhouse.Host
 }
 
-func (c connectionParams) SetShards(shards map[string][]*clickhouse.Host) {
+func (c connectionParams) SetShards(shards map[string][]*conn_clickhouse.Host) {
 	for shardName, hosts := range shards {
 		c.Shards[shardName] = append(c.Shards[shardName], hosts...)
 	}
@@ -100,7 +100,7 @@ func ConnectionParamsByConnectionID(connectionID string, shardGroup string, nati
 		Secure:         conn.HasTLS,
 		PemFileContent: conn.CACertificates,
 		Hosts:          conn.Hosts,
-		Shards:         make(map[string][]*clickhouse.Host),
+		Shards:         make(map[string][]*conn_clickhouse.Host),
 	}
 
 	hosts, shards, err := ResolveShardGroupHostsAndShards(conn, connectionID, shardGroup, nativePort, httpPort)

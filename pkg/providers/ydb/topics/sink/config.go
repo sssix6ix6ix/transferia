@@ -2,7 +2,7 @@ package topicsink
 
 import (
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/ydb"
+	provider_ydb "github.com/transferia/transferia/pkg/providers/ydb"
 	"github.com/ydb-platform/ydb-go-sdk/v3/topic/topictypes"
 )
 
@@ -18,7 +18,7 @@ type Config struct {
 	Endpoint    string
 	Database    string
 	Shard       string
-	Credentials ydb.TokenCredentials
+	Credentials provider_ydb.TokenCredentials
 
 	TLS         model.TLSMode
 	RootCAFiles []string

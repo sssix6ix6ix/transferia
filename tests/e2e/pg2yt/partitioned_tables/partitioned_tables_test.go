@@ -9,16 +9,16 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/tests/helpers"
-	yt_helpers "github.com/transferia/transferia/tests/helpers/yt"
+	helpers_yt "github.com/transferia/transferia/tests/helpers/yt"
 )
 
 var (
 	TransferType = abstract.TransferTypeSnapshotAndIncrement
 
 	SourceWithCollapse   = newSource(true, nil)
-	TargetWithCollapse   = yt_helpers.RecipeYtTarget("//home/cdc/test/pg2yt_e2e/with_collapse")
+	TargetWithCollapse   = helpers_yt.RecipeYtTarget("//home/cdc/test/pg2yt_e2e/with_collapse")
 	TransferWithCollapse = helpers.MakeTransfer("test_slot_id_with_collapse", &SourceWithCollapse, TargetWithCollapse, TransferType)
 
 	SourceWithCollapseOnlyParts = newSource(true, []string{
@@ -30,11 +30,11 @@ var (
 		"public.measurement_declarative_y2006m04",
 		"public.measurement_declarative_y2006m05",
 	})
-	TargetWithCollapseOnlyParts   = yt_helpers.RecipeYtTarget("//home/cdc/test/pg2yt_e2e/with_collapse_only_parts")
+	TargetWithCollapseOnlyParts   = helpers_yt.RecipeYtTarget("//home/cdc/test/pg2yt_e2e/with_collapse_only_parts")
 	TransferWithCollapseOnlyParts = helpers.MakeTransfer("test_slot_id_with_collapse_only_parts", &SourceWithCollapseOnlyParts, TargetWithCollapseOnlyParts, TransferType)
 
 	SourceWithoutCollapse   = newSource(false, nil)
-	TargetWithoutCollapse   = yt_helpers.RecipeYtTarget("//home/cdc/test/pg2yt_e2e/without_collapse")
+	TargetWithoutCollapse   = helpers_yt.RecipeYtTarget("//home/cdc/test/pg2yt_e2e/without_collapse")
 	TransferWithoutCollapse = helpers.MakeTransfer("test_slot_id_without_collapse", &SourceWithoutCollapse, TargetWithoutCollapse, TransferType)
 )
 
@@ -71,7 +71,7 @@ func Load(t *testing.T) {
 	workerWithoutCollapse := helpers.Activate(t, TransferWithoutCollapse)
 	defer workerWithoutCollapse.Close(t)
 
-	srcStorage, err := postgres.NewStorage(SourceWithCollapse.ToStorageParams(nil))
+	srcStorage, err := provider_postgres.NewStorage(SourceWithCollapse.ToStorageParams(nil))
 	require.NoError(t, err)
 
 	//-----------------------------------------------------------------------------------------------------------------
@@ -129,7 +129,7 @@ func checkRowsCountInTargetWithoutCollapse(t *testing.T) {
 	require.NoError(t, helpers.WaitEqualRowsCount(t, "public", "measurement_declarative_y2006m04", sourceStorage, targetStorage, 60*time.Second))
 }
 
-func updateInheritedTable(t *testing.T, srcStorage *postgres.Storage) {
+func updateInheritedTable(t *testing.T, srcStorage *provider_postgres.Storage) {
 	_, err := srcStorage.Conn.Exec(context.Background(), `
         insert into measurement_inherited values
         (6, '2006-02-02', 1),
@@ -159,7 +159,7 @@ func updateInheritedTable(t *testing.T, srcStorage *postgres.Storage) {
 	require.NoError(t, err)
 }
 
-func updateDeclarativeTable(t *testing.T, srcStorage *postgres.Storage) {
+func updateDeclarativeTable(t *testing.T, srcStorage *provider_postgres.Storage) {
 	_, err := srcStorage.Conn.Exec(context.Background(), `
         insert into measurement_declarative values
         (6, '2006-02-02', 1),
@@ -189,8 +189,8 @@ func updateDeclarativeTable(t *testing.T, srcStorage *postgres.Storage) {
 	require.NoError(t, err)
 }
 
-func newSource(collapseInheritTables bool, tables []string) postgres.PgSource {
-	return postgres.PgSource{
+func newSource(collapseInheritTables bool, tables []string) provider_postgres.PgSource {
+	return provider_postgres.PgSource{
 		Hosts:                 []string{"localhost"},
 		ClusterID:             os.Getenv("SOURCE_CLUSTER_ID"),
 		User:                  os.Getenv("PG_LOCAL_USER"),

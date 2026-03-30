@@ -1,16 +1,16 @@
 package op
 
 import (
-	"github.com/transferia/transferia/pkg/util/token_regexp/abstract"
+	token_regexp_abstract "github.com/transferia/transferia/pkg/util/token_regexp/abstract"
 )
 
 type AnyTokenOp struct {
-	abstract.Relatives
+	token_regexp_abstract.Relatives
 }
 
 func (t *AnyTokenOp) IsOp() {}
 
-func (t *AnyTokenOp) ConsumePrimitive(tokens []*abstract.Token) []int {
+func (t *AnyTokenOp) ConsumePrimitive(tokens []*token_regexp_abstract.Token) []int {
 	if len(tokens) == 0 {
 		return nil
 	}
@@ -19,6 +19,6 @@ func (t *AnyTokenOp) ConsumePrimitive(tokens []*abstract.Token) []int {
 
 func AnyToken() *AnyTokenOp {
 	return &AnyTokenOp{
-		Relatives: abstract.NewRelativesImpl(),
+		Relatives: token_regexp_abstract.NewRelativesImpl(),
 	}
 }

@@ -7,30 +7,30 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
-	dp_model "github.com/transferia/transferia/pkg/abstract/model"
-	debeziumparameters "github.com/transferia/transferia/pkg/debezium/parameters"
+	"github.com/transferia/transferia/pkg/abstract/model"
+	debezium_parameters "github.com/transferia/transferia/pkg/debezium/parameters"
 	"github.com/transferia/transferia/pkg/parsers"
-	"github.com/transferia/transferia/pkg/parsers/registry/debezium"
-	jsonparser "github.com/transferia/transferia/pkg/parsers/registry/json"
-	"github.com/transferia/transferia/pkg/providers/airbyte"
-	chmodel "github.com/transferia/transferia/pkg/providers/clickhouse/model"
-	"github.com/transferia/transferia/pkg/providers/eventhub"
-	"github.com/transferia/transferia/pkg/providers/greenplum"
-	"github.com/transferia/transferia/pkg/providers/kafka"
-	"github.com/transferia/transferia/pkg/providers/logbroker"
-	"github.com/transferia/transferia/pkg/providers/mongo"
-	"github.com/transferia/transferia/pkg/providers/mysql"
-	"github.com/transferia/transferia/pkg/providers/oracle"
-	"github.com/transferia/transferia/pkg/providers/postgres"
-	"github.com/transferia/transferia/pkg/providers/ydb"
-	ydssource "github.com/transferia/transferia/pkg/providers/yds/source"
-	"github.com/transferia/transferia/pkg/providers/yt"
+	parser_debezium "github.com/transferia/transferia/pkg/parsers/registry/debezium"
+	parser_json "github.com/transferia/transferia/pkg/parsers/registry/json"
+	provider_airbyte "github.com/transferia/transferia/pkg/providers/airbyte"
+	clickhouse_model "github.com/transferia/transferia/pkg/providers/clickhouse/model"
+	provider_eventhub "github.com/transferia/transferia/pkg/providers/eventhub"
+	provider_greenplum "github.com/transferia/transferia/pkg/providers/greenplum"
+	provider_kafka "github.com/transferia/transferia/pkg/providers/kafka"
+	provider_logbroker "github.com/transferia/transferia/pkg/providers/logbroker"
+	provider_mongo "github.com/transferia/transferia/pkg/providers/mongo"
+	provider_mysql "github.com/transferia/transferia/pkg/providers/mysql"
+	provider_oracle "github.com/transferia/transferia/pkg/providers/oracle"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
+	provider_ydb "github.com/transferia/transferia/pkg/providers/ydb"
+	yds_source "github.com/transferia/transferia/pkg/providers/yds/source"
+	provider_yt "github.com/transferia/transferia/pkg/providers/yt"
 	"github.com/transferia/transferia/pkg/util/queues/coherence_check"
 	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 func parserJSONCommon(t *testing.T) map[string]interface{} {
-	parserConfigStruct := &jsonparser.ParserConfigJSONCommon{
+	parserConfigStruct := &parser_json.ParserConfigJSONCommon{
 		Fields: []abstract.ColSchema{
 			{ColumnName: "msg", DataType: ytschema.TypeString.String()},
 		},
@@ -41,14 +41,14 @@ func parserJSONCommon(t *testing.T) map[string]interface{} {
 }
 
 func parserDebeziumCommon(t *testing.T) map[string]interface{} {
-	parserConfigStruct := &debezium.ParserConfigDebeziumCommon{}
+	parserConfigStruct := &parser_debezium.ParserConfigDebeziumCommon{}
 	parserConfigMap, err := parsers.ParserConfigStructToMap(parserConfigStruct)
 	require.NoError(t, err)
 	return parserConfigMap
 }
 
-func checkDst(t *testing.T, src dp_model.Source, serializerName dp_model.SerializationFormatName, transferType abstract.TransferType, expectedOk bool) {
-	dst := kafka.KafkaDestination{FormatSettings: dp_model.SerializationFormat{Name: serializerName}}
+func checkDst(t *testing.T, src model.Source, serializerName model.SerializationFormatName, transferType abstract.TransferType, expectedOk bool) {
+	dst := provider_kafka.KafkaDestination{FormatSettings: model.SerializationFormat{Name: serializerName}}
 	if expectedOk {
 		require.NoError(t, dst.Compatible(src, transferType))
 	} else {
@@ -63,78 +63,78 @@ func TestSourceCompatible(t *testing.T) {
 	//     - expectedOk - позволит ли создать или нет
 	//     - inferredSerializationFormat - если настроено auto, то что должно автовывестись
 	type testCase struct {
-		src                         dp_model.Source
-		serializationFormat         dp_model.SerializationFormatName
+		src                         model.Source
+		serializationFormat         model.SerializationFormatName
 		expectedOk                  bool
-		inferredSerializationFormat dp_model.SerializationFormatName
+		inferredSerializationFormat model.SerializationFormatName
 	}
 
 	testCases := []testCase{
-		{&logbroker.LfSource{ParserConfig: nil}, dp_model.SerializationFormatJSON, false, ""},
-		{&logbroker.LfSource{ParserConfig: parserJSONCommon(t)}, dp_model.SerializationFormatJSON, true, dp_model.SerializationFormatJSON},
-		{&logbroker.LfSource{ParserConfig: parserDebeziumCommon(t)}, dp_model.SerializationFormatJSON, false, ""},
+		{&provider_logbroker.LfSource{ParserConfig: nil}, model.SerializationFormatJSON, false, ""},
+		{&provider_logbroker.LfSource{ParserConfig: parserJSONCommon(t)}, model.SerializationFormatJSON, true, model.SerializationFormatJSON},
+		{&provider_logbroker.LfSource{ParserConfig: parserDebeziumCommon(t)}, model.SerializationFormatJSON, false, ""},
 
-		{&logbroker.LfSource{ParserConfig: nil}, dp_model.SerializationFormatDebezium, false, ""},
-		{&logbroker.LfSource{ParserConfig: parserJSONCommon(t)}, dp_model.SerializationFormatDebezium, false, dp_model.SerializationFormatJSON},
-		{&logbroker.LfSource{ParserConfig: parserDebeziumCommon(t)}, dp_model.SerializationFormatDebezium, false, ""},
+		{&provider_logbroker.LfSource{ParserConfig: nil}, model.SerializationFormatDebezium, false, ""},
+		{&provider_logbroker.LfSource{ParserConfig: parserJSONCommon(t)}, model.SerializationFormatDebezium, false, model.SerializationFormatJSON},
+		{&provider_logbroker.LfSource{ParserConfig: parserDebeziumCommon(t)}, model.SerializationFormatDebezium, false, ""},
 
-		{&kafka.KafkaSource{ParserConfig: nil}, dp_model.SerializationFormatJSON, false, dp_model.SerializationFormatMirror},
-		{&kafka.KafkaSource{ParserConfig: parserJSONCommon(t)}, dp_model.SerializationFormatJSON, true, dp_model.SerializationFormatJSON},
-		{&kafka.KafkaSource{ParserConfig: parserDebeziumCommon(t)}, dp_model.SerializationFormatJSON, false, ""},
+		{&provider_kafka.KafkaSource{ParserConfig: nil}, model.SerializationFormatJSON, false, model.SerializationFormatMirror},
+		{&provider_kafka.KafkaSource{ParserConfig: parserJSONCommon(t)}, model.SerializationFormatJSON, true, model.SerializationFormatJSON},
+		{&provider_kafka.KafkaSource{ParserConfig: parserDebeziumCommon(t)}, model.SerializationFormatJSON, false, ""},
 
-		{&kafka.KafkaSource{ParserConfig: nil}, dp_model.SerializationFormatDebezium, false, dp_model.SerializationFormatMirror},
-		{&kafka.KafkaSource{ParserConfig: parserJSONCommon(t)}, dp_model.SerializationFormatDebezium, false, dp_model.SerializationFormatJSON},
-		{&kafka.KafkaSource{ParserConfig: parserDebeziumCommon(t)}, dp_model.SerializationFormatDebezium, false, ""},
+		{&provider_kafka.KafkaSource{ParserConfig: nil}, model.SerializationFormatDebezium, false, model.SerializationFormatMirror},
+		{&provider_kafka.KafkaSource{ParserConfig: parserJSONCommon(t)}, model.SerializationFormatDebezium, false, model.SerializationFormatJSON},
+		{&provider_kafka.KafkaSource{ParserConfig: parserDebeziumCommon(t)}, model.SerializationFormatDebezium, false, ""},
 
-		{&eventhub.EventHubSource{ParserConfig: nil}, dp_model.SerializationFormatJSON, false, dp_model.SerializationFormatMirror},
-		{&eventhub.EventHubSource{ParserConfig: parserJSONCommon(t)}, dp_model.SerializationFormatJSON, true, dp_model.SerializationFormatJSON},
-		{&eventhub.EventHubSource{ParserConfig: parserDebeziumCommon(t)}, dp_model.SerializationFormatJSON, false, ""},
+		{&provider_eventhub.EventHubSource{ParserConfig: nil}, model.SerializationFormatJSON, false, model.SerializationFormatMirror},
+		{&provider_eventhub.EventHubSource{ParserConfig: parserJSONCommon(t)}, model.SerializationFormatJSON, true, model.SerializationFormatJSON},
+		{&provider_eventhub.EventHubSource{ParserConfig: parserDebeziumCommon(t)}, model.SerializationFormatJSON, false, ""},
 
-		{&eventhub.EventHubSource{ParserConfig: nil}, dp_model.SerializationFormatDebezium, false, dp_model.SerializationFormatMirror},
-		{&eventhub.EventHubSource{ParserConfig: parserJSONCommon(t)}, dp_model.SerializationFormatDebezium, false, dp_model.SerializationFormatJSON},
-		{&eventhub.EventHubSource{ParserConfig: parserDebeziumCommon(t)}, dp_model.SerializationFormatDebezium, false, ""},
+		{&provider_eventhub.EventHubSource{ParserConfig: nil}, model.SerializationFormatDebezium, false, model.SerializationFormatMirror},
+		{&provider_eventhub.EventHubSource{ParserConfig: parserJSONCommon(t)}, model.SerializationFormatDebezium, false, model.SerializationFormatJSON},
+		{&provider_eventhub.EventHubSource{ParserConfig: parserDebeziumCommon(t)}, model.SerializationFormatDebezium, false, ""},
 
-		{&ydssource.YDSSource{ParserConfig: nil}, dp_model.SerializationFormatJSON, false, dp_model.SerializationFormatMirror},
-		{&ydssource.YDSSource{ParserConfig: parserJSONCommon(t)}, dp_model.SerializationFormatJSON, true, dp_model.SerializationFormatJSON},
-		{&ydssource.YDSSource{ParserConfig: parserDebeziumCommon(t)}, dp_model.SerializationFormatJSON, false, ""},
+		{&yds_source.YDSSource{ParserConfig: nil}, model.SerializationFormatJSON, false, model.SerializationFormatMirror},
+		{&yds_source.YDSSource{ParserConfig: parserJSONCommon(t)}, model.SerializationFormatJSON, true, model.SerializationFormatJSON},
+		{&yds_source.YDSSource{ParserConfig: parserDebeziumCommon(t)}, model.SerializationFormatJSON, false, ""},
 
-		{&ydssource.YDSSource{ParserConfig: nil}, dp_model.SerializationFormatDebezium, false, dp_model.SerializationFormatMirror},
-		{&ydssource.YDSSource{ParserConfig: parserJSONCommon(t)}, dp_model.SerializationFormatDebezium, false, dp_model.SerializationFormatJSON},
-		{&ydssource.YDSSource{ParserConfig: parserDebeziumCommon(t)}, dp_model.SerializationFormatDebezium, false, ""},
+		{&yds_source.YDSSource{ParserConfig: nil}, model.SerializationFormatDebezium, false, model.SerializationFormatMirror},
+		{&yds_source.YDSSource{ParserConfig: parserJSONCommon(t)}, model.SerializationFormatDebezium, false, model.SerializationFormatJSON},
+		{&yds_source.YDSSource{ParserConfig: parserDebeziumCommon(t)}, model.SerializationFormatDebezium, false, ""},
 
-		{&postgres.PgSource{}, dp_model.SerializationFormatJSON, false, dp_model.SerializationFormatDebezium},
-		{&postgres.PgSource{}, dp_model.SerializationFormatDebezium, true, dp_model.SerializationFormatDebezium},
+		{&provider_postgres.PgSource{}, model.SerializationFormatJSON, false, model.SerializationFormatDebezium},
+		{&provider_postgres.PgSource{}, model.SerializationFormatDebezium, true, model.SerializationFormatDebezium},
 
-		{&mysql.MysqlSource{}, dp_model.SerializationFormatJSON, false, dp_model.SerializationFormatDebezium},
-		{&mysql.MysqlSource{}, dp_model.SerializationFormatDebezium, true, dp_model.SerializationFormatDebezium},
+		{&provider_mysql.MysqlSource{}, model.SerializationFormatJSON, false, model.SerializationFormatDebezium},
+		{&provider_mysql.MysqlSource{}, model.SerializationFormatDebezium, true, model.SerializationFormatDebezium},
 
-		{&ydb.YdbSource{}, dp_model.SerializationFormatJSON, false, dp_model.SerializationFormatDebezium},
-		{&ydb.YdbSource{}, dp_model.SerializationFormatDebezium, true, dp_model.SerializationFormatDebezium},
+		{&provider_ydb.YdbSource{}, model.SerializationFormatJSON, false, model.SerializationFormatDebezium},
+		{&provider_ydb.YdbSource{}, model.SerializationFormatDebezium, true, model.SerializationFormatDebezium},
 
-		{&airbyte.AirbyteSource{}, dp_model.SerializationFormatJSON, true, dp_model.SerializationFormatJSON},
-		{&airbyte.AirbyteSource{}, dp_model.SerializationFormatDebezium, false, dp_model.SerializationFormatJSON},
+		{&provider_airbyte.AirbyteSource{}, model.SerializationFormatJSON, true, model.SerializationFormatJSON},
+		{&provider_airbyte.AirbyteSource{}, model.SerializationFormatDebezium, false, model.SerializationFormatJSON},
 
-		{&chmodel.ChSource{}, dp_model.SerializationFormatJSON, false, dp_model.SerializationFormatNative},
-		{&chmodel.ChSource{}, dp_model.SerializationFormatDebezium, false, dp_model.SerializationFormatNative},
+		{&clickhouse_model.ChSource{}, model.SerializationFormatJSON, false, model.SerializationFormatNative},
+		{&clickhouse_model.ChSource{}, model.SerializationFormatDebezium, false, model.SerializationFormatNative},
 
-		{&greenplum.GpSource{}, dp_model.SerializationFormatJSON, false, ""},
-		{&greenplum.GpSource{}, dp_model.SerializationFormatDebezium, false, ""},
+		{&provider_greenplum.GpSource{}, model.SerializationFormatJSON, false, ""},
+		{&provider_greenplum.GpSource{}, model.SerializationFormatDebezium, false, ""},
 
-		{&mongo.MongoSource{}, dp_model.SerializationFormatJSON, false, ""},
-		{&mongo.MongoSource{}, dp_model.SerializationFormatDebezium, false, ""},
+		{&provider_mongo.MongoSource{}, model.SerializationFormatJSON, false, ""},
+		{&provider_mongo.MongoSource{}, model.SerializationFormatDebezium, false, ""},
 
-		{&oracle.OracleSource{}, dp_model.SerializationFormatJSON, false, ""},
-		{&oracle.OracleSource{}, dp_model.SerializationFormatDebezium, false, ""},
+		{&provider_oracle.OracleSource{}, model.SerializationFormatJSON, false, ""},
+		{&provider_oracle.OracleSource{}, model.SerializationFormatDebezium, false, ""},
 
-		{&yt.YtSource{}, dp_model.SerializationFormatJSON, false, ""},
-		{&yt.YtSource{}, dp_model.SerializationFormatDebezium, false, ""},
+		{&provider_yt.YtSource{}, model.SerializationFormatJSON, false, ""},
+		{&provider_yt.YtSource{}, model.SerializationFormatDebezium, false, ""},
 	}
 
 	for i, el := range testCases {
 		fmt.Println(i)
-		require.True(t, el.serializationFormat == dp_model.SerializationFormatJSON || el.serializationFormat == dp_model.SerializationFormatDebezium)
+		require.True(t, el.serializationFormat == model.SerializationFormatJSON || el.serializationFormat == model.SerializationFormatDebezium)
 		checkDst(t, el.src, el.serializationFormat, abstract.TransferTypeIncrementOnly, el.expectedOk)
-		result, err := coherence_check.InferFormatSettings(logger.Log, el.src, dp_model.SerializationFormat{Name: dp_model.SerializationFormatAuto})
+		result, err := coherence_check.InferFormatSettings(logger.Log, el.src, model.SerializationFormat{Name: model.SerializationFormatAuto})
 		if err == nil {
 			require.Equal(t, el.inferredSerializationFormat, result.Name)
 		}
@@ -142,18 +142,18 @@ func TestSourceCompatible(t *testing.T) {
 }
 
 func TestAutoFormatFillsSourceType(t *testing.T) {
-	format, err := coherence_check.InferFormatSettings(logger.Log, &postgres.PgSource{}, dp_model.SerializationFormat{Name: dp_model.SerializationFormatAuto})
+	format, err := coherence_check.InferFormatSettings(logger.Log, &provider_postgres.PgSource{}, model.SerializationFormat{Name: model.SerializationFormatAuto})
 	require.NoError(t, err)
-	require.Equal(t, dp_model.SerializationFormatDebezium, format.Name)
-	require.Equal(t, "pg", format.Settings[debeziumparameters.SourceType])
+	require.Equal(t, model.SerializationFormatDebezium, format.Name)
+	require.Equal(t, "pg", format.Settings[debezium_parameters.SourceType])
 
-	format2, err := coherence_check.InferFormatSettings(logger.Log, &mysql.MysqlSource{}, dp_model.SerializationFormat{Name: dp_model.SerializationFormatAuto})
+	format2, err := coherence_check.InferFormatSettings(logger.Log, &provider_mysql.MysqlSource{}, model.SerializationFormat{Name: model.SerializationFormatAuto})
 	require.NoError(t, err)
-	require.Equal(t, dp_model.SerializationFormatDebezium, format2.Name)
-	require.Equal(t, "mysql", format2.Settings[debeziumparameters.SourceType])
+	require.Equal(t, model.SerializationFormatDebezium, format2.Name)
+	require.Equal(t, "mysql", format2.Settings[debezium_parameters.SourceType])
 
-	format3, err := coherence_check.InferFormatSettings(logger.Log, &ydb.YdbSource{}, dp_model.SerializationFormat{Name: dp_model.SerializationFormatAuto})
+	format3, err := coherence_check.InferFormatSettings(logger.Log, &provider_ydb.YdbSource{}, model.SerializationFormat{Name: model.SerializationFormatAuto})
 	require.NoError(t, err)
-	require.Equal(t, dp_model.SerializationFormatDebezium, format3.Name)
-	require.Equal(t, "", format3.Settings[debeziumparameters.SourceType]) // YDB don't have special fields in debezium - so, we don't fill it here
+	require.Equal(t, model.SerializationFormatDebezium, format3.Name)
+	require.Equal(t, "", format3.Settings[debezium_parameters.SourceType]) // YDB don't have special fields in debezium - so, we don't fill it here
 }

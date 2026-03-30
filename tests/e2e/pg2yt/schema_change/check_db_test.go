@@ -12,11 +12,11 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/postgres"
-	yt_provider "github.com/transferia/transferia/pkg/providers/yt"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
+	provider_yt "github.com/transferia/transferia/pkg/providers/yt"
 	"github.com/transferia/transferia/pkg/runtime/local"
 	"github.com/transferia/transferia/tests/helpers"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 	"go.ytsaurus.tech/yt/go/ypath"
 	"go.ytsaurus.tech/yt/go/yt"
 	"go.ytsaurus.tech/yt/go/yttest"
@@ -35,7 +35,7 @@ var (
 )
 
 func makeSource(tableName, slotID string) model.Source {
-	src := &postgres.PgSource{
+	src := &provider_postgres.PgSource{
 		Hosts:    []string{"localhost"},
 		User:     os.Getenv("SOURCE_PG_LOCAL_USER"),
 		Password: model.SecretString(os.Getenv("SOURCE_PG_LOCAL_PASSWORD")),
@@ -49,7 +49,7 @@ func makeSource(tableName, slotID string) model.Source {
 }
 
 func makeTarget(namespace string) model.Destination {
-	target := yt_provider.NewYtDestinationV1(yt_provider.YtDestination{
+	target := provider_yt.NewYtDestinationV1(provider_yt.YtDestination{
 		Path:          fmt.Sprintf("//home/cdc/%s/pg2yt_e2e_schema_change", namespace),
 		Cluster:       targetCluster,
 		CellBundle:    "default",
@@ -84,7 +84,7 @@ func TestSchemaChange(t *testing.T) {
 	defer cancel()
 
 	src := makeSource("public.test1", "slot1")
-	dst := makeTarget("test1").(yt_provider.YtDestinationModel)
+	dst := makeTarget("test1").(provider_yt.YtDestinationModel)
 
 	transfer := &model.Transfer{
 		ID:  "test1",
@@ -207,21 +207,21 @@ func TestNoSchemaNarrowingAttempted(t *testing.T) {
 			Recursive: true,
 			Attributes: map[string]interface{}{
 				"dynamic": true,
-				"schema": schema.Schema{
+				"schema": ytschema.Schema{
 					UniqueKeys: true,
-					Columns: []schema.Column{
+					Columns: []ytschema.Column{
 						{
 							Name:      "id",
-							Type:      schema.TypeInt32,
+							Type:      ytschema.TypeInt32,
 							Required:  false,
-							SortOrder: schema.SortAscending,
+							SortOrder: ytschema.SortAscending,
 						}, {
 							Name:     "value",
-							Type:     schema.TypeString,
+							Type:     ytschema.TypeString,
 							Required: false,
 						}, {
 							Name:     "extra",
-							Type:     schema.TypeString,
+							Type:     ytschema.TypeString,
 							Required: false,
 						},
 					},
@@ -258,5 +258,5 @@ func TestNoSchemaNarrowingAttempted(t *testing.T) {
 	_, err = conn.Exec(context.Background(), `INSERT INTO test2 VALUES (2, 'lel')`)
 	require.NoError(t, err)
 
-	require.NoError(t, helpers.WaitEqualRowsCount(t, "public", "test2", helpers.GetSampleableStorageByModel(t, src), helpers.GetSampleableStorageByModel(t, dst.(yt_provider.YtDestinationModel).LegacyModel()), 60*time.Second))
+	require.NoError(t, helpers.WaitEqualRowsCount(t, "public", "test2", helpers.GetSampleableStorageByModel(t, src), helpers.GetSampleableStorageByModel(t, dst.(provider_yt.YtDestinationModel).LegacyModel()), 60*time.Second))
 }

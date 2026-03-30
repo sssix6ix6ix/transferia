@@ -8,8 +8,8 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	chconn "github.com/transferia/transferia/pkg/connection/clickhouse"
-	"github.com/transferia/transferia/pkg/providers/clickhouse"
+	conn_clickhouse "github.com/transferia/transferia/pkg/connection/clickhouse"
+	provider_clickhouse "github.com/transferia/transferia/pkg/providers/clickhouse"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/chrecipe"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/conn"
 )
@@ -23,15 +23,15 @@ func TestIncrementalShardedStorage(t *testing.T) {
 	)
 	storageParams, err := incrementalDB.ToStorageParams()
 	require.NoError(t, err)
-	shard1, err := clickhouse.NewStorage(storageParams, new(model.Transfer))
+	shard1, err := provider_clickhouse.NewStorage(storageParams, new(model.Transfer))
 	require.NoError(t, err)
 	ctx := context.Background()
 
-	incrementalStorage, isIncrementalStorage := shard1.(*clickhouse.Storage)
+	incrementalStorage, isIncrementalStorage := shard1.(*provider_clickhouse.Storage)
 	require.True(t, isIncrementalStorage, "should be incremental storage")
 
 	t.Run("incremental timestamp", func(t *testing.T) {
-		host := &chconn.Host{
+		host := &conn_clickhouse.Host{
 			Name:       "localhost",
 			NativePort: incrementalDB.NativePort,
 			HTTPPort:   incrementalDB.HTTPPort,

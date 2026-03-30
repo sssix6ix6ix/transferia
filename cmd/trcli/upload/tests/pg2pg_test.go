@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/transferia/transferia/cmd/trcli/config"
+	trcli_config "github.com/transferia/transferia/cmd/trcli/config"
 	"github.com/transferia/transferia/cmd/trcli/upload"
 	"github.com/transferia/transferia/library/go/core/metrics/solomon"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
@@ -33,13 +33,13 @@ func TestUpload(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	transfer, err := config.ParseTransfer(transferYaml)
+	transfer, err := trcli_config.ParseTransfer(transferYaml)
 	require.NoError(t, err)
 
 	transfer.Src = src
 	transfer.Dst = dst
 
-	tables, err := config.ParseTablesYaml(tablesYaml)
+	tables, err := trcli_config.ParseTablesYaml(tablesYaml)
 	require.NoError(t, err)
 
 	require.NoError(t, upload.RunUpload(coordinator.NewFakeClient(), transfer, tables, solomon.NewRegistry(solomon.NewRegistryOpts())))

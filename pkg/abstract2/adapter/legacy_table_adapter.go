@@ -8,7 +8,7 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract2"
 	"github.com/transferia/transferia/pkg/abstract2/types"
-	yt_schema "go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 type legacyTableAdapter struct {
@@ -262,51 +262,51 @@ func (l legacyColumnAdapter) FullName() string {
 }
 
 func (l legacyColumnAdapter) Type() abstract2.Type {
-	switch yt_schema.Type(l.col.DataType) {
-	case yt_schema.TypeInt8:
+	switch ytschema.Type(l.col.DataType) {
+	case ytschema.TypeInt8:
 		return types.NewInt8Type()
-	case yt_schema.TypeInt16:
+	case ytschema.TypeInt16:
 		return types.NewInt16Type()
-	case yt_schema.TypeInt32:
+	case ytschema.TypeInt32:
 		return types.NewInt32Type()
-	case yt_schema.TypeInt64:
+	case ytschema.TypeInt64:
 		return types.NewInt64Type()
 
-	case yt_schema.TypeUint8:
+	case ytschema.TypeUint8:
 		return types.NewUInt8Type()
-	case yt_schema.TypeUint16:
+	case ytschema.TypeUint16:
 		return types.NewUInt16Type()
-	case yt_schema.TypeUint32:
+	case ytschema.TypeUint32:
 		return types.NewUInt32Type()
-	case yt_schema.TypeUint64:
+	case ytschema.TypeUint64:
 		return types.NewUInt64Type()
 
-	case yt_schema.TypeFloat32:
+	case ytschema.TypeFloat32:
 		return types.NewFloatType()
-	case yt_schema.TypeFloat64:
+	case ytschema.TypeFloat64:
 		return types.NewDoubleType()
 
-	case yt_schema.TypeBytes:
+	case ytschema.TypeBytes:
 		return types.NewStringType(-1)
 
-	case yt_schema.TypeString:
+	case ytschema.TypeString:
 		return types.NewStringType(-1)
 
-	case yt_schema.TypeBoolean:
+	case ytschema.TypeBoolean:
 		return types.NewBoolType()
 
-	case yt_schema.TypeAny:
+	case ytschema.TypeAny:
 		return types.NewCompositeType()
 
-	case yt_schema.TypeDate:
+	case ytschema.TypeDate:
 		return types.NewDateTimeType()
-	case yt_schema.TypeDatetime:
+	case ytschema.TypeDatetime:
 		return types.NewDateTimeType()
 
-	case yt_schema.TypeTimestamp:
+	case ytschema.TypeTimestamp:
 		return types.NewTimestampType(6)
 
-	case yt_schema.TypeInterval:
+	case ytschema.TypeInterval:
 		return types.NewIntervalType()
 	}
 	panic(fmt.Sprintf("should never happened, data type: %v", l.col.DataType))

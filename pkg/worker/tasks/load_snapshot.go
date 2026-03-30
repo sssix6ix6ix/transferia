@@ -10,7 +10,7 @@ import (
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/transferia/transferia/internal/logger"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
@@ -18,12 +18,12 @@ import (
 	"github.com/transferia/transferia/pkg/errors"
 	"github.com/transferia/transferia/pkg/errors/categories"
 	"github.com/transferia/transferia/pkg/errors/coded"
-	"github.com/transferia/transferia/pkg/errors/codes"
+	error_codes "github.com/transferia/transferia/pkg/errors/codes"
 	"github.com/transferia/transferia/pkg/middlewares"
-	"github.com/transferia/transferia/pkg/providers/greenplum"
-	"github.com/transferia/transferia/pkg/providers/postgres"
-	"github.com/transferia/transferia/pkg/sink"
-	"github.com/transferia/transferia/pkg/storage"
+	provider_greenplum "github.com/transferia/transferia/pkg/providers/greenplum"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
+	"github.com/transferia/transferia/pkg/sink_factory"
+	"github.com/transferia/transferia/pkg/storage_factory"
 	"github.com/transferia/transferia/pkg/util"
 	"github.com/transferia/transferia/pkg/util/set"
 	"github.com/transferia/transferia/pkg/worker/tasks/table_part_provider"
@@ -42,7 +42,7 @@ type SnapshotLoader struct {
 	cp        coordinator.Coordinator
 	operation *model.TransferOperation
 	transfer  *model.Transfer
-	registry  metrics.Registry
+	registry  core_metrics.Registry
 
 	cancelUpload    context.CancelFunc
 	waitErrOrDoneCh chan error
@@ -62,7 +62,7 @@ type SnapshotLoader struct {
 	schemaLock  sync.Mutex
 }
 
-func NewSnapshotLoader(cp coordinator.Coordinator, operation *model.TransferOperation, transfer *model.Transfer, registry metrics.Registry) *SnapshotLoader {
+func NewSnapshotLoader(cp coordinator.Coordinator, operation *model.TransferOperation, transfer *model.Transfer, registry core_metrics.Registry) *SnapshotLoader {
 	return &SnapshotLoader{
 		cp:        cp,
 		operation: operation,
@@ -99,7 +99,7 @@ func (l *SnapshotLoader) LoadSnapshot(ctx context.Context) error {
 
 	logger.Log.Infof("storage resolved: %d tables in total", len(tables))
 	err = l.CheckIncludeDirectives(tableDescriptions, func() (abstract.Storage, error) {
-		return storage.NewStorage(l.transfer, coordinator.NewFakeClient(), l.registry)
+		return storage_factory.NewStorage(l.transfer, coordinator.NewFakeClient(), l.registry)
 	})
 	if err != nil {
 		return xerrors.Errorf("failed in accordance with configuration: %w", err)
@@ -173,9 +173,9 @@ func (l *SnapshotLoader) CheckIncludeDirectives(tables []abstract.TableDescripti
 // TODO Remove, legacy hacks
 func (l *SnapshotLoader) endpointsPreSnapshotActions(sourceStorage abstract.Storage) {
 	switch specificStorage := sourceStorage.(type) {
-	case *greenplum.Storage:
+	case *provider_greenplum.Storage:
 		specificStorage.SetWorkersCount(l.parallelismParams.JobCount)
-	case *greenplum.GpfdistStorage:
+	case *provider_greenplum.GpfdistStorage:
 		// Gpfdist storage and sink handles multi-threading by themselves.
 		l.parallelismParams.ProcessCount = 1
 	}
@@ -271,7 +271,7 @@ func (l *SnapshotLoader) beginSnapshot(
 		if err != nil {
 			return errors.CategorizedErrorf(categories.Source, "Can't begin %s snapshot: %w", l.transfer.SrcType(), err)
 		}
-	case *postgres.Storage:
+	case *provider_postgres.Storage:
 		err := specificStorage.BeginPGSnapshot(ctx)
 		if err != nil {
 			// TODO: change to fatal?
@@ -281,13 +281,13 @@ func (l *SnapshotLoader) beginSnapshot(
 		}
 		if !l.transfer.SnapshotOnly() {
 			var err error
-			tracker := postgres.NewTracker(l.transfer.ID, l.cp)
+			tracker := provider_postgres.NewTracker(l.transfer.ID, l.cp)
 			l.slotKiller, l.slotKillerErrorChannel, err = specificStorage.RunSlotMonitor(ctx, l.transfer.Src, l.registry, tracker)
 			if err != nil {
 				return errors.CategorizedErrorf(categories.Source, "failed to start slot monitor: %w", err)
 			}
 		}
-	case *greenplum.Storage:
+	case *provider_greenplum.Storage:
 		if err := specificStorage.BeginGPSnapshot(ctx, tables); err != nil {
 			return errors.CategorizedErrorf(categories.Source, "failed to initialize a Greenplum snapshot: %w", err)
 		}
@@ -317,12 +317,12 @@ func (l *SnapshotLoader) endSnapshot(
 		if err := specificStorage.EndSnapshot(ctx); err != nil {
 			logger.Log.Error("Failed to end snapshot", log.Error(err))
 		}
-	case *postgres.Storage:
+	case *provider_postgres.Storage:
 		if err := specificStorage.EndPGSnapshot(ctx); err != nil {
 			logger.Log.Error("Failed to end snapshot in PostgreSQL", log.Error(err))
 		}
-	case *greenplum.Storage:
-		esCtx, esCancel := context.WithTimeout(context.Background(), greenplum.PingTimeout)
+	case *provider_greenplum.Storage:
+		esCtx, esCancel := context.WithTimeout(context.Background(), provider_greenplum.PingTimeout)
 		defer esCancel()
 		if err := specificStorage.EndGPSnapshot(esCtx); err != nil {
 			logger.Log.Error("Failed to end snapshot in Greenplum", log.Error(err))
@@ -337,7 +337,7 @@ func (l *SnapshotLoader) endSnapshot(
 
 func (l *SnapshotLoader) endDestination() error {
 	cfg := middlewares.MakeConfig(middlewares.WithNoData)
-	baseSink, err := sink.ConstructBaseSink(l.transfer, l.operation, logger.Log, l.registry, l.cp, cfg)
+	baseSink, err := sink_factory.ConstructBaseSink(l.transfer, l.operation, logger.Log, l.registry, l.cp, cfg)
 	if err != nil {
 		return xerrors.Errorf("unable to create sink to complete snapshot: %w", err)
 	}
@@ -400,7 +400,7 @@ func (l *SnapshotLoader) uploadSingleWorkerMode(ctx context.Context, tables []ab
 	ctx, l.cancelUpload = context.WithCancel(ctx)
 	defer l.cancelUpload()
 
-	sourceStorage, err := storage.NewStorage(l.transfer, l.cp, l.registry)
+	sourceStorage, err := storage_factory.NewStorage(l.transfer, l.cp, l.registry)
 	if err != nil {
 		return errors.CategorizedErrorf(categories.Source, resolveStorageErrorText, err)
 	}
@@ -527,13 +527,13 @@ func (l *SnapshotLoader) uploadMain(ctx context.Context, inTables []abstract.Tab
 	}
 
 	if l.transfer.TmpPolicy != nil {
-		return coded.Errorf(codes.ShardedTransferTmpPolicy, "sharded transfer do not support temporary tables policy, please, turn it off or make transfer not sharded")
+		return coded.Errorf(error_codes.ShardedTransferTmpPolicy, "sharded transfer do not support temporary tables policy, please, turn it off or make transfer not sharded")
 	}
 
 	ctx, l.cancelUpload = context.WithCancel(ctx)
 	defer l.cancelUpload()
 
-	sourceStorage, err := storage.NewStorage(l.transfer, l.cp, l.registry)
+	sourceStorage, err := storage_factory.NewStorage(l.transfer, l.cp, l.registry)
 	if err != nil {
 		return errors.CategorizedErrorf(categories.Source, resolveStorageErrorText, err)
 	}
@@ -631,7 +631,7 @@ func (l *SnapshotLoader) uploadSecondary(ctx context.Context) error {
 	}
 
 	if l.transfer.TmpPolicy != nil {
-		return coded.Errorf(codes.ShardedTransferTmpPolicy, "sharded transfer do not support temporary tables policy, please, turn it off or make transfer not sharded")
+		return coded.Errorf(error_codes.ShardedTransferTmpPolicy, "sharded transfer do not support temporary tables policy, please, turn it off or make transfer not sharded")
 	}
 
 	ctx, l.cancelUpload = context.WithCancel(ctx)
@@ -656,7 +656,7 @@ func (l *SnapshotLoader) uploadSecondary(ctx context.Context) error {
 		return xerrors.Errorf("failed to set extra runtime transformations: %w", err)
 	}
 
-	sourceStorage, err := storage.NewStorage(l.transfer, l.cp, l.registry)
+	sourceStorage, err := storage_factory.NewStorage(l.transfer, l.cp, l.registry)
 	if err != nil {
 		return errors.CategorizedErrorf(categories.Source, resolveStorageErrorText, err)
 	}
@@ -697,7 +697,7 @@ func (l *SnapshotLoader) uploadSecondary(ctx context.Context) error {
 // created sink.
 func (l *SnapshotLoader) createServicePusher() (abstract.Pusher, *util.Rollbacks, error) {
 	cfg := middlewares.MakeConfig(middlewares.WithNoData)
-	serviceSink, err := sink.MakeAsyncSink(l.transfer, l.operation, logger.Log, l.registry, l.cp, cfg)
+	serviceSink, err := sink_factory.MakeAsyncSink(l.transfer, l.operation, logger.Log, l.registry, l.cp, cfg)
 	if err != nil {
 		return nil, nil, xerrors.Errorf("failed to create sink: %w", err)
 	}
@@ -983,7 +983,7 @@ func (l *SnapshotLoader) DoUploadTables(
 				progressTracker.Add(nextPartPtr)
 
 				progress := NewLoadProgress(l.workerIndex, nextPartPtr, &l.progressUpdateMutex)
-				currSink, err := sink.MakeAsyncSink(
+				currSink, err := sink_factory.MakeAsyncSink(
 					l.transfer,
 					l.operation,
 					logger.Log,

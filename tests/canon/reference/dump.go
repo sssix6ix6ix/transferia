@@ -19,20 +19,20 @@ import (
 	"github.com/transferia/transferia/library/go/test/canon"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
-	dp_model "github.com/transferia/transferia/pkg/abstract/model"
-	chconn "github.com/transferia/transferia/pkg/connection/clickhouse"
+	"github.com/transferia/transferia/pkg/abstract/model"
+	conn_clickhouse "github.com/transferia/transferia/pkg/connection/clickhouse"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/httpclient"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/model"
-	"github.com/transferia/transferia/pkg/providers/mongo"
-	"github.com/transferia/transferia/pkg/providers/mysql"
-	pgcommon "github.com/transferia/transferia/pkg/providers/postgres"
-	"github.com/transferia/transferia/pkg/providers/yt"
+	clickhouse_model "github.com/transferia/transferia/pkg/providers/clickhouse/model"
+	provider_mongo "github.com/transferia/transferia/pkg/providers/mongo"
+	provider_mysql "github.com/transferia/transferia/pkg/providers/mysql"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
+	provider_yt "github.com/transferia/transferia/pkg/providers/yt"
 	"github.com/transferia/transferia/pkg/providers/yt/yt_client"
 	"github.com/transferia/transferia/pkg/util/set"
 	"github.com/transferia/transferia/pkg/worker/tasks"
-	dt_canon "github.com/transferia/transferia/tests/canon"
+	canon_test "github.com/transferia/transferia/tests/canon"
 	"github.com/transferia/transferia/tests/helpers"
-	yt_helpers "github.com/transferia/transferia/tests/helpers/yt"
+	helpers_yt "github.com/transferia/transferia/tests/helpers/yt"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.ytsaurus.tech/library/go/core/log"
 	"go.ytsaurus.tech/yt/go/ypath"
@@ -40,11 +40,11 @@ import (
 
 // ConductSequenceWithAllSubsequencesTest is the method which MUST be called by concrete sequence checking tests.
 // It automatically conducts a test for all subsequences of the given sequence test and canonizes the output.
-func ConductSequenceWithAllSubsequencesTest(t *testing.T, sequenceCase dt_canon.CanonizedSequenceCase, transfer *dp_model.Transfer, sink abstract.Sinker, sinkAsSource dp_model.Source) {
-	snapshotLoader := tasks.NewSnapshotLoader(coordinator.NewFakeClient(), new(dp_model.TransferOperation), transfer, solomon.NewRegistry(nil).WithTags(map[string]string{"ts": time.Now().String()}))
+func ConductSequenceWithAllSubsequencesTest(t *testing.T, sequenceCase canon_test.CanonizedSequenceCase, transfer *model.Transfer, sink abstract.Sinker, sinkAsSource model.Source) {
+	snapshotLoader := tasks.NewSnapshotLoader(coordinator.NewFakeClient(), new(model.TransferOperation), transfer, solomon.NewRegistry(nil).WithTags(map[string]string{"ts": time.Now().String()}))
 	require.NoError(t, snapshotLoader.CleanupSinker(sequenceCase.Tables))
 
-	for i, subSeq := range dt_canon.AllSubsequences(sequenceCase.Items) {
+	for i, subSeq := range canon_test.AllSubsequences(sequenceCase.Items) {
 		t.Run(
 			fmt.Sprintf("subsequence_of_%02d", i+1),
 			func(t *testing.T) {
@@ -55,24 +55,24 @@ func ConductSequenceWithAllSubsequencesTest(t *testing.T, sequenceCase dt_canon.
 	}
 }
 
-func Dump(t *testing.T, source dp_model.Source) {
+func Dump(t *testing.T, source model.Source) {
 	logger.Log.Info(dumpToString(t, source))
 	canon.SaveJSON(t, dumpToString(t, source))
 }
 
-func dumpToString(t *testing.T, source dp_model.Source) string {
+func dumpToString(t *testing.T, source model.Source) string {
 	switch src := source.(type) {
-	case *model.ChSource:
+	case *clickhouse_model.ChSource:
 		return FromClickhouse(t, src, false)
-	case *yt.YtSource:
+	case *provider_yt.YtSource:
 		ytClient, err := yt_client.FromConnParams(src, nil)
 		require.NoError(t, err)
 
-		res, err := yt_helpers.DumpYtDirectoryToString(ytClient, ypath.Path(src.Paths[0]))
+		res, err := helpers_yt.DumpYtDirectoryToString(ytClient, ypath.Path(src.Paths[0]))
 		require.NoError(t, err)
 		return res
-	case *pgcommon.PgSource:
-		connString, _, err := pgcommon.PostgresDumpConnString(src)
+	case *provider_postgres.PgSource:
+		connString, _, err := provider_postgres.PostgresDumpConnString(src)
 		require.NoError(t, err)
 		args := make([]string, 0)
 		args = append(args,
@@ -91,7 +91,7 @@ func dumpToString(t *testing.T, source dp_model.Source) string {
 		command.Stderr = &stderr
 		logger.Log.Info("Run pg_dump", log.String("path", command.Path), log.Strings("args", command.Args))
 		require.NoError(t, command.Run(), stderr.String())
-		conn, err := pgcommon.MakeConnPoolFromSrc(src, logger.Log)
+		conn, err := provider_postgres.MakeConnPoolFromSrc(src, logger.Log)
 		require.NoError(t, err)
 		defer conn.Close()
 		queryRows, err := conn.Query(context.Background(), `
@@ -138,14 +138,14 @@ order by
 		}
 
 		return stdout.String()
-	case *mysql.MysqlSource:
+	case *provider_mysql.MysqlSource:
 		dump := helpers.MySQLDump(t, src.ToStorageParams())
 		return dump
-	case *mongo.MongoSource:
+	case *provider_mongo.MongoSource:
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 		excluded := set.New("admin", "config", "local")
-		client, err := mongo.Connect(ctx, src.ConnectionOptions([]string{}), logger.Log)
+		client, err := provider_mongo.Connect(ctx, src.ConnectionOptions([]string{}), logger.Log)
 		require.NoError(t, err)
 		dbs, err := client.ListDatabases(ctx, bson.D{})
 		require.NoError(t, err)
@@ -187,7 +187,7 @@ order by
 	}
 }
 
-func FromClickhouse(t *testing.T, src *model.ChSource, noTimeCols bool) string {
+func FromClickhouse(t *testing.T, src *clickhouse_model.ChSource, noTimeCols bool) string {
 	type tableListResponse struct {
 		Data []struct {
 			FullName string
@@ -198,7 +198,7 @@ func FromClickhouse(t *testing.T, src *model.ChSource, noTimeCols bool) string {
 	require.NoError(t, err)
 	httpClient, err := httpclient.NewHTTPClientImpl(sinkParams)
 	require.NoError(t, err)
-	connHost := &chconn.Host{
+	connHost := &conn_clickhouse.Host{
 		Name:       "localhost",
 		HTTPPort:   src.HTTPPort,
 		NativePort: src.NativePort,

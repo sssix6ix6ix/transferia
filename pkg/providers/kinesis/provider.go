@@ -3,10 +3,10 @@ package kinesis
 import (
 	"context"
 
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	cpclient "github.com/transferia/transferia/pkg/abstract/coordinator"
+	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/providers"
 	"github.com/transferia/transferia/pkg/util/gobwrapper"
@@ -33,8 +33,8 @@ var (
 
 type Provider struct {
 	logger   log.Logger
-	registry metrics.Registry
-	cp       cpclient.Coordinator
+	registry core_metrics.Registry
+	cp       coordinator.Coordinator
 	transfer *model.Transfer
 }
 
@@ -57,7 +57,7 @@ func (p *Provider) Activate(context.Context, *model.TransferOperation, abstract.
 	return nil
 }
 
-func New(lgr log.Logger, registry metrics.Registry, cp cpclient.Coordinator, transfer *model.Transfer, _ *model.TransferOperation) providers.Provider {
+func New(lgr log.Logger, registry core_metrics.Registry, cp coordinator.Coordinator, transfer *model.Transfer, _ *model.TransferOperation) providers.Provider {
 	return &Provider{
 		logger:   lgr,
 		registry: registry,

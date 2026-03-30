@@ -5,7 +5,7 @@ import (
 
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract2"
-	yt_schema "go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 type TimestampValue interface {
@@ -37,8 +37,8 @@ func (typ *TimestampType) Validate(value abstract2.Value) error {
 	return err
 }
 
-func (typ *TimestampType) ToOldType() (yt_schema.Type, error) {
-	return yt_schema.TypeTimestamp, nil
+func (typ *TimestampType) ToOldType() (ytschema.Type, error) {
+	return ytschema.TypeTimestamp, nil
 }
 
 func (typ *TimestampType) Precision() int {

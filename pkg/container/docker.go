@@ -8,10 +8,10 @@ import (
 	"os/exec"
 	"time"
 
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/network"
-	"github.com/docker/docker/client"
+	docker_types "github.com/docker/docker/api/types"
+	docker_container "github.com/docker/docker/api/types/container"
+	docker_network "github.com/docker/docker/api/types/network"
+	docker_client "github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"go.ytsaurus.tech/library/go/core/log"
@@ -57,10 +57,10 @@ func (d *DockerWrapper) isDockerReady() bool {
 	return true
 }
 
-func (d *DockerWrapper) Pull(ctx context.Context, image string, opts types.ImagePullOptions) error {
+func (d *DockerWrapper) Pull(ctx context.Context, image string, opts docker_types.ImagePullOptions) error {
 	_, _, err := d.cli.ImageInspectWithRaw(ctx, image)
-	if client.IsErrNotFound(err) {
-		reader, pullErr := d.cli.ImagePull(ctx, image, types.ImagePullOptions{})
+	if docker_client.IsErrNotFound(err) {
+		reader, pullErr := d.cli.ImagePull(ctx, image, docker_types.ImagePullOptions{})
 		if pullErr != nil {
 			return xerrors.Errorf("error pulling image %s: %w", image, pullErr)
 		}
@@ -86,13 +86,13 @@ func (d *DockerWrapper) RunContainer(ctx context.Context, opts DockerOpts) (stdo
 		return nil, nil, xerrors.Errorf("docker unavailable")
 	}
 
-	if err := d.Pull(ctx, opts.Image, types.ImagePullOptions{}); err != nil {
+	if err := d.Pull(ctx, opts.Image, docker_types.ImagePullOptions{}); err != nil {
 		return nil, nil, err
 	}
 
 	d.logger.Infof("Image %s pulled", opts.Image)
 
-	containerConfig := &container.Config{
+	containerConfig := &docker_container.Config{
 		Image:  opts.Image,
 		Cmd:    opts.Command,
 		Env:    opts.Env,
@@ -100,10 +100,10 @@ func (d *DockerWrapper) RunContainer(ctx context.Context, opts DockerOpts) (stdo
 		Tty:    false,
 	}
 
-	hostConfig := &container.HostConfig{
+	hostConfig := &docker_container.HostConfig{
 		Mounts:      opts.Mounts,
 		AutoRemove:  opts.AutoRemove,
-		LogConfig:   container.LogConfig{Type: opts.LogDriver, Config: opts.LogOptions},
+		LogConfig:   docker_container.LogConfig{Type: opts.LogDriver, Config: opts.LogOptions},
 		NetworkMode: "host",
 	}
 
@@ -111,9 +111,9 @@ func (d *DockerWrapper) RunContainer(ctx context.Context, opts DockerOpts) (stdo
 		hostConfig.RestartPolicy = opts.RestartPolicy
 	}
 
-	networkingConfig := &network.NetworkingConfig{}
+	networkingConfig := &docker_network.NetworkingConfig{}
 	if opts.Network != "" {
-		networkingConfig.EndpointsConfig = map[string]*network.EndpointSettings{
+		networkingConfig.EndpointsConfig = map[string]*docker_network.EndpointSettings{
 			opts.Network: {},
 		}
 	}
@@ -125,14 +125,14 @@ func (d *DockerWrapper) RunContainer(ctx context.Context, opts DockerOpts) (stdo
 
 	d.logger.Infof("container created : %v", resp)
 
-	waitCh, errCh := d.cli.ContainerWait(ctx, resp.ID, container.WaitConditionNextExit)
+	waitCh, errCh := d.cli.ContainerWait(ctx, resp.ID, docker_container.WaitConditionNextExit)
 
-	if err := d.cli.ContainerStart(ctx, resp.ID, container.StartOptions{}); err != nil {
+	if err := d.cli.ContainerStart(ctx, resp.ID, docker_container.StartOptions{}); err != nil {
 		return nil, nil, xerrors.Errorf("error starting container: %w", err)
 	}
 	d.logger.Info("Docker container started")
 
-	attachOptions := container.AttachOptions{
+	attachOptions := docker_container.AttachOptions{
 		Stream: true,
 		Stdout: opts.AttachStdout,
 		Stderr: opts.AttachStderr,
@@ -191,7 +191,7 @@ func (d *DockerWrapper) RunContainer(ctx context.Context, opts DockerOpts) (stdo
 
 func (d *DockerWrapper) ensureDocker(supervisorConfigPath string, timeout time.Duration) error {
 	if supervisorConfigPath == "" {
-		cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+		cli, err := docker_client.NewClientWithOpts(docker_client.FromEnv, docker_client.WithAPIVersionNegotiation())
 		if err != nil {
 			return xerrors.Errorf("unable to init docker cli: %w", err)
 		}
@@ -232,7 +232,7 @@ func (d *DockerWrapper) ensureDocker(supervisorConfigPath string, timeout time.D
 	go func() {
 		for {
 			if d.cli == nil {
-				cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+				cli, err := docker_client.NewClientWithOpts(docker_client.FromEnv, docker_client.WithAPIVersionNegotiation())
 				if err != nil {
 					continue
 				}

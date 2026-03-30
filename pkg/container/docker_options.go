@@ -6,12 +6,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/docker/docker/api/types/container"
+	docker_container "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
 )
 
 type DockerOpts struct {
-	RestartPolicy container.RestartPolicy
+	RestartPolicy docker_container.RestartPolicy
 	Mounts        []mount.Mount
 	LogDriver     string
 	LogOptions    map[string]string

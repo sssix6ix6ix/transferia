@@ -10,13 +10,13 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/debezium"
-	debeziumcommon "github.com/transferia/transferia/pkg/debezium/common"
-	debeziumparameters "github.com/transferia/transferia/pkg/debezium/parameters"
-	pgcommon "github.com/transferia/transferia/pkg/providers/postgres"
+	debezium_common "github.com/transferia/transferia/pkg/debezium/common"
+	debezium_parameters "github.com/transferia/transferia/pkg/debezium/parameters"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
 	"github.com/transferia/transferia/tests/helpers"
 	"github.com/transferia/transferia/tests/helpers/serde"
-	simple_transformer "github.com/transferia/transferia/tests/helpers/transformer"
+	helpers_transformer "github.com/transferia/transferia/tests/helpers/transformer"
 )
 
 var (
@@ -150,13 +150,13 @@ func TestSnapshotAndIncrement(t *testing.T) {
 	//---
 
 	emitter, err := debezium.NewMessagesEmitter(map[string]string{
-		debeziumparameters.DatabaseDBName:   "public",
-		debeziumparameters.TopicPrefix:      "my_topic",
-		debeziumparameters.AddOriginalTypes: "false",
-		debeziumparameters.SourceType:       "pg",
+		debezium_parameters.DatabaseDBName:   "public",
+		debezium_parameters.TopicPrefix:      "my_topic",
+		debezium_parameters.AddOriginalTypes: "false",
+		debezium_parameters.SourceType:       "pg",
 	}, "1.1.2.Final", false, logger.Log)
 	require.NoError(t, err)
-	originalTypes := map[abstract.TableID]map[string]*debeziumcommon.OriginalTypeInfo{
+	originalTypes := map[abstract.TableID]map[string]*debezium_common.OriginalTypeInfo{
 		{Namespace: "public", Name: "basic_types"}: {
 			"i":                    {OriginalType: "pg:integer"},
 			"bl":                   {OriginalType: "pg:boolean"},
@@ -223,16 +223,16 @@ func TestSnapshotAndIncrement(t *testing.T) {
 	receiver := debezium.NewReceiver(originalTypes, nil)
 
 	transfer := helpers.MakeTransfer(helpers.TransferID, &Source, &Target, abstract.TransferTypeSnapshotAndIncrement)
-	transfer.Src.(*pgcommon.PgSource).NoHomo = true
+	transfer.Src.(*provider_postgres.PgSource).NoHomo = true
 
-	debeziumSerDeTransformer := simple_transformer.NewSimpleTransformer(t, serde.MakeDebeziumSerDeUdfWithCheck(emitter, receiver), serde.AnyTablesUdf)
+	debeziumSerDeTransformer := helpers_transformer.NewSimpleTransformer(t, serde.MakeDebeziumSerDeUdfWithCheck(emitter, receiver), serde.AnyTablesUdf)
 	require.NoError(t, transfer.AddExtraTransformer(debeziumSerDeTransformer))
 	worker := helpers.Activate(t, transfer)
 	defer worker.Close(t)
 
 	//---
 
-	srcConn, err := pgcommon.MakeConnPoolFromSrc(&Source, logger.Log)
+	srcConn, err := provider_postgres.MakeConnPoolFromSrc(&Source, logger.Log)
 	require.NoError(t, err)
 	defer srcConn.Close()
 

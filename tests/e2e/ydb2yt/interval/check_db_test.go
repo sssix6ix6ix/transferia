@@ -11,27 +11,27 @@ import (
 	"github.com/transferia/transferia/library/go/test/canon"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/ydb"
-	yt_provider "github.com/transferia/transferia/pkg/providers/yt"
-	ytstorage "github.com/transferia/transferia/pkg/providers/yt/storage"
+	provider_ydb "github.com/transferia/transferia/pkg/providers/ydb"
+	provider_yt "github.com/transferia/transferia/pkg/providers/yt"
+	yt_storage "github.com/transferia/transferia/pkg/providers/yt/storage"
 	"github.com/transferia/transferia/tests/helpers"
 	ydbrecipe "github.com/transferia/transferia/tests/helpers/ydb_recipe"
-	ydb3 "github.com/ydb-platform/ydb-go-sdk/v3"
-	"github.com/ydb-platform/ydb-go-sdk/v3/table"
+	ydb_go_sdk "github.com/ydb-platform/ydb-go-sdk/v3"
+	ydb_table "github.com/ydb-platform/ydb-go-sdk/v3/table"
 )
 
 const ydbTableName = "test_table"
 
-func execDDL(t *testing.T, ydbConn *ydb3.Driver, query string) {
-	foo := func(ctx context.Context, session table.Session) (err error) {
+func execDDL(t *testing.T, ydbConn *ydb_go_sdk.Driver, query string) {
+	foo := func(ctx context.Context, session ydb_table.Session) (err error) {
 		return session.ExecuteSchemeQuery(ctx, query)
 	}
 	require.NoError(t, ydbConn.Table().Do(context.Background(), foo))
 }
 
-func execQuery(t *testing.T, ydbConn *ydb3.Driver, query string) {
-	foo := func(ctx context.Context, session table.Session) error {
-		writeTx := table.TxControl(table.BeginTx(table.WithSerializableReadWrite()), table.CommitTx())
+func execQuery(t *testing.T, ydbConn *ydb_go_sdk.Driver, query string) {
+	foo := func(ctx context.Context, session ydb_table.Session) error {
+		writeTx := ydb_table.TxControl(ydb_table.BeginTx(ydb_table.WithSerializableReadWrite()), ydb_table.CommitTx())
 		_, _, err := session.Execute(ctx, writeTx, query, nil)
 		return err
 	}
@@ -39,12 +39,12 @@ func execQuery(t *testing.T, ydbConn *ydb3.Driver, query string) {
 }
 
 func TestGroup(t *testing.T) {
-	src := &ydb.YdbSource{
+	src := &provider_ydb.YdbSource{
 		Token:    model.SecretString(os.Getenv("YDB_TOKEN")),
 		Database: helpers.GetEnvOfFail(t, "YDB_DATABASE"),
 		Instance: helpers.GetEnvOfFail(t, "YDB_ENDPOINT"),
 	}
-	dst := yt_provider.NewYtDestinationV1(yt_provider.YtDestination{
+	dst := provider_yt.NewYtDestinationV1(provider_yt.YtDestination{
 		Path:          "//home/cdc/test/pg2yt_e2e",
 		Cluster:       os.Getenv("YT_PROXY"),
 		CellBundle:    "default",
@@ -93,12 +93,12 @@ func TestGroup(t *testing.T) {
 	})
 
 	t.Run("canon", func(t *testing.T) {
-		ytStorageParams := yt_provider.YtStorageParams{
+		ytStorageParams := provider_yt.YtStorageParams{
 			Token:   dst.Token(),
 			Cluster: os.Getenv("YT_PROXY"),
 			Path:    dst.Path(),
 		}
-		st, err := ytstorage.NewStorage(&ytStorageParams)
+		st, err := yt_storage.NewStorage(&ytStorageParams)
 		require.NoError(t, err)
 
 		var data []helpers.CanonTypedChangeItem

@@ -11,9 +11,9 @@ import (
 	"github.com/transferia/transferia/library/go/test/yatest"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	debeziumcommon "github.com/transferia/transferia/pkg/debezium/common"
-	"github.com/transferia/transferia/pkg/debezium/testutil"
-	"github.com/transferia/transferia/pkg/providers/ydb"
+	debezium_common "github.com/transferia/transferia/pkg/debezium/common"
+	debezium_testutil "github.com/transferia/transferia/pkg/debezium/testutil"
+	provider_ydb "github.com/transferia/transferia/pkg/providers/ydb"
 	"github.com/transferia/transferia/tests/helpers"
 	mocksink "github.com/transferia/transferia/tests/helpers/mock_sink"
 )
@@ -21,7 +21,7 @@ import (
 //---------------------------------------------------------------------------------------------------------------------
 
 func TestGroup(t *testing.T) {
-	src := &ydb.YdbSource{
+	src := &provider_ydb.YdbSource{
 		Token:              model.SecretString(os.Getenv("YDB_TOKEN")),
 		Database:           helpers.GetEnvOfFail(t, "YDB_DATABASE"),
 		Instance:           helpers.GetEnvOfFail(t, "YDB_ENDPOINT"),
@@ -44,13 +44,13 @@ func TestGroup(t *testing.T) {
 	// init
 
 	t.Run("init source database", func(t *testing.T) {
-		Target := &ydb.YdbDestination{
+		Target := &provider_ydb.YdbDestination{
 			Database: src.Database,
 			Token:    src.Token,
 			Instance: src.Instance,
 		}
 		Target.WithDefaults()
-		sinker, err := ydb.NewSinker(logger.Log, Target, solomon.NewRegistry(solomon.NewRegistryOpts()))
+		sinker, err := provider_ydb.NewSinker(logger.Log, Target, solomon.NewRegistry(solomon.NewRegistryOpts()))
 		require.NoError(t, err)
 
 		currChangeItem := helpers.YDBInitChangeItem("dectest/timmyb32r-test")
@@ -87,9 +87,9 @@ func TestGroup(t *testing.T) {
 
 	logger.Log.Infof("changeItem dump: %s\n", changeItems[2].ToJSONString())
 
-	testutil.CheckCanonizedDebeziumEvent(t, &changeItems[2], "fullfillment", "pguser", "pg", true, []debeziumcommon.KeyValue{{DebeziumKey: string(canonizedDebeziumKeyArr), DebeziumVal: &canonizedDebeziumVal}})
+	debezium_testutil.CheckCanonizedDebeziumEvent(t, &changeItems[2], "fullfillment", "pguser", "pg", true, []debezium_common.KeyValue{{DebeziumKey: string(canonizedDebeziumKeyArr), DebeziumVal: &canonizedDebeziumVal}})
 	changeItemBuf, err := json.Marshal(changeItems[2])
 	require.NoError(t, err)
 	changeItemDeserialized := helpers.UnmarshalChangeItem(t, changeItemBuf)
-	testutil.CheckCanonizedDebeziumEvent(t, changeItemDeserialized, "fullfillment", "pguser", "pg", true, []debeziumcommon.KeyValue{{DebeziumKey: string(canonizedDebeziumKeyArr), DebeziumVal: &canonizedDebeziumVal}})
+	debezium_testutil.CheckCanonizedDebeziumEvent(t, changeItemDeserialized, "fullfillment", "pguser", "pg", true, []debezium_common.KeyValue{{DebeziumKey: string(canonizedDebeziumKeyArr), DebeziumVal: &canonizedDebeziumVal}})
 }

@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/spf13/cobra"
-	"github.com/transferia/transferia/cmd/trcli/config"
+	trcli_config "github.com/transferia/transferia/cmd/trcli/config"
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
@@ -26,7 +26,7 @@ func CheckCommand() *cobra.Command {
 
 func check(transferYaml *string) func(cmd *cobra.Command, args []string) error {
 	return func(cmd *cobra.Command, args []string) error {
-		transfer, err := config.TransferFromYaml(transferYaml)
+		transfer, err := trcli_config.TransferFromYaml(transferYaml)
 		if err != nil {
 			return xerrors.Errorf("unable to load transfer: %w", err)
 		}

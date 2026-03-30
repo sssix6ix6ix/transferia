@@ -6,7 +6,7 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/connection/clickhouse"
+	conn_clickhouse "github.com/transferia/transferia/pkg/connection/clickhouse"
 )
 
 const (
@@ -37,7 +37,7 @@ type ChSinkServerParams interface {
 	// Host
 	// filled by SinkCluster for SinkServer.
 	// the only field, which is absent in the model.
-	Host() *clickhouse.Host
+	Host() *conn_clickhouse.Host
 	PemFileContent() string
 	SSLEnabled() bool
 	// TTL
@@ -97,7 +97,7 @@ type ChSinkClusterParams interface {
 	// for every AltHost, sinkCluster has special sinkServer
 	//
 	// it's very ad-hoc field - every sinker rewrites it as it want
-	AltHosts() []*clickhouse.Host
+	AltHosts() []*conn_clickhouse.Host
 
 	// ShardByTransferID
 	// TODO(@timmyb32r) - is it meaningful?) highly likely something wrong with this option.
@@ -109,7 +109,7 @@ type ChSinkClusterParams interface {
 
 	// technical needs
 
-	MakeChildServerParams(hosts *clickhouse.Host) ChSinkServerParams
+	MakeChildServerParams(hosts *conn_clickhouse.Host) ChSinkServerParams
 }
 
 type ChSinkClusterParamsWrapper struct {
@@ -157,15 +157,15 @@ type ChSinkParams interface {
 	// TODO - I think we don't need this (bcs of TTL in schema), and if need - we can make it by some universal mechanism
 	Rotation() *model.RotatorConfig
 
-	Shards() map[string][]*clickhouse.Host // shardName->[host]. It's used in sink.go to slice on shards
+	Shards() map[string][]*conn_clickhouse.Host // shardName->[host]. It's used in sink.go to slice on shards
 
 	// ColumnToShardIndex returns a user-provided exact mapping of shard key to shard name
 	ColumnToShardName() map[string]string
 
 	// technical needs
 
-	MakeChildShardParams(altHosts []*clickhouse.Host) ChSinkShardParams
-	SetShards(shards map[string][]*clickhouse.Host)
+	MakeChildShardParams(altHosts []*conn_clickhouse.Host) ChSinkShardParams
+	SetShards(shards map[string][]*conn_clickhouse.Host)
 }
 
 type ChSinkParamsWrapper struct {

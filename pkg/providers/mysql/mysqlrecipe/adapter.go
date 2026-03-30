@@ -5,17 +5,17 @@ import (
 	"os"
 	"strconv"
 
-	default_mysql "github.com/go-sql-driver/mysql"
+	mysql_driver2 "github.com/go-sql-driver/mysql"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/connection"
-	"github.com/transferia/transferia/pkg/providers/mysql"
+	provider_mysql "github.com/transferia/transferia/pkg/providers/mysql"
 )
 
-func RecipeMysqlSource() *mysql.MysqlSource {
+func RecipeMysqlSource() *provider_mysql.MysqlSource {
 	PrepareContainer(context.Background())
 	port, _ := strconv.Atoi(os.Getenv("RECIPE_MYSQL_PORT"))
-	src := new(mysql.MysqlSource)
+	src := new(provider_mysql.MysqlSource)
 	src.Host = os.Getenv("RECIPE_MYSQL_HOST")
 	src.User = os.Getenv("RECIPE_MYSQL_USER")
 	src.Password = model.SecretString(os.Getenv("RECIPE_MYSQL_PASSWORD"))
@@ -52,7 +52,7 @@ func WithConnectionID(connID string) RecipeOption {
 	}
 }
 
-func RecipeMysqlTarget(options ...RecipeOption) *mysql.MysqlDestination {
+func RecipeMysqlTarget(options ...RecipeOption) *provider_mysql.MysqlDestination {
 	params := newRecipeParams()
 	for _, option := range options {
 		option(params)
@@ -60,7 +60,7 @@ func RecipeMysqlTarget(options ...RecipeOption) *mysql.MysqlDestination {
 
 	PrepareContainer(context.Background())
 	port, _ := strconv.Atoi(os.Getenv(params.prefix + "RECIPE_MYSQL_PORT"))
-	v := new(mysql.MysqlDestination)
+	v := new(provider_mysql.MysqlDestination)
 	v.Host = os.Getenv(params.prefix + "RECIPE_MYSQL_HOST")
 	v.User = os.Getenv(params.prefix + "RECIPE_MYSQL_USER")
 	v.Password = model.SecretString(os.Getenv(params.prefix + "RECIPE_MYSQL_PASSWORD"))
@@ -72,10 +72,10 @@ func RecipeMysqlTarget(options ...RecipeOption) *mysql.MysqlDestination {
 	return v
 }
 
-func RecipeMysqlSourceWithConnection(connID string) (*mysql.MysqlSource, *connection.ConnectionMySQL) {
+func RecipeMysqlSourceWithConnection(connID string) (*provider_mysql.MysqlSource, *connection.ConnectionMySQL) {
 	port, _ := strconv.Atoi(os.Getenv("RECIPE_MYSQL_PORT"))
 	database := os.Getenv("RECIPE_MYSQL_SOURCE_DATABASE")
-	src := new(mysql.MysqlSource)
+	src := new(provider_mysql.MysqlSource)
 	src.ServerID = 1
 	src.Database = database
 	src.ConnectionID = connID
@@ -85,14 +85,14 @@ func RecipeMysqlSourceWithConnection(connID string) (*mysql.MysqlSource, *connec
 	return src, managedConnection
 }
 
-func RecipeMysqlTargetWithConnection(connID string, options ...RecipeOption) (*mysql.MysqlDestination, *connection.ConnectionMySQL) {
+func RecipeMysqlTargetWithConnection(connID string, options ...RecipeOption) (*provider_mysql.MysqlDestination, *connection.ConnectionMySQL) {
 	params := newRecipeParams()
 	for _, option := range options {
 		option(params)
 	}
 	port, _ := strconv.Atoi(os.Getenv(params.prefix + "RECIPE_MYSQL_PORT"))
 	database := os.Getenv(params.prefix + "RECIPE_MYSQL_TARGET_DATABASE")
-	v := new(mysql.MysqlDestination)
+	v := new(provider_mysql.MysqlDestination)
 	v.SkipKeyChecks = false
 	v.Database = database
 	v.ConnectionID = connID
@@ -117,13 +117,13 @@ func ManagedConnection(port int, host, dbName, user, password string) *connectio
 	}
 }
 
-func WithMysqlInclude(src *mysql.MysqlSource, regex []string) *mysql.MysqlSource {
+func WithMysqlInclude(src *provider_mysql.MysqlSource, regex []string) *provider_mysql.MysqlSource {
 	src.IncludeTableRegex = regex
 	return src
 }
 
-func Exec(query string, connectionParams *mysql.ConnectionParams) error {
-	conn, err := mysql.Connect(connectionParams, func(config *default_mysql.Config) error {
+func Exec(query string, connectionParams *provider_mysql.ConnectionParams) error {
+	conn, err := provider_mysql.Connect(connectionParams, func(config *mysql_driver2.Config) error {
 		config.MultiStatements = true
 		return nil
 	})

@@ -11,8 +11,8 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/util/castx"
-	"github.com/ydb-platform/ydb-go-sdk/v3"
-	"github.com/ydb-platform/ydb-go-sdk/v3/table"
+	ydb_go_sdk "github.com/ydb-platform/ydb-go-sdk/v3"
+	ydb_table "github.com/ydb-platform/ydb-go-sdk/v3/table"
 	"github.com/ydb-platform/ydb-go-sdk/v3/topic/topicoptions"
 	"github.com/ydb-platform/ydb-go-sdk/v3/topic/topictypes"
 )
@@ -25,20 +25,20 @@ const (
 	ydbV1 = "--!syntax_v1\n"
 )
 
-func execQuery(ctx context.Context, ydbClient *ydb.Driver, query string) error {
-	err := ydbClient.Table().Do(ctx, func(ctx context.Context, s table.Session) error {
+func execQuery(ctx context.Context, ydbClient *ydb_go_sdk.Driver, query string) error {
+	err := ydbClient.Table().Do(ctx, func(ctx context.Context, s ydb_table.Session) error {
 		err := s.ExecuteSchemeQuery(ctx, query)
 		if err != nil {
 			return xerrors.Errorf("failed to execute changefeed query '%s': %w", query, err)
 		}
 		return nil
-	}, table.WithIdempotent())
+	}, ydb_table.WithIdempotent())
 	if err != nil {
 		return xerrors.Errorf("failed to modify changefeed: %w", err)
 	}
 	return nil
 }
-func dropChangeFeedIfExistsOneTable(ctx context.Context, ydbClient *ydb.Driver, tablePath, transferID string) (deleted bool, err error) {
+func dropChangeFeedIfExistsOneTable(ctx context.Context, ydbClient *ydb_go_sdk.Driver, tablePath, transferID string) (deleted bool, err error) {
 	query := fmt.Sprintf(ydbV1+"ALTER TABLE `%s` DROP CHANGEFEED %s", tablePath, transferID)
 	err = execQuery(ctx, ydbClient, query)
 	if err != nil {
@@ -50,7 +50,7 @@ func dropChangeFeedIfExistsOneTable(ctx context.Context, ydbClient *ydb.Driver, 
 	}
 	return true, nil
 }
-func createChangeFeedOneTable(ctx context.Context, ydbClient *ydb.Driver, tablePath, transferID string, cfg *YdbSource) error {
+func createChangeFeedOneTable(ctx context.Context, ydbClient *ydb_go_sdk.Driver, tablePath, transferID string, cfg *YdbSource) error {
 	autoPartitioningStr := ", TOPIC_AUTO_PARTITIONING = 'ENABLED'"
 	if err := createChangeFeedWithAutoPartitioning(ctx, ydbClient, autoPartitioningStr, tablePath, transferID, cfg); err == nil {
 		logger.Log.Infof("changefeed created with auto partitioning for table %s", tablePath)
@@ -61,7 +61,7 @@ func createChangeFeedOneTable(ctx context.Context, ydbClient *ydb.Driver, tableP
 	logger.Log.Infof("trying to create changefeed without auto partitioning for table %s", tablePath)
 	return createChangeFeedWithAutoPartitioning(ctx, ydbClient, "", tablePath, transferID, cfg)
 }
-func createChangeFeedWithAutoPartitioning(ctx context.Context, ydbClient *ydb.Driver, autoPartitioningStr string, tablePath, transferID string, cfg *YdbSource) error {
+func createChangeFeedWithAutoPartitioning(ctx context.Context, ydbClient *ydb_go_sdk.Driver, autoPartitioningStr string, tablePath, transferID string, cfg *YdbSource) error {
 	queryParams := fmt.Sprintf("FORMAT = 'JSON', MODE = '%s'%s", string(cfg.ChangeFeedMode), autoPartitioningStr)
 	if period := cfg.ChangeFeedRetentionPeriod; period != nil {
 		asIso, err := castx.DurationToIso8601(*period)
@@ -89,7 +89,7 @@ func createChangeFeedWithAutoPartitioning(ctx context.Context, ydbClient *ydb.Dr
 
 // checkChangeFeedConsumerOnline
 // with this method we identify changefeed is active if our system consumer is attached to it as well
-func checkChangeFeedConsumerOnline(ctx context.Context, ydbClient *ydb.Driver, tablePath, transferID string) (bool, error) {
+func checkChangeFeedConsumerOnline(ctx context.Context, ydbClient *ydb_go_sdk.Driver, tablePath, transferID string) (bool, error) {
 	topicPath := makeChangeFeedPath(tablePath, transferID)
 	descr, err := ydbClient.Topic().Describe(ctx, topicPath)
 	if err != nil {

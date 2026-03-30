@@ -10,7 +10,7 @@ import (
 	"github.com/transferia/transferia/pkg/abstract/typesystem"
 	"github.com/transferia/transferia/pkg/stats"
 	"go.ytsaurus.tech/library/go/core/log"
-	"golang.org/x/exp/slices"
+	xslices "golang.org/x/exp/slices"
 )
 
 func SourceFallbacks(version int, typ model.EndpointParams, lgr log.Logger, stat *stats.FallbackStats) abstract.SinkOption {
@@ -58,7 +58,7 @@ func prepareFallbacker(version int, typ model.EndpointParams, registry []typesys
 		return nil
 	}
 
-	slices.SortFunc(applicableFallbacks, func(a, b typesystem.Fallback) int {
+	xslices.SortFunc(applicableFallbacks, func(a, b typesystem.Fallback) int {
 		if a.To > b.To {
 			return -1
 		} else if a.To < b.To {

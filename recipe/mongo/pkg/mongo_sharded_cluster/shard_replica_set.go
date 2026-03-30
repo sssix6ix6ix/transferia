@@ -8,7 +8,7 @@ import (
 	"github.com/transferia/transferia/pkg/util"
 	"github.com/transferia/transferia/recipe/mongo/pkg/mongo_sharded_config"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
+	mongo_driver "go.mongodb.org/mongo-driver/mongo"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
@@ -60,7 +60,7 @@ func LaunchMongoShard(
 		return ShardReplicaSet{}, xerrors.Errorf("no mongod hosts to connect to")
 	}
 	mongod := result.MongoDaemons[0]
-	err = mongod.WithRootConnection(func(client *mongo.Client) error {
+	err = mongod.WithRootConnection(func(client *mongo_driver.Client) error {
 		err := result.initShardReplicaSet(client)
 		if err != nil {
 			return xerrors.Errorf("cannot init shard replica set: %w", err)
@@ -75,7 +75,7 @@ func LaunchMongoShard(
 	return result, nil
 }
 
-func (c *ShardReplicaSet) initShardReplicaSet(client *mongo.Client) error {
+func (c *ShardReplicaSet) initShardReplicaSet(client *mongo_driver.Client) error {
 	// https://www.mongodb.com/docs/manual/reference/command/replSetInitiate/#mongodb-dbcommand-dbcmd.replSetInitiate
 	// db.runCommand({replSetInitiate: {_id: "rs01", members: [{_id: 0, host: "localhost:56784"}, {_id: 1, host: "localhost:56785"}]}})
 	var members bson.A

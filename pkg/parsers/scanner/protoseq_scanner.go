@@ -6,7 +6,7 @@ import (
 	"io"
 
 	"github.com/transferia/transferia/library/go/core/xerrors"
-	"golang.org/x/exp/slices"
+	xslices "golang.org/x/exp/slices"
 )
 
 var (
@@ -78,7 +78,7 @@ func (s *ProtoseqScanner) Scan() bool {
 		return true
 	}
 
-	if !slices.Equal(s.data[size:frameLen], s.frameSyncrodata) {
+	if !xslices.Equal(s.data[size:frameLen], s.frameSyncrodata) {
 		return s.handleCurrentCorrupted()
 	}
 

@@ -2,7 +2,7 @@ package types
 
 import (
 	"database/sql"
-	"database/sql/driver"
+	sql_driver "database/sql/driver"
 	"regexp"
 	"time"
 
@@ -18,7 +18,7 @@ type Temporal struct {
 	raw      string
 }
 
-var _ driver.Valuer = (*Temporal)(nil)
+var _ sql_driver.Valuer = (*Temporal)(nil)
 var _ sql.Scanner = (*Temporal)(nil)
 var _ abstract.HomoValuer = (*Temporal)(nil)
 
@@ -53,7 +53,7 @@ func (t *Temporal) Scan(src any) error { // Implements sql.Scanner
 	return nil
 }
 
-func (t *Temporal) Value() (driver.Value, error) {
+func (t *Temporal) Value() (sql_driver.Value, error) {
 	if t.isNull {
 		return nil, nil
 	}

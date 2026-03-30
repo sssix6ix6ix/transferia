@@ -8,7 +8,7 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/util"
 	"go.ytsaurus.tech/library/go/core/log"
-	"golang.org/x/exp/maps"
+	xmaps "golang.org/x/exp/maps"
 )
 
 type IncrementalAsyncSink struct {
@@ -164,7 +164,7 @@ func (s *IncrementalAsyncSink) AsyncPush(items []abstract.ChangeItem) chan error
 }
 
 func (s *IncrementalAsyncSink) pushChunk() error {
-	if err := s.outputPusher(maps.Values(s.chunk)); err != nil {
+	if err := s.outputPusher(xmaps.Values(s.chunk)); err != nil {
 		return xerrors.Errorf("failed to push chunk: %w", err)
 	}
 

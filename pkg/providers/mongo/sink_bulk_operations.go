@@ -8,13 +8,13 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/errors/coded"
-	"github.com/transferia/transferia/pkg/errors/codes"
+	error_codes "github.com/transferia/transferia/pkg/errors/codes"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	mongo_driver "go.mongodb.org/mongo-driver/mongo"
+	mongo_options "go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func (s *sinker) splitItemsToBulkOperations(ctx context.Context, collID Namespace, items []abstract.ChangeItem) ([][]mongo.WriteModel, error) {
+func (s *sinker) splitItemsToBulkOperations(ctx context.Context, collID Namespace, items []abstract.ChangeItem) ([][]mongo_driver.WriteModel, error) {
 	startPrepare := time.Now()
 
 	docIDs, err := extractDocumentIDs(items)
@@ -72,14 +72,14 @@ func extractDocumentIDs(items []abstract.ChangeItem) ([]documentID, error) {
 	return allDocumentIDs, nil
 }
 
-func (s *sinker) bulkWrite(ctx context.Context, collID Namespace, bulk []mongo.WriteModel) error {
+func (s *sinker) bulkWrite(ctx context.Context, collID Namespace, bulk []mongo_driver.WriteModel) error {
 	coll := s.client.Database(collID.Database).Collection(collID.Collection)
-	opts := options.BulkWrite().SetOrdered(false)
+	opts := mongo_options.BulkWrite().SetOrdered(false)
 
-	serialPush := func() (mongo.BulkWriteResult, error) {
-		totalResult := mongo.BulkWriteResult{}
+	serialPush := func() (mongo_driver.BulkWriteResult, error) {
+		totalResult := mongo_driver.BulkWriteResult{}
 		for i, m := range bulk {
-			iResult, iErr := coll.BulkWrite(ctx, []mongo.WriteModel{m}, opts)
+			iResult, iErr := coll.BulkWrite(ctx, []mongo_driver.WriteModel{m}, opts)
 			if iErr != nil {
 				return totalResult, xerrors.Errorf("failed push %v-th document: %w", i, iErr)
 			}
@@ -105,9 +105,9 @@ func (s *sinker) bulkWrite(ctx context.Context, collID Namespace, bulk []mongo.W
 		} else if strings.Contains(err.Error(), "BSONObjectTooLarge") || strings.Contains(err.Error(), "Tried to create string longer than 16MB") {
 			// Fallback by message
 			if strings.Contains(err.Error(), "Tried to create string longer than 16MB") {
-				return coded.Errorf(codes.MongoCollectionKeyTooLarge, "bulk write failed for %v: %w", collID.GetFullName(), err)
+				return coded.Errorf(error_codes.MongoCollectionKeyTooLarge, "bulk write failed for %v: %w", collID.GetFullName(), err)
 			}
-			return coded.Errorf(codes.MongoBSONObjectTooLarge, "bulk write failed for %v: %w", collID.GetFullName(), err)
+			return coded.Errorf(error_codes.MongoBSONObjectTooLarge, "bulk write failed for %v: %w", collID.GetFullName(), err)
 		} else {
 			return err
 		}
@@ -116,7 +116,7 @@ func (s *sinker) bulkWrite(ctx context.Context, collID Namespace, bulk []mongo.W
 	return nil
 }
 
-func updateBulkWriteResult(totalResult *mongo.BulkWriteResult, partialResult mongo.BulkWriteResult) {
+func updateBulkWriteResult(totalResult *mongo_driver.BulkWriteResult, partialResult mongo_driver.BulkWriteResult) {
 	totalResult.InsertedCount += partialResult.InsertedCount
 	totalResult.MatchedCount += partialResult.MatchedCount
 	totalResult.ModifiedCount += partialResult.ModifiedCount
@@ -124,7 +124,7 @@ func updateBulkWriteResult(totalResult *mongo.BulkWriteResult, partialResult mon
 	totalResult.UpsertedCount += partialResult.UpsertedCount
 }
 
-func (s *sinker) setBulkWriteMetrics(collID Namespace, duration time.Duration, docsCount int, result *mongo.BulkWriteResult) {
+func (s *sinker) setBulkWriteMetrics(collID Namespace, duration time.Duration, docsCount int, result *mongo_driver.BulkWriteResult) {
 	s.metrics.RecordDuration("bulkWrite", duration)
 	s.metrics.Table(collID.Collection, "rows", docsCount)
 	s.metrics.Table(collID.Collection, "deleted_rows", int(result.DeletedCount))
@@ -136,7 +136,7 @@ func (s *sinker) setBulkWriteMetrics(collID Namespace, duration time.Duration, d
 		result.UpsertedCount, result.MatchedCount, result.DeletedCount)
 }
 
-func (s *sinker) makeWriteModel(chgItem *abstract.ChangeItem, id documentID, docKey bson.M, shardKey *shardedCollectionSinkContext) (mongo.WriteModel, error) {
+func (s *sinker) makeWriteModel(chgItem *abstract.ChangeItem, id documentID, docKey bson.M, shardKey *shardedCollectionSinkContext) (mongo_driver.WriteModel, error) {
 	switch chgItem.Kind {
 	case abstract.InsertKind, abstract.UpdateKind:
 		filter := makeDocumentFilter(id.Raw, docKey, shardKey.KeyFields())

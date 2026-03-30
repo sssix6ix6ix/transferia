@@ -3,11 +3,11 @@ package ytdict
 import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	"github.com/transferia/transferia/pkg/providers/yt/provider/table"
+	yt_table "github.com/transferia/transferia/pkg/providers/yt/provider/table"
 	"github.com/transferia/transferia/pkg/transformer"
-	"github.com/transferia/transferia/pkg/transformer/registry/filter"
+	transformer_filter "github.com/transferia/transferia/pkg/transformer/registry/filter"
 	"go.ytsaurus.tech/library/go/core/log"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 const (
@@ -24,16 +24,16 @@ func init() {
 }
 
 type Config struct {
-	Tables filter.Tables `json:"tables"`
+	Tables transformer_filter.Tables `json:"tables"`
 }
 
 type YtDictTransformer struct {
-	Tables filter.Filter
+	Tables transformer_filter.Filter
 	Logger log.Logger
 }
 
 func NewYtDictTransformer(cfg Config, lgr log.Logger) (*YtDictTransformer, error) {
-	tables, err := filter.NewFilter(cfg.Tables.IncludeTables, cfg.Tables.ExcludeTables)
+	tables, err := transformer_filter.NewFilter(cfg.Tables.IncludeTables, cfg.Tables.ExcludeTables)
 	if err != nil {
 		return nil, xerrors.Errorf("unable to init table filter: %w", err)
 	}
@@ -45,7 +45,7 @@ func (t *YtDictTransformer) Type() abstract.TransformerType {
 }
 
 func (t *YtDictTransformer) Suitable(table abstract.TableID, schema *abstract.TableSchema) bool {
-	return filter.MatchAnyTableNameVariant(t.Tables, table)
+	return transformer_filter.MatchAnyTableNameVariant(t.Tables, table)
 }
 
 func (t *YtDictTransformer) ResultSchema(original *abstract.TableSchema) (*abstract.TableSchema, error) {
@@ -61,7 +61,7 @@ func (t *YtDictTransformer) Apply(input []abstract.ChangeItem) abstract.Transfor
 	errors := make([]abstract.TransformerError, 0)
 
 	for _, item := range input {
-		isNameMatching := filter.MatchAnyTableNameVariant(t.Tables, item.TableID())
+		isNameMatching := transformer_filter.MatchAnyTableNameVariant(t.Tables, item.TableID())
 		if !isNameMatching || abstract.IsSystemTable(item.TableID().Name) {
 			transformed = append(transformed, item)
 			continue
@@ -82,11 +82,11 @@ func (t *YtDictTransformer) processChangeItem(item abstract.ChangeItem) (abstrac
 	colNameToIndex := abstract.MakeMapColNameToIndex(columns)
 	for i, columnName := range item.ColumnNames {
 		column := columns[colNameToIndex[columnName]]
-		ytType, found := column.Properties[table.YtOriginalTypePropertyKey]
+		ytType, found := column.Properties[yt_table.YtOriginalTypePropertyKey]
 		if !found || item.ColumnValues[i] == nil {
 			continue
 		}
-		complexType, ok := ytType.(schema.ComplexType)
+		complexType, ok := ytType.(ytschema.ComplexType)
 		if !ok {
 			return item, xerrors.Errorf("unable to get complex type for column '%s', got '%T'", columnName, ytType)
 		}
@@ -99,54 +99,54 @@ func (t *YtDictTransformer) processChangeItem(item abstract.ChangeItem) (abstrac
 	return item, nil
 }
 
-func (t *YtDictTransformer) processAnything(val any, complexType schema.ComplexType) (any, error) {
+func (t *YtDictTransformer) processAnything(val any, complexType ytschema.ComplexType) (any, error) {
 	switch valSchema := complexType.(type) {
-	case schema.Type, schema.Decimal:
+	case ytschema.Type, ytschema.Decimal:
 		return val, nil
 
-	case schema.Optional:
+	case ytschema.Optional:
 		res, err := t.processAnything(val, valSchema.Item)
 		if err != nil {
 			return nil, xerrors.Errorf("unable to process optional: %w", err)
 		}
 		return res, nil
 
-	case schema.Tagged:
+	case ytschema.Tagged:
 		res, err := t.processAnything(val, valSchema.Item)
 		if err != nil {
 			return nil, xerrors.Errorf("unable to process tagged: %w", err)
 		}
 		return res, nil
 
-	case schema.List:
+	case ytschema.List:
 		res, err := t.processList(val, valSchema)
 		if err != nil {
 			return nil, xerrors.Errorf("unable to process list: %w", err)
 		}
 		return res, nil
 
-	case schema.Tuple:
+	case ytschema.Tuple:
 		res, err := t.processTuple(val, valSchema)
 		if err != nil {
 			return nil, xerrors.Errorf("unable to process tuple: %w", err)
 		}
 		return res, nil
 
-	case schema.Struct:
+	case ytschema.Struct:
 		res, err := t.processStruct(val, valSchema)
 		if err != nil {
 			return nil, xerrors.Errorf("unable to process struct: %w", err)
 		}
 		return res, nil
 
-	case schema.Variant:
+	case ytschema.Variant:
 		res, err := t.processVariant(val, valSchema)
 		if err != nil {
 			return nil, xerrors.Errorf("unable to process variant: %w", err)
 		}
 		return res, nil
 
-	case schema.Dict:
+	case ytschema.Dict:
 		res, err := t.processDict(val, valSchema)
 		if err != nil {
 			return nil, xerrors.Errorf("unable to process dict: %w", err)
@@ -158,8 +158,8 @@ func (t *YtDictTransformer) processAnything(val any, complexType schema.ComplexT
 }
 
 // processList iterates over list and applies transformation to every element of it.
-func (t *YtDictTransformer) processList(val any, valSchema schema.List) (any, error) {
-	if _, ok := valSchema.Item.(schema.Type); ok {
+func (t *YtDictTransformer) processList(val any, valSchema ytschema.List) (any, error) {
+	if _, ok := valSchema.Item.(ytschema.Type); ok {
 		return val, nil // List of simple types, it is already stored as []type.
 	}
 	list, ok := val.([]any)
@@ -177,7 +177,7 @@ func (t *YtDictTransformer) processList(val any, valSchema schema.List) (any, er
 }
 
 // processList iterates over tuple and applies transformation to every element of it.
-func (t *YtDictTransformer) processTuple(val any, valSchema schema.Tuple) (any, error) {
+func (t *YtDictTransformer) processTuple(val any, valSchema ytschema.Tuple) (any, error) {
 	tuple, ok := val.([]any)
 	if !ok {
 		return nil, xerrors.Errorf("unable to cast val to []any, got '%T'", val)
@@ -193,7 +193,7 @@ func (t *YtDictTransformer) processTuple(val any, valSchema schema.Tuple) (any, 
 }
 
 // processStruct iterates over struct's fields and applies transformation to every element of it.
-func (t *YtDictTransformer) processStruct(val any, valSchema schema.Struct) (any, error) {
+func (t *YtDictTransformer) processStruct(val any, valSchema ytschema.Struct) (any, error) {
 	structure, ok := val.(map[string]any)
 	if !ok {
 		return nil, xerrors.Errorf("unable to cast value to map[string]any, got '%T'", val)
@@ -209,7 +209,7 @@ func (t *YtDictTransformer) processStruct(val any, valSchema schema.Struct) (any
 }
 
 // processDict iterates over dict's key-value pairs and applies transformation to each of it.
-func (t *YtDictTransformer) processDict(val any, valSchema schema.Dict) (any, error) {
+func (t *YtDictTransformer) processDict(val any, valSchema ytschema.Dict) (any, error) {
 	// YT go SDK returns dict as []any ~ [[key1, value1], [key2, value2]],
 	// transformer change it to map[keyType]any ~ {key1: value1, key2: value2}.
 	dict, ok := val.([]any)
@@ -239,7 +239,7 @@ func (t *YtDictTransformer) processDict(val any, valSchema schema.Dict) (any, er
 }
 
 // processVariant returns schema of  and applies transformation to every element of it.
-func (t *YtDictTransformer) processVariant(val any, valSchema schema.Variant) (any, error) {
+func (t *YtDictTransformer) processVariant(val any, valSchema ytschema.Variant) (any, error) {
 	variant, ok := val.([]any)
 	if !ok {
 		return nil, xerrors.Errorf("unable to cast variant value to []any, got '%T'", val)
@@ -261,7 +261,7 @@ func (t *YtDictTransformer) processVariant(val any, valSchema schema.Variant) (a
 }
 
 // selectedVariantSchema extracts ComplexType of selected by user variant.
-func selectedVariantSchema(key any, valSchema schema.Variant) (schema.ComplexType, error) {
+func selectedVariantSchema(key any, valSchema ytschema.Variant) (ytschema.ComplexType, error) {
 	switch key := key.(type) {
 	case int64: // Unnamed variant.
 		if valSchema.Elements == nil {

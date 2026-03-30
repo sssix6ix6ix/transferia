@@ -2,7 +2,7 @@ package kafka
 
 import (
 	"github.com/transferia/transferia/pkg/abstract/typesystem"
-	jsonengine "github.com/transferia/transferia/pkg/parsers/registry/json/engine"
+	json_engine "github.com/transferia/transferia/pkg/parsers/registry/json/engine"
 )
 
 func init() {
@@ -10,7 +10,7 @@ func init() {
 		return typesystem.Fallback{
 			To:       4,
 			Picker:   typesystem.ProviderType(ProviderType),
-			Function: jsonengine.GenericParserTimestampFallback,
+			Function: json_engine.GenericParserTimestampFallback,
 		}
 	})
 }

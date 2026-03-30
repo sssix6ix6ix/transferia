@@ -1,17 +1,17 @@
 package stats
 
-import "github.com/transferia/transferia/library/go/core/metrics"
+import core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 
 type NotificationStats struct {
-	registry metrics.Registry
+	registry core_metrics.Registry
 
 	// Sent is the number of notifications sent successfully
-	Sent metrics.Counter
+	Sent core_metrics.Counter
 	// Errors is the number of errors
-	Errors metrics.Counter
+	Errors core_metrics.Counter
 }
 
-func NewNotificationStats(registry metrics.Registry) *NotificationStats {
+func NewNotificationStats(registry core_metrics.Registry) *NotificationStats {
 	return &NotificationStats{
 		registry: registry,
 

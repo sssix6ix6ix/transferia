@@ -9,13 +9,13 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/debezium"
-	debeziumcommon "github.com/transferia/transferia/pkg/debezium/common"
-	debeziumparameters "github.com/transferia/transferia/pkg/debezium/parameters"
-	"github.com/transferia/transferia/pkg/providers/mysql"
+	debezium_common "github.com/transferia/transferia/pkg/debezium/common"
+	debezium_parameters "github.com/transferia/transferia/pkg/debezium/parameters"
+	provider_mysql "github.com/transferia/transferia/pkg/providers/mysql"
 	"github.com/transferia/transferia/pkg/providers/mysql/mysqlrecipe"
 	"github.com/transferia/transferia/tests/helpers"
 	"github.com/transferia/transferia/tests/helpers/serde"
-	simple_transformer "github.com/transferia/transferia/tests/helpers/transformer"
+	helpers_transformer "github.com/transferia/transferia/tests/helpers/transformer"
 )
 
 var (
@@ -156,12 +156,12 @@ func TestSnapshotAndIncrement(t *testing.T) {
 	//---
 
 	emitter, err := debezium.NewMessagesEmitter(map[string]string{
-		debeziumparameters.TopicPrefix:      "my_topic",
-		debeziumparameters.AddOriginalTypes: "false",
-		debeziumparameters.SourceType:       "mysql",
+		debezium_parameters.TopicPrefix:      "my_topic",
+		debezium_parameters.AddOriginalTypes: "false",
+		debezium_parameters.SourceType:       "mysql",
 	}, "1.1.2.Final", false, logger.Log)
 	require.NoError(t, err)
-	originalTypes := map[abstract.TableID]map[string]*debeziumcommon.OriginalTypeInfo{
+	originalTypes := map[abstract.TableID]map[string]*debezium_common.OriginalTypeInfo{
 		{Namespace: "", Name: "customers3"}: {
 			"pk":               {OriginalType: "mysql:int(10) unsigned"},
 			"bool1":            {OriginalType: "mysql:tinyint(1)"},
@@ -247,18 +247,18 @@ func TestSnapshotAndIncrement(t *testing.T) {
 	receiver := debezium.NewReceiver(originalTypes, nil)
 
 	transfer := helpers.MakeTransfer(helpers.TransferID, &Source, &Target, abstract.TransferTypeSnapshotAndIncrement)
-	transfer.Src.(*mysql.MysqlSource).PlzNoHomo = true
-	transfer.Src.(*mysql.MysqlSource).AllowDecimalAsFloat = true
-	debeziumSerDeTransformer := simple_transformer.NewSimpleTransformer(t, serde.MakeDebeziumSerDeUdfWithoutCheck(emitter, receiver), serde.AnyTablesUdf)
+	transfer.Src.(*provider_mysql.MysqlSource).PlzNoHomo = true
+	transfer.Src.(*provider_mysql.MysqlSource).AllowDecimalAsFloat = true
+	debeziumSerDeTransformer := helpers_transformer.NewSimpleTransformer(t, serde.MakeDebeziumSerDeUdfWithoutCheck(emitter, receiver), serde.AnyTablesUdf)
 	require.NoError(t, transfer.AddExtraTransformer(debeziumSerDeTransformer))
 	worker := helpers.Activate(t, transfer)
 	defer worker.Close(t)
 
 	//---
 
-	connParams, err := mysql.NewConnectionParams(Source.ToStorageParams())
+	connParams, err := provider_mysql.NewConnectionParams(Source.ToStorageParams())
 	require.NoError(t, err)
-	db, err := mysql.Connect(connParams, nil)
+	db, err := provider_mysql.Connect(connParams, nil)
 	require.NoError(t, err)
 
 	_, err = db.Exec(insertStmt)

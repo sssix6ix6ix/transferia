@@ -15,9 +15,9 @@ import (
 	"github.com/transferia/transferia/pkg/errors/categories"
 	"github.com/transferia/transferia/pkg/middlewares"
 	"github.com/transferia/transferia/pkg/providers"
-	"github.com/transferia/transferia/pkg/providers/postgres"
-	"github.com/transferia/transferia/pkg/sink"
-	"github.com/transferia/transferia/pkg/storage"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
+	"github.com/transferia/transferia/pkg/sink_factory"
+	"github.com/transferia/transferia/pkg/storage_factory"
 	"github.com/transferia/transferia/pkg/transformer"
 )
 
@@ -121,7 +121,7 @@ func SniffSnapshotData(ctx context.Context, tr *abstract.TestResult, transfer *m
 	}
 	tr.Ok(LoadTablesCheckType)
 
-	sourceStorage, err := storage.NewStorage(transfer, coordinator.NewFakeClient(), metrics)
+	sourceStorage, err := storage_factory.NewStorage(transfer, coordinator.NewFakeClient(), metrics)
 	if err != nil {
 		return tr.NotOk(ConfigCheckType, errors.CategorizedErrorf(categories.Source, resolveStorageErrorText, err))
 	}
@@ -229,7 +229,7 @@ func TestEndpoint(ctx context.Context, param *TestEndpointParams, tr *abstract.T
 
 func TestTargetEndpoint(transfer *model.Transfer) error {
 	switch dst := transfer.Dst.(type) {
-	case *postgres.PgDestination:
+	case *provider_postgres.PgDestination:
 		// _ping and other tables created if MaintainTables is set to true
 		dstMaintainTables := dst.MaintainTables
 		dst.MaintainTables = true
@@ -239,7 +239,7 @@ func TestTargetEndpoint(transfer *model.Transfer) error {
 			dst.MaintainTables = dstMaintainTables
 		}()
 	}
-	sink, err := sink.MakeAsyncSink(transfer, new(model.TransferOperation), logger.Log, solomon.NewRegistry(solomon.NewRegistryOpts()), coordinator.NewFakeClient(), middlewares.MakeConfig(middlewares.WithNoData))
+	sink, err := sink_factory.MakeAsyncSink(transfer, new(model.TransferOperation), logger.Log, solomon.NewRegistry(solomon.NewRegistryOpts()), coordinator.NewFakeClient(), middlewares.MakeConfig(middlewares.WithNoData))
 	if err != nil {
 		return xerrors.Errorf("unable to make sinker: %w", err)
 	}

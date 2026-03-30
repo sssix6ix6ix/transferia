@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws/session"
+	aws_session "github.com/aws/aws-sdk-go/aws/session"
 	aws_s3 "github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
 	"github.com/transferia/transferia/library/go/core/xerrors"
@@ -18,26 +18,26 @@ import (
 	"github.com/transferia/transferia/pkg/abstract/changeitem"
 	"github.com/transferia/transferia/pkg/abstract/changeitem/strictify"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/s3"
-	chunk_pusher "github.com/transferia/transferia/pkg/providers/s3/pusher"
-	abstract_reader "github.com/transferia/transferia/pkg/providers/s3/reader"
+	s3_model "github.com/transferia/transferia/pkg/providers/s3/model"
+	s3_pusher "github.com/transferia/transferia/pkg/providers/s3/pusher"
+	s3_reader "github.com/transferia/transferia/pkg/providers/s3/reader"
 	"github.com/transferia/transferia/pkg/providers/s3/reader/s3raw"
 	"github.com/transferia/transferia/pkg/providers/s3/s3util"
 	"github.com/transferia/transferia/pkg/stats"
 	"github.com/transferia/transferia/pkg/util"
 	"go.ytsaurus.tech/library/go/core/log"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 const timeLocalLayout = "02/Jan/2006:15:04:05 -0700"
 
 var (
-	_ abstract_reader.Reader             = (*NginxReader)(nil)
-	_ abstract_reader.RowsCountEstimator = (*NginxReader)(nil)
+	_ s3_reader.Reader             = (*NginxReader)(nil)
+	_ s3_reader.RowsCountEstimator = (*NginxReader)(nil)
 )
 
 func init() {
-	abstract_reader.RegisterReader(model.ParsingFormatNginx, NewNginxReader)
+	s3_reader.RegisterReader(model.ParsingFormatNginx, NewNginxReader)
 }
 
 type NginxReader struct {
@@ -54,7 +54,7 @@ type NginxReader struct {
 	blockSize      int64
 	pathPrefix     string
 	pathPattern    string
-	unparsedPolicy s3.UnparsedPolicy
+	unparsedPolicy s3_model.UnparsedPolicy
 
 	compiledFormat *compiledNginxFormat
 }
@@ -74,14 +74,14 @@ func (r *NginxReader) newS3RawReader(ctx context.Context, filePath string) (s3ra
 	return sr, nil
 }
 
-func (r *NginxReader) Read(ctx context.Context, filePath string, pusher chunk_pusher.Pusher) error {
+func (r *NginxReader) Read(ctx context.Context, filePath string, pusher s3_pusher.Pusher) error {
 	s3RawReader, err := r.newS3RawReader(ctx, filePath)
 	if err != nil {
 		return xerrors.Errorf("unable to open reader: %w", err)
 	}
 
 	lineCounter := uint64(1)
-	chunkReader := abstract_reader.NewChunkReader(s3RawReader, int(r.blockSize), r.logger)
+	chunkReader := s3_reader.NewChunkReader(s3RawReader, int(r.blockSize), r.logger)
 	defer chunkReader.Close()
 
 	for lastRound := false; !lastRound; {
@@ -124,7 +124,7 @@ func (r *NginxReader) Read(ctx context.Context, filePath string, pusher chunk_pu
 					break
 				}
 				// Last chunk: handle as unparsed.
-				unparsedCI, handleErr := abstract_reader.HandleParseError(
+				unparsedCI, handleErr := s3_reader.HandleParseError(
 					r.table, r.unparsedPolicy, filePath, int(lineCounter), err,
 				)
 				if handleErr != nil {
@@ -147,7 +147,7 @@ func (r *NginxReader) Read(ctx context.Context, filePath string, pusher chunk_pu
 
 			ci, err := r.buildCI(fieldValues, filePath, s3RawReader.LastModified(), lineCounter)
 			if err != nil {
-				unparsedCI, handleErr := abstract_reader.HandleParseError(
+				unparsedCI, handleErr := s3_reader.HandleParseError(
 					r.table, r.unparsedPolicy, filePath, int(lineCounter), err,
 				)
 				if handleErr != nil {
@@ -162,7 +162,7 @@ func (r *NginxReader) Read(ctx context.Context, filePath string, pusher chunk_pu
 			buff = append(buff, *ci)
 
 			if len(buff) > r.batchSize {
-				if err := abstract_reader.FlushChunk(ctx, filePath, lineCounter, currentSize, buff, pusher); err != nil {
+				if err := s3_reader.FlushChunk(ctx, filePath, lineCounter, currentSize, buff, pusher); err != nil {
 					return xerrors.Errorf("unable to push nginx batch: %w", err)
 				}
 				currentSize = 0
@@ -172,7 +172,7 @@ func (r *NginxReader) Read(ctx context.Context, filePath string, pusher chunk_pu
 
 		chunkReader.FillBuffer([]byte(data[pos:]))
 
-		if err := abstract_reader.FlushChunk(ctx, filePath, lineCounter, currentSize, buff, pusher); err != nil {
+		if err := s3_reader.FlushChunk(ctx, filePath, lineCounter, currentSize, buff, pusher); err != nil {
 			return xerrors.Errorf("unable to push nginx last batch: %w", err)
 		}
 	}
@@ -196,14 +196,14 @@ func (r *NginxReader) buildCI(fieldValues []string, filePath string, lastModifie
 func (r *NginxReader) constructCI(fieldValues []string, fname string, lModified time.Time, rowNumber uint64) (*abstract.ChangeItem, error) {
 	vals := make([]any, len(r.tableSchema.Columns()))
 	for i, col := range r.tableSchema.Columns() {
-		if abstract_reader.SystemColumnNames[col.ColumnName] {
+		if s3_reader.SystemColumnNames[col.ColumnName] {
 			if r.hideSystemCols {
 				continue
 			}
 			switch col.ColumnName {
-			case abstract_reader.FileNameSystemCol:
+			case s3_reader.FileNameSystemCol:
 				vals[i] = fname
-			case abstract_reader.RowIndexSystemCol:
+			case s3_reader.RowIndexSystemCol:
 				vals[i] = rowNumber
 			}
 			continue
@@ -259,7 +259,7 @@ func convertNginxValue(value string, col abstract.ColSchema) (any, error) {
 		return nil, nil
 	}
 	switch col.DataType {
-	case schema.TypeDatetime.String(), schema.TypeDate.String():
+	case ytschema.TypeDatetime.String(), ytschema.TypeDate.String():
 		// Common strictify.Strictify uses spf13/cast.ToTimeE, which does not know timeLocalLayout.
 		t, err := time.Parse(timeLocalLayout, value)
 		if err != nil {
@@ -271,12 +271,12 @@ func convertNginxValue(value string, col abstract.ColSchema) (any, error) {
 	}
 }
 
-func (r *NginxReader) ParsePassthrough(chunk chunk_pusher.Chunk) []abstract.ChangeItem {
+func (r *NginxReader) ParsePassthrough(chunk s3_pusher.Chunk) []abstract.ChangeItem {
 	return chunk.Items
 }
 
-func (r *NginxReader) ObjectsFilter() abstract_reader.ObjectsFilter {
-	return abstract_reader.IsNotEmpty
+func (r *NginxReader) ObjectsFilter() s3_reader.ObjectsFilter {
+	return s3_reader.IsNotEmpty
 }
 
 // Row count estimation
@@ -294,12 +294,12 @@ func (r *NginxReader) EstimateRowsCountOneObject(ctx context.Context, obj *aws_s
 }
 
 func (r *NginxReader) estimateRows(ctx context.Context, files []*aws_s3.Object) (uint64, error) {
-	totalSize, sampleReader, err := abstract_reader.EstimateTotalSize(ctx, r.logger, files, r.newS3RawReader)
+	totalSize, sampleReader, err := s3_reader.EstimateTotalSize(ctx, r.logger, files, r.newS3RawReader)
 	if err != nil {
 		return 0, xerrors.Errorf("unable to estimate rows: %w", err)
 	}
 	if totalSize > 0 && sampleReader != nil {
-		chunkReader := abstract_reader.NewChunkReader(sampleReader, int(r.blockSize), r.logger)
+		chunkReader := s3_reader.NewChunkReader(sampleReader, int(r.blockSize), r.logger)
 		defer chunkReader.Close()
 		if err := chunkReader.ReadNextChunk(); err != nil && !xerrors.Is(err, io.EOF) {
 			return 0, xerrors.Errorf("failed to estimate row count: %w", err)
@@ -336,7 +336,7 @@ func ValidateFormat(format string) error {
 	return err
 }
 
-func NewNginxReader(src *s3.S3Source, lgr log.Logger, sess *session.Session, metrics *stats.SourceStats) (abstract_reader.Reader, error) {
+func NewNginxReader(src *s3_model.S3Source, lgr log.Logger, sess *aws_session.Session, metrics *stats.SourceStats) (s3_reader.Reader, error) {
 	if src == nil || src.Format.NginxSetting == nil {
 		return nil, xerrors.New("uninitialized settings for nginx reader")
 	}
@@ -397,7 +397,7 @@ func NewNginxReader(src *s3.S3Source, lgr log.Logger, sess *session.Session, met
 	if !reader.hideSystemCols {
 		cols := reader.tableSchema.Columns()
 		hasPkey := reader.tableSchema.Columns().HasPrimaryKey()
-		reader.tableSchema = abstract_reader.AppendSystemColsTableSchema(cols, !hasPkey)
+		reader.tableSchema = s3_reader.AppendSystemColsTableSchema(cols, !hasPkey)
 	}
 
 	reader.colNames = yslices.Map(reader.tableSchema.Columns(), func(t abstract.ColSchema) string { return t.ColumnName })

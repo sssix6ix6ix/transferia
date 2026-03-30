@@ -8,7 +8,7 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/library/go/test/canon"
 	"github.com/transferia/transferia/pkg/abstract"
-	"golang.org/x/exp/slices"
+	xslices "golang.org/x/exp/slices"
 )
 
 type ReferencerSink struct {
@@ -50,7 +50,7 @@ func (c *ReferencerSink) Close() error {
 			TableSchema: schemas[tid],
 		})
 	}
-	slices.SortFunc(canonRes, func(a, b ReferenceTable) int {
+	xslices.SortFunc(canonRes, func(a, b ReferenceTable) int {
 		return strings.Compare(a.TableID.Fqtn(), b.TableID.Fqtn())
 	})
 	for _, rt := range canonRes {

@@ -11,7 +11,7 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
 	"github.com/transferia/transferia/tests/helpers"
 	mocksink "github.com/transferia/transferia/tests/helpers/mock_sink"
@@ -22,7 +22,7 @@ var (
 	SourceNoCollapse = *pgrecipe.RecipeSource(
 		pgrecipe.WithPrefix(""),
 		pgrecipe.WithInitDir("init_source"),
-		pgrecipe.WithEdit(func(pg *postgres.PgSource) {
+		pgrecipe.WithEdit(func(pg *provider_postgres.PgSource) {
 			pg.CollapseInheritTables = false
 			pg.UseFakePrimaryKey = true // PK constraint for partitioned tables is disabled for PostgreSQL < 12
 			pg.SlotID = "testslot_no_collapse"
@@ -32,7 +32,7 @@ var (
 	SourceCollapse = *pgrecipe.RecipeSource(
 		pgrecipe.WithPrefix(""),
 		pgrecipe.WithInitDir("init_source"),
-		pgrecipe.WithEdit(func(pg *postgres.PgSource) {
+		pgrecipe.WithEdit(func(pg *provider_postgres.PgSource) {
 			pg.CollapseInheritTables = true
 			pg.UseFakePrimaryKey = true // PK constraint for partitioned tables is disabled for PostgreSQL < 12
 			pg.SlotID = "testslot_collapse"
@@ -109,7 +109,7 @@ func TestSnapshotAndIncrement(t *testing.T) {
 	replicationTransfer := helpers.MakeTransfer("data-objects", &SourceCollapse, &targetNoCollapse, abstract.TransferTypeIncrementOnly)
 	replicationTransfer.DataObjects = &model.DataObjects{IncludeObjects: []string{"public.log_table_inheritance_partitioning", "public.log_table_declarative_partitioning"}}
 	w := helpers.Activate(t, replicationTransfer)
-	sinkToSource, err := postgres.NewSink(logger.Log, helpers.TransferID, SourceCollapse.ToSinkParams(), helpers.EmptyRegistry())
+	sinkToSource, err := provider_postgres.NewSink(logger.Log, helpers.TransferID, SourceCollapse.ToSinkParams(), helpers.EmptyRegistry())
 	schema := abstract.NewTableSchema([]abstract.ColSchema{
 		{ColumnName: "id", DataType: ytschema.TypeInt32.String(), PrimaryKey: true},
 		{ColumnName: "logdate", DataType: ytschema.TypeDate.String(), PrimaryKey: false},

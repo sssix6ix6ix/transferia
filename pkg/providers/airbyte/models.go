@@ -10,7 +10,7 @@ import (
 	"github.com/transferia/transferia/pkg/abstract/typesystem"
 	"github.com/transferia/transferia/pkg/abstract2"
 	"go.ytsaurus.tech/library/go/core/log"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 type StreamState struct {
@@ -174,7 +174,7 @@ func toSchema(schema JSONSchema, keys map[string]bool) abstract.TableColumns {
 	return res
 }
 
-func toTypeV1(typ JSONProperty) schema.Type {
+func toTypeV1(typ JSONProperty) ytschema.Type {
 	if res, ok := typesystem.RuleFor(ProviderType).Source[typ.AirbyteType]; ok {
 		return res
 	}

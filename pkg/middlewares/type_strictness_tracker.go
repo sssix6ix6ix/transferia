@@ -5,7 +5,7 @@ import (
 	"github.com/transferia/transferia/pkg/abstract/typesystem/values"
 	"github.com/transferia/transferia/pkg/stats"
 	"go.ytsaurus.tech/library/go/core/log"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 // TypeStrictnessTracker tracks the "strictness" of types passing through it.
@@ -59,7 +59,7 @@ func (t *typeStrictnessTracker) Push(input []abstract.ChangeItem) error {
 type strictnessChecker struct {
 	tableSchemas map[abstract.TableID]abstract.FastTableSchema
 
-	strictValueTypeChecks map[schema.Type]values.ValueTypeChecker
+	strictValueTypeChecks map[ytschema.Type]values.ValueTypeChecker
 }
 
 func newStrictnessChecker() *strictnessChecker {
@@ -90,7 +90,7 @@ func (c *strictnessChecker) HasNonStrictTypes(item *abstract.ChangeItem) bool {
 		if !ok {
 			continue
 		}
-		colType := schema.Type(colSchema.DataType)
+		colType := ytschema.Type(colSchema.DataType)
 		check, ok := c.strictValueTypeChecks[colType]
 		if !ok {
 			continue

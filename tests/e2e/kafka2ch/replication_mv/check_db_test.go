@@ -8,19 +8,19 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/library/go/core/metrics/solomon"
 	"github.com/transferia/transferia/pkg/abstract"
-	dp_model "github.com/transferia/transferia/pkg/abstract/model"
+	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/parsers"
-	jsonparser "github.com/transferia/transferia/pkg/parsers/registry/json"
+	parser_json "github.com/transferia/transferia/pkg/parsers/registry/json"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/chrecipe"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/model"
-	kafkasink "github.com/transferia/transferia/pkg/providers/kafka"
+	clickhouse_model "github.com/transferia/transferia/pkg/providers/clickhouse/model"
+	provider_kafka "github.com/transferia/transferia/pkg/providers/kafka"
 	"github.com/transferia/transferia/tests/helpers"
 	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 var (
 	kafkaTopic = "topic1"
-	source     = *kafkasink.MustSourceRecipe()
+	source     = *provider_kafka.MustSourceRecipe()
 
 	chDatabase = "public"
 	target     = *chrecipe.MustTarget(chrecipe.WithInitDir("dump/ch"), chrecipe.WithDatabase(chDatabase))
@@ -51,10 +51,10 @@ func fixTimestampMiddleware(t *testing.T, items []abstract.ChangeItem) abstract.
 func TestReplication(t *testing.T) {
 	// prepare source
 
-	target.Cleanup = dp_model.DisabledCleanup
-	target.InsertParams = model.InsertParams{MaterializedViewsIgnoreErrors: true}
+	target.Cleanup = model.DisabledCleanup
+	target.InsertParams = clickhouse_model.InsertParams{MaterializedViewsIgnoreErrors: true}
 
-	parserConfigStruct := &jsonparser.ParserConfigJSONCommon{
+	parserConfigStruct := &parser_json.ParserConfigJSONCommon{
 		Fields: []abstract.ColSchema{
 			{ColumnName: "id", DataType: ytschema.TypeInt32.String(), PrimaryKey: true},
 			{ColumnName: "level", DataType: ytschema.TypeString.String()},
@@ -73,14 +73,14 @@ func TestReplication(t *testing.T) {
 
 	// write to source topic
 
-	srcSink, err := kafkasink.NewReplicationSink(
-		&kafkasink.KafkaDestination{
+	srcSink, err := provider_kafka.NewReplicationSink(
+		&provider_kafka.KafkaDestination{
 			Connection: source.Connection,
 			Auth:       source.Auth,
 			Topic:      source.Topic,
-			FormatSettings: dp_model.SerializationFormat{
-				Name: dp_model.SerializationFormatJSON,
-				BatchingSettings: &dp_model.Batching{
+			FormatSettings: model.SerializationFormat{
+				Name: model.SerializationFormatJSON,
+				BatchingSettings: &model.Batching{
 					Enabled:        false,
 					Interval:       0,
 					MaxChangeItems: 0,

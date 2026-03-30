@@ -5,27 +5,27 @@ import (
 	"sync"
 	"time"
 
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/pkg/abstract"
 )
 
 type SinkerStats struct {
-	Inflight  metrics.Counter
-	Elapsed   metrics.Timer
+	Inflight  core_metrics.Counter
+	Elapsed   core_metrics.Timer
 	tableStat map[string]*TableStat
-	timers    map[string]metrics.Timer
-	registry  metrics.Registry
+	timers    map[string]core_metrics.Timer
+	registry  core_metrics.Registry
 	rw        sync.Mutex
-	Wal       metrics.Counter
+	Wal       core_metrics.Counter
 }
 
-func NewSinkerStats(registry metrics.Registry) *SinkerStats {
+func NewSinkerStats(registry core_metrics.Registry) *SinkerStats {
 	return &SinkerStats{
 		Wal:       registry.Counter("sinker.transactions.total"),
 		Inflight:  registry.Counter("sinker.transactions.inflight"),
 		Elapsed:   registry.Timer("sinker.time.push"),
 		tableStat: map[string]*TableStat{},
-		timers:    map[string]metrics.Timer{},
+		timers:    map[string]core_metrics.Timer{},
 		registry:  registry,
 		rw:        sync.Mutex{},
 	}

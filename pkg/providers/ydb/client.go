@@ -7,44 +7,44 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/errors/coded"
-	"github.com/transferia/transferia/pkg/errors/codes"
+	error_codes "github.com/transferia/transferia/pkg/errors/codes"
 	"github.com/transferia/transferia/pkg/providers/ydb/logadapter"
 	"github.com/transferia/transferia/pkg/xtls"
-	"github.com/ydb-platform/ydb-go-sdk/v3"
-	ydbcreds "github.com/ydb-platform/ydb-go-sdk/v3/credentials"
+	ydb_go_sdk "github.com/ydb-platform/ydb-go-sdk/v3"
+	ydb_credentials "github.com/ydb-platform/ydb-go-sdk/v3/credentials"
 	"github.com/ydb-platform/ydb-go-sdk/v3/sugar"
 	"github.com/ydb-platform/ydb-go-sdk/v3/trace"
-	grpcCodes "google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
+	grpc_codes "google.golang.org/grpc/codes"
+	grpc_status "google.golang.org/grpc/status"
 )
 
 func newYDBDriver(
 	ctx context.Context,
 	database, instance string,
-	credentials ydbcreds.Credentials,
+	credentials ydb_credentials.Credentials,
 	tlsConfig *tls.Config,
-) (*ydb.Driver, error) {
+) (*ydb_go_sdk.Driver, error) {
 	secure := tlsConfig != nil
 
 	// TODO: it would be nice to handle some common errors such as unauthenticated one
 	// but YDB driver error design makes this task extremely painful
-	d, err := ydb.Open(
+	d, err := ydb_go_sdk.Open(
 		ctx,
 		sugar.DSN(instance, database, sugar.WithSecure(secure)),
-		ydb.WithCredentials(credentials),
-		ydb.WithTLSConfig(tlsConfig),
+		ydb_go_sdk.WithCredentials(credentials),
+		ydb_go_sdk.WithTLSConfig(tlsConfig),
 		logadapter.WithTraces(logger.Log, trace.DetailsAll),
 	)
 	if err != nil {
-		if s, ok := status.FromError(err); ok && s.Code() == grpcCodes.NotFound {
-			return nil, coded.Errorf(codes.YDBNotFound, "Cannot create YDB driver: %w", err)
+		if s, ok := grpc_status.FromError(err); ok && s.Code() == grpc_codes.NotFound {
+			return nil, coded.Errorf(error_codes.YDBNotFound, "Cannot create YDB driver: %w", err)
 		}
 		return nil, xerrors.Errorf("Cannot create YDB driver: %w", err)
 	}
 	return d, nil
 }
 
-func newYDBSourceDriver(ctx context.Context, cfg *YdbSource) (*ydb.Driver, error) {
+func newYDBSourceDriver(ctx context.Context, cfg *YdbSource) (*ydb_go_sdk.Driver, error) {
 	creds, err := ResolveCredentials(
 		cfg.UserdataAuth,
 		string(cfg.Token),

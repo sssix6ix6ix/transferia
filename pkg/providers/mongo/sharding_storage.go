@@ -8,11 +8,11 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/errors/coded"
-	"github.com/transferia/transferia/pkg/errors/codes"
+	error_codes "github.com/transferia/transferia/pkg/errors/codes"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	mongo_driver "go.mongodb.org/mongo-driver/mongo"
+	mongo_options "go.mongodb.org/mongo-driver/mongo/options"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
@@ -89,7 +89,7 @@ func filterFromTable(table abstract.TableDescription) (ShardingFilter, error) {
 }
 
 // getRepresentativeFromEveryTypeBracket acquires representative from every type bracket
-func getRepresentativeFromEveryTypeBracket(ctx context.Context, collection *mongo.Collection, isDocDB bool) ([]delimiter, error) {
+func getRepresentativeFromEveryTypeBracket(ctx context.Context, collection *mongo_driver.Collection, isDocDB bool) ([]delimiter, error) {
 	identifiers := []delimiter{}
 	// user primitive.JavaScript instances and etc. instead of $type query like this:
 	// > db.pays.find({$or: [{_id: {$lte: null}}, {_id: {$gte: null}}]})
@@ -132,9 +132,9 @@ func getRepresentativeFromEveryTypeBracket(ctx context.Context, collection *mong
 		err := collection.FindOne(ctx, bson.D{bson.E{Key: "$or", Value: bson.A{
 			bson.D{bson.E{Key: "_id", Value: bson.D{bson.E{Key: "$lte", Value: object}}}},
 			bson.D{bson.E{Key: "_id", Value: bson.D{bson.E{Key: "$gte", Value: object}}}},
-		}}}, options.FindOne().SetAllowPartialResults(true)).Decode(&key)
+		}}}, mongo_options.FindOne().SetAllowPartialResults(true)).Decode(&key)
 		if err != nil {
-			if err == mongo.ErrNoDocuments {
+			if err == mongo_driver.ErrNoDocuments {
 				continue
 			}
 			return nil, xerrors.Errorf("error executing find one query: %w", err)
@@ -145,10 +145,10 @@ func getRepresentativeFromEveryTypeBracket(ctx context.Context, collection *mong
 }
 
 // getRandomIdentifiers returns desired amount of random document identifiers
-func getRandomIdentifiers(ctx context.Context, collection *mongo.Collection, amount uint64) ([]delimiter, error) {
+func getRandomIdentifiers(ctx context.Context, collection *mongo_driver.Collection, amount uint64) ([]delimiter, error) {
 	// db.coll.aggregate([{ $sample: { size: 3 } }, { $sort : { _id : 1 }}])
 	// if delimiter count is larger than collection, all documents will be returned in order
-	pipeline := mongo.Pipeline{
+	pipeline := mongo_driver.Pipeline{
 		bson.D{bson.E{Key: "$sample", Value: bson.D{{Key: "size", Value: amount}}}},
 		bson.D{bson.E{Key: "$project", Value: bson.D{{Key: "_id", Value: 1}}}},
 		bson.D{bson.E{Key: "$sort", Value: bson.D{{Key: "_id", Value: 1}}}},
@@ -175,7 +175,7 @@ func getRandomIdentifiers(ctx context.Context, collection *mongo.Collection, amo
 
 // getDelimiters acquires delimiters that has representative in every type bracket
 // and has desired amount of parts if it is possible
-func getDelimiters(ctx context.Context, collection *mongo.Collection, amountOfDelimiters uint64, isDocDB bool) ([]delimiter, error) {
+func getDelimiters(ctx context.Context, collection *mongo_driver.Collection, amountOfDelimiters uint64, isDocDB bool) ([]delimiter, error) {
 	typeBracketDelimiters, err := getRepresentativeFromEveryTypeBracket(ctx, collection, isDocDB)
 	if err != nil {
 		return nil, xerrors.Errorf("cannot get representatives from every type bracket: %w", err)
@@ -187,7 +187,7 @@ func getDelimiters(ctx context.Context, collection *mongo.Collection, amountOfDe
 			log.Any("type_brackets_delimiters", typeBracketDelimiters),
 		)
 		// assume that there is only one type of delimiters
-		return nil, abstract.NewNonShardableError(coded.Errorf(codes.MongoNonShardable, "there are two or more types of objects in the sharding index"))
+		return nil, abstract.NewNonShardableError(coded.Errorf(error_codes.MongoNonShardable, "there are two or more types of objects in the sharding index"))
 	}
 	return getRandomIdentifiers(ctx, collection, amountOfDelimiters)
 }
@@ -204,7 +204,7 @@ func (s Storage) ShardTable(ctx context.Context, table abstract.TableDescription
 		return nil, xerrors.Errorf("cannot get table size in bytes: %w", err)
 	}
 	if s.desiredPartSize == 0 {
-		return nil, abstract.NewNonShardableError(coded.Errorf(codes.MongoNonShardable, "desired part size is inapplicable for sharding: %v", s.desiredPartSize))
+		return nil, abstract.NewNonShardableError(coded.Errorf(error_codes.MongoNonShardable, "desired part size is inapplicable for sharding: %v", s.desiredPartSize))
 	}
 	delimiterCount := tableSize / s.desiredPartSize
 	logger.Log.Info("ShardTable info",

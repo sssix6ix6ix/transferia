@@ -6,10 +6,10 @@ import (
 	"testing"
 
 	"github.com/transferia/transferia/pkg/abstract"
-	dp_model "github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/clickhouse"
+	"github.com/transferia/transferia/pkg/abstract/model"
+	provider_clickhouse "github.com/transferia/transferia/pkg/providers/clickhouse"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/columntypes"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/model"
+	clickhouse_model "github.com/transferia/transferia/pkg/providers/clickhouse/model"
 	"github.com/transferia/transferia/tests/canon/validator"
 	"github.com/transferia/transferia/tests/helpers"
 )
@@ -50,8 +50,8 @@ func getBaseType(colSchema abstract.ColSchema) string {
 
 func TestCanonSource(t *testing.T) {
 	t.Setenv("YC", "1") // to not go to vanga
-	Source := &model.ChSource{
-		ShardsList: []model.ClickHouseShard{
+	Source := &clickhouse_model.ChSource{
+		ShardsList: []clickhouse_model.ClickHouseShard{
 			{
 				Name: "_",
 				Hosts: []string{
@@ -70,15 +70,15 @@ func TestCanonSource(t *testing.T) {
 	transfer := helpers.MakeTransfer(
 		helpers.TransferID,
 		Source,
-		&dp_model.MockDestination{
+		&model.MockDestination{
 			SinkerFactory: validator.New(
-				dp_model.IsStrictSource(Source),
+				model.IsStrictSource(Source),
 				validator.InitDone(t),
 				validator.ValuesTypeChecker,
 				validator.Canonizator(t, sortItems),
-				validator.TypesystemChecker(clickhouse.ProviderType, getBaseType),
+				validator.TypesystemChecker(provider_clickhouse.ProviderType, getBaseType),
 			),
-			Cleanup: dp_model.DisabledCleanup,
+			Cleanup: model.DisabledCleanup,
 		},
 		abstract.TransferTypeSnapshotOnly,
 	)

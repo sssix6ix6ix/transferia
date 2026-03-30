@@ -9,20 +9,20 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/transformer"
-	"github.com/transferia/transferia/pkg/transformer/registry/filter"
+	transformer_filter "github.com/transferia/transferia/pkg/transformer/registry/filter"
 	"go.ytsaurus.tech/library/go/core/log"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 const Type = abstract.TransformerType("convert_to_string")
 
 func init() {
 	transformer.Register[Config](Type, func(cfg Config, lgr log.Logger, runtime abstract.TransformationRuntimeOpts) (abstract.Transformer, error) {
-		clms, err := filter.NewFilter(cfg.Columns.IncludeColumns, cfg.Columns.ExcludeColumns)
+		clms, err := transformer_filter.NewFilter(cfg.Columns.IncludeColumns, cfg.Columns.ExcludeColumns)
 		if err != nil {
 			return nil, xerrors.Errorf("unable to create columns filter: %w", err)
 		}
-		tbls, err := filter.NewFilter(cfg.Tables.IncludeTables, cfg.Tables.ExcludeTables)
+		tbls, err := transformer_filter.NewFilter(cfg.Tables.IncludeTables, cfg.Tables.ExcludeTables)
 		if err != nil {
 			return nil, xerrors.Errorf("unable to create tables filter: %w", err)
 		}
@@ -36,14 +36,14 @@ func init() {
 }
 
 type Config struct {
-	Columns        filter.Columns `json:"columns"`
-	Tables         filter.Tables  `json:"tables"`
-	ConvertToBytes bool           `json:"convert_to_bytes"`
+	Columns        transformer_filter.Columns `json:"columns"`
+	Tables         transformer_filter.Tables  `json:"tables"`
+	ConvertToBytes bool                       `json:"convert_to_bytes"`
 }
 
 type ToStringTransformer struct {
-	Columns        filter.Filter
-	Tables         filter.Filter
+	Columns        transformer_filter.Filter
+	Tables         transformer_filter.Filter
 	ConvertToBytes bool
 	Logger         log.Logger
 }
@@ -62,9 +62,9 @@ func (f *ToStringTransformer) Apply(input []abstract.ChangeItem) abstract.Transf
 			newTableSchema[i] = item.TableSchema.Columns()[i]
 			if f.Columns.Match(item.TableSchema.Columns()[i].ColumnName) {
 				oldTypes[item.TableSchema.Columns()[i].ColumnName] = item.TableSchema.Columns()[i].DataType
-				newType := schema.TypeString
+				newType := ytschema.TypeString
 				if f.ConvertToBytes {
-					newType = schema.TypeBytes
+					newType = ytschema.TypeBytes
 				}
 				newTableSchema[i].DataType = string(newType)
 			}
@@ -94,7 +94,7 @@ func (f *ToStringTransformer) Apply(input []abstract.ChangeItem) abstract.Transf
 }
 
 func (f *ToStringTransformer) Suitable(table abstract.TableID, schema *abstract.TableSchema) bool {
-	if !filter.MatchAnyTableNameVariant(f.Tables, table) {
+	if !transformer_filter.MatchAnyTableNameVariant(f.Tables, table) {
 		return false
 	}
 	if f.Columns.Empty() {
@@ -115,9 +115,9 @@ func (f *ToStringTransformer) ResultSchema(original *abstract.TableSchema) (*abs
 			continue
 		}
 		if f.ConvertToBytes {
-			result[i].DataType = schema.TypeBytes.String()
+			result[i].DataType = ytschema.TypeBytes.String()
 		} else {
-			result[i].DataType = schema.TypeString.String()
+			result[i].DataType = ytschema.TypeString.String()
 		}
 	}
 	return abstract.NewTableSchema(result), nil
@@ -141,21 +141,21 @@ func trimStr(value string, maxLength int) string {
 
 func SerializeToString(value interface{}, valueType string) string {
 	switch valueType {
-	case schema.TypeBytes.String():
+	case ytschema.TypeBytes.String():
 		out, ok := value.([]byte)
 		if ok {
 			return string(out)
 		}
-	case schema.TypeAny.String():
+	case ytschema.TypeAny.String():
 		out, err := json.Marshal(value)
 		if err == nil {
 			return string(out)
 		}
-	case schema.TypeDate.String():
+	case ytschema.TypeDate.String():
 		if valueAsTime, ok := value.(time.Time); ok {
 			return valueAsTime.UTC().Format("2006-01-02")
 		}
-	case schema.TypeDatetime.String(), schema.TypeTimestamp.String():
+	case ytschema.TypeDatetime.String(), ytschema.TypeTimestamp.String():
 		if valueAsTime, ok := value.(time.Time); ok {
 			return valueAsTime.UTC().Format(time.RFC3339Nano)
 		}

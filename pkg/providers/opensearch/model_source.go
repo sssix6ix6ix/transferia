@@ -5,7 +5,7 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/elastic"
+	provider_elastic "github.com/transferia/transferia/pkg/providers/elastic"
 	"go.uber.org/zap/zapcore"
 )
 
@@ -34,12 +34,12 @@ func (s *OpenSearchSource) MDBClusterID() string {
 	return s.ClusterID
 }
 
-func (s *OpenSearchSource) ToElasticSearchSource() (*elastic.ElasticSearchSource, elastic.ServerType) {
-	dataNodes := make([]elastic.ElasticSearchHostPort, 0)
+func (s *OpenSearchSource) ToElasticSearchSource() (*provider_elastic.ElasticSearchSource, provider_elastic.ServerType) {
+	dataNodes := make([]provider_elastic.ElasticSearchHostPort, 0)
 	for _, el := range s.DataNodes {
-		dataNodes = append(dataNodes, elastic.ElasticSearchHostPort(el))
+		dataNodes = append(dataNodes, provider_elastic.ElasticSearchHostPort(el))
 	}
-	return &elastic.ElasticSearchSource{
+	return &provider_elastic.ElasticSearchSource{
 		ClusterID:            s.ClusterID,
 		DataNodes:            dataNodes,
 		User:                 s.User,
@@ -51,7 +51,7 @@ func (s *OpenSearchSource) ToElasticSearchSource() (*elastic.ElasticSearchSource
 		DumpIndexWithMapping: s.DumpIndexWithMapping,
 		ConnectionID:         s.ConnectionID,
 		UserEnabledTls:       s.UserEnabledTls,
-	}, elastic.OpenSearch
+	}, provider_elastic.OpenSearch
 }
 
 func (s *OpenSearchSource) IsSource() {

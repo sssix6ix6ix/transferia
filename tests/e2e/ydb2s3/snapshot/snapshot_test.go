@@ -9,19 +9,19 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3"
+	aws_credentials "github.com/aws/aws-sdk-go/aws/credentials"
+	aws_session "github.com/aws/aws-sdk-go/aws/session"
+	aws_s3 "github.com/aws/aws-sdk-go/service/s3"
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/library/go/core/metrics/solomon"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	s3_provider "github.com/transferia/transferia/pkg/providers/s3"
-	"github.com/transferia/transferia/pkg/providers/ydb"
+	s3_model "github.com/transferia/transferia/pkg/providers/s3/model"
+	provider_ydb "github.com/transferia/transferia/pkg/providers/ydb"
 	"github.com/transferia/transferia/tests/helpers"
 	"go.ytsaurus.tech/library/go/core/log"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 var (
@@ -37,18 +37,18 @@ func envOrDefault(key string, def string) string {
 	return def
 }
 
-func createBucket(t *testing.T, cfg *s3_provider.S3Destination) {
-	sess, err := session.NewSession(&aws.Config{
+func createBucket(t *testing.T, cfg *s3_model.S3Destination) {
+	sess, err := aws_session.NewSession(&aws.Config{
 		Endpoint:         aws.String(cfg.Endpoint),
 		Region:           aws.String(cfg.Region),
 		S3ForcePathStyle: aws.Bool(cfg.S3ForcePathStyle),
-		Credentials: credentials.NewStaticCredentials(
+		Credentials: aws_credentials.NewStaticCredentials(
 			cfg.AccessKey, cfg.Secret, "",
 		),
 	})
 	require.NoError(t, err)
 	logger.Log.Info("create bucket", log.Any("bucket", cfg.Bucket))
-	res, err := s3.New(sess).CreateBucket(&s3.CreateBucketInput{
+	res, err := aws_s3.New(sess).CreateBucket(&aws_s3.CreateBucketInput{
 		Bucket: aws.String(cfg.Bucket),
 	})
 	require.NoError(t, err)
@@ -60,7 +60,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestGroup(t *testing.T) {
-	src := &ydb.YdbSource{
+	src := &provider_ydb.YdbSource{
 		Token:              model.SecretString(os.Getenv("YDB_TOKEN")),
 		Database:           helpers.GetEnvOfFail(t, "YDB_DATABASE"),
 		Instance:           helpers.GetEnvOfFail(t, "YDB_ENDPOINT"),
@@ -70,7 +70,7 @@ func TestGroup(t *testing.T) {
 		Underlay:           false,
 		ServiceAccountID:   "",
 	}
-	dst := &s3_provider.S3Destination{
+	dst := &s3_model.S3Destination{
 		OutputFormat:     model.ParsingFormatJSON,
 		BufferSize:       1 * 1024 * 1024,
 		BufferInterval:   time.Second * 5,
@@ -99,17 +99,17 @@ func TestGroup(t *testing.T) {
 	helpers.InitSrcDst(helpers.TransferID, src, dst, abstract.TransferTypeSnapshotOnly)
 
 	// init data
-	Target := &ydb.YdbDestination{
+	Target := &provider_ydb.YdbDestination{
 		Database: src.Database,
 		Token:    src.Token,
 		Instance: src.Instance,
 	}
 	Target.WithDefaults()
-	sinker, err := ydb.NewSinker(logger.Log, Target, solomon.NewRegistry(solomon.NewRegistryOpts()))
+	sinker, err := provider_ydb.NewSinker(logger.Log, Target, solomon.NewRegistry(solomon.NewRegistryOpts()))
 	require.NoError(t, err)
 	testSchema := abstract.NewTableSchema([]abstract.ColSchema{
-		{ColumnName: "id", DataType: string(schema.TypeInt32), PrimaryKey: true},
-		{ColumnName: "val", DataType: string(schema.TypeAny), OriginalType: "ydb:Yson"},
+		{ColumnName: "id", DataType: string(ytschema.TypeInt32), PrimaryKey: true},
+		{ColumnName: "val", DataType: string(ytschema.TypeAny), OriginalType: "ydb:Yson"},
 	})
 	require.NoError(t, sinker.Push([]abstract.ChangeItem{{
 		Kind:         abstract.InsertKind,
@@ -125,24 +125,24 @@ func TestGroup(t *testing.T) {
 	helpers.Activate(t, transfer)
 
 	// check data
-	sess, err := session.NewSession(&aws.Config{
+	sess, err := aws_session.NewSession(&aws.Config{
 		Endpoint:         aws.String(dst.Endpoint),
 		Region:           aws.String(dst.Region),
 		S3ForcePathStyle: aws.Bool(dst.S3ForcePathStyle),
-		Credentials: credentials.NewStaticCredentials(
+		Credentials: aws_credentials.NewStaticCredentials(
 			dst.AccessKey, dst.Secret, "",
 		),
 	})
 
 	require.NoError(t, err)
-	s3client := s3.New(sess)
-	objects, err := s3client.ListObjects(&s3.ListObjectsInput{
+	s3client := aws_s3.New(sess)
+	objects, err := s3client.ListObjects(&aws_s3.ListObjectsInput{
 		Bucket: aws.String(dst.Bucket),
 	})
 	require.NoError(t, err)
 	logger.Log.Infof("objects: %v", objects.Contents)
 	require.Len(t, objects.Contents, 1)
-	obj, err := s3client.GetObject(&s3.GetObjectInput{Bucket: aws.String(dst.Bucket), Key: objects.Contents[0].Key})
+	obj, err := s3client.GetObject(&aws_s3.GetObjectInput{Bucket: aws.String(dst.Bucket), Key: objects.Contents[0].Key})
 	require.NoError(t, err)
 	data, err := io.ReadAll(obj.Body)
 	require.NoError(t, err)

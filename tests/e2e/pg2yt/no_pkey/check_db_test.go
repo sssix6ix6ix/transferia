@@ -12,9 +12,9 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
-	yt_provider "github.com/transferia/transferia/pkg/providers/yt"
+	provider_yt "github.com/transferia/transferia/pkg/providers/yt"
 	"github.com/transferia/transferia/pkg/runtime/local"
 	"github.com/transferia/transferia/pkg/worker/tasks"
 	"github.com/transferia/transferia/tests/helpers"
@@ -68,7 +68,7 @@ func (f *fixture) readAll() (result []string) {
 }
 
 func makeTarget() model.Destination {
-	target := yt_provider.NewYtDestinationV1(yt_provider.YtDestination{
+	target := provider_yt.NewYtDestinationV1(provider_yt.YtDestination{
 		Path:          "//home/cdc/pg2yt_e2e_no_pkey",
 		CellBundle:    "default",
 		PrimaryMedium: "default",
@@ -94,8 +94,8 @@ func setup(t *testing.T) *fixture {
 }
 
 func srcAndDstPorts(fxt *fixture) (int, int, error) {
-	sourcePort := fxt.transfer.Src.(*postgres.PgSource).Port
-	ytCluster := fxt.transfer.Dst.(yt_provider.YtDestinationModel).Cluster()
+	sourcePort := fxt.transfer.Src.(*provider_postgres.PgSource).Port
+	ytCluster := fxt.transfer.Dst.(provider_yt.YtDestinationModel).Cluster()
 	targetPort, err := helpers.GetPortFromStr(ytCluster)
 	if err != nil {
 		return 1, 1, err
@@ -116,7 +116,7 @@ func TestSnapshotOnlyWorksWithStaticTables(t *testing.T) {
 	}()
 
 	defer fixture.teardown()
-	fixture.transfer.Dst.(*yt_provider.YtDestinationWrapper).Model.Static = true
+	fixture.transfer.Dst.(*provider_yt.YtDestinationWrapper).Model.Static = true
 	transferType := abstract.TransferTypeSnapshotOnly
 	fixture.transfer.Type = transferType
 	helpers.InitSrcDst(helpers.GenerateTransferID("TestSnapshotOnlyWorksWithStaticTables"), fixture.transfer.Src, fixture.transfer.Dst, transferType)
@@ -172,9 +172,9 @@ func TestIncrementFails(t *testing.T) {
 		require.Error(t, err)
 		require.Contains(t, strings.ToLower(err.Error()), "no key columns found")
 
-		err = postgres.CreateReplicationSlot(fixture.transfer.Src.(*postgres.PgSource))
+		err = provider_postgres.CreateReplicationSlot(fixture.transfer.Src.(*provider_postgres.PgSource))
 		require.NoError(t, err)
-		defer func() { _ = postgres.DropReplicationSlot(fixture.transfer.Src.(*postgres.PgSource)) }()
+		defer func() { _ = provider_postgres.DropReplicationSlot(fixture.transfer.Src.(*provider_postgres.PgSource)) }()
 
 		wrk := local.NewLocalWorker(coordinator.NewStatefulFakeClient(), &fixture.transfer, helpers.EmptyRegistry(), logger.Log)
 		err = wrk.Run()

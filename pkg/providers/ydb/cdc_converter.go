@@ -10,7 +10,7 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/changeitem"
-	"golang.org/x/exp/maps"
+	xmaps "golang.org/x/exp/maps"
 )
 
 func makeVal(originalType string, val interface{}) (interface{}, error) {
@@ -220,7 +220,7 @@ func makeUpdateChangeItem(
 		result.OldKeys.KeyValues = append(result.OldKeys.KeyValues, val)
 		index++
 	}
-	eventUpdateKeys := maps.Keys(event.Update)
+	eventUpdateKeys := xmaps.Keys(event.Update)
 	sort.Strings(eventUpdateKeys)
 	for _, currColName := range eventUpdateKeys {
 		currColValue := event.Update[currColName]
@@ -232,7 +232,7 @@ func makeUpdateChangeItem(
 		result.ColumnValues = append(result.ColumnValues, val)
 		index++
 	}
-	eventNewImageKeys := maps.Keys(event.NewImage)
+	eventNewImageKeys := xmaps.Keys(event.NewImage)
 	sort.Strings(eventNewImageKeys)
 	for _, currColName := range eventNewImageKeys {
 		currColValue := event.NewImage[currColName]
@@ -260,7 +260,7 @@ func makeUpdateChangeItem(
 			index++
 		}
 	}
-	eventOldImage := maps.Keys(event.OldImage)
+	eventOldImage := xmaps.Keys(event.OldImage)
 	sort.Strings(eventOldImage)
 	for _, currColName := range eventOldImage {
 		currColValue := event.OldImage[currColName]
@@ -323,7 +323,7 @@ func makeDeleteChangeItem(
 		result.OldKeys.KeyValues = append(result.OldKeys.KeyValues, val)
 		index++
 	}
-	eventOldImage := maps.Keys(event.OldImage)
+	eventOldImage := xmaps.Keys(event.OldImage)
 	sort.Strings(eventOldImage)
 	for _, currColName := range eventOldImage {
 		currColValue := event.OldImage[currColName]

@@ -11,7 +11,7 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	yt2 "github.com/transferia/transferia/pkg/providers/yt"
+	provider_yt "github.com/transferia/transferia/pkg/providers/yt"
 	"github.com/transferia/transferia/pkg/providers/yt/copy/target"
 	"github.com/transferia/transferia/tests/helpers"
 	"go.ytsaurus.tech/yt/go/ypath"
@@ -23,7 +23,7 @@ var (
 	TransferType = abstract.TransferTypeSnapshotOnly
 	SrcYT        = os.Getenv("YT_PROXY_SRC")
 	DstYT        = os.Getenv("YT_PROXY_DST")
-	Source       = yt2.YtSource{
+	Source       = provider_yt.YtSource{
 		Cluster: "src",
 		YtProxy: SrcYT,
 		Paths: []string{
@@ -34,7 +34,7 @@ var (
 		},
 		YtToken: "",
 	}
-	Target = yt2.YtCopyDestination{
+	Target = provider_yt.YtCopyDestination{
 		Cluster:            DstYT,
 		YtToken:            "",
 		Prefix:             "//dst_pref",

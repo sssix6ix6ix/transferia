@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/transferia/transferia/pkg/abstract/changeitem"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 func MakeInitTableLoad(pos LogPosition, table TableDescription, commitTime time.Time, tableSchema *TableSchema) []ChangeItem {
@@ -86,22 +86,22 @@ func MakeSynchronizeEvent() ChangeItem {
 
 // DefaultValue returns a default instance of the type represented by this schema. This method only works safely in heterogenous transfers.
 func DefaultValue(c *changeitem.ColSchema) interface{} {
-	switch schema.Type(c.DataType) {
-	case schema.TypeInt64, schema.TypeInt32, schema.TypeInt16, schema.TypeInt8, schema.TypeUint64, schema.TypeUint32, schema.TypeUint16, schema.TypeUint8:
+	switch ytschema.Type(c.DataType) {
+	case ytschema.TypeInt64, ytschema.TypeInt32, ytschema.TypeInt16, ytschema.TypeInt8, ytschema.TypeUint64, ytschema.TypeUint32, ytschema.TypeUint16, ytschema.TypeUint8:
 		return Restore(*c, float64(0))
-	case schema.TypeFloat32:
+	case ytschema.TypeFloat32:
 		return float32(0)
-	case schema.TypeFloat64:
+	case ytschema.TypeFloat64:
 		return float64(0)
-	case schema.TypeBytes, schema.TypeString:
+	case ytschema.TypeBytes, ytschema.TypeString:
 		return ""
-	case schema.TypeBoolean:
+	case ytschema.TypeBoolean:
 		return false
-	case schema.TypeAny:
+	case ytschema.TypeAny:
 		return Restore(*c, "{}")
-	case schema.TypeDate, schema.TypeDatetime, schema.TypeTimestamp:
+	case ytschema.TypeDate, ytschema.TypeDatetime, ytschema.TypeTimestamp:
 		return time.Unix(0, 0)
-	case schema.TypeInterval:
+	case ytschema.TypeInterval:
 		return time.Duration(0)
 	default:
 		return nil

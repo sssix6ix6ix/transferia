@@ -5,21 +5,21 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/ydb-platform/ydb-go-sdk/v3"
-	"github.com/ydb-platform/ydb-go-sdk/v3/table"
+	ydb_go_sdk "github.com/ydb-platform/ydb-go-sdk/v3"
+	ydb_table "github.com/ydb-platform/ydb-go-sdk/v3/table"
 )
 
-func ExecQuery(t *testing.T, driver *ydb.Driver, query string) {
+func ExecQuery(t *testing.T, driver *ydb_go_sdk.Driver, query string) {
 	ExecQueries(t, driver, []string{query})
 }
 
-func ExecQueries(t *testing.T, driver *ydb.Driver, queries []string) {
-	require.NoError(t, driver.Table().Do(context.Background(), func(ctx context.Context, session table.Session) error {
-		writeTx := table.TxControl(
-			table.BeginTx(
-				table.WithSerializableReadWrite(),
+func ExecQueries(t *testing.T, driver *ydb_go_sdk.Driver, queries []string) {
+	require.NoError(t, driver.Table().Do(context.Background(), func(ctx context.Context, session ydb_table.Session) error {
+		writeTx := ydb_table.TxControl(
+			ydb_table.BeginTx(
+				ydb_table.WithSerializableReadWrite(),
 			),
-			table.CommitTx(),
+			ydb_table.CommitTx(),
 		)
 
 		for _, query := range queries {

@@ -9,12 +9,12 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/typesystem"
 	"github.com/transferia/transferia/pkg/util"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 type TypesystemCheckerSink struct {
 	provider           abstract.ProviderType
-	rules              map[string]schema.Type
+	rules              map[string]ytschema.Type
 	originalTypeParser func(colSchema abstract.ColSchema) string
 }
 
@@ -64,7 +64,7 @@ func (t TypesystemCheckerSink) checkColType(col abstract.ColSchema) error {
 	}
 	var allowedOriginalTypes []string
 	for orTyp, dtTyp := range t.rules {
-		if dtTyp == schema.Type(col.DataType) {
+		if dtTyp == ytschema.Type(col.DataType) {
 			allowedOriginalTypes = append(allowedOriginalTypes, orTyp)
 		}
 	}

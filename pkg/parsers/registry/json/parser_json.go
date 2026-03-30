@@ -4,14 +4,14 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/parsers"
-	"github.com/transferia/transferia/pkg/parsers/generic"
-	"github.com/transferia/transferia/pkg/parsers/resources"
+	generic_parser "github.com/transferia/transferia/pkg/parsers/generic"
+	parsers_resources "github.com/transferia/transferia/pkg/parsers/resources"
 	"github.com/transferia/transferia/pkg/stats"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
-func newParserJSONLb(in *ParserConfigJSONLb, sniff bool, logger log.Logger) (*generic.GenericParserConfig, []abstract.ColSchema, resources.AbstractResources, error) {
-	resourcesObj, err := resources.NewResources(logger, []string{in.SchemaResourceName})
+func newParserJSONLb(in *ParserConfigJSONLb, sniff bool, logger log.Logger) (*generic_parser.GenericParserConfig, []abstract.ColSchema, parsers_resources.AbstractResources, error) {
+	resourcesObj, err := parsers_resources.NewResources(logger, []string{in.SchemaResourceName})
 	if err != nil {
 		return nil, nil, nil, xerrors.Errorf("unable to get resources, err: %w", err)
 	}
@@ -21,11 +21,11 @@ func newParserJSONLb(in *ParserConfigJSONLb, sniff bool, logger log.Logger) (*ge
 		return nil, nil, nil, xerrors.Errorf("unable to get schema by fields & resource, err: %w", err)
 	}
 
-	return &generic.GenericParserConfig{
+	return &generic_parser.GenericParserConfig{
 		Format:             "json",
 		SchemaResourceName: in.SchemaResourceName,
 		Fields:             in.Fields,
-		AuxOpts: generic.AuxParserOpts{
+		AuxOpts: generic_parser.AuxParserOpts{
 			Topic:                  "",
 			AddDedupeKeys:          true,
 			MarkDedupeKeysAsSystem: in.SkipSystemKeys,
@@ -48,8 +48,8 @@ func newParserJSONLb(in *ParserConfigJSONLb, sniff bool, logger log.Logger) (*ge
 	}, finalSchema, resourcesObj, nil
 }
 
-func newParserJSONCommon(in *ParserConfigJSONCommon, sniff bool, logger log.Logger) (*generic.GenericParserConfig, []abstract.ColSchema, resources.AbstractResources, error) {
-	resourcesObj, err := resources.NewResources(logger, []string{in.SchemaResourceName})
+func newParserJSONCommon(in *ParserConfigJSONCommon, sniff bool, logger log.Logger) (*generic_parser.GenericParserConfig, []abstract.ColSchema, parsers_resources.AbstractResources, error) {
+	resourcesObj, err := parsers_resources.NewResources(logger, []string{in.SchemaResourceName})
 	if err != nil {
 		return nil, nil, nil, xerrors.Errorf("unable to get resources, err: %w", err)
 	}
@@ -59,11 +59,11 @@ func newParserJSONCommon(in *ParserConfigJSONCommon, sniff bool, logger log.Logg
 		return nil, nil, nil, xerrors.Errorf("unable to get schema by fields & resource, err: %w", err)
 	}
 
-	return &generic.GenericParserConfig{
+	return &generic_parser.GenericParserConfig{
 		Format:             "json",
 		SchemaResourceName: in.SchemaResourceName,
 		Fields:             in.Fields,
-		AuxOpts: generic.AuxParserOpts{
+		AuxOpts: generic_parser.AuxParserOpts{
 			Topic:                  "",
 			AddDedupeKeys:          in.AddDedupeKeys,
 			MarkDedupeKeysAsSystem: false,
@@ -87,9 +87,9 @@ func newParserJSONCommon(in *ParserConfigJSONCommon, sniff bool, logger log.Logg
 }
 
 func NewParserJSON(inWrapped interface{}, sniff bool, logger log.Logger, registry *stats.SourceStats) (parsers.Parser, error) {
-	var genericParserConfig *generic.GenericParserConfig
+	var genericParserConfig *generic_parser.GenericParserConfig
 	var finalSchema []abstract.ColSchema
-	var resourcesObj resources.AbstractResources
+	var resourcesObj parsers_resources.AbstractResources
 	var err error
 
 	switch in := inWrapped.(type) {
@@ -109,7 +109,7 @@ func NewParserJSON(inWrapped interface{}, sniff bool, logger log.Logger, registr
 		return nil, xerrors.Errorf("unknown parserConfig type: %T", inWrapped)
 	}
 
-	parserImpl := generic.NewGenericParser(genericParserConfig, finalSchema, logger, registry)
+	parserImpl := generic_parser.NewGenericParser(genericParserConfig, finalSchema, logger, registry)
 
 	return parsers.WithResource(parserImpl, resourcesObj), nil
 }

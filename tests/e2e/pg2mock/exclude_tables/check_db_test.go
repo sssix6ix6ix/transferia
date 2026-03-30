@@ -10,7 +10,7 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
 	"github.com/transferia/transferia/tests/helpers"
 )
@@ -104,7 +104,7 @@ func TestExcludeTablesWithEmptyWhitelist(t *testing.T) {
 	defer worker.Close(t)
 
 	ctx := context.Background()
-	srcConn, err := postgres.MakeConnPoolFromSrc(source, logger.Log)
+	srcConn, err := provider_postgres.MakeConnPoolFromSrc(source, logger.Log)
 	require.NoError(t, err)
 	defer srcConn.Close()
 

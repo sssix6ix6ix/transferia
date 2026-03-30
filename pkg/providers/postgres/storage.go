@@ -13,7 +13,7 @@ import (
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/transferia/transferia/internal/logger"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/metrics/solomon"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
@@ -1076,14 +1076,14 @@ type StorageOpt interface {
 }
 
 type (
-	Metrics     struct{ metrics.Registry }
+	Metrics     struct{ core_metrics.Registry }
 	TypeMapping struct{ TypeNameToOIDMap }
 )
 
 func (m Metrics) isStorageOpt()     {}
 func (m TypeMapping) isStorageOpt() {}
 
-func WithMetrics(registry metrics.Registry) StorageOpt {
+func WithMetrics(registry core_metrics.Registry) StorageOpt {
 	return Metrics{Registry: registry}
 }
 
@@ -1091,7 +1091,7 @@ func WithTypeMapping(typeMapping TypeNameToOIDMap) StorageOpt {
 	return TypeMapping{TypeNameToOIDMap: typeMapping}
 }
 
-func (s *Storage) RunSlotMonitor(ctx context.Context, serverSource interface{}, registry metrics.Registry, tracker ...*Tracker) (abstract.SlotKiller, <-chan error, error) {
+func (s *Storage) RunSlotMonitor(ctx context.Context, serverSource interface{}, registry core_metrics.Registry, tracker ...*Tracker) (abstract.SlotKiller, <-chan error, error) {
 	if pgSrc, ok := serverSource.(*PgSource); ok {
 		return RunSlotMonitor(ctx, pgSrc, registry, tracker...)
 	} else {

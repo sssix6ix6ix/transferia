@@ -4,12 +4,12 @@ import (
 	"context"
 
 	"github.com/transferia/transferia/internal/logger"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/providers"
-	"github.com/transferia/transferia/pkg/providers/mysql"
-	"github.com/transferia/transferia/pkg/providers/postgres"
+	provider_mysql "github.com/transferia/transferia/pkg/providers/mysql"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 )
 
 // fast check whether deactivate may be skipped
@@ -20,7 +20,7 @@ func DeactivateNeeded(transfer model.Transfer) bool {
 
 	if transfer.SnapshotOnly() {
 		switch transfer.Src.GetProviderType() {
-		case postgres.ProviderType, mysql.ProviderType:
+		case provider_postgres.ProviderType, provider_mysql.ProviderType:
 			return false
 		default:
 			return true
@@ -30,7 +30,7 @@ func DeactivateNeeded(transfer model.Transfer) bool {
 	return true
 }
 
-func Deactivate(ctx context.Context, cp coordinator.Coordinator, transfer model.Transfer, task model.TransferOperation, registry metrics.Registry) error {
+func Deactivate(ctx context.Context, cp coordinator.Coordinator, transfer model.Transfer, task model.TransferOperation, registry core_metrics.Registry) error {
 	if !DeactivateNeeded(transfer) {
 		return nil
 	}

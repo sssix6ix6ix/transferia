@@ -9,13 +9,13 @@ import (
 
 	"github.com/spf13/cast"
 	"github.com/transferia/transferia/library/go/core/xerrors"
-	parser "github.com/transferia/transferia/library/go/yandex/cloud/filter"
+	"github.com/transferia/transferia/library/go/yandex/cloud/filter"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/transformer"
-	"github.com/transferia/transferia/pkg/transformer/registry/filter"
+	transformer_filter "github.com/transferia/transferia/pkg/transformer/registry/filter"
 	"github.com/transferia/transferia/pkg/util/set"
 	"go.ytsaurus.tech/library/go/core/log"
-	yts "go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 	"golang.org/x/exp/constraints"
 )
 
@@ -31,7 +31,7 @@ func init() {
 }
 
 type termWithValues struct {
-	Term      parser.Term
+	Term      filter.Term
 	ValuesSet *set.Set[interface{}] // not nil, when Term.Operator is IN/NOT IN
 	ByteValue []byte                // not nil, when Term.Value.IsString()
 }
@@ -39,9 +39,9 @@ type termWithValues struct {
 type filteringExpression []termWithValues
 
 type Config struct {
-	Tables  filter.Tables `json:"tables"`
-	Filter  string        `json:"filter"` // Deprecated: Use Filters instead.
-	Filters []string      `json:"filters"`
+	Tables  transformer_filter.Tables `json:"tables"`
+	Filter  string                    `json:"filter"` // Deprecated: Use Filters instead.
+	Filters []string                  `json:"filters"`
 }
 
 func (c *Config) expressions() ([]filteringExpression, error) {
@@ -55,10 +55,10 @@ func (c *Config) expressions() ([]filteringExpression, error) {
 	}
 	result := make([]filteringExpression, len(filters))
 
-	for i, filter := range filters {
-		terms, err := parser.Parse(filter)
+	for i, currFilter := range filters {
+		terms, err := filter.Parse(currFilter)
 		if err != nil {
-			return nil, xerrors.Errorf("Unable to parse filter '%s': %w", filter, err)
+			return nil, xerrors.Errorf("Unable to parse filter '%s': %w", currFilter, err)
 		}
 		termsWithValues, err := prepareTermValues(terms)
 		if err != nil {
@@ -70,7 +70,7 @@ func (c *Config) expressions() ([]filteringExpression, error) {
 }
 
 type FilterRowsTransformer struct {
-	Tables      filter.Filter
+	Tables      transformer_filter.Filter
 	Logger      log.Logger
 	Expressions []filteringExpression // ChangeItem transfers if it matches at least one of filters (expressions).
 
@@ -79,7 +79,7 @@ type FilterRowsTransformer struct {
 }
 
 func NewFilterRowsTransformer(cfg Config, lgr log.Logger) (*FilterRowsTransformer, error) {
-	tables, err := filter.NewFilter(cfg.Tables.IncludeTables, cfg.Tables.ExcludeTables)
+	tables, err := transformer_filter.NewFilter(cfg.Tables.IncludeTables, cfg.Tables.ExcludeTables)
 	if err != nil {
 		return nil, xerrors.Errorf("Unable to init table filter: %w", err)
 	}
@@ -106,7 +106,7 @@ func (r *FilterRowsTransformer) Apply(input []abstract.ChangeItem) abstract.Tran
 			continue
 		}
 
-		isNameMatching := filter.MatchAnyTableNameVariant(r.Tables, item.TableID())
+		isNameMatching := transformer_filter.MatchAnyTableNameVariant(r.Tables, item.TableID())
 		if !isNameMatching || abstract.IsSystemTable(item.TableID().Name) || !r.appropriateKinds.Contains(item.Kind) {
 			transformed = append(transformed, item)
 			continue
@@ -283,9 +283,9 @@ func matchValue(val1 interface{}, term termWithValues) (bool, error) {
 	case val2.IsString(), val2.IsStringList():
 		byt, ok := val1.([]byte)
 		if val2.IsString() && ok {
-			if op == parser.Match {
+			if op == filter.Match {
 				return bytes.Contains(byt, term.ByteValue), nil
-			} else if op == parser.NotMatch {
+			} else if op == filter.NotMatch {
 				return !bytes.Contains(byt, term.ByteValue), nil
 			}
 
@@ -305,9 +305,9 @@ func matchValue(val1 interface{}, term termWithValues) (bool, error) {
 			ok = isString
 		}
 		if ok {
-			if op == parser.Match {
+			if op == filter.Match {
 				return strings.Contains(str1, val2.AsString()), nil
-			} else if op == parser.NotMatch {
+			} else if op == filter.NotMatch {
 				return !strings.Contains(str1, val2.AsString()), nil
 			}
 
@@ -351,9 +351,9 @@ func matchValue(val1 interface{}, term termWithValues) (bool, error) {
 		}
 
 	case val2.IsNull():
-		if op == parser.Equals {
+		if op == filter.Equals {
 			return val1 == nil, nil
-		} else if op == parser.NotEquals {
+		} else if op == filter.NotEquals {
 			return val1 != nil, nil
 		}
 
@@ -364,58 +364,58 @@ func matchValue(val1 interface{}, term termWithValues) (bool, error) {
 	return false, xerrors.New("Unsupported type pair")
 }
 
-func matchOrderedValue[T constraints.Ordered](val1, val2 T, op parser.OperatorType) (bool, error) {
+func matchOrderedValue[T constraints.Ordered](val1, val2 T, op filter.OperatorType) (bool, error) {
 	switch op {
-	case parser.Equals:
+	case filter.Equals:
 		return val1 == val2, nil
-	case parser.NotEquals:
+	case filter.NotEquals:
 		return val1 != val2, nil
-	case parser.Less:
+	case filter.Less:
 		return val1 < val2, nil
-	case parser.LessOrEquals:
+	case filter.LessOrEquals:
 		return val1 <= val2, nil
-	case parser.Greater:
+	case filter.Greater:
 		return val1 > val2, nil
-	case parser.GreaterOrEquals:
+	case filter.GreaterOrEquals:
 		return val1 >= val2, nil
 	}
 	return false, xerrors.Errorf("Unknown operation %s", op)
 }
 
-func matchBytesValue(val1, val2 []byte, op parser.OperatorType) (bool, error) {
+func matchBytesValue(val1, val2 []byte, op filter.OperatorType) (bool, error) {
 	switch op {
-	case parser.Equals:
+	case filter.Equals:
 		return bytes.Equal(val1, val2), nil
-	case parser.NotEquals:
+	case filter.NotEquals:
 		return !bytes.Equal(val1, val2), nil
-	case parser.Less:
+	case filter.Less:
 		return bytes.Compare(val1, val2) < 0, nil
-	case parser.LessOrEquals:
+	case filter.LessOrEquals:
 		return bytes.Compare(val1, val2) < 1, nil
-	case parser.Greater:
+	case filter.Greater:
 		return bytes.Compare(val1, val2) > 0, nil
-	case parser.GreaterOrEquals:
+	case filter.GreaterOrEquals:
 		return bytes.Compare(val1, val2) > -1, nil
 	}
 	return false, xerrors.Errorf("Unknown operation %s", op)
 }
 
-func matchValueToSet[T constraints.Ordered](val T, set *set.Set[interface{}], op parser.OperatorType) (bool, error) {
+func matchValueToSet[T constraints.Ordered](val T, set *set.Set[interface{}], op filter.OperatorType) (bool, error) {
 	if set == nil {
 		return false, xerrors.Errorf("unable to check value matching without set, operator: %s", op.String())
 	}
 
 	switch op {
-	case parser.In:
+	case filter.In:
 		return set.Contains(val), nil
-	case parser.NotIn:
+	case filter.NotIn:
 		return !set.Contains(val), nil
 	}
 
 	return false, xerrors.Errorf("Unknown set operation %s", op)
 }
 
-func prepareTermValues(terms []parser.Term) ([]termWithValues, error) {
+func prepareTermValues(terms []filter.Term) ([]termWithValues, error) {
 	termsWithValues := make([]termWithValues, 0, len(terms))
 	for _, term := range terms {
 		currentTerm := termWithValues{
@@ -442,12 +442,12 @@ func prepareTermValues(terms []parser.Term) ([]termWithValues, error) {
 	return termsWithValues, nil
 }
 
-func isOperationWithSet(op parser.OperatorType) bool {
-	return op == parser.In || op == parser.NotIn
+func isOperationWithSet(op filter.OperatorType) bool {
+	return op == filter.In || op == filter.NotIn
 }
 
 func (r *FilterRowsTransformer) Suitable(table abstract.TableID, schema *abstract.TableSchema) bool {
-	if !filter.MatchAnyTableNameVariant(r.Tables, table) {
+	if !transformer_filter.MatchAnyTableNameVariant(r.Tables, table) {
 		return false
 	}
 	cols := schema.Columns()
@@ -489,28 +489,28 @@ func (r *FilterRowsTransformer) Description() string {
 }
 
 // checkColumnSuitable checks if column.DataType could be casted to parser.Value's type.
-func (r *FilterRowsTransformer) checkColumnSuitable(value parser.Value, column abstract.ColSchema) bool {
+func (r *FilterRowsTransformer) checkColumnSuitable(value filter.Value, column abstract.ColSchema) bool {
 	switch {
 	case value.IsBool():
-		return column.DataType == yts.TypeBoolean.String()
+		return column.DataType == ytschema.TypeBoolean.String()
 
 	case value.IsFloat(), value.IsInt():
 		switch column.DataType {
-		case yts.TypeInt8.String(), yts.TypeInt16.String(), yts.TypeInt32.String(), yts.TypeInt64.String(),
-			yts.TypeUint8.String(), yts.TypeUint16.String(), yts.TypeUint32.String(), yts.TypeUint64.String(),
-			yts.TypeFloat32.String(), yts.TypeFloat64.String():
+		case ytschema.TypeInt8.String(), ytschema.TypeInt16.String(), ytschema.TypeInt32.String(), ytschema.TypeInt64.String(),
+			ytschema.TypeUint8.String(), ytschema.TypeUint16.String(), ytschema.TypeUint32.String(), ytschema.TypeUint64.String(),
+			ytschema.TypeFloat32.String(), ytschema.TypeFloat64.String():
 			return true
 		}
 
 	case value.IsString():
 		switch column.DataType {
-		case yts.TypeString.String(), yts.TypeBytes.String(), yts.TypeAny.String():
+		case ytschema.TypeString.String(), ytschema.TypeBytes.String(), ytschema.TypeAny.String():
 			return true
 		}
 
 	case value.IsTime():
 		switch column.DataType {
-		case yts.TypeTimestamp.String(), yts.TypeDate.String(), yts.TypeDatetime.String():
+		case ytschema.TypeTimestamp.String(), ytschema.TypeDate.String(), ytschema.TypeDatetime.String():
 			return true
 		}
 

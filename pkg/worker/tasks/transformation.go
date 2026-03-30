@@ -3,14 +3,14 @@ package tasks
 import (
 	"context"
 
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/util"
 )
 
-func AddExtraTransformers(ctx context.Context, transfer *model.Transfer, registry metrics.Registry) error {
+func AddExtraTransformers(ctx context.Context, transfer *model.Transfer, registry core_metrics.Registry) error {
 	if transformableSource, ok := transfer.Src.(model.ExtraTransformableSource); ok {
 		transformers, err := transformableSource.ExtraTransformers(ctx, transfer, registry)
 		if err != nil {

@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/format"
@@ -17,8 +17,8 @@ import (
 	"github.com/transferia/transferia/pkg/util/jsonx"
 	"github.com/transferia/transferia/pkg/util/queues/sequencer"
 	"github.com/transferia/transferia/pkg/util/throttler"
-	"github.com/ydb-platform/ydb-go-sdk/v3"
-	"github.com/ydb-platform/ydb-go-sdk/v3/table"
+	ydb_go_sdk "github.com/ydb-platform/ydb-go-sdk/v3"
+	ydb_table "github.com/ydb-platform/ydb-go-sdk/v3/table"
 	"github.com/ydb-platform/ydb-go-sdk/v3/topic/topicoptions"
 	"github.com/ydb-platform/ydb-go-sdk/v3/topic/topicreader"
 	"go.ytsaurus.tech/library/go/core/log"
@@ -42,7 +42,7 @@ type Source struct {
 	reader       *readerThreadSafe
 	schema       *schemaWrapper
 	memThrottler throttler.Throttler
-	ydbClient    *ydb.Driver
+	ydbClient    *ydb_go_sdk.Driver
 
 	errCh chan error
 }
@@ -281,9 +281,9 @@ func batchesSize(buffer []batchWithSize) uint64 {
 	return size
 }
 
-func discoverChangeFeedMode(ydbClient *ydb.Driver, tablePath, changeFeedName string) (ChangeFeedModeType, error) {
+func discoverChangeFeedMode(ydbClient *ydb_go_sdk.Driver, tablePath, changeFeedName string) (ChangeFeedModeType, error) {
 	var result ChangeFeedModeType
-	err := ydbClient.Table().Do(context.Background(), func(ctx context.Context, s table.Session) error {
+	err := ydbClient.Table().Do(context.Background(), func(ctx context.Context, s ydb_table.Session) error {
 		desc, err := s.DescribeTable(ctx, tablePath)
 		if err != nil {
 			return xerrors.Errorf("failed to describe table '%s': %w", tablePath, err)
@@ -298,14 +298,14 @@ func discoverChangeFeedMode(ydbClient *ydb.Driver, tablePath, changeFeedName str
 			return xerrors.Errorf("failed to find customFeed '%s' for table '%s'", changeFeedName, tablePath)
 		}
 		return nil
-	}, table.WithIdempotent()) // User already created changefeed and specified its name, so we only try to get it's mode.
+	}, ydb_table.WithIdempotent()) // User already created changefeed and specified its name, so we only try to get it's mode.
 	if err != nil {
 		return "", xerrors.Errorf("failed to define ChangeFeed Mode: %w", err)
 	}
 	return result, nil
 }
 
-func NewSource(transferID string, cfg *YdbSource, logger log.Logger, registry metrics.Registry) (*Source, error) {
+func NewSource(transferID string, cfg *YdbSource, logger log.Logger, registry core_metrics.Registry) (*Source, error) {
 	clientCtx, cancelFunc := context.WithCancel(context.Background())
 	var rb util.Rollbacks
 	defer rb.Do()

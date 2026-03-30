@@ -7,22 +7,22 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/montanaflynn/stats"
+	montanaflynn_stats "github.com/montanaflynn/stats"
 	"github.com/olekukonko/tablewriter"
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/mem"
 	"github.com/transferia/transferia/internal/logger"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/pkg/format"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
 type Ps struct {
-	metrics metrics.Registry
+	metrics core_metrics.Registry
 }
 
 type RuntimeStat struct {
-	memPercentage metrics.Gauge
+	memPercentage core_metrics.Gauge
 	memAvailable,
 	memUsed,
 	cpuCounts,
@@ -31,10 +31,10 @@ type RuntimeStat struct {
 	runtimeSys,
 	runtimeNumGC,
 	runtimeHeapInuse,
-	runtimeHeapIdle metrics.Counter
-	processCPU         metrics.Gauge
-	processRAM         metrics.Gauge
-	processDescriptors metrics.Gauge
+	runtimeHeapIdle core_metrics.Counter
+	processCPU         core_metrics.Gauge
+	processRAM         core_metrics.Gauge
+	processDescriptors core_metrics.Gauge
 }
 
 func (p *Ps) Run() {
@@ -69,11 +69,11 @@ func (p *Ps) Run() {
 			p.writeCpus(hostCPU, table, "Host CPU")
 			p.writeCpus(processCPU, table, "Process CPU")
 			memAgr := [5]float64{}
-			memAgr[0], _ = stats.Mean(processMEM)
-			memAgr[1], _ = stats.Percentile(processMEM, 50)
-			memAgr[2], _ = stats.Percentile(processMEM, 75)
-			memAgr[3], _ = stats.Percentile(processMEM, 95)
-			memAgr[4], _ = stats.Percentile(processMEM, 99)
+			memAgr[0], _ = montanaflynn_stats.Mean(processMEM)
+			memAgr[1], _ = montanaflynn_stats.Percentile(processMEM, 50)
+			memAgr[2], _ = montanaflynn_stats.Percentile(processMEM, 75)
+			memAgr[3], _ = montanaflynn_stats.Percentile(processMEM, 95)
+			memAgr[4], _ = montanaflynn_stats.Percentile(processMEM, 99)
 			memRow := []string{}
 			memRow = append(memRow, "MEMORY")
 			for _, v := range memAgr {
@@ -124,11 +124,11 @@ func (p *Ps) Run() {
 
 func (p *Ps) writeCpus(cpuStat []float64, table *tablewriter.Table, sensor string) {
 	agr := [5]float64{}
-	agr[0], _ = stats.Mean(cpuStat)
-	agr[1], _ = stats.Percentile(cpuStat, 50)
-	agr[2], _ = stats.Percentile(cpuStat, 75)
-	agr[3], _ = stats.Percentile(cpuStat, 95)
-	agr[4], _ = stats.Percentile(cpuStat, 99)
+	agr[0], _ = montanaflynn_stats.Mean(cpuStat)
+	agr[1], _ = montanaflynn_stats.Percentile(cpuStat, 50)
+	agr[2], _ = montanaflynn_stats.Percentile(cpuStat, 75)
+	agr[3], _ = montanaflynn_stats.Percentile(cpuStat, 95)
+	agr[4], _ = montanaflynn_stats.Percentile(cpuStat, 99)
 	var row []string
 	row = append(row, sensor)
 	for _, v := range agr {
@@ -137,7 +137,7 @@ func (p *Ps) writeCpus(cpuStat []float64, table *tablewriter.Table, sensor strin
 	table.Append(row)
 }
 
-func NewPs(registry metrics.Registry) *Ps {
+func NewPs(registry core_metrics.Registry) *Ps {
 	psutilRegistry := registry.WithTags(map[string]string{"component": "psutil"})
 	p := &Ps{
 		metrics: psutilRegistry,

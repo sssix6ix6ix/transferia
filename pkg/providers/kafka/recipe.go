@@ -7,8 +7,8 @@ import (
 
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	kafkaConn "github.com/transferia/transferia/pkg/connection/kafka"
-	"github.com/transferia/transferia/tests/tcrecipes/kafka"
+	conn_kafka "github.com/transferia/transferia/pkg/connection/kafka"
+	tc_kafka "github.com/transferia/transferia/tests/tcrecipes/kafka"
 )
 
 func ContainerNeeded() bool {
@@ -34,7 +34,7 @@ func SourceRecipe() (*KafkaSource, error) {
 	}
 	src.Auth = &KafkaAuth{
 		Enabled:   false,
-		Mechanism: kafkaConn.KafkaSaslSecurityMechanism_UNSPECIFIED,
+		Mechanism: conn_kafka.KafkaSaslSecurityMechanism_UNSPECIFIED,
 		User:      "",
 		Password:  "",
 	}
@@ -51,7 +51,7 @@ func MustSourceRecipe() *KafkaSource {
 }
 
 func StartKafkaContainer() error {
-	cntr, err := kafka.RunContainer(context.Background())
+	cntr, err := tc_kafka.RunContainer(context.Background())
 	if err != nil {
 		return xerrors.Errorf("unable to start kafka container: %w", err)
 	}
@@ -85,7 +85,7 @@ func DestinationRecipe() (*KafkaDestination, error) {
 	}
 	dst.Auth = &KafkaAuth{
 		Enabled:   false,
-		Mechanism: kafkaConn.KafkaSaslSecurityMechanism_UNSPECIFIED,
+		Mechanism: conn_kafka.KafkaSaslSecurityMechanism_UNSPECIFIED,
 		User:      "",
 		Password:  "",
 	}

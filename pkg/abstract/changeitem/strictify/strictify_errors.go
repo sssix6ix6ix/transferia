@@ -3,13 +3,13 @@ package strictify
 import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract/changeitem"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 // StrictifyError is a general strictification error. It contains the column name and the target type name.
 type StrictifyError struct{ error }
 
-func NewStrictifyError(sch *changeitem.ColSchema, strictType schema.Type, err error) *StrictifyError {
+func NewStrictifyError(sch *changeitem.ColSchema, strictType ytschema.Type, err error) *StrictifyError {
 	return &StrictifyError{
 		error: xerrors.Errorf("unable to strictify the value of column %s (original type %q) to type %s: %w", sch.ColumnName, sch.OriginalType, strictType.String(), err),
 	}

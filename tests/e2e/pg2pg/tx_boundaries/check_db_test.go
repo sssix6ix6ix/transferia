@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
-	"github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
 	"github.com/transferia/transferia/pkg/worker/tasks"
 	"github.com/transferia/transferia/tests/helpers"
@@ -42,9 +42,9 @@ func TestGroup(t *testing.T) {
 }
 
 func Existence(t *testing.T) {
-	_, err := postgres.NewStorage(Source.ToStorageParams(nil))
+	_, err := provider_postgres.NewStorage(Source.ToStorageParams(nil))
 	require.NoError(t, err)
-	_, err = postgres.NewStorage(Target.ToStorageParams())
+	_, err = provider_postgres.NewStorage(Target.ToStorageParams())
 	require.NoError(t, err)
 }
 
@@ -63,7 +63,7 @@ func Load(t *testing.T) {
 	worker := helpers.Activate(t, transfer)
 	defer worker.Close(t)
 
-	st, err := postgres.NewStorage(Source.ToStorageParams(nil))
+	st, err := provider_postgres.NewStorage(Source.ToStorageParams(nil))
 	require.NoError(t, err)
 	defer st.Close()
 	_, err = st.Conn.Exec(context.Background(), "delete from __test where id > 10")

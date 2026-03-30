@@ -12,7 +12,7 @@ import (
 	"github.com/transferia/transferia/pkg/parsers/registry/protobuf/protoscanner"
 	"github.com/transferia/transferia/pkg/stats"
 	"github.com/transferia/transferia/pkg/util"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
@@ -362,34 +362,34 @@ func (p *ProtoParser) makeAuxValues(iterSt *iterState) []interface{} {
 	return res
 }
 
-func protoFieldDescToYtType(fd protoreflect.FieldDescriptor) schema.Type {
+func protoFieldDescToYtType(fd protoreflect.FieldDescriptor) ytschema.Type {
 	if fd.IsList() || fd.IsMap() {
-		return schema.TypeAny
+		return ytschema.TypeAny
 	}
 
 	switch fd.Kind() {
 	case protoreflect.BoolKind:
-		return schema.TypeBoolean
+		return ytschema.TypeBoolean
 	case protoreflect.Int32Kind, protoreflect.Sint32Kind, protoreflect.Sfixed32Kind, protoreflect.EnumKind:
-		return schema.TypeInt32
+		return ytschema.TypeInt32
 	case protoreflect.Int64Kind, protoreflect.Sint64Kind, protoreflect.Sfixed64Kind:
-		return schema.TypeInt64
+		return ytschema.TypeInt64
 	case protoreflect.Uint32Kind, protoreflect.Fixed32Kind:
-		return schema.TypeUint32
+		return ytschema.TypeUint32
 	case protoreflect.Uint64Kind, protoreflect.Fixed64Kind:
-		return schema.TypeUint64
+		return ytschema.TypeUint64
 	case protoreflect.FloatKind:
-		return schema.TypeFloat32
+		return ytschema.TypeFloat32
 	case protoreflect.DoubleKind:
-		return schema.TypeFloat64
+		return ytschema.TypeFloat64
 	case protoreflect.StringKind:
-		return schema.TypeString
+		return ytschema.TypeString
 	case protoreflect.BytesKind:
-		return schema.TypeBytes
+		return ytschema.TypeBytes
 	case protoreflect.MessageKind, protoreflect.GroupKind:
-		return schema.TypeAny
+		return ytschema.TypeAny
 	default:
-		return schema.TypeAny
+		return ytschema.TypeAny
 	}
 }
 
@@ -531,24 +531,24 @@ func makeAuxSchemas(cfg *ProtoParserConfig) (res []abstract.ColSchema) {
 	if cfg.TimeField != nil {
 		res = append(
 			res,
-			abstract.MakeTypedColSchema(parsers.SyntheticTimestampCol, string(schema.TypeDatetime), true),
+			abstract.MakeTypedColSchema(parsers.SyntheticTimestampCol, string(ytschema.TypeDatetime), true),
 		)
 	}
 
 	if cfg.AddSyntheticKeys {
 		res = append(
 			res,
-			abstract.MakeTypedColSchema(parsers.SyntheticPartitionCol, string(schema.TypeString), true),
-			abstract.MakeTypedColSchema(parsers.SyntheticOffsetCol, string(schema.TypeUint64), true),
-			abstract.MakeTypedColSchema(parsers.SyntheticIdxCol, string(schema.TypeUint64), true),
+			abstract.MakeTypedColSchema(parsers.SyntheticPartitionCol, string(ytschema.TypeString), true),
+			abstract.MakeTypedColSchema(parsers.SyntheticOffsetCol, string(ytschema.TypeUint64), true),
+			abstract.MakeTypedColSchema(parsers.SyntheticIdxCol, string(ytschema.TypeUint64), true),
 		)
 	}
 
 	if cfg.AddSystemColumns {
 		res = append(
 			res,
-			abstract.MakeTypedColSchema(parsers.SystemLbCtimeCol, string(schema.TypeDatetime), !cfg.SkipDedupKeys),
-			abstract.MakeTypedColSchema(parsers.SystemLbWtimeCol, string(schema.TypeDatetime), !cfg.SkipDedupKeys),
+			abstract.MakeTypedColSchema(parsers.SystemLbCtimeCol, string(ytschema.TypeDatetime), !cfg.SkipDedupKeys),
+			abstract.MakeTypedColSchema(parsers.SystemLbWtimeCol, string(ytschema.TypeDatetime), !cfg.SkipDedupKeys),
 		)
 	}
 

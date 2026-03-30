@@ -8,7 +8,7 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/schemaregistry/confluent"
-	"github.com/transferia/transferia/pkg/schemaregistry/format"
+	schemaregistry_format "github.com/transferia/transferia/pkg/schemaregistry/format"
 )
 
 type PackerSchemaRegistry struct {
@@ -48,7 +48,7 @@ func (s *PackerSchemaRegistry) BuildFinalSchema(changeItem *abstract.ChangeItem,
 	if err != nil {
 		return nil, xerrors.Errorf("can't build schemaObj object, err: %w", err)
 	}
-	kafkaSchema, err := format.KafkaJSONSchemaFromArr(schemaObj)
+	kafkaSchema, err := schemaregistry_format.KafkaJSONSchemaFromArr(schemaObj)
 	if err != nil {
 		return nil, xerrors.Errorf("can't convert map into kafka json schema, err: %w", err)
 	}

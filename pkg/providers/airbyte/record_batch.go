@@ -7,7 +7,7 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract2"
 	ytschema "go.ytsaurus.tech/yt/go/schema"
-	"golang.org/x/exp/slices"
+	xslices "golang.org/x/exp/slices"
 )
 
 var RecordIndexCol = abstract.ColSchema{
@@ -93,7 +93,7 @@ func NewRecordBatch(rowIndexOffset int, stream *AirbyteStream) *RecordBatch {
 	if len(stream.SourceDefinedPrimaryKey) == 0 {
 		tableSchema = append(tableSchema, RecordIndexCol)
 	}
-	slices.SortFunc(tableSchema, func(a, b abstract.ColSchema) int {
+	xslices.SortFunc(tableSchema, func(a, b abstract.ColSchema) int {
 		if a.IsKey() || b.IsKey() {
 			return -1
 		}

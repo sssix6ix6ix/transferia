@@ -6,51 +6,51 @@ import (
 
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/typesystem"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 func init() {
-	typesystem.SourceRules(ProviderType, map[schema.Type][]string{
-		schema.TypeInt64:   {"BIGINT"},
-		schema.TypeInt32:   {"INT", "MEDIUMINT"},
-		schema.TypeInt16:   {"SMALLINT"},
-		schema.TypeInt8:    {"TINYINT"},
-		schema.TypeUint64:  {"BIGINT UNSIGNED"},
-		schema.TypeUint32:  {"INT UNSIGNED", "MEDIUMINT UNSIGNED"},
-		schema.TypeUint16:  {"SMALLINT UNSIGNED"},
-		schema.TypeUint8:   {"TINYINT UNSIGNED"},
-		schema.TypeFloat32: {},
-		schema.TypeFloat64: {"DECIMAL", "DECIMAL UNSIGNED", "DOUBLE", "FLOAT", "FLOAT UNSIGNED"},
-		schema.TypeBytes: {
+	typesystem.SourceRules(ProviderType, map[ytschema.Type][]string{
+		ytschema.TypeInt64:   {"BIGINT"},
+		ytschema.TypeInt32:   {"INT", "MEDIUMINT"},
+		ytschema.TypeInt16:   {"SMALLINT"},
+		ytschema.TypeInt8:    {"TINYINT"},
+		ytschema.TypeUint64:  {"BIGINT UNSIGNED"},
+		ytschema.TypeUint32:  {"INT UNSIGNED", "MEDIUMINT UNSIGNED"},
+		ytschema.TypeUint16:  {"SMALLINT UNSIGNED"},
+		ytschema.TypeUint8:   {"TINYINT UNSIGNED"},
+		ytschema.TypeFloat32: {},
+		ytschema.TypeFloat64: {"DECIMAL", "DECIMAL UNSIGNED", "DOUBLE", "FLOAT", "FLOAT UNSIGNED"},
+		ytschema.TypeBytes: {
 			"TINYBLOB", "BLOB", "MEDIUMBLOB", "LONGBLOB", "BINARY", "VARBINARY", "BIT",
 			"GEOMETRY", "GEOMCOLLECTION", "POINT", "MULTIPOINT", "LINESTRING", "MULTILINESTRING", "POLYGON", "MULTIPOLYGON",
 			typesystem.RestPlaceholder,
 		},
-		schema.TypeString:    {"TINYTEXT", "TEXT", "MEDIUMTEXT", "LONGTEXT", "VARCHAR", "CHAR", "TIME", "YEAR", "ENUM", "SET"},
-		schema.TypeBoolean:   {},
-		schema.TypeDate:      {"DATE"},
-		schema.TypeDatetime:  {},
-		schema.TypeTimestamp: {"DATETIME", "TIMESTAMP"},
-		schema.TypeAny:       {"JSON"},
+		ytschema.TypeString:    {"TINYTEXT", "TEXT", "MEDIUMTEXT", "LONGTEXT", "VARCHAR", "CHAR", "TIME", "YEAR", "ENUM", "SET"},
+		ytschema.TypeBoolean:   {},
+		ytschema.TypeDate:      {"DATE"},
+		ytschema.TypeDatetime:  {},
+		ytschema.TypeTimestamp: {"DATETIME", "TIMESTAMP"},
+		ytschema.TypeAny:       {"JSON"},
 	})
-	typesystem.TargetRule(ProviderType, map[schema.Type]string{
-		schema.TypeInt64:     "BIGINT",
-		schema.TypeInt32:     "INT",
-		schema.TypeInt16:     "SMALLINT",
-		schema.TypeInt8:      "TINYINT",
-		schema.TypeUint64:    "BIGINT",
-		schema.TypeUint32:    "INT",
-		schema.TypeUint16:    "SMALLINT",
-		schema.TypeUint8:     "TINYINT",
-		schema.TypeFloat32:   "FLOAT",
-		schema.TypeFloat64:   "FLOAT",
-		schema.TypeBytes:     "TEXT",
-		schema.TypeString:    "TEXT",
-		schema.TypeBoolean:   "BIT",
-		schema.TypeAny:       "JSON",
-		schema.TypeDate:      "DATE",
-		schema.TypeDatetime:  "TIMESTAMP",
-		schema.TypeTimestamp: "TIMESTAMP",
+	typesystem.TargetRule(ProviderType, map[ytschema.Type]string{
+		ytschema.TypeInt64:     "BIGINT",
+		ytschema.TypeInt32:     "INT",
+		ytschema.TypeInt16:     "SMALLINT",
+		ytschema.TypeInt8:      "TINYINT",
+		ytschema.TypeUint64:    "BIGINT",
+		ytschema.TypeUint32:    "INT",
+		ytschema.TypeUint16:    "SMALLINT",
+		ytschema.TypeUint8:     "TINYINT",
+		ytschema.TypeFloat32:   "FLOAT",
+		ytschema.TypeFloat64:   "FLOAT",
+		ytschema.TypeBytes:     "TEXT",
+		ytschema.TypeString:    "TEXT",
+		ytschema.TypeBoolean:   "BIT",
+		ytschema.TypeAny:       "JSON",
+		ytschema.TypeDate:      "DATE",
+		ytschema.TypeDatetime:  "TIMESTAMP",
+		ytschema.TypeTimestamp: "TIMESTAMP",
 	})
 }
 

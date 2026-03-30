@@ -3,7 +3,7 @@ package postgres
 import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/typesystem"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 func init() {
@@ -24,9 +24,9 @@ func init() {
 				fallbackApplied := false
 				for i := 0; i < len(ci.TableSchema.Columns()); i++ {
 					switch ci.TableSchema.Columns()[i].DataType {
-					case schema.TypeDate.String(), schema.TypeDatetime.String(), schema.TypeTimestamp.String():
+					case ytschema.TypeDate.String(), ytschema.TypeDatetime.String(), ytschema.TypeTimestamp.String():
 						fallbackApplied = true
-						ci.TableSchema.Columns()[i].DataType = schema.TypeString.String()
+						ci.TableSchema.Columns()[i].DataType = ytschema.TypeString.String()
 					default:
 						// do nothing
 					}

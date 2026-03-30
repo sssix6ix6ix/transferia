@@ -2,12 +2,12 @@ package json
 
 import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
-	"github.com/transferia/transferia/pkg/parsers/scanner"
+	parsers_scanner "github.com/transferia/transferia/pkg/parsers/scanner"
 	"github.com/valyala/fastjson"
 )
 
 func readAllLines(content []byte) ([]string, int, error) {
-	currScanner := scanner.NewLineBreakScanner(content)
+	currScanner := parsers_scanner.NewLineBreakScanner(content)
 	scannedLines, err := currScanner.ScanAll()
 	if err != nil {
 		return nil, 0, xerrors.Errorf("failed to split all read lines: %w", err)

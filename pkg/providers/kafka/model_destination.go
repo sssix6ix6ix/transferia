@@ -9,8 +9,8 @@ import (
 	yslices "github.com/transferia/transferia/library/go/slices"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	kafkaConn "github.com/transferia/transferia/pkg/connection/kafka"
-	debeziumparameters "github.com/transferia/transferia/pkg/debezium/parameters"
+	conn_kafka "github.com/transferia/transferia/pkg/connection/kafka"
+	debezium_parameters "github.com/transferia/transferia/pkg/debezium/parameters"
 	"github.com/transferia/transferia/pkg/middlewares/synchronizer/bufferer"
 	"github.com/transferia/transferia/pkg/util/queues/coherence_check"
 	"go.uber.org/zap/zapcore"
@@ -91,7 +91,7 @@ func (d *KafkaDestination) WithDefaults() {
 	if d.Auth == nil {
 		d.Auth = &KafkaAuth{
 			Enabled:   true,
-			Mechanism: kafkaConn.KafkaSaslSecurityMechanism_SCRAM_SHA512,
+			Mechanism: conn_kafka.KafkaSaslSecurityMechanism_SCRAM_SHA512,
 			User:      "",
 			Password:  "",
 		}
@@ -137,7 +137,7 @@ func (d *KafkaDestination) Validate() error {
 }
 
 func (d *KafkaDestination) YSRNamespaceID() string {
-	return debeziumparameters.GetYSRNamespaceID(d.FormatSettings.Settings)
+	return debezium_parameters.GetYSRNamespaceID(d.FormatSettings.Settings)
 }
 
 func (d *KafkaDestination) Compatible(src model.Source, transferType abstract.TransferType) error {
@@ -146,7 +146,7 @@ func (d *KafkaDestination) Compatible(src model.Source, transferType abstract.Tr
 
 func (d *KafkaDestination) Serializer() (model.SerializationFormat, bool) {
 	formatSettings := d.FormatSettings
-	formatSettings.Settings = debeziumparameters.EnrichedWithDefaults(formatSettings.Settings)
+	formatSettings.Settings = debezium_parameters.EnrichedWithDefaults(formatSettings.Settings)
 	return formatSettings, d.SaveTxOrder
 }
 

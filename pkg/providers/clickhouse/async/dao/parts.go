@@ -7,12 +7,12 @@ import (
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/transferia/transferia/library/go/core/xerrors"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/async/model/db"
+	ch_db_model "github.com/transferia/transferia/pkg/providers/clickhouse/async/model/db"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
 type PartsDAO struct {
-	db  db.Client
+	db  ch_db_model.Client
 	lgr log.Logger
 }
 
@@ -70,7 +70,7 @@ func (d *PartsDAO) getPartitionList(dbName, table string) ([]string, error) {
 	return partitions, nil
 }
 
-func NewPartsDAO(db db.Client, lgr log.Logger) *PartsDAO {
+func NewPartsDAO(db ch_db_model.Client, lgr log.Logger) *PartsDAO {
 	return &PartsDAO{
 		db:  db,
 		lgr: lgr,

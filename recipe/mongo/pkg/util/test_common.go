@@ -9,8 +9,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/recipe/mongo/pkg/mongo_sharded_cluster"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	mongo_driver "go.mongodb.org/mongo-driver/mongo"
+	mongo_options "go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func TestMongoShardedClusterRecipe(t *testing.T) {
@@ -31,10 +31,10 @@ func TestMongoShardedClusterRecipe(t *testing.T) {
 		os.Getenv(mongo_sharded_cluster.EnvMongoShardedClusterHost),
 		os.Getenv(mongo_sharded_cluster.EnvMongoShardedClusterPort),
 	)
-	client, err := mongo.NewClient(
-		new(options.ClientOptions).
+	client, err := mongo_driver.NewClient(
+		new(mongo_options.ClientOptions).
 			SetHosts([]string{hostSpec}).
-			SetAuth(options.Credential{
+			SetAuth(mongo_options.Credential{
 				AuthMechanism:           "",
 				AuthMechanismProperties: nil,
 				AuthSource:              os.Getenv(mongo_sharded_cluster.EnvMongoShardedClusterAuthSource),

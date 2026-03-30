@@ -11,9 +11,9 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	pgcommon "github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
-	"github.com/transferia/transferia/pkg/providers/ydb"
+	provider_ydb "github.com/transferia/transferia/pkg/providers/ydb"
 	"github.com/transferia/transferia/tests/helpers"
 )
 
@@ -26,7 +26,7 @@ var (
 
 func TestSnapshotAndIncrement(t *testing.T) {
 	Source := pgrecipe.RecipeSource(pgrecipe.WithPrefix(""))
-	Target := &ydb.YdbDestination{
+	Target := &provider_ydb.YdbDestination{
 		Token:    model.SecretString(os.Getenv("YDB_TOKEN")),
 		Database: helpers.GetEnvOfFail(t, "YDB_DATABASE"),
 		Instance: helpers.GetEnvOfFail(t, "YDB_ENDPOINT"),
@@ -53,7 +53,7 @@ func TestSnapshotAndIncrement(t *testing.T) {
 	worker := helpers.Activate(t, transfer)
 	defer worker.Close(t)
 
-	conn, err := pgcommon.MakeConnPoolFromSrc(Source, logger.Log)
+	conn, err := provider_postgres.MakeConnPoolFromSrc(Source, logger.Log)
 	require.NoError(t, err)
 	_, err = conn.Exec(context.Background(), fmt.Sprintf(`insert into %s values(6, 'You')`, tableName))
 	require.NoError(t, err)

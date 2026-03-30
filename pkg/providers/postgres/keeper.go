@@ -10,7 +10,7 @@ import (
 
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
-	"github.com/transferia/transferia/internal/config"
+	internal_config "github.com/transferia/transferia/internal/config"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"go.ytsaurus.tech/library/go/core/log"
@@ -23,7 +23,7 @@ const (
 var ErrConsumerLocked = xerrors.New("keeper: Consumer already locked")
 
 type Config struct {
-	config.DBConfig
+	internal_config.DBConfig
 }
 
 func KeeperDDL(schema string) string {

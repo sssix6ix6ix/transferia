@@ -3,7 +3,7 @@ package greenplum
 import (
 	"fmt"
 
-	pgcommon "github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 )
 
 type GreenplumFlavour struct {
@@ -162,8 +162,8 @@ func (f *GreenplumFlavour) ListTablesQuery(excludeViews bool, forbiddenSchemas [
 	// https://gpdb.docs.pivotal.io/6-19/ref_guide/system_catalogs/gp_distribution_policy.html
 	return fmt.Sprintf(
 		f.baseListTablesQuery(),
-		pgcommon.ListWithCommaSingleQuoted(forbiddenTables),
-		pgcommon.ListWithCommaSingleQuoted(forbiddenSchemas),
+		provider_postgres.ListWithCommaSingleQuoted(forbiddenTables),
+		provider_postgres.ListWithCommaSingleQuoted(forbiddenSchemas),
 		f.filterForRelationType(excludeViews),
 	)
 }
@@ -179,7 +179,7 @@ func (f *GreenplumFlavour) filterForTables(withSpecificTable bool, forbiddenTabl
 	if withSpecificTable {
 		return `nc.nspname = $1 AND c.relname = $2`
 	}
-	return fmt.Sprintf(`nc.nspname NOT IN (%[1]s) AND c.relname NOT IN (%[2]s)`, pgcommon.ListWithCommaSingleQuoted(forbiddenSchemas), pgcommon.ListWithCommaSingleQuoted(forbiddenTables))
+	return fmt.Sprintf(`nc.nspname NOT IN (%[1]s) AND c.relname NOT IN (%[2]s)`, provider_postgres.ListWithCommaSingleQuoted(forbiddenSchemas), provider_postgres.ListWithCommaSingleQuoted(forbiddenTables))
 }
 
 func (f *GreenplumFlavour) baseListTablesQuery() string {

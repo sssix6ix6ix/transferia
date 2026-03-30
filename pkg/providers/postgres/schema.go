@@ -14,7 +14,7 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/changeitem"
 	"go.ytsaurus.tech/library/go/core/log"
-	"golang.org/x/exp/maps"
+	xmaps "golang.org/x/exp/maps"
 )
 
 func timescaleDBSchemas() []string {
@@ -160,7 +160,7 @@ func (e *SchemaExtractor) handleSchemasCollapasInheritTables(ctx context.Context
 		return nil, xerrors.Errorf("handleSchemasCollapasInheritTables - failed to make MakeChildParentMap, err: %w", err)
 	}
 
-	keys := maps.Keys(result)
+	keys := xmaps.Keys(result)
 	for _, currTableID := range keys {
 		tableInfo, err := newTableInformationSchema(ctx, conn, abstract.TableDescription{
 			Schema: currTableID.Namespace,

@@ -4,12 +4,12 @@ import (
 	"context"
 
 	"github.com/transferia/transferia/internal/logger"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/storage"
+	"github.com/transferia/transferia/pkg/storage_factory"
 	"github.com/transferia/transferia/pkg/util"
 	"go.ytsaurus.tech/library/go/core/log"
 )
@@ -18,7 +18,7 @@ type UploadSpec struct {
 	Tables []abstract.TableDescription
 }
 
-func missingTables(transfer *model.Transfer, registry metrics.Registry, requested []abstract.TableDescription) (result []string, err error) {
+func missingTables(transfer *model.Transfer, registry core_metrics.Registry, requested []abstract.TableDescription) (result []string, err error) {
 	presentTables, err := ObtainAllSrcTables(transfer, registry)
 	if err != nil {
 		return nil, xerrors.Errorf(tableListErrorText, err)
@@ -33,8 +33,8 @@ func missingTables(transfer *model.Transfer, registry metrics.Registry, requeste
 	return result, nil
 }
 
-func inaccessibleTables(transfer *model.Transfer, registry metrics.Registry, requested []abstract.TableDescription) ([]string, error) {
-	srcStorage, err := storage.NewStorage(transfer, coordinator.NewFakeClient(), registry)
+func inaccessibleTables(transfer *model.Transfer, registry core_metrics.Registry, requested []abstract.TableDescription) ([]string, error) {
+	srcStorage, err := storage_factory.NewStorage(transfer, coordinator.NewFakeClient(), registry)
 	if err != nil {
 		return nil, xerrors.Errorf(resolveStorageErrorText, err)
 	}
@@ -55,7 +55,7 @@ func inaccessibleTables(transfer *model.Transfer, registry metrics.Registry, req
 	return result, nil
 }
 
-func Upload(ctx context.Context, cp coordinator.Coordinator, transfer model.Transfer, task *model.TransferOperation, spec UploadSpec, registry metrics.Registry) error {
+func Upload(ctx context.Context, cp coordinator.Coordinator, transfer model.Transfer, task *model.TransferOperation, spec UploadSpec, registry core_metrics.Registry) error {
 	if task == nil {
 		task = new(model.TransferOperation)
 	}

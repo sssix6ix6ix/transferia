@@ -13,12 +13,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ClickHouse/clickhouse-go/v2"
+	clickhouse_go "github.com/ClickHouse/clickhouse-go/v2"
 	"github.com/klauspost/compress/zstd"
 	"github.com/transferia/transferia/library/go/core/xerrors"
-	chconn "github.com/transferia/transferia/pkg/connection/clickhouse"
+	conn_clickhouse "github.com/transferia/transferia/pkg/connection/clickhouse"
 	"github.com/transferia/transferia/pkg/errors/coded"
-	"github.com/transferia/transferia/pkg/errors/codes"
+	error_codes "github.com/transferia/transferia/pkg/errors/codes"
 	"github.com/transferia/transferia/pkg/format"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/conn"
 	"github.com/transferia/transferia/pkg/util"
@@ -30,7 +30,7 @@ type httpClientImpl struct {
 	httpClient *http.Client
 }
 
-func (c *httpClientImpl) buildConnString(host *chconn.Host, database string) string {
+func (c *httpClientImpl) buildConnString(host *conn_clickhouse.Host, database string) string {
 	proto := "http"
 	if c.config.SSLEnabled() {
 		proto = "https"
@@ -51,7 +51,7 @@ func (c *httpClientImpl) prepareQuery(query interface{}) (io.Reader, error) {
 	}
 }
 
-func (c *httpClientImpl) QueryStream(ctx context.Context, lgr log.Logger, host *chconn.Host, query interface{}) (io.ReadCloser, error) {
+func (c *httpClientImpl) QueryStream(ctx context.Context, lgr log.Logger, host *conn_clickhouse.Host, query interface{}) (io.ReadCloser, error) {
 	preparedQuery, err := c.prepareQuery(query)
 	if err != nil {
 		return nil, xerrors.Errorf("error preparing query: %w", err)
@@ -77,7 +77,7 @@ func (c *httpClientImpl) QueryStream(ctx context.Context, lgr log.Logger, host *
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, connString, bytes.NewReader(compressed.Bytes()))
 	if err != nil {
-		return nil, coded.Errorf(codes.NetworkUnreachable, "unable to create request: %w", err)
+		return nil, coded.Errorf(error_codes.NetworkUnreachable, "unable to create request: %w", err)
 	}
 
 	req.Header.Add("Content-Type", "application/octet-stream")
@@ -103,18 +103,18 @@ func (c *httpClientImpl) QueryStream(ctx context.Context, lgr log.Logger, host *
 		body := strings.ToLower(string(rawBody))
 		// Map common SSL requirement messages to coded error
 		if util.ContainsAnySubstrings(body, "ssl", "required") {
-			return nil, coded.Errorf(codes.ClickHouseSSLRequired, "error executing CH query: %w", chErr)
+			return nil, coded.Errorf(error_codes.ClickHouseSSLRequired, "error executing CH query: %w", chErr)
 		}
 		// Map ClickHouse out-of-range date errors
 		if util.ContainsAnySubstrings(body, "must be between", "out of range") {
-			return nil, coded.Errorf(codes.DataOutOfRange, "error executing CH query: %w", chErr)
+			return nil, coded.Errorf(error_codes.DataOutOfRange, "error executing CH query: %w", chErr)
 		}
 		// Map syntax error due to hyphen in database name
-		var chExc *clickhouse.Exception
+		var chExc *clickhouse_go.Exception
 		if xerrors.As(chErr, &chExc) && chExc.Code == 62 && strings.Contains(body, "syntax error") {
 			// Heuristic: ClickHouse complains near '-' when DB name contains hyphen
 			if util.ContainsAnySubstrings(body, "('-')", " failed at position ") {
-				return nil, coded.Errorf(codes.ClickHouseInvalidDatabaseName, "error executing CH query: %w", chErr)
+				return nil, coded.Errorf(error_codes.ClickHouseInvalidDatabaseName, "error executing CH query: %w", chErr)
 			}
 		}
 		return nil, xerrors.Errorf("failed: %v to POST %s, status: %s: %w", query, req.URL.String(), resp.Status, chErr)
@@ -122,7 +122,7 @@ func (c *httpClientImpl) QueryStream(ctx context.Context, lgr log.Logger, host *
 	return resp.Body, nil
 }
 
-func (c *httpClientImpl) Query(ctx context.Context, lgr log.Logger, host *chconn.Host, query interface{}, res interface{}) error {
+func (c *httpClientImpl) Query(ctx context.Context, lgr log.Logger, host *conn_clickhouse.Host, query interface{}, res interface{}) error {
 	body, err := c.QueryStream(ctx, lgr, host, query)
 	if err != nil {
 		return err
@@ -137,7 +137,7 @@ func (c *httpClientImpl) Query(ctx context.Context, lgr log.Logger, host *chconn
 	return nil
 }
 
-func (c *httpClientImpl) Exec(ctx context.Context, lgr log.Logger, host *chconn.Host, query interface{}) error {
+func (c *httpClientImpl) Exec(ctx context.Context, lgr log.Logger, host *conn_clickhouse.Host, query interface{}) error {
 	return c.Query(ctx, lgr, host, query, nil)
 }
 
@@ -179,7 +179,7 @@ func ParseCHException(raw string) error {
 		name = matches[2]
 	}
 
-	return &clickhouse.Exception{
+	return &clickhouse_go.Exception{
 		Code:       code,
 		Name:       name,
 		Message:    msg,

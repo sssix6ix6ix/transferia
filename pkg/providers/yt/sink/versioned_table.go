@@ -13,15 +13,15 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors/multierr"
 	yslices "github.com/transferia/transferia/library/go/slices"
 	"github.com/transferia/transferia/pkg/abstract"
-	yt2 "github.com/transferia/transferia/pkg/providers/yt"
+	provider_yt "github.com/transferia/transferia/pkg/providers/yt"
 	"github.com/transferia/transferia/pkg/stats"
 	"github.com/transferia/transferia/pkg/util"
 	"go.ytsaurus.tech/library/go/core/log"
 	"go.ytsaurus.tech/yt/go/migrate"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 	"go.ytsaurus.tech/yt/go/ypath"
 	"go.ytsaurus.tech/yt/go/yt"
-	"golang.org/x/exp/slices"
+	xslices "golang.org/x/exp/slices"
 )
 
 type VersionedTable struct {
@@ -31,7 +31,7 @@ type VersionedTable struct {
 	metrics        *stats.SinkerStats
 	schema         []abstract.ColSchema
 	archiveSpawned bool
-	config         yt2.YtDestinationModel
+	config         provider_yt.YtDestinationModel
 	keys           map[string]bool
 	props          map[string]bool
 	orderedKeys    []string
@@ -174,7 +174,7 @@ func (t *VersionedTable) Write(input []abstract.ChangeItem) error {
 	var newestRows []interface{}
 
 	if len(t.orderedKeys) > 0 {
-		slices.SortFunc(insertRows, func(left, right map[string]interface{}) int {
+		xslices.SortFunc(insertRows, func(left, right map[string]interface{}) int {
 			if t.less(left[t.config.VersionColumn()], right[t.config.VersionColumn()]) {
 				return -1
 			}
@@ -397,20 +397,20 @@ func (t *VersionedTable) ensureSchema(schemas []abstract.ColSchema) (schemaCompa
 func (t *VersionedTable) buildTargetTable(schemas []abstract.ColSchema) (migrate.Table, error) {
 	s := true
 	haveKeyColumns := false
-	target := schema.Schema{
+	target := ytschema.Schema{
 		UniqueKeys: true,
 		Strict:     &s,
-		Columns:    make([]schema.Column, len(schemas)),
+		Columns:    make([]ytschema.Column, len(schemas)),
 	}
 	for i, col := range schemas {
-		target.Columns[i] = schema.Column{
+		target.Columns[i] = ytschema.Column{
 			Name:       col.ColumnName,
-			Type:       schema.Type(col.DataType),
+			Type:       ytschema.Type(col.DataType),
 			Expression: col.Expression,
 		}
 
 		if col.PrimaryKey {
-			target.Columns[i].SortOrder = schema.SortAscending
+			target.Columns[i].SortOrder = ytschema.SortAscending
 			haveKeyColumns = true
 		}
 	}
@@ -426,19 +426,19 @@ func (t *VersionedTable) buildTargetTable(schemas []abstract.ColSchema) (migrate
 // less will check whether left *less* than right
 // it will give asc order for standard slices sort
 func (t *VersionedTable) less(left, right interface{}) bool {
-	switch schema.Type(t.versionCol.DataType) {
-	case schema.TypeFloat64, schema.TypeFloat32:
+	switch ytschema.Type(t.versionCol.DataType) {
+	case ytschema.TypeFloat64, ytschema.TypeFloat32:
 		return cast.ToFloat64(left) < cast.ToFloat64(right)
-	case schema.TypeInt64, schema.TypeInt32, schema.TypeInt16, schema.TypeInt8:
+	case ytschema.TypeInt64, ytschema.TypeInt32, ytschema.TypeInt16, ytschema.TypeInt8:
 		return cast.ToInt64(left) < cast.ToInt64(right)
-	case schema.TypeUint64, schema.TypeUint32, schema.TypeUint16, schema.TypeUint8:
+	case ytschema.TypeUint64, ytschema.TypeUint32, ytschema.TypeUint16, ytschema.TypeUint8:
 		return cast.ToUint64(left) < cast.ToUint64(right)
 	default:
 		return fmt.Sprintf("%v", left) < fmt.Sprintf("%v", right)
 	}
 }
 
-func NewVersionedTable(ytClient yt.Client, path ypath.Path, schema []abstract.ColSchema, cfg yt2.YtDestinationModel, metrics *stats.SinkerStats, logger log.Logger) (GenericTable, error) {
+func NewVersionedTable(ytClient yt.Client, path ypath.Path, schema []abstract.ColSchema, cfg provider_yt.YtDestinationModel, metrics *stats.SinkerStats, logger log.Logger) (GenericTable, error) {
 	var dummyVersionCol abstract.ColSchema
 	t := VersionedTable{
 		ytClient:       ytClient,

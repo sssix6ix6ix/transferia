@@ -9,12 +9,12 @@ import (
 	"time"
 
 	"github.com/segmentio/kafka-go"
-	"github.com/segmentio/kafka-go/sasl"
+	segmentio_sasl "github.com/segmentio/kafka-go/sasl"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	yslices "github.com/transferia/transferia/library/go/slices"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/errors/coded"
-	"github.com/transferia/transferia/pkg/errors/codes"
+	error_codes "github.com/transferia/transferia/pkg/errors/codes"
 	"github.com/transferia/transferia/pkg/util/set"
 	"go.ytsaurus.tech/library/go/core/log"
 )
@@ -25,12 +25,12 @@ const (
 
 type Client struct {
 	brokers   []string
-	mechanism sasl.Mechanism
+	mechanism segmentio_sasl.Mechanism
 	tlsConfig *tls.Config
 	dial      func(ctx context.Context, network string, address string) (net.Conn, error)
 }
 
-func NewClient(brokers []string, mechanism sasl.Mechanism, tlsConfig *tls.Config, dial func(ctx context.Context, network string, address string) (net.Conn, error)) (*Client, error) {
+func NewClient(brokers []string, mechanism segmentio_sasl.Mechanism, tlsConfig *tls.Config, dial func(ctx context.Context, network string, address string) (net.Conn, error)) (*Client, error) {
 	if len(brokers) == 0 {
 		return nil, abstract.NewFatalError(xerrors.New("expected at least one broker url"))
 	}
@@ -59,7 +59,7 @@ func (c *Client) CreateBrokerConn() (*kafka.Conn, error) {
 	}
 	brokerConn, err := dialer.DialContext(ctx, "tcp", c.broker())
 	if err != nil {
-		return nil, coded.Errorf(codes.NetworkUnreachable, "unable to DialContext broker, err: %w", err)
+		return nil, coded.Errorf(error_codes.NetworkUnreachable, "unable to DialContext broker, err: %w", err)
 	}
 	return brokerConn, nil
 }
@@ -76,7 +76,7 @@ func (c *Client) CreateControllerConn() (*kafka.Conn, error) {
 	}
 	brokerConn, err := dialer.DialContext(ctx, "tcp", c.broker())
 	if err != nil {
-		return nil, coded.Errorf(codes.NetworkUnreachable, "unable to DialContext broker, err: %w", err)
+		return nil, coded.Errorf(error_codes.NetworkUnreachable, "unable to DialContext broker, err: %w", err)
 	}
 	defer brokerConn.Close()
 
@@ -87,7 +87,7 @@ func (c *Client) CreateControllerConn() (*kafka.Conn, error) {
 
 	controllerConn, err := dialer.DialContext(ctx, "tcp", fmt.Sprintf("%s:%d", controller.Host, controller.Port))
 	if err != nil {
-		return nil, coded.Errorf(codes.NetworkUnreachable, "unable to DialContext controller, err: %w", err)
+		return nil, coded.Errorf(error_codes.NetworkUnreachable, "unable to DialContext controller, err: %w", err)
 	}
 
 	return controllerConn, nil

@@ -7,13 +7,13 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/transferia/transferia/cmd/trcli/config"
+	trcli_config "github.com/transferia/transferia/cmd/trcli/config"
 	"github.com/transferia/transferia/cmd/trcli/replicate"
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/library/go/core/metrics/solomon"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/chrecipe"
-	pgcommon "github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
 	"github.com/transferia/transferia/tests/helpers"
 )
@@ -32,7 +32,7 @@ func TestReplicate(t *testing.T) {
 		chrecipe.WithDatabase("trcli_replicate_test_ch"),
 	)
 	require.NoError(t, err)
-	transfer, err := config.ParseTransfer(transferYaml)
+	transfer, err := trcli_config.ParseTransfer(transferYaml)
 	require.NoError(t, err)
 
 	src.SlotID = transfer.ID
@@ -45,10 +45,10 @@ func TestReplicate(t *testing.T) {
 
 	time.Sleep(5 * time.Second)
 
-	connConfig, err := pgcommon.MakeConnConfigFromSrc(logger.Log, src)
+	connConfig, err := provider_postgres.MakeConnConfigFromSrc(logger.Log, src)
 	require.NoError(t, err)
 
-	conn, err := pgcommon.NewPgConnPool(connConfig, logger.Log)
+	conn, err := provider_postgres.NewPgConnPool(connConfig, logger.Log)
 	require.NoError(t, err)
 
 	rows, err := conn.Query(context.Background(), "INSERT INTO public.t2(i, f) VALUES (3, 1.0), (4, 4.0)")

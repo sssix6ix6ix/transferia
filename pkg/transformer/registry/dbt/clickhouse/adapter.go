@@ -4,17 +4,17 @@ import (
 	"context"
 
 	"github.com/transferia/transferia/library/go/core/xerrors"
-	dp_model "github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/model"
-	"github.com/transferia/transferia/pkg/transformer/registry/dbt"
+	"github.com/transferia/transferia/pkg/abstract/model"
+	clickhouse_model "github.com/transferia/transferia/pkg/providers/clickhouse/model"
+	transformer_dbt "github.com/transferia/transferia/pkg/transformer/registry/dbt"
 )
 
 func init() {
-	dbt.Register(New)
+	transformer_dbt.Register(New)
 }
 
 type Adapter struct {
-	*model.ChDestination
+	*clickhouse_model.ChDestination
 }
 
 func (d *Adapter) DBTConfiguration(_ context.Context) (any, error) {
@@ -22,7 +22,7 @@ func (d *Adapter) DBTConfiguration(_ context.Context) (any, error) {
 	if err != nil {
 		return nil, xerrors.Errorf("failed to resolve storage params: %w", err)
 	}
-	hosts, err := model.ConnectionHosts(storageParams, "")
+	hosts, err := clickhouse_model.ConnectionHosts(storageParams, "")
 	if err != nil {
 		return nil, xerrors.Errorf("failed to obtain a list of hosts for the destination ClickHouse: %w", err)
 	}
@@ -45,10 +45,10 @@ func (d *Adapter) DBTConfiguration(_ context.Context) (any, error) {
 	}, nil
 }
 
-func New(endpoint dp_model.Destination) (dbt.SupportedDestination, error) {
-	ch, ok := endpoint.(*model.ChDestination)
+func New(endpoint model.Destination) (transformer_dbt.SupportedDestination, error) {
+	ch, ok := endpoint.(*clickhouse_model.ChDestination)
 	if !ok {
-		return nil, dbt.NotSupportedErr
+		return nil, transformer_dbt.NotSupportedErr
 	}
 	return &Adapter{ch}, nil
 }

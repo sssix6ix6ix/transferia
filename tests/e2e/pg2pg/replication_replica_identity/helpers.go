@@ -9,27 +9,27 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
-	"github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
 	"github.com/transferia/transferia/pkg/runtime/local"
 	"github.com/transferia/transferia/tests/helpers"
 )
 
-type stopCondition func(t *testing.T, tableName string, src postgres.PgSource, dst postgres.PgDestination) error
+type stopCondition func(t *testing.T, tableName string, src provider_postgres.PgSource, dst provider_postgres.PgDestination) error
 
-func untilStoragesEqual(t *testing.T, tableName string, src postgres.PgSource, dst postgres.PgDestination) error {
+func untilStoragesEqual(t *testing.T, tableName string, src provider_postgres.PgSource, dst provider_postgres.PgDestination) error {
 	params := helpers.NewCompareStorageParams().WithTableFilter(makeTableFilter(tableName))
 	return helpers.WaitStoragesSynced(t, src, dst, 15, params)
 }
 
 func untilDestinationRowCountEquals(rowCount uint64) stopCondition {
-	return func(t *testing.T, tableName string, src postgres.PgSource, dst postgres.PgDestination) error {
+	return func(t *testing.T, tableName string, src provider_postgres.PgSource, dst provider_postgres.PgDestination) error {
 		return helpers.WaitDestinationEqualRowsCount("public", tableName, helpers.GetSampleableStorageByModel(t, dst), time.Minute, rowCount)
 	}
 }
 
 func untilTimeElapsesAndStoragesEqual(delay time.Duration, expectedDstRowCount uint64) stopCondition {
-	return func(t *testing.T, tableName string, src postgres.PgSource, dst postgres.PgDestination) error {
+	return func(t *testing.T, tableName string, src provider_postgres.PgSource, dst provider_postgres.PgDestination) error {
 		time.Sleep(delay)
 		params := helpers.NewCompareStorageParams().WithTableFilter(makeTableFilter(tableName))
 		if err := helpers.WaitStoragesSynced(t, src, dst, 15, params); err != nil {

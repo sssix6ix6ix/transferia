@@ -8,17 +8,17 @@ import (
 	"time"
 
 	"github.com/transferia/transferia/internal/logger"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/errors"
 	"github.com/transferia/transferia/pkg/errors/categories"
-	"github.com/transferia/transferia/pkg/providers/postgres/dblog"
-	"github.com/transferia/transferia/pkg/providers/postgres/utils"
-	"github.com/transferia/transferia/pkg/storage"
-	"github.com/transferia/transferia/pkg/transformer/registry/rename"
+	postgres_dblog "github.com/transferia/transferia/pkg/providers/postgres/dblog"
+	postgres_utils "github.com/transferia/transferia/pkg/providers/postgres/utils"
+	"github.com/transferia/transferia/pkg/storage_factory"
+	transformer_rename "github.com/transferia/transferia/pkg/transformer/registry/rename"
 	"github.com/transferia/transferia/pkg/util"
 	"go.uber.org/zap/zapcore"
 )
@@ -186,7 +186,7 @@ func (s *PgSource) FillDependentFields(transfer *model.Transfer) {
 
 // AllHosts - function to move from legacy 'Host' into modern 'Hosts'
 func (s *PgSource) AllHosts() []string {
-	return utils.HandleHostAndHosts(s.Host, s.Hosts)
+	return postgres_utils.HandleHostAndHosts(s.Host, s.Hosts)
 }
 
 func (s *PgSource) HasTLS() bool {
@@ -241,7 +241,7 @@ func (s *PgSource) fulfilledIncludesImpl(tID abstract.TableID, firstIncludeOnly 
 	}
 	if tID.Namespace == s.KeeperSchema {
 		switch tID.Name {
-		case TableConsumerKeeper, TableLSN, dblog.SignalTableName:
+		case TableConsumerKeeper, TableLSN, postgres_dblog.SignalTableName:
 			result = append(result, abstract.PgName(s.KeeperSchema, tID.Name))
 		}
 	}
@@ -264,7 +264,7 @@ func (s *PgSource) AuxTables() []string {
 	return []string{
 		abstract.PgName(s.KeeperSchema, TableConsumerKeeper),
 		abstract.PgName(s.KeeperSchema, TableLSN),
-		abstract.PgName(s.KeeperSchema, dblog.SignalTableName),
+		abstract.PgName(s.KeeperSchema, postgres_dblog.SignalTableName),
 	}
 }
 
@@ -379,10 +379,10 @@ func (p *PgDumpSteps) ValidatePgDumpSteps() error {
 }
 
 func (s *PgSource) Validate() error {
-	if err := utils.ValidatePGTables(s.DBTables); err != nil {
+	if err := postgres_utils.ValidatePGTables(s.DBTables); err != nil {
 		return xerrors.Errorf("validate include tables error: %w", err)
 	}
-	if err := utils.ValidatePGTables(s.ExcludedTables); err != nil {
+	if err := postgres_utils.ValidatePGTables(s.ExcludedTables); err != nil {
 		return xerrors.Errorf("validate exclude tables error: %w", err)
 	}
 	if err := s.PreSteps.ValidatePgDumpSteps(); err != nil {
@@ -412,10 +412,10 @@ func (s *PgSource) collapseInheritTablesEnabled() bool {
 	return s.CollapseInheritTables && !s.IsHomo
 }
 
-func (s *PgSource) ExtraTransformers(ctx context.Context, transfer *model.Transfer, registry metrics.Registry) ([]abstract.Transformer, error) {
+func (s *PgSource) ExtraTransformers(ctx context.Context, transfer *model.Transfer, registry core_metrics.Registry) ([]abstract.Transformer, error) {
 	var result []abstract.Transformer
 	if s.collapseInheritTablesEnabled() {
-		pgStorageAbstract, err := storage.NewStorage(transfer, coordinator.NewFakeClient(), registry)
+		pgStorageAbstract, err := storage_factory.NewStorage(transfer, coordinator.NewFakeClient(), registry)
 		if err != nil {
 			return nil, errors.CategorizedErrorf(categories.Source, "unable to resolve PG storage from transfer source: %w", err)
 		}
@@ -427,7 +427,7 @@ func (s *PgSource) ExtraTransformers(ctx context.Context, transfer *model.Transf
 		if err != nil {
 			return nil, errors.CategorizedErrorf(categories.Source, "CollapseInheritTables option is set: cannot init rename for inherited tables: %w", err)
 		}
-		result = append(result, &rename.RenameTableTransformer{AltNames: inheritedTables})
+		result = append(result, &transformer_rename.RenameTableTransformer{AltNames: inheritedTables})
 	}
 	return result, nil
 }

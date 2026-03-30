@@ -13,7 +13,7 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
 	"github.com/transferia/transferia/tests/helpers"
 	mocksink "github.com/transferia/transferia/tests/helpers/mock_sink"
@@ -135,7 +135,7 @@ func Replication(t *testing.T) {
 		UPDATE %[1]s SET val = '110' WHERE i = 100;  UPDATE %[2]s SET val = '110' WHERE i = 100;
 	`, transformedTable, notTransformedTable)
 
-	srcConn, err := postgres.MakeConnPoolFromSrc(source, logger.Log)
+	srcConn, err := provider_postgres.MakeConnPoolFromSrc(source, logger.Log)
 	require.NoError(t, err)
 	_, err = srcConn.Exec(context.Background(), replicationQuery)
 	srcConn.Close()

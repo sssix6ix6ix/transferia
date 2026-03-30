@@ -6,9 +6,9 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/connection"
-	chconn "github.com/transferia/transferia/pkg/connection/clickhouse"
+	conn_clickhouse "github.com/transferia/transferia/pkg/connection/clickhouse"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/chrecipe"
-	chmodel "github.com/transferia/transferia/pkg/providers/clickhouse/model"
+	clickhouse_model "github.com/transferia/transferia/pkg/providers/clickhouse/model"
 	"github.com/transferia/transferia/tests/helpers"
 )
 
@@ -26,12 +26,12 @@ func init() {
 }
 
 func TestToSinkParams(t *testing.T) {
-	connSource := &chmodel.ChSource{}
+	connSource := &clickhouse_model.ChSource{}
 	connSource.ConnectionID = connID
 	sinkParamsConnman, err := connSource.ToSinkParams()
 	require.NoError(t, err)
 
-	connTarget := &chmodel.ChDestination{}
+	connTarget := &clickhouse_model.ChDestination{}
 	connTarget.ConnectionID = connID
 	sinkParamsConnmanTarget, err := connTarget.ToSinkParams(&model.Transfer{})
 	require.NoError(t, err)
@@ -51,13 +51,13 @@ func TestToSinkParams(t *testing.T) {
 }
 
 func TestToStorageParams(t *testing.T) {
-	connSource := &chmodel.ChSource{}
+	connSource := &clickhouse_model.ChSource{}
 	connSource.Database = "test"
 	connSource.ConnectionID = connID
 	storageParams, err := connSource.ToStorageParams()
 	require.NoError(t, err)
 
-	connTarget := &chmodel.ChDestination{}
+	connTarget := &clickhouse_model.ChDestination{}
 	connTarget.ConnectionID = connID
 	connTarget.Database = "test"
 	storageParamsConnmanTarget, err := connTarget.ToStorageParams()
@@ -77,8 +77,8 @@ func TestToStorageParams(t *testing.T) {
 	})
 }
 
-func sourceToManagedConnection(source chmodel.ChSource) *chconn.Connection {
-	managedConn := new(chconn.Connection)
+func sourceToManagedConnection(source clickhouse_model.ChSource) *conn_clickhouse.Connection {
+	managedConn := new(conn_clickhouse.Connection)
 	managedConn.User = source.User
 	managedConn.Password = source.Password
 	managedConn.Database = source.Database
@@ -88,7 +88,7 @@ func sourceToManagedConnection(source chmodel.ChSource) *chconn.Connection {
 
 	for _, shard := range source.ShardsList {
 		for _, host := range shard.Hosts {
-			managedConn.Hosts = append(managedConn.Hosts, &chconn.Host{
+			managedConn.Hosts = append(managedConn.Hosts, &conn_clickhouse.Host{
 				Name:       host,
 				HTTPPort:   source.HTTPPort,
 				NativePort: source.NativePort,
@@ -100,7 +100,7 @@ func sourceToManagedConnection(source chmodel.ChSource) *chconn.Connection {
 	return managedConn
 }
 
-func requireSinkParamsEqual(t *testing.T, sinkParams chmodel.ChSinkParams, expected chmodel.ChSinkParams) {
+func requireSinkParamsEqual(t *testing.T, sinkParams clickhouse_model.ChSinkParams, expected clickhouse_model.ChSinkParams) {
 	require.Equal(t, sinkParams.User(), expected.User())
 	require.Equal(t, sinkParams.Password(), expected.Password())
 	require.Equal(t, sinkParams.AltHosts(), expected.AltHosts())

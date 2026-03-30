@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	"github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
 	"github.com/transferia/transferia/tests/helpers"
 )
@@ -38,9 +38,9 @@ func TestGroup(t *testing.T) {
 }
 
 func Existence(t *testing.T) {
-	_, err := postgres.NewStorage(Source.ToStorageParams(nil))
+	_, err := provider_postgres.NewStorage(Source.ToStorageParams(nil))
 	require.NoError(t, err)
-	_, err = postgres.NewStorage(Target.ToStorageParams())
+	_, err = provider_postgres.NewStorage(Target.ToStorageParams())
 	require.NoError(t, err)
 }
 
@@ -50,7 +50,7 @@ func Snapshot(t *testing.T) {
 	w := helpers.Activate(t, transfer)
 	w.Close(t)
 
-	dstStorage, err := postgres.NewStorage(Target.ToStorageParams())
+	dstStorage, err := provider_postgres.NewStorage(Target.ToStorageParams())
 	require.NoError(t, err)
 
 	exists, err := CheckTableExistence(context.Background(), dstStorage.Conn, "public", "t2")

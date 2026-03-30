@@ -8,7 +8,7 @@ import (
 
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/providers/delta/action"
-	store2 "github.com/transferia/transferia/pkg/providers/delta/store"
+	"github.com/transferia/transferia/pkg/providers/delta/store"
 	"github.com/transferia/transferia/pkg/util/iter"
 )
 
@@ -20,7 +20,7 @@ type Snapshot struct {
 	segment          *LogSegment
 	minTS            int64
 	commitTS         int64
-	store            store2.Store
+	store            store.Store
 	checkpointReader CheckpointReader
 
 	state       *snapshotState
@@ -36,7 +36,7 @@ func NewSnapshot(
 	logsegment *LogSegment,
 	minTS int64,
 	commitTS int64,
-	store store2.Store,
+	store store.Store,
 	checkpointReader CheckpointReader,
 ) (*Snapshot, error) {
 	s := &Snapshot{
@@ -76,7 +76,7 @@ func NewSnapshot(
 	return s, nil
 }
 
-func NewInitialSnapshot(path string, store store2.Store, cpReader CheckpointReader) (*Snapshot, error) {
+func NewInitialSnapshot(path string, store store.Store, cpReader CheckpointReader) (*Snapshot, error) {
 	s := &Snapshot{
 		path:             path,
 		version:          -1,

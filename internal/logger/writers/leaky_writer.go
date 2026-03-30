@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/util/size"
 )
@@ -19,16 +19,16 @@ type LeakyWriter struct {
 
 	maxSize int
 
-	successSizeHist metrics.Histogram
-	leakedSizeHist  metrics.Histogram
+	successSizeHist core_metrics.Histogram
+	leakedSizeHist  core_metrics.Histogram
 
 	leakedCount       int
-	leakedCounter     metrics.Counter
+	leakedCounter     core_metrics.Counter
 	leakedSize        int
-	leakedSizeCounter metrics.Counter
+	leakedSizeCounter core_metrics.Counter
 }
 
-func NewLeakyWriter(writer Writer, registry metrics.Registry, maxSize int) *LeakyWriter {
+func NewLeakyWriter(writer Writer, registry core_metrics.Registry, maxSize int) *LeakyWriter {
 	return &LeakyWriter{
 		writer:            writer,
 		maxSize:           maxSize,

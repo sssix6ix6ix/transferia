@@ -1,7 +1,7 @@
 package pod
 
 import (
-	"k8s.io/apimachinery/pkg/api/resource"
+	k8s_resource "k8s.io/apimachinery/pkg/api/resource"
 )
 
 var (
@@ -14,9 +14,9 @@ var (
 	//	https://github.com/transferia/transferia/arcadia/transfer_manager/ci/teamcity/build_compute_image/datatransfer-pod.tmpl.yaml?rev=r9243535#L13
 	SharedDir = "/var/lib/data-transfer"
 
-	CPUMin = resource.MustParse("100m")
-	CPUMax = resource.MustParse("1500m")
+	CPUMin = k8s_resource.MustParse("100m")
+	CPUMax = k8s_resource.MustParse("1500m")
 
-	RAMMin = resource.MustParse("256M")
-	RAMMax = resource.MustParse("4G")
+	RAMMin = k8s_resource.MustParse("256M")
+	RAMMax = k8s_resource.MustParse("4G")
 )

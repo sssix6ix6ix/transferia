@@ -1,4 +1,4 @@
-package sink
+package sink_factory
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 
 	"github.com/dustin/go-humanize"
 	"github.com/transferia/transferia/internal/logger"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
@@ -32,7 +32,7 @@ func MakeAsyncSink(
 	transfer *model.Transfer,
 	task *model.TransferOperation,
 	lgr log.Logger,
-	mtrcs metrics.Registry,
+	mtrcs core_metrics.Registry,
 	cp coordinator.Coordinator,
 	config middlewares.Config,
 	opts ...abstract.SinkOption,
@@ -58,7 +58,7 @@ func MakeAsyncSink(
 	return pipelineAsync, nil
 }
 
-func MakeAsyncReplicationSink(transfer *model.Transfer, task *model.TransferOperation, lgr log.Logger, mtrcs metrics.Registry, cp coordinator.Coordinator, config middlewares.Config, opts ...abstract.SinkOption) (abstract.QueueToS3Sink, error) {
+func MakeAsyncReplicationSink(transfer *model.Transfer, task *model.TransferOperation, lgr log.Logger, mtrcs core_metrics.Registry, cp coordinator.Coordinator, config middlewares.Config, opts ...abstract.SinkOption) (abstract.QueueToS3Sink, error) {
 	// Construct base async sink
 	factory, ok := providers.Destination[providers.QueueToS3Sink](lgr, mtrcs, cp, transfer, task)
 	if !ok {
@@ -71,7 +71,7 @@ func MakeAsyncReplicationSink(transfer *model.Transfer, task *model.TransferOper
 	return asyncSink, nil
 }
 
-func syncMiddleware(transfer *model.Transfer, lgr log.Logger, mtrcs metrics.Registry, cp coordinator.Coordinator, opts ...abstract.SinkOption) (abstract.Middleware, error) {
+func syncMiddleware(transfer *model.Transfer, lgr log.Logger, mtrcs core_metrics.Registry, cp coordinator.Coordinator, opts ...abstract.SinkOption) (abstract.Middleware, error) {
 	transformer, err := middlewares.Transformation(transfer, lgr, mtrcs)
 	if err != nil {
 		return nil, xerrors.Errorf("unable to set transformation middleware: %w", err)
@@ -109,7 +109,7 @@ func syncMiddleware(transfer *model.Transfer, lgr log.Logger, mtrcs metrics.Regi
 }
 
 // ConstructBaseSink creates a sink of proper type
-func ConstructBaseSink(transfer *model.Transfer, task *model.TransferOperation, lgr log.Logger, mtrcs metrics.Registry, cp coordinator.Coordinator, config middlewares.Config) (abstract.Sinker, error) {
+func ConstructBaseSink(transfer *model.Transfer, task *model.TransferOperation, lgr log.Logger, mtrcs core_metrics.Registry, cp coordinator.Coordinator, config middlewares.Config) (abstract.Sinker, error) {
 	switch dst := transfer.Dst.(type) {
 	case *model.MockDestination:
 		return dst.SinkerFactory(), nil
@@ -136,14 +136,14 @@ func ConstructBaseSink(transfer *model.Transfer, task *model.TransferOperation, 
 	}
 }
 
-func constructBaseAsyncSink(transfer *model.Transfer, operation *model.TransferOperation, lgr log.Logger, mtrcs metrics.Registry, cp coordinator.Coordinator, middleware abstract.Middleware) (abstract.AsyncSink, error) {
+func constructBaseAsyncSink(transfer *model.Transfer, operation *model.TransferOperation, lgr log.Logger, mtrcs core_metrics.Registry, cp coordinator.Coordinator, middleware abstract.Middleware) (abstract.AsyncSink, error) {
 	if asyncF, ok := providers.Destination[providers.AsyncSinker](lgr, mtrcs, cp, transfer, operation); ok {
 		return asyncF.AsyncSink(middleware)
 	}
 	return nil, NoAsyncSinkErr
 }
 
-func wrapSinkIntoAsyncPipeline(sink abstract.Sinker, transfer *model.Transfer, lgr log.Logger, mtrcs metrics.Registry, middleware abstract.Middleware, config middlewares.Config) abstract.AsyncSink {
+func wrapSinkIntoAsyncPipeline(sink abstract.Sinker, transfer *model.Transfer, lgr log.Logger, mtrcs core_metrics.Registry, middleware abstract.Middleware, config middlewares.Config) abstract.AsyncSink {
 	sink = middlewares.ErrorTracker(mtrcs)(sink)
 	if config.EnableRetries {
 		sink = middlewares.Retrier(lgr, context.Background())(sink)

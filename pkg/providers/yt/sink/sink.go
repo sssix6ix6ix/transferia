@@ -10,15 +10,15 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/changeitem"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/middlewares"
-	"github.com/transferia/transferia/pkg/parsers/generic"
-	yt2 "github.com/transferia/transferia/pkg/providers/yt"
+	generic_parser "github.com/transferia/transferia/pkg/parsers/generic"
+	provider_yt "github.com/transferia/transferia/pkg/providers/yt"
 	"github.com/transferia/transferia/pkg/providers/yt/yt_client"
 	"github.com/transferia/transferia/pkg/stats"
 	"github.com/transferia/transferia/pkg/util"
@@ -28,7 +28,7 @@ import (
 	"go.ytsaurus.tech/yt/go/yt"
 	"go.ytsaurus.tech/yt/go/yterrors"
 	"go.ytsaurus.tech/yt/go/ytlock"
-	"golang.org/x/exp/maps"
+	xmaps "golang.org/x/exp/maps"
 )
 
 var MaxRetriesCount uint64 = 10 // For tests only
@@ -45,7 +45,7 @@ type sinker struct {
 	cp             coordinator.Coordinator
 	schemas        *util.ConcurrentMap[string, []abstract.ColSchema]
 	tables         *util.ConcurrentMap[string, GenericTable]
-	config         yt2.YtDestinationModel
+	config         provider_yt.YtDestinationModel
 	chunkSize      int
 	closed         bool
 	progressInited bool
@@ -53,31 +53,31 @@ type sinker struct {
 }
 
 func (s *sinker) Move(ctx context.Context, src, dst abstract.TableID) error {
-	srcPath := yt2.SafeChild(s.dir, yt2.MakeTableName(src, s.config.AltNames()))
-	err := yt2.UnmountAndWaitRecursive(ctx, s.logger, s.ytClient, srcPath, nil)
+	srcPath := provider_yt.SafeChild(s.dir, provider_yt.MakeTableName(src, s.config.AltNames()))
+	err := provider_yt.UnmountAndWaitRecursive(ctx, s.logger, s.ytClient, srcPath, nil)
 	if err != nil {
 		return xerrors.Errorf("unable to unmount source: %w", err)
 	}
 
-	dstPath := yt2.SafeChild(s.dir, yt2.MakeTableName(dst, s.config.AltNames()))
+	dstPath := provider_yt.SafeChild(s.dir, provider_yt.MakeTableName(dst, s.config.AltNames()))
 	dstExists, err := s.ytClient.NodeExists(ctx, dstPath, nil)
 	if err != nil {
 		return xerrors.Errorf("unable to check if destination exists: %w", err)
 	}
 	if dstExists {
-		err = yt2.UnmountAndWaitRecursive(ctx, s.logger, s.ytClient, dstPath, nil)
+		err = provider_yt.UnmountAndWaitRecursive(ctx, s.logger, s.ytClient, dstPath, nil)
 		if err != nil {
 			return xerrors.Errorf("unable to unmount destination: %w", err)
 		}
 	}
 
-	moveOptions := yt2.ResolveMoveOptions(s.ytClient, srcPath, false)
+	moveOptions := provider_yt.ResolveMoveOptions(s.ytClient, srcPath, false)
 	_, err = s.ytClient.MoveNode(ctx, srcPath, dstPath, moveOptions)
 	if err != nil {
 		return xerrors.Errorf("unable to move: %w", err)
 	}
 
-	err = yt2.MountAndWaitRecursive(ctx, s.logger, s.ytClient, dstPath, nil)
+	err = provider_yt.MountAndWaitRecursive(ctx, s.logger, s.ytClient, dstPath, nil)
 	if err != nil {
 		return xerrors.Errorf("unable to mount destination: %w", err)
 	}
@@ -120,7 +120,7 @@ func (s *sinker) pushWalSlice(input []abstract.ChangeItem) error {
 	for idx, elem := range input {
 		rawWal[idx] = elem
 	}
-	if err := tx.InsertRows(ctx, yt2.SafeChild(s.dir, yt2.TableWAL), rawWal, nil); err != nil {
+	if err := tx.InsertRows(ctx, provider_yt.SafeChild(s.dir, provider_yt.TableWAL), rawWal, nil); err != nil {
 		//nolint:descriptiveerrors
 		return err
 	}
@@ -134,7 +134,7 @@ func (s *sinker) pushWalSlice(input []abstract.ChangeItem) error {
 }
 
 func (s *sinker) pushWal(input []abstract.ChangeItem) error {
-	if err := s.checkTable(WalTableSchema, yt2.TableWAL); err != nil {
+	if err := s.checkTable(WalTableSchema, provider_yt.TableWAL); err != nil {
 		//nolint:descriptiveerrors
 		return err
 	}
@@ -168,7 +168,7 @@ func (s *sinker) checkTable(schema []abstract.ColSchema, table string) error {
 		}
 
 		s.logger.Info("Try to create table", log.Any("table", table), log.Any("schema", schema))
-		genericTable, createTableErr := s.newGenericTable(yt2.SafeChild(s.dir, table), schema)
+		genericTable, createTableErr := s.newGenericTable(provider_yt.SafeChild(s.dir, table), schema)
 		if createTableErr != nil {
 			s.logger.Error("Create table error", log.Any("table", table), log.Error(createTableErr))
 			if isIncompatibleSchema(createTableErr) {
@@ -239,8 +239,8 @@ func (s *sinker) Push(input []abstract.ChangeItem) error {
 	}
 
 	for _, item := range input {
-		name := yt2.MakeTableName(item.TableID(), s.config.AltNames())
-		tableYPath := yt2.SafeChild(s.dir, name)
+		name := provider_yt.MakeTableName(item.TableID(), s.config.AltNames())
+		tableYPath := provider_yt.SafeChild(s.dir, name)
 		if _, ok := s.schemas.Get(name); !ok {
 			s.schemas.Set(name, item.TableSchema.Columns())
 		}
@@ -262,7 +262,7 @@ func (s *sinker) Push(input []abstract.ChangeItem) error {
 			if !exists {
 				continue
 			}
-			if err := yt2.MountUnmountWrapper(context.Background(), s.ytClient, tableYPath, migrate.UnmountAndWait); err != nil {
+			if err := provider_yt.MountUnmountWrapper(context.Background(), s.ytClient, tableYPath, migrate.UnmountAndWait); err != nil {
 				s.logger.Warn("unable to unmount path", log.Any("path", tableYPath), log.Error(err))
 			}
 			if err := s.ytClient.RemoveNode(context.Background(), tableYPath, &yt.RemoveNodeOptions{
@@ -290,7 +290,7 @@ func (s *sinker) Push(input []abstract.ChangeItem) error {
 const parallelism = 10
 
 func (s *sinker) pushBatchesParallel(rotationBatches map[string][]abstract.ChangeItem) error {
-	tables := maps.Keys(rotationBatches)
+	tables := xmaps.Keys(rotationBatches)
 	return util.ParallelDo(context.Background(), len(rotationBatches), parallelism, func(i int) error {
 		table := tables[i]
 		return s.pushOneBatch(table, rotationBatches[table])
@@ -386,7 +386,7 @@ func (s *sinker) processPKUpdates(batch []abstract.ChangeItem, table string) err
 		return xerrors.Errorf("No old key columns found for change item %s", util.Sample(deleteItem.ToJSONString(), 10000))
 	}
 
-	tablePath := yt2.SafeChild(s.dir, table)
+	tablePath := provider_yt.SafeChild(s.dir, table)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	if err := backoff.Retry(func() error {
@@ -495,7 +495,7 @@ func (s *sinker) rotateTable() error {
 
 	tableNames := s.schemas.ListKeys()
 	for _, tableName := range tableNames {
-		nodePath := yt2.SafeChild(s.dir, tableName)
+		nodePath := provider_yt.SafeChild(s.dir, tableName)
 		var childNodes []YtRotationNode
 		if err := s.ytClient.ListNode(ctx, nodePath, &childNodes, ytListNodeOptions); err != nil {
 			return err
@@ -525,7 +525,7 @@ func (s *sinker) rotateTable() error {
 				}
 
 				s.logger.Infof("Delete old table '%v'", path)
-				if err := yt2.MountUnmountWrapper(ctx, s.ytClient, path, migrate.UnmountAndWait); err != nil {
+				if err := provider_yt.MountUnmountWrapper(ctx, s.ytClient, path, migrate.UnmountAndWait); err != nil {
 					return xerrors.Errorf("unable to unmount table: %w", err)
 				}
 				if err := s.ytClient.RemoveNode(ctx, path, nil); err != nil {
@@ -555,7 +555,7 @@ func (s *sinker) runRotator() {
 			return
 		}
 
-		lock := ytlock.NewLock(s.ytClient, yt2.SafeChild(s.dir, "__lock"))
+		lock := ytlock.NewLock(s.ytClient, provider_yt.SafeChild(s.dir, "__lock"))
 		_, err := lock.Acquire(context.Background())
 		if err != nil {
 			s.logger.Debug("unable to lock", log.Error(err))
@@ -577,10 +577,10 @@ func (s *sinker) runRotator() {
 }
 
 func NewSinker(
-	cfg yt2.YtDestinationModel,
+	cfg provider_yt.YtDestinationModel,
 	transferID string,
 	logger log.Logger,
-	registry metrics.Registry,
+	registry core_metrics.Registry,
 	cp coordinator.Coordinator,
 	tmpPolicyConfig *model.TmpPolicyConfig,
 ) (abstract.Sinker, error) {
@@ -600,7 +600,7 @@ func NewSinker(
 	return result, nil
 }
 
-func newSinker(cfg yt2.YtDestinationModel, transferID string, lgr log.Logger, registry metrics.Registry, cp coordinator.Coordinator) (*sinker, error) {
+func newSinker(cfg provider_yt.YtDestinationModel, transferID string, lgr log.Logger, registry core_metrics.Registry, cp coordinator.Coordinator) (*sinker, error) {
 	ytClient, err := yt_client.FromConnParams(cfg, lgr)
 	if err != nil {
 		return nil, xerrors.Errorf("error getting YT Client: %w", err)
@@ -648,7 +648,7 @@ func (s *sinker) newGenericTable(path ypath.Path, schema []abstract.ColSchema) (
 		return orderedTable, nil
 	}
 	if s.config.VersionColumn() != "" {
-		if generic.IsGenericUnparsedSchema(abstract.NewTableSchema(schema)) &&
+		if generic_parser.IsGenericUnparsedSchema(abstract.NewTableSchema(schema)) &&
 			strings.HasSuffix(path.String(), "_unparsed") {
 			s.logger.Info("Table with unparsed schema and _unparsed postfix detected, creation of versioned table is skipped",
 				log.Any("table", path), log.Any("version_column", s.config.VersionColumn()),
@@ -700,7 +700,7 @@ func hackTimestamps(cols []abstract.ColSchema) []abstract.ColSchema {
 	return res
 }
 
-func NewRotatedStaticSink(cfg yt2.YtDestinationModel, registry metrics.Registry, logger log.Logger, cp coordinator.Coordinator, transferID string) (abstract.Sinker, error) {
+func NewRotatedStaticSink(cfg provider_yt.YtDestinationModel, registry core_metrics.Registry, logger log.Logger, cp coordinator.Coordinator, transferID string) (abstract.Sinker, error) {
 	ytClient, err := yt_client.FromConnParams(cfg, logger)
 	if err != nil {
 		return nil, err

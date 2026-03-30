@@ -5,7 +5,7 @@ import (
 
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract2"
-	yt_schema "go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 type DateTimeValue interface {
@@ -34,8 +34,8 @@ func (typ *DateTimeType) Validate(value abstract2.Value) error {
 	return err
 }
 
-func (typ *DateTimeType) ToOldType() (yt_schema.Type, error) {
-	return yt_schema.TypeDatetime, nil
+func (typ *DateTimeType) ToOldType() (ytschema.Type, error) {
+	return ytschema.TypeDatetime, nil
 }
 
 type DefaultDateTimeValue struct {

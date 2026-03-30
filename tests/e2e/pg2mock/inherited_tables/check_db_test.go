@@ -12,7 +12,7 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
 	"github.com/transferia/transferia/tests/helpers"
 	mocksink "github.com/transferia/transferia/tests/helpers/mock_sink"
@@ -24,7 +24,7 @@ var (
 	SourceNoCollapse = *pgrecipe.RecipeSource(
 		pgrecipe.WithPrefix(""),
 		pgrecipe.WithInitDir(yatestx.ProjectSource("init_source")),
-		pgrecipe.WithEdit(func(pg *postgres.PgSource) {
+		pgrecipe.WithEdit(func(pg *provider_postgres.PgSource) {
 			pg.CollapseInheritTables = false
 			pg.UseFakePrimaryKey = true // PK constraint for partitioned tables is disabled for PostgreSQL < 12
 			pg.SlotID = "testslot_no_collapse"
@@ -34,7 +34,7 @@ var (
 	SourceCollapse = *pgrecipe.RecipeSource(
 		pgrecipe.WithPrefix(""),
 		pgrecipe.WithInitDir(yatestx.ProjectSource("init_source")),
-		pgrecipe.WithEdit(func(pg *postgres.PgSource) {
+		pgrecipe.WithEdit(func(pg *provider_postgres.PgSource) {
 			pg.CollapseInheritTables = true
 			pg.UseFakePrimaryKey = true // PK constraint for partitioned tables is disabled for PostgreSQL < 12
 			pg.SlotID = "testslot_collapse"
@@ -44,7 +44,7 @@ var (
 	SourceCollapseDBLogEnabled = *pgrecipe.RecipeSource(
 		pgrecipe.WithPrefix(""),
 		pgrecipe.WithInitDir(yatestx.ProjectSource("init_source")),
-		pgrecipe.WithEdit(func(pg *postgres.PgSource) {
+		pgrecipe.WithEdit(func(pg *provider_postgres.PgSource) {
 			pg.CollapseInheritTables = true
 			pg.UseFakePrimaryKey = true // PK constraint for partitioned tables is disabled for PostgreSQL < 12
 			pg.SlotID = "testslot_collapse_dblog_enabled"
@@ -217,7 +217,7 @@ func TestSnapshotAndIncrement(t *testing.T) {
 
 	//---
 
-	sinkToSource, err := postgres.NewSink(logger.Log, helpers.TransferID, SourceCollapse.ToSinkParams(), helpers.EmptyRegistry())
+	sinkToSource, err := provider_postgres.NewSink(logger.Log, helpers.TransferID, SourceCollapse.ToSinkParams(), helpers.EmptyRegistry())
 	require.NoError(t, err)
 
 	schema := abstract.NewTableSchema([]abstract.ColSchema{
@@ -250,7 +250,7 @@ func TestSnapshotAndIncrement(t *testing.T) {
 	// check new partition replication
 	changeItemsCollapse = changeItemsCollapse[:0] // clear changeItemsCollapse
 
-	srcConn, err := postgres.MakeConnPoolFromSrc(&SourceCollapse, logger.Log)
+	srcConn, err := provider_postgres.MakeConnPoolFromSrc(&SourceCollapse, logger.Log)
 	require.NoError(t, err)
 	defer srcConn.Close()
 
@@ -273,7 +273,7 @@ func testDBLogEnabled(t *testing.T) {
 		SinkerFactory: func() abstract.Sinker { return sinkerCollapse },
 		Cleanup:       model.Drop,
 	}
-	srcConn, err := postgres.MakeConnPoolFromSrc(&SourceCollapse, logger.Log)
+	srcConn, err := provider_postgres.MakeConnPoolFromSrc(&SourceCollapse, logger.Log)
 	require.NoError(t, err)
 	defer srcConn.Close()
 
@@ -290,7 +290,7 @@ func testDBLogEnabled(t *testing.T) {
 		{"id": 403, "logdate": "2022-04-09", "msg": "repl_msg"},
 	}
 	changeItemBuilderParent := helpers.NewChangeItemsBuilder("public", "log_table_declarative_partitioning", schema)
-	sinkToSource, err := postgres.NewSink(logger.Log, helpers.TransferID, SourceCollapseDBLogEnabled.ToSinkParams(), helpers.EmptyRegistry())
+	sinkToSource, err := provider_postgres.NewSink(logger.Log, helpers.TransferID, SourceCollapseDBLogEnabled.ToSinkParams(), helpers.EmptyRegistry())
 	require.NoError(t, err)
 
 	var changeItemsCollapse []abstract.ChangeItem

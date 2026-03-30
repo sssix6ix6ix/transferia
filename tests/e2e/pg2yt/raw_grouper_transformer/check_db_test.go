@@ -10,14 +10,14 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	pg_provider "github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/tests/helpers"
-	yt_helpers "github.com/transferia/transferia/tests/helpers/yt"
+	helpers_yt "github.com/transferia/transferia/tests/helpers/yt"
 )
 
 var (
 	srcPort = helpers.GetIntFromEnv("PG_LOCAL_PORT")
-	Source  = pg_provider.PgSource{
+	Source  = provider_postgres.PgSource{
 		ClusterID: os.Getenv("PG_CLUSTER_ID"),
 		Hosts:     []string{"localhost"},
 		User:      os.Getenv("PG_LOCAL_USER"),
@@ -26,7 +26,7 @@ var (
 		Port:      srcPort,
 		DBTables:  []string{"public.__test"},
 	}
-	Target = yt_helpers.RecipeYtTarget("//home/cdc/test/pg2yt_e2e")
+	Target = helpers_yt.RecipeYtTarget("//home/cdc/test/pg2yt_e2e")
 )
 
 func init() {
@@ -82,7 +82,7 @@ func Load(t *testing.T) {
 		helpers.GetSampleableStorageByModel(t, Source),
 		helpers.GetSampleableStorageByModel(t, Target.LegacyModel()), 60*time.Second))
 
-	_, err := pg_provider.MakeConnPoolFromSrc(&Source, logger.Log)
+	_, err := provider_postgres.MakeConnPoolFromSrc(&Source, logger.Log)
 	require.NoError(t, err)
 
 	worker.Close(t)

@@ -10,11 +10,11 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/transformer"
-	"github.com/transferia/transferia/pkg/transformer/registry/filter"
+	transformer_filter "github.com/transferia/transferia/pkg/transformer/registry/filter"
 	"github.com/transferia/transferia/pkg/util/set"
 	"go.ytsaurus.tech/library/go/core/log"
-	"go.ytsaurus.tech/yt/go/schema"
-	"golang.org/x/exp/slices"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
+	xslices "golang.org/x/exp/slices"
 )
 
 const (
@@ -22,9 +22,9 @@ const (
 	RawDocGrouperTransformerType = abstract.TransformerType("raw_doc_grouper")
 )
 
-var rawDocFields = map[string]schema.Type{
-	etlUpdatedField: schema.TypeTimestamp,
-	rawDataField:    schema.TypeAny,
+var rawDocFields = map[string]ytschema.Type{
+	etlUpdatedField: ytschema.TypeTimestamp,
+	rawDataField:    ytschema.TypeAny,
 }
 
 func init() {
@@ -37,14 +37,14 @@ func init() {
 }
 
 type RawDocGrouperConfig struct {
-	Tables              filter.Tables `json:"tables"`
-	Keys                []string      `json:"keys"`
-	Fields              []string      `json:"fields"`
-	ShouldUpdateOldKeys bool          `json:"shouldUpdateOldKeys,omitempty"`
+	Tables              transformer_filter.Tables `json:"tables"`
+	Keys                []string                  `json:"keys"`
+	Fields              []string                  `json:"fields"`
+	ShouldUpdateOldKeys bool                      `json:"shouldUpdateOldKeys,omitempty"`
 }
 
 type RawDocGroupTransformer struct {
-	Tables        filter.Filter
+	Tables        transformer_filter.Filter
 	Keys          []string
 	Fields        []string
 	keySet        *set.Set[string]
@@ -117,7 +117,7 @@ func (r *RawDocGroupTransformer) containsAllFields(colNames []string) bool {
 }
 
 func (r *RawDocGroupTransformer) Suitable(table abstract.TableID, schema *abstract.TableSchema) bool {
-	return filter.MatchAnyTableNameVariant(r.Tables, table) && schema != nil && r.containsAllFields(schema.Columns().ColumnNames())
+	return transformer_filter.MatchAnyTableNameVariant(r.Tables, table) && schema != nil && r.containsAllFields(schema.Columns().ColumnNames())
 }
 
 func (r *RawDocGroupTransformer) ResultSchema(original *abstract.TableSchema) (*abstract.TableSchema, error) {
@@ -177,7 +177,7 @@ func (r *RawDocGroupTransformer) collectParsedData(colNames []string, colValues 
 			docData[colName] = colValue
 		}
 
-		if r.keySet.Contains(colName) || slices.Contains(r.Fields, colName) {
+		if r.keySet.Contains(colName) || xslices.Contains(r.Fields, colName) {
 			newCols = append(newCols, colName)
 			newValues = append(newValues, colValue)
 		}
@@ -200,7 +200,7 @@ func NewRawDocGroupTransformer(config RawDocGrouperConfig) (*RawDocGroupTransfor
 	}
 
 	for _, name := range []string{etlUpdatedField, rawDataField} {
-		if !slices.Contains(keys, name) && !slices.Contains(fields, name) {
+		if !xslices.Contains(keys, name) && !xslices.Contains(fields, name) {
 			fields = append(fields, name)
 		}
 	}
@@ -218,7 +218,7 @@ func NewRawDocGroupTransformer(config RawDocGrouperConfig) (*RawDocGroupTransfor
 		}
 	}
 
-	tables, err := filter.NewFilter(config.Tables.IncludeTables, config.Tables.ExcludeTables)
+	tables, err := transformer_filter.NewFilter(config.Tables.IncludeTables, config.Tables.ExcludeTables)
 	if err != nil {
 		return nil, xerrors.Errorf("unable to init table filter: %w", err)
 	}

@@ -1,7 +1,7 @@
 package object_fetcher
 
 import (
-	"github.com/transferia/transferia/pkg/providers/s3/reader"
+	s3_reader "github.com/transferia/transferia/pkg/providers/s3/reader"
 	"github.com/transferia/transferia/pkg/providers/s3/s3util/file"
 )
 
@@ -10,7 +10,7 @@ type ObjectFetcher interface {
 
 	// FetchObjects derives a list of new objects that need replication from a configured source.
 	// This can be a creation event messages from an SQS, SNS, Pub/Sub queue or directly by reading the full object list from the s3 bucket itself.
-	FetchObjects(reader reader.Reader) ([]file.File, error)
+	FetchObjects(reader s3_reader.Reader) ([]file.File, error)
 
 	// Commit persist the processed object to some state.
 	// For SQS it deletes the processed messages, for SNS/PubSub it Ack the processed messages

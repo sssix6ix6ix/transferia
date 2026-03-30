@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"net"
 	"net/http"
-	"net/http/pprof"
+	pprof_wrapper "net/http/pprof"
 	"runtime/debug"
 
 	"github.com/transferia/transferia/library/go/core/xerrors"
@@ -30,11 +30,11 @@ func NewServer(network, address string, logger log.Logger) (*Server, error) {
 
 func (s *Server) Serve() error {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/debug/pprof/", pprof.Index)
-	mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
-	mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
-	mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
-	mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
+	mux.HandleFunc("/debug/pprof/", pprof_wrapper.Index)
+	mux.HandleFunc("/debug/pprof/cmdline", pprof_wrapper.Cmdline)
+	mux.HandleFunc("/debug/pprof/profile", pprof_wrapper.Profile)
+	mux.HandleFunc("/debug/pprof/symbol", pprof_wrapper.Symbol)
+	mux.HandleFunc("/debug/pprof/trace", pprof_wrapper.Trace)
 	mux.HandleFunc("/debug/heapdump", s.heapDumpHandler)
 
 	return http.Serve(s.listener, mux)

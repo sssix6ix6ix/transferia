@@ -8,8 +8,8 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/connection"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/chrecipe"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/model"
-	"github.com/transferia/transferia/pkg/providers/postgres"
+	clickhouse_model "github.com/transferia/transferia/pkg/providers/clickhouse/model"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
 	"github.com/transferia/transferia/tests/e2e/pg2ch"
 	"github.com/transferia/transferia/tests/helpers"
@@ -30,7 +30,7 @@ func init() {
 	helpers.InitConnectionResolver(map[string]connection.ManagedConnection{"myConnID": SrcConnection})
 }
 
-func testSnapshot(t *testing.T, source *postgres.PgSource, target model.ChDestination) {
+func testSnapshot(t *testing.T, source *provider_postgres.PgSource, target clickhouse_model.ChDestination) {
 	defer func() {
 		require.NoError(t, helpers.CheckConnections(
 			helpers.LabeledPort{Label: "PG source", Port: SrcConnection.Hosts[0].Port},

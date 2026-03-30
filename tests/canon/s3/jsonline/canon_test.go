@@ -9,7 +9,7 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/s3"
+	provider_s3 "github.com/transferia/transferia/pkg/providers/s3"
 	"github.com/transferia/transferia/pkg/providers/s3/s3recipe"
 	"github.com/transferia/transferia/tests/canon/validator"
 	"github.com/transferia/transferia/tests/helpers"
@@ -80,7 +80,7 @@ func TestCanonSource(t *testing.T) {
 				model.IsStrictSource(src),
 				validator.InitDone(t),
 				validator.Referencer(t),
-				validator.TypesystemChecker(s3.ProviderType, func(colSchema abstract.ColSchema) string {
+				validator.TypesystemChecker(provider_s3.ProviderType, func(colSchema abstract.ColSchema) string {
 					return colSchema.OriginalType
 				}),
 			),

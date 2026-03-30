@@ -1,14 +1,14 @@
 package stats
 
-import "github.com/transferia/transferia/library/go/core/metrics"
+import core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 
 type MiddlewareFilterStats struct {
-	registry metrics.Registry
+	registry core_metrics.Registry
 
-	Dropped metrics.Counter
+	Dropped core_metrics.Counter
 }
 
-func NewMiddlewareFilterStats(r metrics.Registry) *MiddlewareFilterStats {
+func NewMiddlewareFilterStats(r core_metrics.Registry) *MiddlewareFilterStats {
 	rWT := r.WithTags(map[string]string{"component": "middleware_filter"})
 	return &MiddlewareFilterStats{
 		registry: rWT,

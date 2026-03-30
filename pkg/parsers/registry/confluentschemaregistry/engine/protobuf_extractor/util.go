@@ -7,7 +7,7 @@ import (
 
 	"github.com/jhump/protoreflect/desc"
 	"github.com/jhump/protoreflect/desc/protoparse"
-	"github.com/transferia/transferia/cloud/dataplatform/schemaregistry/pkg/formats/protobuf"
+	sr_protobuf "github.com/transferia/transferia/cloud/dataplatform/schemaregistry/pkg/formats/protobuf"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"google.golang.org/protobuf/reflect/protodesc"
 	"google.golang.org/protobuf/reflect/protoreflect"
@@ -51,7 +51,7 @@ func getRegistry(subjectName string, refs map[string]string) (*protoregistry.Fil
 				contents = string(data)
 			}
 			if contents == "" {
-				contents = protobuf.BuiltInDeps[filename]
+				contents = sr_protobuf.BuiltInDeps[filename]
 			}
 			if contents == "" {
 				return nil, os.ErrNotExist
@@ -75,7 +75,7 @@ func getRegistry(subjectName string, refs map[string]string) (*protoregistry.Fil
 	for key := range refs {
 		imports = append(imports, key)
 	}
-	for key := range protobuf.BuiltInDeps {
+	for key := range sr_protobuf.BuiltInDeps {
 		imports = append(imports, key)
 	}
 	unlinkedFiles, err := currParser.ParseFilesButDoNotLink(imports...)

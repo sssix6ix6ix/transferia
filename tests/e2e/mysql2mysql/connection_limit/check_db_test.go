@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	mysql_client "github.com/go-sql-driver/mysql"
+	mysql_driver2 "github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/providers/mysql/mysqlrecipe"
@@ -34,14 +34,14 @@ func TestConnectionLimit(t *testing.T) {
 			helpers.LabeledPort{Label: "MYSQL target", Port: Target.Port},
 		))
 	}()
-	cfg := mysql_client.NewConfig()
+	cfg := mysql_driver2.NewConfig()
 	cfg.Addr = fmt.Sprintf("%v:%v", Source.Host, Source.Port)
 	cfg.User = Source.User
 	cfg.Passwd = string(Source.Password)
 	cfg.DBName = Source.Database
 	cfg.Net = "tcp"
 
-	mysqlConnector, err := mysql_client.NewConnector(cfg)
+	mysqlConnector, err := mysql_driver2.NewConnector(cfg)
 	require.NoError(t, err)
 	db := sql.OpenDB(mysqlConnector)
 

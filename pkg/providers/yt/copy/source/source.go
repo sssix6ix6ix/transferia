@@ -4,12 +4,12 @@ import (
 	"context"
 	"strings"
 
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract2"
-	yt2 "github.com/transferia/transferia/pkg/providers/yt"
-	"github.com/transferia/transferia/pkg/providers/yt/copy/events"
+	provider_yt "github.com/transferia/transferia/pkg/providers/yt"
+	yt_copy_events "github.com/transferia/transferia/pkg/providers/yt/copy/events"
 	"github.com/transferia/transferia/pkg/providers/yt/tablemeta"
 	"github.com/transferia/transferia/pkg/providers/yt/yt_client"
 	"go.ytsaurus.tech/library/go/core/log"
@@ -17,14 +17,14 @@ import (
 )
 
 type source struct {
-	cfg               yt2.YtSourceModel
+	cfg               provider_yt.YtSourceModel
 	yt                yt.Client
 	tables            tablemeta.YtTables
 	snapshotID        string
 	snapshotIsRunning bool
-	snapshotEvtBatch  *events.EventBatch
+	snapshotEvtBatch  *yt_copy_events.EventBatch
 	logger            log.Logger
-	metrics           metrics.Registry
+	metrics           core_metrics.Registry
 }
 
 // To verify providers contract implementation
@@ -116,7 +116,7 @@ func (s *source) Start(ctx context.Context, target abstract2.EventTarget) error 
 		s.snapshotIsRunning = false
 	}()
 	s.snapshotIsRunning = true
-	s.snapshotEvtBatch = events.NewEventBatch(s.tables)
+	s.snapshotEvtBatch = yt_copy_events.NewEventBatch(s.tables)
 	return <-target.AsyncPush(s.snapshotEvtBatch)
 }
 
@@ -132,7 +132,7 @@ func (s *source) Progress() (abstract2.EventSourceProgress, error) {
 	return s.snapshotEvtBatch.Progress(), nil
 }
 
-func NewSource(logger log.Logger, metrics metrics.Registry, cfg yt2.YtSourceModel, transferID string) (*source, error) {
+func NewSource(logger log.Logger, metrics core_metrics.Registry, cfg provider_yt.YtSourceModel, transferID string) (*source, error) {
 	y, err := yt_client.FromConnParams(cfg, logger)
 	if err != nil {
 		return nil, xerrors.Errorf("error creating ytrpc client: %w", err)

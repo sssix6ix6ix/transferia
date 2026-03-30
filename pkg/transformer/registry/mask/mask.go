@@ -4,7 +4,7 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/transformer"
-	"github.com/transferia/transferia/pkg/transformer/registry/filter"
+	transformer_filter "github.com/transferia/transferia/pkg/transformer/registry/filter"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
@@ -18,9 +18,9 @@ func init() {
 }
 
 type Config struct {
-	MaskFunctionHash MaskFunctionHash `json:"maskFunctionHash"`
-	Tables           filter.Tables    `json:"tables"`
-	Columns          []string         `json:"columns"`
+	MaskFunctionHash MaskFunctionHash          `json:"maskFunctionHash"`
+	Tables           transformer_filter.Tables `json:"tables"`
+	Columns          []string                  `json:"columns"`
 }
 
 type MaskFunctionHash struct {
@@ -28,7 +28,7 @@ type MaskFunctionHash struct {
 }
 
 func NewMaskTransformer(config Config, lgr log.Logger) (abstract.Transformer, error) {
-	tables, err := filter.NewFilter(config.Tables.IncludeTables, config.Tables.ExcludeTables)
+	tables, err := transformer_filter.NewFilter(config.Tables.IncludeTables, config.Tables.ExcludeTables)
 	if err != nil {
 		return nil, xerrors.Errorf("unable to init tables filter: %w", err)
 	}

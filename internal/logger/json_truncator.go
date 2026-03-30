@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/pkg/stringutil"
 	"github.com/transferia/transferia/pkg/util/size"
 	"go.ytsaurus.tech/library/go/core/log"
@@ -22,15 +22,15 @@ type JSONTruncator struct {
 	writer                 io.Writer
 	logger                 log.Logger
 	config                 JSONTruncatorConfig
-	fieldTruncatedSizeHist metrics.Histogram
-	bytesWritten           metrics.Counter
+	fieldTruncatedSizeHist core_metrics.Histogram
+	bytesWritten           core_metrics.Counter
 }
 
 func NewJSONTruncator(
 	writer io.Writer,
 	logger log.Logger,
 	config JSONTruncatorConfig,
-	registry metrics.Registry,
+	registry core_metrics.Registry,
 ) *JSONTruncator {
 	return &JSONTruncator{
 		writer:                 writer,

@@ -3,7 +3,7 @@ package init
 import (
 	"context"
 
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
@@ -11,26 +11,26 @@ import (
 	"github.com/transferia/transferia/pkg/abstract2"
 	"github.com/transferia/transferia/pkg/middlewares"
 	"github.com/transferia/transferia/pkg/providers"
-	yt_provider "github.com/transferia/transferia/pkg/providers/yt"
-	ytcopysrc "github.com/transferia/transferia/pkg/providers/yt/copy/source"
+	provider_yt "github.com/transferia/transferia/pkg/providers/yt"
+	yt_copy_source "github.com/transferia/transferia/pkg/providers/yt/copy/source"
 	"github.com/transferia/transferia/pkg/providers/yt/copy/target"
 	_ "github.com/transferia/transferia/pkg/providers/yt/fallback"
 	"github.com/transferia/transferia/pkg/providers/yt/lfstaging"
-	yt_abstract2 "github.com/transferia/transferia/pkg/providers/yt/provider"
-	ytsink "github.com/transferia/transferia/pkg/providers/yt/sink"
-	staticsink "github.com/transferia/transferia/pkg/providers/yt/sink/v2"
-	ytstorage "github.com/transferia/transferia/pkg/providers/yt/storage"
+	abstract2_provider_yt "github.com/transferia/transferia/pkg/providers/yt/provider"
+	yt_sink "github.com/transferia/transferia/pkg/providers/yt/sink"
+	yt_sink_v2 "github.com/transferia/transferia/pkg/providers/yt/sink/v2"
+	yt_storage "github.com/transferia/transferia/pkg/providers/yt/storage"
 	"github.com/transferia/transferia/pkg/targets"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
 func init() {
-	providers.Register(yt_provider.ProviderType, New(yt_provider.ProviderType))
-	providers.Register(yt_provider.ManagedProviderType, New(yt_provider.ManagedProviderType))
-	providers.Register(yt_provider.ManagedDynamicProviderType, New(yt_provider.ManagedDynamicProviderType))
-	providers.Register(yt_provider.ManagedStaticProviderType, New(yt_provider.ManagedStaticProviderType))
-	providers.Register(yt_provider.StagingType, New(yt_provider.StagingType))
-	providers.Register(yt_provider.CopyType, New(yt_provider.CopyType))
+	providers.Register(provider_yt.ProviderType, New(provider_yt.ProviderType))
+	providers.Register(provider_yt.ManagedProviderType, New(provider_yt.ManagedProviderType))
+	providers.Register(provider_yt.ManagedDynamicProviderType, New(provider_yt.ManagedDynamicProviderType))
+	providers.Register(provider_yt.ManagedStaticProviderType, New(provider_yt.ManagedStaticProviderType))
+	providers.Register(provider_yt.StagingType, New(provider_yt.StagingType))
+	providers.Register(provider_yt.CopyType, New(provider_yt.CopyType))
 }
 
 // To verify providers contract implementation
@@ -47,14 +47,14 @@ var (
 
 type Provider struct {
 	logger   log.Logger
-	registry metrics.Registry
+	registry core_metrics.Registry
 	cp       coordinator.Coordinator
 	transfer *model.Transfer
 	provider abstract.ProviderType
 }
 
 func (p *Provider) Target(...abstract.SinkOption) (abstract2.EventTarget, error) {
-	dst, ok := p.transfer.Dst.(*yt_provider.YtCopyDestination)
+	dst, ok := p.transfer.Dst.(*provider_yt.YtCopyDestination)
 	if !ok {
 		return nil, targets.UnknownTargetError
 	}
@@ -62,7 +62,7 @@ func (p *Provider) Target(...abstract.SinkOption) (abstract2.EventTarget, error)
 }
 
 func (p *Provider) Verify(ctx context.Context) error {
-	dst, ok := p.transfer.Dst.(yt_provider.YtDestinationModel)
+	dst, ok := p.transfer.Dst.(provider_yt.YtDestinationModel)
 	if !ok {
 		return nil
 	}
@@ -73,11 +73,11 @@ func (p *Provider) Verify(ctx context.Context) error {
 }
 
 func (p *Provider) Storage() (abstract.Storage, error) {
-	src, ok := p.transfer.Src.(yt_provider.YtSourceModel)
+	src, ok := p.transfer.Src.(provider_yt.YtSourceModel)
 	if !ok {
 		return nil, xerrors.Errorf("unexpected target type: %T", p.transfer.Dst)
 	}
-	return ytstorage.NewStorage(&yt_provider.YtStorageParams{
+	return yt_storage.NewStorage(&provider_yt.YtStorageParams{
 		Token:                 src.GetYtToken(),
 		Cluster:               src.GetCluster(),
 		Path:                  src.GetPaths()[0], // TODO: Handle multi-path in abstract 1 yt storage
@@ -88,20 +88,20 @@ func (p *Provider) Storage() (abstract.Storage, error) {
 }
 
 func (p *Provider) DataProvider() (provider abstract2.DataProvider, err error) {
-	specificConfig, ok := p.transfer.Src.(yt_provider.YtSourceModel)
+	specificConfig, ok := p.transfer.Src.(provider_yt.YtSourceModel)
 	if !ok {
 		return nil, xerrors.Errorf("Unexpected source type: %T", p.transfer.Src)
 	}
-	if _, ok := p.transfer.Dst.(*yt_provider.YtCopyDestination); ok {
-		provider, err = ytcopysrc.NewSource(p.logger, p.registry, specificConfig, p.transfer.ID)
+	if _, ok := p.transfer.Dst.(*provider_yt.YtCopyDestination); ok {
+		provider, err = yt_copy_source.NewSource(p.logger, p.registry, specificConfig, p.transfer.ID)
 	} else {
-		provider, err = yt_abstract2.NewSource(p.logger, p.registry, specificConfig)
+		provider, err = abstract2_provider_yt.NewSource(p.logger, p.registry, specificConfig)
 	}
 	return provider, err
 }
 
 func (p *Provider) SnapshotSink(config middlewares.Config) (abstract.Sinker, error) {
-	dst, ok := p.transfer.Dst.(yt_provider.YtDestinationModel)
+	dst, ok := p.transfer.Dst.(provider_yt.YtDestinationModel)
 	if !ok {
 		return nil, xerrors.Errorf("unexpected target type: %T", p.transfer.Dst)
 	}
@@ -113,11 +113,11 @@ func (p *Provider) SnapshotSink(config middlewares.Config) (abstract.Sinker, err
 		}
 
 		if dst.Rotation() != nil {
-			if s, err = ytsink.NewRotatedStaticSink(dst, p.registry, p.logger, p.cp, p.transfer.ID); err != nil {
+			if s, err = yt_sink.NewRotatedStaticSink(dst, p.registry, p.logger, p.cp, p.transfer.ID); err != nil {
 				return nil, xerrors.Errorf("failed to create YT (static) sinker: %w", err)
 			}
 		} else {
-			if s, err = staticsink.NewStaticSink(dst, p.cp, p.transfer.ID, p.registry, p.logger); err != nil {
+			if s, err = yt_sink_v2.NewStaticSink(dst, p.cp, p.transfer.ID, p.registry, p.logger); err != nil {
 				return nil, xerrors.Errorf("failed to create YT (static) sinker: %w", err)
 			}
 		}
@@ -128,7 +128,7 @@ func (p *Provider) SnapshotSink(config middlewares.Config) (abstract.Sinker, err
 		return p.Sink(config)
 	}
 
-	if s, err = staticsink.NewStaticSinkWrapper(dst, p.cp, p.transfer.ID, p.registry, p.logger); err != nil {
+	if s, err = yt_sink_v2.NewStaticSinkWrapper(dst, p.cp, p.transfer.ID, p.registry, p.logger); err != nil {
 		return nil, xerrors.Errorf("failed to create YT (static) sinker: %w", err)
 	}
 	return s, nil
@@ -139,8 +139,8 @@ func (p *Provider) Type() abstract.ProviderType {
 }
 
 func (p *Provider) Sink(middlewares.Config) (abstract.Sinker, error) {
-	if p.provider == yt_provider.StagingType {
-		dst, ok := p.transfer.Dst.(*yt_provider.LfStagingDestination)
+	if p.provider == provider_yt.StagingType {
+		dst, ok := p.transfer.Dst.(*provider_yt.LfStagingDestination)
 		if !ok {
 			return nil, xerrors.Errorf("unexpected target type: %T", p.transfer.Dst)
 		}
@@ -150,12 +150,12 @@ func (p *Provider) Sink(middlewares.Config) (abstract.Sinker, error) {
 		}
 		return s, nil
 	}
-	dst, ok := p.transfer.Dst.(yt_provider.YtDestinationModel)
+	dst, ok := p.transfer.Dst.(provider_yt.YtDestinationModel)
 	if !ok {
 		return nil, xerrors.Errorf("unexpected target type: %T", p.transfer.Dst)
 	}
 
-	s, err := ytsink.NewSinker(dst, p.transfer.ID, p.logger, p.registry, p.cp, p.transfer.TmpPolicy)
+	s, err := yt_sink.NewSinker(dst, p.transfer.ID, p.logger, p.registry, p.cp, p.transfer.TmpPolicy)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to create YT (non-static) sinker: %w", err)
 	}
@@ -171,11 +171,11 @@ func getJobIndex(transfer *model.Transfer) int {
 }
 
 func (p *Provider) TMPCleaner(ctx context.Context, task *model.TransferOperation) (providers.Cleaner, error) {
-	dst, ok := p.transfer.Dst.(yt_provider.YtDestinationModel)
+	dst, ok := p.transfer.Dst.(provider_yt.YtDestinationModel)
 	if !ok {
 		return nil, xerrors.Errorf("unexpected destincation type: %T", p.transfer.Dst)
 	}
-	return yt_provider.NewTmpCleaner(dst, p.logger)
+	return provider_yt.NewTmpCleaner(dst, p.logger)
 }
 
 func (p *Provider) CleanupSuitable(transferType abstract.TransferType) bool {
@@ -186,8 +186,8 @@ func (p *Provider) CleanupDestination(ctx context.Context) error {
 	return nil
 }
 
-func New(provider abstract.ProviderType) func(lgr log.Logger, registry metrics.Registry, cp coordinator.Coordinator, transfer *model.Transfer, _ *model.TransferOperation) providers.Provider {
-	return func(lgr log.Logger, registry metrics.Registry, cp coordinator.Coordinator, transfer *model.Transfer, _ *model.TransferOperation) providers.Provider {
+func New(provider abstract.ProviderType) func(lgr log.Logger, registry core_metrics.Registry, cp coordinator.Coordinator, transfer *model.Transfer, _ *model.TransferOperation) providers.Provider {
+	return func(lgr log.Logger, registry core_metrics.Registry, cp coordinator.Coordinator, transfer *model.Transfer, _ *model.TransferOperation) providers.Provider {
 		return &Provider{
 			logger:   lgr,
 			registry: registry,

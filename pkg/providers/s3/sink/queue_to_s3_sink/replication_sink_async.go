@@ -5,27 +5,28 @@ import (
 	"io"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/s3"
+	aws_s3 "github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	s3_provider "github.com/transferia/transferia/pkg/providers/s3"
-	snapshot_sink "github.com/transferia/transferia/pkg/providers/s3/sink"
-	s3_writer "github.com/transferia/transferia/pkg/providers/s3/sink/writer"
+	s3_model "github.com/transferia/transferia/pkg/providers/s3/model"
+	"github.com/transferia/transferia/pkg/providers/s3/s3util/s3sess"
+	s3_sink "github.com/transferia/transferia/pkg/providers/s3/sink"
+	s3_sink_writer "github.com/transferia/transferia/pkg/providers/s3/sink/writer"
 	"github.com/transferia/transferia/pkg/stats"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
 type AsyncSink struct {
-	cfg         *s3_provider.S3Destination
-	rotator     s3_provider.Rotator
+	cfg         *s3_model.S3Destination
+	rotator     s3_model.Rotator
 	partitioner Partitioner
 	logger      log.Logger
 	metrics     *stats.SinkerStats
 
-	snapshotWriter *snapshot_sink.SnapshotWriter
-	s3Client       snapshot_sink.S3Client
+	snapshotWriter *s3_sink.SnapshotWriter
+	s3Client       s3_sink.S3Client
 
 	offsetsToCommit []uint64
 }
@@ -52,7 +53,7 @@ func (s *AsyncSink) pushBatch(items []*abstract.ChangeItem) error {
 		log.Int("written_bytes", writtenBytes),
 	)
 
-	rowFqtn := snapshot_sink.RowFqtn(items[0].TableID())
+	rowFqtn := s3_sink.RowFqtn(items[0].TableID())
 	s.metrics.Table(rowFqtn, "rows", len(items))
 	return nil
 }
@@ -60,12 +61,12 @@ func (s *AsyncSink) pushBatch(items []*abstract.ChangeItem) error {
 func (s *AsyncSink) initPipe(fileName string) error {
 	pipeReader, pipeWriter := io.Pipe()
 
-	batchSerializer, err := snapshot_sink.CreateSerializer(s.cfg.OutputFormat, s.cfg.AnyAsString, nil)
+	batchSerializer, err := s3_sink.CreateSerializer(s.cfg.OutputFormat, s.cfg.AnyAsString, nil)
 	if err != nil {
 		return xerrors.Errorf("unable to create serializer with outputFormat: %s: %w", s.cfg.OutputFormat, err)
 	}
-	writer := s3_writer.NewWriter(s.cfg.OutputEncoding, pipeWriter)
-	snapshotWriter, err := snapshot_sink.NewsnapshotWriter(
+	writer := s3_sink_writer.NewWriter(s.cfg.OutputEncoding, pipeWriter)
+	snapshotWriter, err := s3_sink.NewsnapshotWriter(
 		context.Background(),
 		batchSerializer,
 		writer,
@@ -202,13 +203,13 @@ func (s *AsyncSink) AsyncV2Push(ctx context.Context, errCh chan<- abstract.Async
 	s.processBeforeRotation(ctx, errCh, items)
 }
 
-func NewReplicationAsyncSink(lgr log.Logger, cfg *s3_provider.S3Destination, mtrcs metrics.Registry) (*AsyncSink, error) {
-	sess, err := s3_provider.NewAWSSession(lgr, cfg.Bucket, cfg.ConnectionConfig())
+func NewReplicationAsyncSink(lgr log.Logger, cfg *s3_model.S3Destination, mtrcs core_metrics.Registry) (*AsyncSink, error) {
+	sess, err := s3sess.NewAWSSession(lgr, cfg.Bucket, cfg.ConnectionConfig())
 	if err != nil {
 		return nil, xerrors.Errorf("unable to create session to s3 bucket: %w", err)
 	}
 
-	s3Client := s3.New(sess)
+	s3Client := aws_s3.New(sess)
 	uploader := s3manager.NewUploader(sess)
 	uploader.PartSize = cfg.PartSize
 
@@ -218,7 +219,7 @@ func NewReplicationAsyncSink(lgr log.Logger, cfg *s3_provider.S3Destination, mtr
 		cfg:             cfg,
 		rotator:         cfg.Rotator,
 		partitioner:     PartitionerFactory(NewPartitionerConfig(cfg)),
-		s3Client:        snapshot_sink.NewS3ClientImpl(s3Client, uploader),
+		s3Client:        s3_sink.NewS3ClientImpl(s3Client, uploader),
 		snapshotWriter:  nil, // We can not init writer in constructor, data from first received message is needed
 		offsetsToCommit: make([]uint64, 0),
 	}, nil

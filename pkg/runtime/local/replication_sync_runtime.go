@@ -4,7 +4,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
@@ -14,9 +14,9 @@ import (
 	"github.com/transferia/transferia/pkg/errors"
 	"github.com/transferia/transferia/pkg/errors/categories"
 	"github.com/transferia/transferia/pkg/middlewares"
-	"github.com/transferia/transferia/pkg/sink"
-	"github.com/transferia/transferia/pkg/source"
-	"github.com/transferia/transferia/pkg/source/eventsource"
+	"github.com/transferia/transferia/pkg/sink_factory"
+	"github.com/transferia/transferia/pkg/source_factory"
+	"github.com/transferia/transferia/pkg/source_factory/eventsource"
 	"github.com/transferia/transferia/pkg/util"
 	"github.com/transferia/transferia/pkg/worker/tasks"
 	"go.ytsaurus.tech/library/go/core/log"
@@ -26,7 +26,7 @@ var _ abstract.Transfer = (*LocalWorker)(nil)
 
 type LocalWorker struct {
 	transfer            *model.Transfer
-	registry            metrics.Registry
+	registry            core_metrics.Registry
 	logger              log.Logger
 	sink                abstract.AsyncSink
 	asyncsink           abstract.QueueToS3Sink
@@ -146,7 +146,7 @@ func (w *LocalWorker) initialize() (err error) {
 
 	switch {
 	case w.transfer.IsQueueToS3Replication():
-		w.asyncsink, err = sink.MakeAsyncReplicationSink(w.transfer, new(model.TransferOperation), w.logger, w.registry, w.cp, middlewares.MakeConfig(middlewares.AtReplicationStage))
+		w.asyncsink, err = sink_factory.MakeAsyncReplicationSink(w.transfer, new(model.TransferOperation), w.logger, w.registry, w.cp, middlewares.MakeConfig(middlewares.AtReplicationStage))
 		if err != nil {
 			return errors.CategorizedErrorf(categories.Target, "failed to create async v2 sink: %w", err)
 		}
@@ -155,13 +155,13 @@ func (w *LocalWorker) initialize() (err error) {
 				w.logger.Error("Failed to close async v2 sink", log.Error(err))
 			}
 		})
-		w.asyncsource, err = source.NewAsyncSource(w.transfer, w.logger, w.registry, w.cp)
+		w.asyncsource, err = source_factory.NewAsyncSource(w.transfer, w.logger, w.registry, w.cp)
 		if err != nil {
 			return errors.CategorizedErrorf(categories.Source, "failed to create async source: %w", err)
 		}
 
 	default:
-		w.sink, err = sink.MakeAsyncSink(w.transfer, new(model.TransferOperation), w.logger, w.registry, w.cp, middlewares.MakeConfig(middlewares.AtReplicationStage))
+		w.sink, err = sink_factory.MakeAsyncSink(w.transfer, new(model.TransferOperation), w.logger, w.registry, w.cp, middlewares.MakeConfig(middlewares.AtReplicationStage))
 		if err != nil {
 			return errors.CategorizedErrorf(categories.Target, "failed to create sink: %w", err)
 		}
@@ -179,7 +179,7 @@ func (w *LocalWorker) initialize() (err error) {
 		)
 		if err != nil {
 			if xerrors.Is(err, data.TryLegacySourceError) {
-				w.legacySource, err = source.NewSource(w.transfer, w.logger, w.registry, w.cp)
+				w.legacySource, err = source_factory.NewSource(w.transfer, w.logger, w.registry, w.cp)
 			}
 			if err != nil {
 				return errors.CategorizedErrorf(categories.Source, "failed to create source: %w", err)
@@ -231,7 +231,7 @@ func (w *LocalWorker) Run() error {
 	return nil
 }
 
-func NewLocalWorker(cp coordinator.Coordinator, transfer *model.Transfer, registry metrics.Registry, lgr log.Logger) *LocalWorker {
+func NewLocalWorker(cp coordinator.Coordinator, transfer *model.Transfer, registry core_metrics.Registry, lgr log.Logger) *LocalWorker {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &LocalWorker{
 		transfer:            transfer,

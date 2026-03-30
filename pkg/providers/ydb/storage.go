@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/transferia/transferia/internal/logger"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	yslices "github.com/transferia/transferia/library/go/slices"
 	"github.com/transferia/transferia/pkg/abstract"
@@ -20,26 +20,26 @@ import (
 	"github.com/transferia/transferia/pkg/util"
 	"github.com/transferia/transferia/pkg/util/jsonx"
 	"github.com/transferia/transferia/pkg/xtls"
-	"github.com/ydb-platform/ydb-go-sdk/v3"
-	"github.com/ydb-platform/ydb-go-sdk/v3/credentials"
-	"github.com/ydb-platform/ydb-go-sdk/v3/scheme"
-	"github.com/ydb-platform/ydb-go-sdk/v3/table"
-	"github.com/ydb-platform/ydb-go-sdk/v3/table/options"
+	ydb_go_sdk "github.com/ydb-platform/ydb-go-sdk/v3"
+	ydb_credentials "github.com/ydb-platform/ydb-go-sdk/v3/credentials"
+	ydb_scheme "github.com/ydb-platform/ydb-go-sdk/v3/scheme"
+	ydb_table "github.com/ydb-platform/ydb-go-sdk/v3/table"
+	ydb_options "github.com/ydb-platform/ydb-go-sdk/v3/table/options"
 	"github.com/ydb-platform/ydb-go-sdk/v3/table/result"
 	"github.com/ydb-platform/ydb-go-sdk/v3/table/result/named"
-	"github.com/ydb-platform/ydb-go-sdk/v3/table/types"
+	ydb_table_types "github.com/ydb-platform/ydb-go-sdk/v3/table/types"
 	"go.ytsaurus.tech/library/go/core/log"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 	"go.ytsaurus.tech/yt/go/yson"
 )
 
 type Storage struct {
 	config  *YdbStorageParams
-	db      *ydb.Driver
+	db      *ydb_go_sdk.Driver
 	metrics *stats.SourceStats
 }
 
-func NewStorage(cfg *YdbStorageParams, mtrcs metrics.Registry) (*Storage, error) {
+func NewStorage(cfg *YdbStorageParams, mtrcs core_metrics.Registry) (*Storage, error) {
 	var err error
 	var tlsConfig *tls.Config
 	if cfg.TLSEnabled {
@@ -51,7 +51,7 @@ func NewStorage(cfg *YdbStorageParams, mtrcs metrics.Registry) (*Storage, error)
 	clientCtx, cancel := context.WithTimeout(context.Background(), time.Minute*3)
 	defer cancel()
 
-	var ydbCreds credentials.Credentials
+	var ydbCreds ydb_credentials.Credentials
 	ydbCreds, err = ResolveCredentials(
 		cfg.UserdataAuth,
 		string(cfg.Token),
@@ -98,14 +98,14 @@ func (s *Storage) traverse(directoryPath string) ([]string, error) {
 			continue
 		}
 		switch p.Type {
-		case scheme.EntryDirectory:
+		case ydb_scheme.EntryDirectory:
 			c, err := s.traverse(path.Join(directoryPath, p.Name))
 			if err != nil {
 				//nolint:descriptiveerrors
 				return nil, xerrors.Errorf("unable to transfer: %s: %w", p.Name, err)
 			}
 			res = append(res, c...)
-		case scheme.EntryTable:
+		case ydb_scheme.EntryTable:
 			res = append(res, path.Join(directoryPath, p.Name))
 		}
 	}
@@ -113,7 +113,7 @@ func (s *Storage) traverse(directoryPath string) ([]string, error) {
 }
 
 func (s *Storage) canSkipError(err error) bool {
-	return ydb.IsOperationErrorSchemeError(err)
+	return ydb_go_sdk.IsOperationErrorSchemeError(err)
 }
 
 func validateTableList(params *YdbStorageParams, paths []string) error {
@@ -152,13 +152,13 @@ func (s *Storage) listaAllTablesToTransfer(ctx context.Context) ([]string, error
 				return nil, xerrors.Errorf("unable to describe path, path:%s, err:%w", currPath, err)
 			}
 
-			if entry.Type == scheme.EntryDirectory {
+			if entry.Type == ydb_scheme.EntryDirectory {
 				subTraverse, err := s.traverse(currPath)
 				if err != nil {
 					return nil, xerrors.Errorf("Cannot traverse YDB database from root, db: %s, err: %w", s.config.Database, err)
 				}
 				allTables = append(allTables, subTraverse...)
-			} else if entry.Type == scheme.EntryTable {
+			} else if entry.Type == ydb_scheme.EntryTable {
 				allTables = append(allTables, currPath)
 			} else {
 				return nil, xerrors.Errorf("unknown node type, path:%s, type:%s", currPath, entry.Type.String())
@@ -191,7 +191,7 @@ func (s *Storage) TableList(includeTableFilter abstract.IncludeTableList) (abstr
 	tableMap := make(abstract.TableMap)
 	for _, tableName := range allTables {
 		tablePath := path.Join(s.config.Database, tableName)
-		desc, err := describeTable(ctx, s.db, tablePath, options.WithTableStats())
+		desc, err := describeTable(ctx, s.db, tablePath, ydb_options.WithTableStats())
 		if err != nil {
 			if s.canSkipError(err) {
 				logger.Log.Warn("skip table", log.String("table", tablePath), log.Error(err))
@@ -222,16 +222,16 @@ func (s *Storage) LoadTable(ctx context.Context, tableDescr abstract.TableDescri
 	var res result.StreamResult
 	var schema *abstract.TableSchema
 
-	err := s.db.Table().Do(ctx, func(ctx context.Context, session table.Session) (err error) {
-		readTableOptions := []options.ReadTableOption{options.ReadOrdered()}
+	err := s.db.Table().Do(ctx, func(ctx context.Context, session ydb_table.Session) (err error) {
+		readTableOptions := []ydb_options.ReadTableOption{ydb_options.ReadOrdered()}
 
-		tableDescription, err := session.DescribeTable(ctx, tablePath, options.WithShardKeyBounds())
+		tableDescription, err := session.DescribeTable(ctx, tablePath, ydb_options.WithShardKeyBounds())
 		if err != nil {
 			return xerrors.Errorf("unable to describe table: %w", err)
 		}
 		if s.config.IsSnapshotSharded {
 			keyRange := tableDescription.KeyRanges[tableDescr.Offset]
-			readTableOptions = append(readTableOptions, options.ReadKeyRange(keyRange))
+			readTableOptions = append(readTableOptions, ydb_options.ReadKeyRange(keyRange))
 		}
 
 		tableColumns, err := filterYdbTableColumns(s.config.TableColumnsFilter, tableDescription)
@@ -239,7 +239,7 @@ func (s *Storage) LoadTable(ctx context.Context, tableDescr abstract.TableDescri
 			return xerrors.Errorf("unable to filter table columns: %w", err)
 		}
 		for _, column := range tableColumns {
-			readTableOptions = append(readTableOptions, options.ReadColumn(column.Name))
+			readTableOptions = append(readTableOptions, ydb_options.ReadColumn(column.Name))
 		}
 
 		if filter := tableDescr.Filter; filter != "" {
@@ -248,10 +248,10 @@ func (s *Storage) LoadTable(ctx context.Context, tableDescr abstract.TableDescri
 				return xerrors.Errorf("error resolving key filter for table %s: %w", tableDescr.Name, err)
 			}
 			if from != nil {
-				readTableOptions = append(readTableOptions, options.ReadGreater(from))
+				readTableOptions = append(readTableOptions, ydb_options.ReadGreater(from))
 			}
 			if to != nil {
-				readTableOptions = append(readTableOptions, options.ReadLessOrEqual(to))
+				readTableOptions = append(readTableOptions, ydb_options.ReadLessOrEqual(to))
 			}
 		}
 		res, err = session.StreamReadTable(ctx, tablePath, readTableOptions...)
@@ -361,10 +361,10 @@ func (s *Storage) EstimateTableRowsCount(tid abstract.TableID) (uint64, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 	tablePath := path.Join(s.config.Database, Fqtn(tid))
-	var desc options.Description
+	var desc ydb_options.Description
 
-	err := s.db.Table().Do(ctx, func(ctx context.Context, session table.Session) (err error) {
-		desc, err = session.DescribeTable(ctx, tablePath, options.WithTableStats())
+	err := s.db.Table().Do(ctx, func(ctx context.Context, session ydb_table.Session) (err error) {
+		desc, err = session.DescribeTable(ctx, tablePath, ydb_options.WithTableStats())
 		if err != nil {
 			return xerrors.Errorf("unable to descibe table: %w", err)
 		}
@@ -382,17 +382,17 @@ func (s *Storage) ExactTableRowsCount(tid abstract.TableID) (uint64, error) {
 	defer cancel()
 	query := fmt.Sprintf("SELECT count(*) as count FROM `%s`", Fqtn(tid))
 	logger.Log.Infof("get exact count: %s", query)
-	readTx := table.TxControl(
-		table.BeginTx(
-			table.WithOnlineReadOnly(),
+	readTx := ydb_table.TxControl(
+		ydb_table.BeginTx(
+			ydb_table.WithOnlineReadOnly(),
 		),
-		table.CommitTx(),
+		ydb_table.CommitTx(),
 	)
 
 	var res result.Result
-	err := s.db.Table().Do(ctx, func(ctx context.Context, session table.Session) (err error) {
+	err := s.db.Table().Do(ctx, func(ctx context.Context, session ydb_table.Session) (err error) {
 		_, res, err = session.Execute(ctx, readTx, query,
-			table.NewQueryParameters(),
+			ydb_table.NewQueryParameters(),
 		)
 		if err != nil {
 			return xerrors.Errorf("unable to execute count: %w", err)
@@ -424,7 +424,7 @@ func (s *Storage) TableExists(tid abstract.TableID) (bool, error) {
 	defer cancel()
 	tablePath := path.Join(s.config.Database, Fqtn(tid))
 	logger.Log.Infof("check exists: %v at %s", tid, tablePath)
-	err := s.db.Table().Do(ctx, func(ctx context.Context, session table.Session) (err error) {
+	err := s.db.Table().Do(ctx, func(ctx context.Context, session ydb_table.Session) (err error) {
 		_, err = session.DescribeTable(ctx, tablePath)
 		if err != nil {
 			return xerrors.Errorf("unable to descibe table: %w", err)
@@ -443,7 +443,7 @@ type scanner struct {
 	resultVal    interface{}
 }
 
-func (s *scanner) UnmarshalYDB(raw types.RawValue) error {
+func (s *scanner) UnmarshalYDB(raw ydb_table_types.RawValue) error {
 	if raw.IsOptional() {
 		raw.Unwrap()
 	}
@@ -478,14 +478,14 @@ func (s *scanner) UnmarshalYDB(raw types.RawValue) error {
 	} else if s.originalType == "ydb:Uuid" {
 		s.resultVal = raw.UUIDTyped().String()
 	} else {
-		switch schema.Type(s.dataType) {
-		case schema.TypeDate:
+		switch ytschema.Type(s.dataType) {
+		case ytschema.TypeDate:
 			s.resultVal = raw.Date().UTC()
-		case schema.TypeTimestamp:
+		case ytschema.TypeTimestamp:
 			s.resultVal = raw.Timestamp().UTC()
-		case schema.TypeDatetime:
+		case ytschema.TypeDatetime:
 			s.resultVal = raw.Datetime().UTC()
-		case schema.TypeInterval:
+		case ytschema.TypeInterval:
 			s.resultVal = raw.Interval()
 		default:
 			s.resultVal = raw.Any()

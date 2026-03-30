@@ -9,13 +9,13 @@ import (
 
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	debeziumcommon "github.com/transferia/transferia/pkg/debezium/common"
-	debeziumparameters "github.com/transferia/transferia/pkg/debezium/parameters"
+	debezium_common "github.com/transferia/transferia/pkg/debezium/common"
+	debezium_parameters "github.com/transferia/transferia/pkg/debezium/parameters"
 	"github.com/transferia/transferia/pkg/debezium/typeutil"
 	"github.com/transferia/transferia/pkg/util"
 )
 
-var mapMysqlNotParametrizedTypeToKafkaType = map[string]debeziumcommon.KafkaTypeDescr{
+var mapMysqlNotParametrizedTypeToKafkaType = map[string]debezium_common.KafkaTypeDescr{
 	"mysql:blob": {KafkaTypeAndDebeziumNameAndExtra: func(*abstract.ColSchema, bool, bool, map[string]string) (string, string, map[string]interface{}) {
 		return "bytes", "", nil
 	}},
@@ -51,7 +51,7 @@ var mapMysqlNotParametrizedTypeToKafkaType = map[string]debeziumcommon.KafkaType
 	}},
 }
 
-var mapMysqlParametrizedTypePrefixToKafkaType = map[string]debeziumcommon.KafkaTypeDescr{
+var mapMysqlParametrizedTypePrefixToKafkaType = map[string]debezium_common.KafkaTypeDescr{
 	"mysql:bigint": {KafkaTypeAndDebeziumNameAndExtra: func(*abstract.ColSchema, bool, bool, map[string]string) (string, string, map[string]interface{}) {
 		return "int64", "", nil
 	}},
@@ -154,7 +154,7 @@ func setParamsToKafkaType(colSchema *abstract.ColSchema, _, _ bool, _ map[string
 	return "string", "io.debezium.data.EnumSet", result
 }
 
-func GetKafkaTypeDescrByMysqlType(typeName string) (*debeziumcommon.KafkaTypeDescr, error) {
+func GetKafkaTypeDescrByMysqlType(typeName string) (*debezium_common.KafkaTypeDescr, error) {
 	if val, ok := mapMysqlNotParametrizedTypeToKafkaType[typeName]; ok {
 		return &val, nil
 	} else {
@@ -167,7 +167,7 @@ func GetKafkaTypeDescrByMysqlType(typeName string) (*debeziumcommon.KafkaTypeDes
 	}
 }
 
-func AddMysql(v *debeziumcommon.Values, colName string, colVal interface{}, colType string, _ bool, connectorParameters map[string]string) error {
+func AddMysql(v *debezium_common.Values, colName string, colVal interface{}, colType string, _ bool, connectorParameters map[string]string) error {
 	if colVal == nil {
 		v.AddVal(colName, nil)
 		return nil
@@ -202,7 +202,7 @@ func AddMysql(v *debeziumcommon.Values, colName string, colVal interface{}, colT
 				return xerrors.Errorf("mysql - binary - unable to fit binary length, err: %w", err)
 			}
 		}
-		val, err := typeutil.ParseBytea(currVal, v.ConnectorParameters[debeziumparameters.BinaryHandlingMode])
+		val, err := typeutil.ParseBytea(currVal, v.ConnectorParameters[debezium_parameters.BinaryHandlingMode])
 		if err != nil {
 			return xerrors.Errorf("mysql - binary - unable to parse binary/varbinary/longblob, err: %w", err)
 		}
@@ -242,7 +242,7 @@ func AddMysql(v *debeziumcommon.Values, colName string, colVal interface{}, colT
 					return xerrors.Errorf("mysql - bit - unable to shrink buf, err: %w", err)
 				}
 			}
-			val, err := typeutil.ParseMysqlBit(currVal, v.ConnectorParameters[debeziumparameters.BinaryHandlingMode])
+			val, err := typeutil.ParseMysqlBit(currVal, v.ConnectorParameters[debezium_parameters.BinaryHandlingMode])
 			if err != nil {
 				return xerrors.Errorf("mysql - bit - unable to parse bit, err: %w", err)
 			}
@@ -380,9 +380,9 @@ func AddMysql(v *debeziumcommon.Values, colName string, colVal interface{}, colT
 		}
 		v.AddVal(colName, year)
 	case "mysql:geometry":
-		return debeziumcommon.NewUnknownTypeError(xerrors.Errorf("mysql:geometry type is not supported for now, column type: %s, column name: %s", colType, colName))
+		return debezium_common.NewUnknownTypeError(xerrors.Errorf("mysql:geometry type is not supported for now, column type: %s, column name: %s", colType, colName))
 	default:
-		return debeziumcommon.NewUnknownTypeError(xerrors.Errorf("unknown column type: %s, column name: %s", colType, colName))
+		return debezium_common.NewUnknownTypeError(xerrors.Errorf("unknown column type: %s, column name: %s", colType, colName))
 	}
 	return nil
 }

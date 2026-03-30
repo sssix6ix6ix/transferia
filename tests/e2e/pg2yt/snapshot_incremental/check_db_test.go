@@ -12,19 +12,19 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	pg_provider "github.com/transferia/transferia/pkg/providers/postgres"
-	"github.com/transferia/transferia/pkg/providers/yt"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
+	provider_yt "github.com/transferia/transferia/pkg/providers/yt"
 	"github.com/transferia/transferia/tests/helpers"
-	yt_helpers "github.com/transferia/transferia/tests/helpers/yt"
+	helpers_yt "github.com/transferia/transferia/tests/helpers/yt"
 	"go.ytsaurus.tech/yt/go/ypath"
-	yt_main "go.ytsaurus.tech/yt/go/yt"
+	"go.ytsaurus.tech/yt/go/yt"
 	"go.ytsaurus.tech/yt/go/yttest"
 )
 
 const ytPath = "//home/cdc/test/pg2yt_e2e"
 
 var (
-	Source = pg_provider.PgSource{
+	Source = provider_postgres.PgSource{
 		ClusterID: os.Getenv("PG_CLUSTER_ID"),
 		Hosts:     []string{"localhost"},
 		User:      os.Getenv("PG_LOCAL_USER"),
@@ -33,7 +33,7 @@ var (
 		Port:      helpers.GetIntFromEnv("PG_LOCAL_PORT"),
 		DBTables:  []string{"public.__test"},
 	}
-	Target = yt_helpers.RecipeYtTarget(ytPath)
+	Target = helpers_yt.RecipeYtTarget(ytPath)
 )
 
 const cursorField = "id"
@@ -58,9 +58,9 @@ func TestGroup(t *testing.T) {
 	defer cancel()
 
 	ctx := context.Background()
-	_, err = ytEnv.YT.CreateNode(ctx, ypath.Path(ytPath), yt_main.NodeMap, &yt_main.CreateNodeOptions{Recursive: true})
+	_, err = ytEnv.YT.CreateNode(ctx, ypath.Path(ytPath), yt.NodeMap, &yt.CreateNodeOptions{Recursive: true})
 	defer func() {
-		err := ytEnv.YT.RemoveNode(ctx, ypath.Path(ytPath), &yt_main.RemoveNodeOptions{Recursive: true})
+		err := ytEnv.YT.RemoveNode(ctx, ypath.Path(ytPath), &yt.RemoveNodeOptions{Recursive: true})
 		require.NoError(t, err)
 	}()
 	require.NoError(t, err)
@@ -72,7 +72,7 @@ func TestGroup(t *testing.T) {
 
 func Snapshot(t *testing.T) {
 	Source.PreSteps.Constraint = true
-	target, ok := Target.(*yt.YtDestinationWrapper)
+	target, ok := Target.(*provider_yt.YtDestinationWrapper)
 	require.True(t, ok)
 	target.Model.Cleanup = "Disabled"
 	transfer := helpers.MakeTransferForIncrementalSnapshot(helpers.TransferID, &Source, target, abstract.TransferTypeSnapshotOnly,
@@ -85,7 +85,7 @@ func Snapshot(t *testing.T) {
 	_, err := helpers.ActivateWithCP(transfer, cp, true)
 	require.NoError(t, err)
 
-	conn, err := pg_provider.MakeConnPoolFromSrc(&Source, logger.Log)
+	conn, err := provider_postgres.MakeConnPoolFromSrc(&Source, logger.Log)
 	require.NoError(t, err)
 	defer conn.Close()
 
@@ -154,7 +154,7 @@ func getExpectedRowsCount(t *testing.T, conn *pgxpool.Pool, exclude uint64) uint
 }
 
 func removeAddedData(t *testing.T) {
-	conn, err := pg_provider.MakeConnPoolFromSrc(&Source, logger.Log)
+	conn, err := provider_postgres.MakeConnPoolFromSrc(&Source, logger.Log)
 	require.NoError(t, err)
 	_, err = conn.Exec(context.Background(), "delete from __test where id >= 14")
 	require.NoError(t, err)

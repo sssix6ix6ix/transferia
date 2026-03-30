@@ -8,15 +8,15 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3"
+	aws_credentials "github.com/aws/aws-sdk-go/aws/credentials"
+	aws_session "github.com/aws/aws-sdk-go/aws/session"
+	aws_s3 "github.com/aws/aws-sdk-go/service/s3"
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/postgres"
-	s3_provider "github.com/transferia/transferia/pkg/providers/s3"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
+	s3_model "github.com/transferia/transferia/pkg/providers/s3/model"
 	_ "github.com/transferia/transferia/pkg/providers/s3/provider"
 	"github.com/transferia/transferia/pkg/worker/tasks"
 	"github.com/transferia/transferia/tests/helpers"
@@ -30,7 +30,7 @@ var (
 )
 
 var (
-	Source = postgres.PgSource{
+	Source = provider_postgres.PgSource{
 		ClusterID: os.Getenv("PG_CLUSTER_ID"),
 		Hosts:     []string{"localhost"},
 		User:      os.Getenv("PG_LOCAL_USER"),
@@ -39,7 +39,7 @@ var (
 		Port:      helpers.GetIntFromEnv("PG_LOCAL_PORT"),
 		DBTables:  []string{"public.__test"},
 	}
-	Target = &s3_provider.S3Destination{
+	Target = &s3_model.S3Destination{
 		OutputFormat:   model.ParsingFormatJSON,
 		BufferSize:     1 * 1024 * 1024,
 		BufferInterval: time.Second * 5,
@@ -65,39 +65,39 @@ func init() {
 	Source.WithDefaults()
 }
 
-func createBucket(t *testing.T, cfg *s3_provider.S3Destination) {
-	sess, err := session.NewSession(&aws.Config{
+func createBucket(t *testing.T, cfg *s3_model.S3Destination) {
+	sess, err := aws_session.NewSession(&aws.Config{
 		Endpoint:         aws.String(cfg.Endpoint),
 		Region:           aws.String(cfg.Region),
 		S3ForcePathStyle: aws.Bool(true),
-		Credentials: credentials.NewStaticCredentials(
+		Credentials: aws_credentials.NewStaticCredentials(
 			cfg.AccessKey, cfg.Secret, "",
 		),
 	})
 	require.NoError(t, err)
-	res, err := s3.New(sess).CreateBucket(&s3.CreateBucketInput{
+	res, err := aws_s3.New(sess).CreateBucket(&aws_s3.CreateBucketInput{
 		Bucket: aws.String(cfg.Bucket),
 	})
 	require.NoError(t, err)
 	logger.Log.Info("create bucket result", log.Any("res", res))
 }
 
-func checkBucket(t *testing.T, cfg *s3_provider.S3Destination, size int) {
-	sess, err := session.NewSession(&aws.Config{
+func checkBucket(t *testing.T, cfg *s3_model.S3Destination, size int) {
+	sess, err := aws_session.NewSession(&aws.Config{
 		Endpoint:         aws.String(cfg.Endpoint),
 		Region:           aws.String(cfg.Region),
 		S3ForcePathStyle: aws.Bool(true),
-		Credentials: credentials.NewStaticCredentials(
+		Credentials: aws_credentials.NewStaticCredentials(
 			cfg.AccessKey, cfg.Secret, "",
 		),
 	})
 	require.NoError(t, err)
-	objs, err := s3.New(sess).ListObjects(&s3.ListObjectsInput{Bucket: &cfg.Bucket})
+	objs, err := aws_s3.New(sess).ListObjects(&aws_s3.ListObjectsInput{Bucket: &cfg.Bucket})
 	require.NoError(t, err)
 	logger.Log.Infof("objects: %v", objs.String())
 	require.Len(t, objs.Contents, size)
 	for _, content := range objs.Contents {
-		obj, err := s3.New(sess).GetObject(&s3.GetObjectInput{Bucket: &cfg.Bucket, Key: content.Key})
+		obj, err := aws_s3.New(sess).GetObject(&aws_s3.GetObjectInput{Bucket: &cfg.Bucket, Key: content.Key})
 		require.NoError(t, err)
 		data, err := io.ReadAll(obj.Body)
 		require.NoError(t, err)
@@ -128,7 +128,7 @@ func TestGroup(t *testing.T) {
 }
 
 func Existence(t *testing.T) {
-	_, err := postgres.NewStorage(Source.ToStorageParams(nil))
+	_, err := provider_postgres.NewStorage(Source.ToStorageParams(nil))
 	require.NoError(t, err)
 }
 

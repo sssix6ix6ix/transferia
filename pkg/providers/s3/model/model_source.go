@@ -1,4 +1,4 @@
-package s3
+package s3_model
 
 import (
 	"time"
@@ -12,7 +12,7 @@ import (
 )
 
 func init() {
-	gobwrapper.Register(new(S3Source))
+	gobwrapper.RegisterName("*s3.S3Source", new(S3Source))
 	model.RegisterSource(ProviderType, func() model.LoggableSource {
 		return new(S3Source)
 	})

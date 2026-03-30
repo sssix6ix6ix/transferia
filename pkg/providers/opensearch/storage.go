@@ -3,10 +3,10 @@ package opensearch
 import (
 	"context"
 
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	"github.com/transferia/transferia/pkg/providers/elastic"
+	provider_elastic "github.com/transferia/transferia/pkg/providers/elastic"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
@@ -46,9 +46,9 @@ func (s *Storage) TableList(includeTableFilter abstract.IncludeTableList) (abstr
 	return s.elasticStorage.TableList(includeTableFilter)
 }
 
-func NewStorage(src *OpenSearchSource, logger log.Logger, mRegistry metrics.Registry, opts ...elastic.StorageOpt) (*Storage, error) {
+func NewStorage(src *OpenSearchSource, logger log.Logger, mRegistry core_metrics.Registry, opts ...provider_elastic.StorageOpt) (*Storage, error) {
 	elasticSrc, serverType := src.ToElasticSearchSource()
-	eStorage, err := elastic.NewStorage(elasticSrc, logger, mRegistry, serverType, opts...)
+	eStorage, err := provider_elastic.NewStorage(elasticSrc, logger, mRegistry, serverType, opts...)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to create elastic storage: %w", err)
 	}

@@ -7,13 +7,13 @@ import (
 	"testing"
 	"time"
 
-	mysql_client "github.com/go-sql-driver/mysql"
+	mysql_driver2 "github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/mysql"
+	provider_mysql "github.com/transferia/transferia/pkg/providers/mysql"
 	"github.com/transferia/transferia/pkg/providers/mysql/mysqlrecipe"
 	"github.com/transferia/transferia/pkg/runtime/local"
 	"github.com/transferia/transferia/pkg/worker/tasks"
@@ -46,9 +46,9 @@ func TestGroup(t *testing.T) {
 }
 
 func Existence(t *testing.T) {
-	_, err := mysql.NewStorage(Source.ToStorageParams())
+	_, err := provider_mysql.NewStorage(Source.ToStorageParams())
 	require.NoError(t, err)
-	_, err = mysql.NewStorage(Target.ToStorageParams())
+	_, err = provider_mysql.NewStorage(Target.ToStorageParams())
 	require.NoError(t, err)
 }
 
@@ -63,7 +63,7 @@ func Snapshot(t *testing.T) {
 }
 
 func Load(t *testing.T) {
-	sourceAsDestination := mysql.MysqlDestination{
+	sourceAsDestination := provider_mysql.MysqlDestination{
 		Host:     Source.Host,
 		User:     Source.User,
 		Password: Source.Password,
@@ -71,27 +71,27 @@ func Load(t *testing.T) {
 		Port:     Source.Port,
 	}
 	sourceAsDestination.WithDefaults()
-	_, err := mysql.NewSinker(logger.Log, &sourceAsDestination, helpers.EmptyRegistry())
+	_, err := provider_mysql.NewSinker(logger.Log, &sourceAsDestination, helpers.EmptyRegistry())
 	require.NoError(t, err)
 
 	transfer := helpers.MakeTransfer(helpers.TransferID, &Source, &Target, TransferType)
 
 	fakeClient := coordinator.NewStatefulFakeClient()
-	err = mysql.SyncBinlogPosition(&Source, transfer.ID, fakeClient)
+	err = provider_mysql.SyncBinlogPosition(&Source, transfer.ID, fakeClient)
 	require.NoError(t, err)
 
 	localWorker := local.NewLocalWorker(fakeClient, transfer, helpers.EmptyRegistry(), logger.Log)
 	localWorker.Start()
 	defer localWorker.Stop() //nolint
 
-	cfg := mysql_client.NewConfig()
+	cfg := mysql_driver2.NewConfig()
 	cfg.Addr = fmt.Sprintf("%v:%v", Source.Host, Source.Port)
 	cfg.User = Source.User
 	cfg.Passwd = string(Source.Password)
 	cfg.DBName = Source.Database
 	cfg.Net = "tcp"
 
-	mysqlConnector, err := mysql_client.NewConnector(cfg)
+	mysqlConnector, err := mysql_driver2.NewConnector(cfg)
 	require.NoError(t, err)
 	db := sql.OpenDB(mysqlConnector)
 

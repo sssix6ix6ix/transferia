@@ -1,7 +1,7 @@
 package common
 
 import (
-	pgcommon "github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 )
 
 type OriginalTypeInfo struct {
@@ -11,6 +11,6 @@ type OriginalTypeInfo struct {
 
 func (i *OriginalTypeInfo) GetArrElemTypeDescr() *OriginalTypeInfo {
 	newOriginalTypeInfo := *i
-	newOriginalTypeInfo.OriginalType = pgcommon.GetArrElemTypeDescr(newOriginalTypeInfo.OriginalType)
+	newOriginalTypeInfo.OriginalType = provider_postgres.GetArrElemTypeDescr(newOriginalTypeInfo.OriginalType)
 	return &newOriginalTypeInfo
 }

@@ -11,8 +11,8 @@ import (
 	"github.com/transferia/transferia/library/go/test/yatest"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/debezium"
-	debeziumcommon "github.com/transferia/transferia/pkg/debezium/common"
-	debeziumparameters "github.com/transferia/transferia/pkg/debezium/parameters"
+	debezium_common "github.com/transferia/transferia/pkg/debezium/common"
+	debezium_parameters "github.com/transferia/transferia/pkg/debezium/parameters"
 )
 
 func wipeOriginalTypeInfo(changeItem *abstract.ChangeItem) *abstract.ChangeItem {
@@ -22,11 +22,11 @@ func wipeOriginalTypeInfo(changeItem *abstract.ChangeItem) *abstract.ChangeItem 
 	return changeItem
 }
 
-func emit(t *testing.T, originalChangeItem *abstract.ChangeItem, setIgnoreUnknownSources bool) []debeziumcommon.KeyValue {
+func emit(t *testing.T, originalChangeItem *abstract.ChangeItem, setIgnoreUnknownSources bool) []debezium_common.KeyValue {
 	emitter, err := debezium.NewMessagesEmitter(map[string]string{
-		debeziumparameters.TopicPrefix:      "my_topic",
-		debeziumparameters.AddOriginalTypes: "true",
-		debeziumparameters.SourceType:       "mysql",
+		debezium_parameters.TopicPrefix:      "my_topic",
+		debezium_parameters.AddOriginalTypes: "true",
+		debezium_parameters.SourceType:       "mysql",
 	}, "1.1.2.Final", false, logger.Log)
 	require.NoError(t, err)
 	emitter.TestSetIgnoreUnknownSources(setIgnoreUnknownSources)
@@ -42,7 +42,7 @@ func runTwoConversions(t *testing.T, mysqlSnapshotChangeItem []byte, isWipeOrigi
 
 	currDebeziumKV := emit(t, originalChangeItem, false)
 
-	originalTypes := map[abstract.TableID]map[string]*debeziumcommon.OriginalTypeInfo{
+	originalTypes := map[abstract.TableID]map[string]*debezium_common.OriginalTypeInfo{
 		{Namespace: "", Name: "customers3"}: {"json_": {OriginalType: "mysql:json"}},
 	}
 	receiver := debezium.NewReceiver(originalTypes, nil)

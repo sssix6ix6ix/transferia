@@ -5,10 +5,10 @@ import (
 
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
-	dp_model "github.com/transferia/transferia/pkg/abstract/model"
+	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/middlewares/synchronizer/bufferer"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/model"
-	"github.com/transferia/transferia/pkg/providers/postgres/utils"
+	clickhouse_model "github.com/transferia/transferia/pkg/providers/clickhouse/model"
+	postgres_utils "github.com/transferia/transferia/pkg/providers/postgres/utils"
 	"go.uber.org/zap/zapcore"
 )
 
@@ -20,26 +20,26 @@ type PgDestination struct {
 
 	Database                  string `json:"Name" log:"true"`
 	User                      string `log:"true"`
-	Password                  dp_model.SecretString
+	Password                  model.SecretString
 	Port                      int `log:"true"`
 	TLSFile                   string
-	EnableTLS                 bool                 `log:"true"`
-	MaintainTables            bool                 `log:"true"`
-	IsSchemaMigrationDisabled bool                 `log:"true"`
-	AllowDuplicates           bool                 `log:"true"`
-	LoozeMode                 bool                 `log:"true"`
-	IgnoreUniqueConstraint    bool                 `log:"true"`
-	Tables                    map[string]string    `log:"true"`
-	TransformerConfig         map[string]string    `log:"true"`
-	SubNetworkID              string               `log:"true"`
-	SecurityGroupIDs          []string             `log:"true"`
-	CopyUpload                bool                 `log:"true"` // THIS IS NOT PARAMETER. If you set it on endpoint into true/false - nothing happened. It's workaround, this flag is set by common code (Activate/UploadTable) automatically. You have not options to turn-off CopyUpload behaviour.
-	PerTransactionPush        bool                 `log:"true"`
-	Cleanup                   dp_model.CleanupType `log:"true"`
-	BatchSize                 int                  `log:"true"` // deprecated: use BufferTriggingSize instead
-	BufferTriggingSize        uint64               `log:"true"`
-	BufferTriggingInterval    time.Duration        `log:"true"`
-	QueryTimeout              time.Duration        `log:"true"`
+	EnableTLS                 bool              `log:"true"`
+	MaintainTables            bool              `log:"true"`
+	IsSchemaMigrationDisabled bool              `log:"true"`
+	AllowDuplicates           bool              `log:"true"`
+	LoozeMode                 bool              `log:"true"`
+	IgnoreUniqueConstraint    bool              `log:"true"`
+	Tables                    map[string]string `log:"true"`
+	TransformerConfig         map[string]string `log:"true"`
+	SubNetworkID              string            `log:"true"`
+	SecurityGroupIDs          []string          `log:"true"`
+	CopyUpload                bool              `log:"true"` // THIS IS NOT PARAMETER. If you set it on endpoint into true/false - nothing happened. It's workaround, this flag is set by common code (Activate/UploadTable) automatically. You have not options to turn-off CopyUpload behaviour.
+	PerTransactionPush        bool              `log:"true"`
+	Cleanup                   model.CleanupType `log:"true"`
+	BatchSize                 int               `log:"true"` // deprecated: use BufferTriggingSize instead
+	BufferTriggingSize        uint64            `log:"true"`
+	BufferTriggingInterval    time.Duration     `log:"true"`
+	QueryTimeout              time.Duration     `log:"true"`
 	// MaxPostgresQueryBytes is a private sink setting which limits generated SQL statement size.
 	// It is applied when building multi-row INSERT statements and when batching plain SQL queries:
 	//   - if 0, default 64 MiB is used;
@@ -52,9 +52,9 @@ type PgDestination struct {
 }
 
 var (
-	_ dp_model.Destination          = (*PgDestination)(nil)
-	_ dp_model.WithConnectionID     = (*PgDestination)(nil)
-	_ dp_model.AlterableDestination = (*PgDestination)(nil)
+	_ model.Destination          = (*PgDestination)(nil)
+	_ model.WithConnectionID     = (*PgDestination)(nil)
+	_ model.AlterableDestination = (*PgDestination)(nil)
 )
 
 const PGDefaultQueryTimeout time.Duration = 30 * time.Minute
@@ -75,14 +75,14 @@ func (d *PgDestination) IsAlterable() {}
 
 // AllHosts - function to move from legacy 'Host' into modern 'Hosts'
 func (d *PgDestination) AllHosts() []string {
-	return utils.HandleHostAndHosts(d.Host, d.Hosts)
+	return postgres_utils.HandleHostAndHosts(d.Host, d.Hosts)
 }
 
 func (d *PgDestination) HasTLS() bool {
 	return d.TLSFile != "" || d.EnableTLS
 }
 
-func (d *PgDestination) CleanupMode() dp_model.CleanupType {
+func (d *PgDestination) CleanupMode() model.CleanupType {
 	return d.Cleanup
 }
 
@@ -98,11 +98,11 @@ func (d *PgDestination) WithDefaults() {
 		d.Port = 6432
 	}
 	if d.Cleanup == "" {
-		d.Cleanup = dp_model.Drop
+		d.Cleanup = model.Drop
 	}
 
 	if d.BufferTriggingSize == 0 {
-		d.BufferTriggingSize = model.BufferTriggingSizeDefault
+		d.BufferTriggingSize = clickhouse_model.BufferTriggingSizeDefault
 	}
 
 	if d.QueryTimeout == 0 {
@@ -190,7 +190,7 @@ func (d PgDestinationWrapper) LoozeMode() bool {
 	return d.Model.LoozeMode
 }
 
-func (d PgDestinationWrapper) CleanupMode() dp_model.CleanupType {
+func (d PgDestinationWrapper) CleanupMode() model.CleanupType {
 	return d.Model.CleanupMode()
 }
 

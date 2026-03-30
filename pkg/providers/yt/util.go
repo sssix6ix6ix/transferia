@@ -11,7 +11,7 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"go.ytsaurus.tech/library/go/core/log"
 	"go.ytsaurus.tech/yt/go/migrate"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 	"go.ytsaurus.tech/yt/go/ypath"
 	"go.ytsaurus.tech/yt/go/yt"
 	"golang.org/x/sync/semaphore"
@@ -22,9 +22,9 @@ var (
 )
 
 type ColumnSchema struct {
-	Name    string      `yson:"name" json:"name"`
-	YTType  schema.Type `yson:"type" json:"type"`
-	Primary bool        `json:"primary"`
+	Name    string        `yson:"name" json:"name"`
+	YTType  ytschema.Type `yson:"type" json:"type"`
+	Primary bool          `json:"primary"`
 }
 
 type nodeHandler func(ctx context.Context, client yt.Client, path ypath.Path, attrs *NodeAttrs) error
@@ -149,7 +149,7 @@ func MountAndWaitRecursive(ctx context.Context, logger log.Logger, client yt.Cli
 		})
 }
 
-func YTColumnToColSchema(columns []schema.Column) *abstract.TableSchema {
+func YTColumnToColSchema(columns []ytschema.Column) *abstract.TableSchema {
 	tableSchema := make([]abstract.ColSchema, len(columns))
 
 	for i, c := range columns {
@@ -223,23 +223,23 @@ func ResolveMoveOptions(client yt.CypressClient, table ypath.Path, isRecursive b
 	return result
 }
 
-func ToYtSchema(original []abstract.ColSchema, fixAnyTypeInPrimaryKey bool) []schema.Column {
-	result := make([]schema.Column, len(original))
+func ToYtSchema(original []abstract.ColSchema, fixAnyTypeInPrimaryKey bool) []ytschema.Column {
+	result := make([]ytschema.Column, len(original))
 	for idx, el := range original {
-		result[idx] = schema.Column{
+		result[idx] = ytschema.Column{
 			Name:       el.ColumnName,
 			Expression: "",
-			Type:       schema.Type(el.DataType),
+			Type:       ytschema.Type(el.DataType),
 		}
 		if el.PrimaryKey {
-			result[idx].SortOrder = schema.SortAscending
-			if result[idx].Type == schema.TypeAny && fixAnyTypeInPrimaryKey {
-				result[idx].Type = schema.TypeString // should not use any as keys
+			result[idx].SortOrder = ytschema.SortAscending
+			if result[idx].Type == ytschema.TypeAny && fixAnyTypeInPrimaryKey {
+				result[idx].Type = ytschema.TypeString // should not use any as keys
 			}
 		}
 	}
 	sort.Slice(result, func(i, j int) bool {
-		return result[i].SortOrder != schema.SortNone && result[j].SortOrder == schema.SortNone
+		return result[i].SortOrder != ytschema.SortNone && result[j].SortOrder == ytschema.SortNone
 	})
 	return result
 }

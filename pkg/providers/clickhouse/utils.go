@@ -13,7 +13,7 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	"github.com/transferia/transferia/pkg/connection/clickhouse"
+	conn_clickhouse "github.com/transferia/transferia/pkg/connection/clickhouse"
 )
 
 func InitValuesForScan(rows *sql.Rows) ([]interface{}, error) {
@@ -285,7 +285,7 @@ func ColumnShouldBeSelected(col abstract.ColSchema, isHomo bool) bool {
 	return (!isHomo) || (isHomo && !IsColVirtual(col))
 }
 
-func ShardsToString(shards map[string][]*clickhouse.Host) string {
+func ShardsToString(shards map[string][]*conn_clickhouse.Host) string {
 	shardsToString := make(map[string]string, len(shards))
 	for shard, hosts := range shards {
 		shardsToString[shard] = HostsToString(hosts)
@@ -293,7 +293,7 @@ func ShardsToString(shards map[string][]*clickhouse.Host) string {
 	return fmt.Sprintf("%v", shardsToString)
 }
 
-func HostsToString(hosts []*clickhouse.Host) string {
+func HostsToString(hosts []*conn_clickhouse.Host) string {
 	hostsToString := make([]string, 0, len(hosts))
 	for _, host := range hosts {
 		hostsToString = append(hostsToString, host.String())

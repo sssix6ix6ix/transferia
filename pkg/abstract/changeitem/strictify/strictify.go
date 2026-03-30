@@ -9,7 +9,7 @@ import (
 	"github.com/transferia/transferia/pkg/abstract/dterrors"
 	"github.com/transferia/transferia/pkg/util/castx"
 	"github.com/transferia/transferia/pkg/util/generics"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 // Strictify converts Values inside an item to their strict representations in-place. To determine the type to which to convert the value of each column, the given set of column schemas is used.
@@ -53,99 +53,99 @@ func strictifyValue(value *any, valueSchema *changeitem.ColSchema) (any, error) 
 		return nil, nil
 	}
 
-	targetType := schema.Type(valueSchema.DataType)
+	targetType := ytschema.Type(valueSchema.DataType)
 	switch targetType {
-	case schema.TypeBoolean:
+	case ytschema.TypeBoolean:
 		v, err := cast.ToBoolE(*value)
 		if err != nil {
 			return nil, NewStrictifyError(valueSchema, targetType, err)
 		}
 		return v, nil
-	case schema.TypeInt8:
+	case ytschema.TypeInt8:
 		v, err := toSignedInt(*value, math.MinInt8, math.MaxInt8, cast.ToInt8E)
 		if err != nil {
 			return nil, NewStrictifyError(valueSchema, targetType, err)
 		}
 		return v, nil
-	case schema.TypeInt16:
+	case ytschema.TypeInt16:
 		v, err := toSignedInt(*value, math.MinInt16, math.MaxInt16, cast.ToInt16E)
 		if err != nil {
 			return nil, NewStrictifyError(valueSchema, targetType, err)
 		}
 		return v, nil
-	case schema.TypeInt32:
+	case ytschema.TypeInt32:
 		v, err := toSignedInt(*value, math.MinInt32, math.MaxInt32, cast.ToInt32E)
 		if err != nil {
 			return nil, NewStrictifyError(valueSchema, targetType, err)
 		}
 		return v, nil
-	case schema.TypeInt64:
+	case ytschema.TypeInt64:
 		v, err := toSignedInt(*value, math.MinInt64, math.MaxInt64, cast.ToInt64E)
 		if err != nil {
 			return nil, NewStrictifyError(valueSchema, targetType, err)
 		}
 		return v, nil
-	case schema.TypeUint8:
+	case ytschema.TypeUint8:
 		v, err := toUnsignedInt(*value, math.MaxUint8, cast.ToUint8E)
 		if err != nil {
 			return nil, NewStrictifyError(valueSchema, targetType, err)
 		}
 		return v, nil
-	case schema.TypeUint16:
+	case ytschema.TypeUint16:
 		v, err := toUnsignedInt(*value, math.MaxUint16, cast.ToUint16E)
 		if err != nil {
 			return nil, NewStrictifyError(valueSchema, targetType, err)
 		}
 		return v, nil
-	case schema.TypeUint32:
+	case ytschema.TypeUint32:
 		v, err := toUnsignedInt(*value, math.MaxUint32, cast.ToUint32E)
 		if err != nil {
 			return nil, NewStrictifyError(valueSchema, targetType, err)
 		}
 		return v, nil
-	case schema.TypeUint64:
+	case ytschema.TypeUint64:
 		v, err := toUnsignedInt(*value, math.MaxUint64, cast.ToUint64E)
 		if err != nil {
 			return nil, NewStrictifyError(valueSchema, targetType, err)
 		}
 		return v, nil
-	case schema.TypeFloat32:
+	case ytschema.TypeFloat32:
 		v, err := cast.ToFloat32E(*value)
 		if err != nil {
 			return nil, NewStrictifyError(valueSchema, targetType, err)
 		}
 		return v, nil
-	case schema.TypeFloat64:
+	case ytschema.TypeFloat64:
 		v, err := castx.ToJSONNumberE(*value)
 		if err != nil {
 			return nil, NewStrictifyError(valueSchema, targetType, err)
 		}
 		return v, nil
-	case schema.TypeBytes:
+	case ytschema.TypeBytes:
 		v, err := castx.ToByteSliceE(*value)
 		if err != nil {
 			return nil, NewStrictifyError(valueSchema, targetType, err)
 		}
 		return v, nil
-	case schema.TypeString:
+	case ytschema.TypeString:
 		v, err := castx.ToStringE(*value)
 		if err != nil {
 			return nil, NewStrictifyError(valueSchema, targetType, err)
 		}
 		return v, nil
-	case schema.TypeDate, schema.TypeDatetime, schema.TypeTimestamp:
+	case ytschema.TypeDate, ytschema.TypeDatetime, ytschema.TypeTimestamp:
 		v, err := cast.ToTimeE(*value)
 		if err != nil {
 			return nil, NewStrictifyError(valueSchema, targetType, err)
 		}
 		return v, nil
-	case schema.TypeInterval:
+	case ytschema.TypeInterval:
 		v, err := cast.ToDurationE(*value)
 		if err != nil {
 			return nil, NewStrictifyError(valueSchema, targetType, err)
 		}
 		return v, nil
-	case schema.TypeAny:
+	case ytschema.TypeAny:
 		v, err := castx.ToJSONMarshallableE(*value)
 		if err != nil {
 			return nil, NewStrictifyError(valueSchema, targetType, err)

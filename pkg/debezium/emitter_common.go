@@ -8,7 +8,7 @@ import (
 
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	debeziumcommon "github.com/transferia/transferia/pkg/debezium/common"
+	debezium_common "github.com/transferia/transferia/pkg/debezium/common"
 	"github.com/transferia/transferia/pkg/util"
 	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
@@ -65,7 +65,7 @@ func extractUnsignedInt(val interface{}) (uint64, error) {
 	}
 }
 
-func addCommon(v *debeziumcommon.Values, colSchema *abstract.ColSchema, colVal interface{}) error {
+func addCommon(v *debezium_common.Values, colSchema *abstract.ColSchema, colVal interface{}) error {
 	if colVal == nil {
 		v.AddVal(colSchema.ColumnName, nil)
 		return nil
@@ -166,7 +166,7 @@ func addCommon(v *debeziumcommon.Values, colSchema *abstract.ColSchema, colVal i
 	return nil
 }
 
-var mapYtTypeToKafkaType = map[string]debeziumcommon.KafkaTypeDescr{
+var mapYtTypeToKafkaType = map[string]debezium_common.KafkaTypeDescr{
 	string(ytschema.TypeInt64): {KafkaTypeAndDebeziumNameAndExtra: func(*abstract.ColSchema, bool, bool, map[string]string) (string, string, map[string]interface{}) {
 		return "int64", "", nil
 	}},
@@ -217,7 +217,7 @@ var mapYtTypeToKafkaType = map[string]debeziumcommon.KafkaTypeDescr{
 	}},
 }
 
-func colSchemaToOriginalType(colSchema *abstract.ColSchema) (*debeziumcommon.KafkaTypeDescr, error) {
+func colSchemaToOriginalType(colSchema *abstract.ColSchema) (*debezium_common.KafkaTypeDescr, error) {
 	resultFunc, ok := mapYtTypeToKafkaType[colSchema.DataType]
 	if !ok {
 		return nil, xerrors.Errorf("unable to find yt type: %s", colSchema.DataType)

@@ -9,7 +9,7 @@ import (
 	"github.com/transferia/transferia/pkg/abstract2"
 	"github.com/transferia/transferia/pkg/abstract2/events"
 	"github.com/transferia/transferia/pkg/util/worker_pool"
-	"github.com/transferia/transferia/pkg/worker/tasks/cleanup"
+	cleanup_task "github.com/transferia/transferia/pkg/worker/tasks/cleanup"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
@@ -81,7 +81,7 @@ func (t *legacyEventTarget) push(converted convertResult) (chan error, error) {
 	}
 	if c := len(converted.cleanupTables); c != 0 {
 		t.logger.Infof("going to cleanup %d tables: %v", c, converted.cleanupTables)
-		if err := cleanup.CleanupTables(t.asyncSink, converted.cleanupTables, t.cleanupType); err != nil {
+		if err := cleanup_task.CleanupTables(t.asyncSink, converted.cleanupTables, t.cleanupType); err != nil {
 			return nil, xerrors.Errorf("cannot cleanup (%s) tables in the target database: %w", string(t.cleanupType), err)
 		}
 	}

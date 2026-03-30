@@ -7,8 +7,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/pkg/abstract"
-	dp_model "github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/model"
+	"github.com/transferia/transferia/pkg/abstract/model"
+	clickhouse_model "github.com/transferia/transferia/pkg/providers/clickhouse/model"
 	"github.com/transferia/transferia/pkg/providers/s3/s3recipe"
 	"github.com/transferia/transferia/tests/helpers"
 )
@@ -17,8 +17,8 @@ func init() {
 	_ = os.Setenv("YC", "1") // to not go to vanga
 }
 
-var dst = model.ChDestination{
-	ShardsList: []model.ClickHouseShard{
+var dst = clickhouse_model.ChDestination{
+	ShardsList: []clickhouse_model.ClickHouseShard{
 		{
 			Name: "_",
 			Hosts: []string{
@@ -32,7 +32,7 @@ var dst = model.ChDestination{
 	HTTPPort:            helpers.GetIntFromEnv("RECIPE_CLICKHOUSE_HTTP_PORT"),
 	NativePort:          helpers.GetIntFromEnv("RECIPE_CLICKHOUSE_NATIVE_PORT"),
 	ProtocolUnspecified: true,
-	Cleanup:             dp_model.Drop,
+	Cleanup:             model.Drop,
 }
 
 func TestNativeS3(t *testing.T) {
@@ -45,7 +45,7 @@ func TestNativeS3(t *testing.T) {
 
 	src.TableNamespace = "test"
 	src.TableName = "data"
-	src.InputFormat = dp_model.ParsingFormatCSV
+	src.InputFormat = model.ParsingFormatCSV
 	src.WithDefaults()
 	dst.WithDefaults()
 	src.Format.CSVSetting.BlockSize = 1 * 1024 * 1024

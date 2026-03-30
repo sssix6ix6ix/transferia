@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 
 	"github.com/transferia/transferia/pkg/abstract2"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 type JSONValue interface {
@@ -46,8 +46,8 @@ func (t *JSONType) Validate(value abstract2.Value) error {
 	return nil
 }
 
-func (t *JSONType) ToOldType() (schema.Type, error) {
-	return schema.TypeAny, nil
+func (t *JSONType) ToOldType() (ytschema.Type, error) {
+	return ytschema.TypeAny, nil
 }
 
 func NewJSONType() *JSONType {

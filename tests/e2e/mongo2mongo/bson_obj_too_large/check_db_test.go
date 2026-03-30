@@ -12,13 +12,13 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
-	cpclient "github.com/transferia/transferia/pkg/abstract/coordinator"
+	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	mongostorage "github.com/transferia/transferia/pkg/providers/mongo"
+	provider_mongo "github.com/transferia/transferia/pkg/providers/mongo"
 	"github.com/transferia/transferia/pkg/runtime/local"
 	"github.com/transferia/transferia/pkg/worker/tasks"
 	"github.com/transferia/transferia/tests/helpers"
-	"go.mongodb.org/mongo-driver/mongo"
+	mongo_driver "go.mongodb.org/mongo-driver/mongo"
 )
 
 const (
@@ -30,18 +30,18 @@ const (
 
 var (
 	TransferType = abstract.TransferTypeSnapshotAndIncrement
-	Source       = mongostorage.MongoSource{
+	Source       = provider_mongo.MongoSource{
 		Hosts:    []string{"localhost"},
 		Port:     helpers.GetIntFromEnv("MONGO_LOCAL_PORT"),
 		User:     os.Getenv("MONGO_LOCAL_USER"),
 		Password: model.SecretString(os.Getenv("MONGO_LOCAL_PASSWORD")),
-		Collections: []mongostorage.MongoCollection{
+		Collections: []provider_mongo.MongoCollection{
 			{DatabaseName: DB1, CollectionName: CollectionGood},
 			{DatabaseName: DB1, CollectionName: CollectionBsonTooLarge},
 			{DatabaseName: DB2, CollectionName: "*"}, // this is almost the same
 		},
 	}
-	Target = mongostorage.MongoDestination{
+	Target = provider_mongo.MongoDestination{
 		Hosts:    []string{"localhost"},
 		Port:     helpers.GetIntFromEnv("DB0_MONGO_LOCAL_PORT"),
 		User:     os.Getenv("DB0_MONGO_LOCAL_USER"),
@@ -77,22 +77,22 @@ func NewKV(keysize, valsize int) *KV {
 //---------------------------------------------------------------------------------------------------------------------
 // utils
 
-func LogMongoSource(s *mongostorage.MongoSource) {
+func LogMongoSource(s *provider_mongo.MongoSource) {
 	fmt.Printf("Source.Hosts: %v\n", s.Hosts)
 	fmt.Printf("Source.Port: %v\n", s.Port)
 	fmt.Printf("Source.User: %v\n", s.User)
 	fmt.Printf("Source.Password: %v\n", s.Password)
 }
 
-func LogMongoDestination(s *mongostorage.MongoDestination) {
+func LogMongoDestination(s *provider_mongo.MongoDestination) {
 	fmt.Printf("Target.Hosts: %v\n", s.Hosts)
 	fmt.Printf("Target.Port: %v\n", s.Port)
 	fmt.Printf("Target.User: %v\n", s.User)
 	fmt.Printf("Target.Password: %v\n", s.Password)
 }
 
-func MakeDstClient(t *mongostorage.MongoDestination) (*mongostorage.MongoClientWrapper, error) {
-	return mongostorage.Connect(context.Background(), t.ConnectionOptions([]string{}), nil)
+func MakeDstClient(t *provider_mongo.MongoDestination) (*provider_mongo.MongoClientWrapper, error) {
+	return provider_mongo.Connect(context.Background(), t.ConnectionOptions([]string{}), nil)
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -118,7 +118,7 @@ func TestGroup(t *testing.T) {
 func Ping(t *testing.T) {
 	// ping src
 	LogMongoSource(&Source)
-	client, err := mongostorage.Connect(context.Background(), Source.ConnectionOptions([]string{}), nil)
+	client, err := provider_mongo.Connect(context.Background(), Source.ConnectionOptions([]string{}), nil)
 	defer func() { _ = client.Close(context.Background()) }()
 	require.NoError(t, err)
 	err = client.Ping(context.TODO(), nil)
@@ -133,7 +133,7 @@ func Ping(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func clearSrc(t *testing.T, client *mongostorage.MongoClientWrapper) {
+func clearSrc(t *testing.T, client *provider_mongo.MongoClientWrapper) {
 	t.Helper()
 	var err error
 	for _, dbName := range []string{DB1, DB2} {
@@ -148,7 +148,7 @@ func clearSrc(t *testing.T, client *mongostorage.MongoClientWrapper) {
 }
 
 func LoadFromchangestream(t *testing.T) {
-	client, err := mongostorage.Connect(context.Background(), Source.ConnectionOptions([]string{}), nil)
+	client, err := provider_mongo.Connect(context.Background(), Source.ConnectionOptions([]string{}), nil)
 	require.NoError(t, err)
 	defer func() { _ = client.Close(context.Background()) }()
 
@@ -165,13 +165,13 @@ func LoadFromchangestream(t *testing.T) {
 	time.Sleep(5 * time.Second) // TODO(@kry127) is it needed
 
 	// start replication
-	Source.ReplicationSource = mongostorage.MongoReplicationSourcePerDatabaseFullDocument // set fetch mode
+	Source.ReplicationSource = provider_mongo.MongoReplicationSourcePerDatabaseFullDocument // set fetch mode
 	transfer := helpers.MakeTransfer(helpers.TransferID, &Source, &Target, TransferType)
 
-	err = tasks.ActivateDelivery(context.TODO(), nil, cpclient.NewFakeClient(), *transfer, helpers.EmptyRegistry())
+	err = tasks.ActivateDelivery(context.TODO(), nil, coordinator.NewFakeClient(), *transfer, helpers.EmptyRegistry())
 	require.NoError(t, err)
 
-	localWorker := local.NewLocalWorker(cpclient.NewFakeClient(), transfer, helpers.EmptyRegistry(), logger.Log)
+	localWorker := local.NewLocalWorker(coordinator.NewFakeClient(), transfer, helpers.EmptyRegistry(), logger.Log)
 	errChan := make(chan error, 1)
 	go func() {
 		errChan <- localWorker.Run() // like .Start(), but we in control for processing error in test
@@ -179,12 +179,12 @@ func LoadFromchangestream(t *testing.T) {
 	defer func() { _ = localWorker.Stop() }()
 
 	// replicate good records
-	dstStorage, err := mongostorage.NewStorage(Target.ToStorageParams())
+	dstStorage, err := provider_mongo.NewStorage(Target.ToStorageParams())
 	require.NoError(t, err)
 
 	var goodInsertionsSize uint64 = 2940
 	goodInsertionsCount := 20
-	for _, coll := range []*mongo.Collection{coll1good, coll2good, coll1toolarge, coll2toolarge} {
+	for _, coll := range []*mongo_driver.Collection{coll1good, coll2good, coll1toolarge, coll2toolarge} {
 		for i := 0; i < goodInsertionsCount; i++ {
 			_, err = coll.InsertOne(context.Background(), NewKV(20, 100))
 			require.NoError(t, err)
@@ -220,7 +220,7 @@ func LoadFromchangestream(t *testing.T) {
 	require.NoError(t, helpers.CompareStorages(t, Source, Target, helpers.NewCompareStorageParams()))
 
 	// insert large documents
-	for _, coll := range []*mongo.Collection{coll1toolarge, coll2toolarge} {
+	for _, coll := range []*mongo_driver.Collection{coll1toolarge, coll2toolarge} {
 		_, err = coll.InsertOne(context.Background(), NewKV(4*1024*1024, 10*1024*1024)) // should be processable
 		require.NoError(t, err)
 		_, err = coll.InsertOne(context.Background(), NewKV(5*1024*1024, 10)) // should fail in full document mode
@@ -241,7 +241,7 @@ func LoadFromchangestream(t *testing.T) {
 }
 
 func LoadFrompurecursor(t *testing.T) {
-	client, err := mongostorage.Connect(context.Background(), Source.ConnectionOptions([]string{}), nil)
+	client, err := provider_mongo.Connect(context.Background(), Source.ConnectionOptions([]string{}), nil)
 	require.NoError(t, err)
 	defer func() { _ = client.Close(context.Background()) }()
 
@@ -258,23 +258,23 @@ func LoadFrompurecursor(t *testing.T) {
 	time.Sleep(5 * time.Second) // TODO(@kry127) is it needed
 
 	// start replication
-	Source.ReplicationSource = mongostorage.MongoReplicationSourcePerDatabase
+	Source.ReplicationSource = provider_mongo.MongoReplicationSourcePerDatabase
 	transfer := helpers.MakeTransfer(helpers.TransferID, &Source, &Target, TransferType)
 
-	err = tasks.ActivateDelivery(context.TODO(), nil, cpclient.NewFakeClient(), *transfer, helpers.EmptyRegistry())
+	err = tasks.ActivateDelivery(context.TODO(), nil, coordinator.NewFakeClient(), *transfer, helpers.EmptyRegistry())
 	require.NoError(t, err)
 
-	localWorker := local.NewLocalWorker(cpclient.NewFakeClient(), transfer, helpers.EmptyRegistry(), logger.Log)
+	localWorker := local.NewLocalWorker(coordinator.NewFakeClient(), transfer, helpers.EmptyRegistry(), logger.Log)
 	localWorker.Start()
 	defer func() { _ = localWorker.Stop() }()
 
 	// replicate good records
-	dstStorage, err := mongostorage.NewStorage(Target.ToStorageParams())
+	dstStorage, err := provider_mongo.NewStorage(Target.ToStorageParams())
 	require.NoError(t, err)
 
 	const goodInsertionsCount = 20
 	const goodInsertionsSize uint64 = 2940
-	for _, coll := range []*mongo.Collection{coll1good, coll2good, coll1toolarge, coll2toolarge} {
+	for _, coll := range []*mongo_driver.Collection{coll1good, coll2good, coll1toolarge, coll2toolarge} {
 		for i := 0; i < goodInsertionsCount; i++ {
 			_, err = coll.InsertOne(context.Background(), NewKV(20, 100))
 			require.NoError(t, err)
@@ -310,7 +310,7 @@ func LoadFrompurecursor(t *testing.T) {
 
 	// insert large documents
 	const badInsertionsSize uint64 = 19923008
-	for _, coll := range []*mongo.Collection{coll1toolarge, coll2toolarge} {
+	for _, coll := range []*mongo_driver.Collection{coll1toolarge, coll2toolarge} {
 		_, err = coll.InsertOne(context.Background(), NewKV(4*1024*1024, 10*1024*1024)) // should be processable
 		require.NoError(t, err)
 		_, err = coll.InsertOne(context.Background(), NewKV(5*1024*1024, 10)) // also should be processed with pure cursor
@@ -343,7 +343,7 @@ func LoadFrompurecursor(t *testing.T) {
 }
 
 func LoadFromoplog(t *testing.T) {
-	client, err := mongostorage.Connect(context.Background(), Source.ConnectionOptions([]string{}), nil)
+	client, err := provider_mongo.Connect(context.Background(), Source.ConnectionOptions([]string{}), nil)
 	require.NoError(t, err)
 	defer func() { _ = client.Close(context.Background()) }()
 
@@ -353,13 +353,13 @@ func LoadFromoplog(t *testing.T) {
 	coll := db.Collection(CollectionBsonTooLarge)
 
 	// start replication
-	Source.ReplicationSource = mongostorage.MongoReplicationSourceOplog // set replication source
+	Source.ReplicationSource = provider_mongo.MongoReplicationSourceOplog // set replication source
 	transfer := helpers.MakeTransfer(helpers.TransferID, &Source, &Target, TransferType)
 
-	err = tasks.ActivateDelivery(context.TODO(), nil, cpclient.NewFakeClient(), *transfer, helpers.EmptyRegistry())
+	err = tasks.ActivateDelivery(context.TODO(), nil, coordinator.NewFakeClient(), *transfer, helpers.EmptyRegistry())
 	require.NoError(t, err)
 
-	localWorker := local.NewLocalWorker(cpclient.NewFakeClient(), transfer, helpers.EmptyRegistry(), logger.Log)
+	localWorker := local.NewLocalWorker(coordinator.NewFakeClient(), transfer, helpers.EmptyRegistry(), logger.Log)
 	localWorker.Start()
 	defer func() { _ = localWorker.Stop() }()
 

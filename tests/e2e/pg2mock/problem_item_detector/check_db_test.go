@@ -10,7 +10,7 @@ import (
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
 	"github.com/transferia/transferia/pkg/transformer"
-	problemitemdetector "github.com/transferia/transferia/pkg/transformer/registry/problem_item_detector"
+	transformer_problem_item_detector "github.com/transferia/transferia/pkg/transformer/registry/problem_item_detector"
 	"github.com/transferia/transferia/tests/helpers"
 	mocksink "github.com/transferia/transferia/tests/helpers/mock_sink"
 )
@@ -43,7 +43,7 @@ func TestSnapshotAndIncrement(t *testing.T) {
 	transfer.Transformation = &model.Transformation{Transformers: &transformer.Transformers{
 		DebugMode: false,
 		Transformers: []transformer.Transformer{{
-			problemitemdetector.TransformerType: problemitemdetector.Config{},
+			transformer_problem_item_detector.TransformerType: transformer_problem_item_detector.Config{},
 		}},
 		ErrorsOutput: nil,
 	}}

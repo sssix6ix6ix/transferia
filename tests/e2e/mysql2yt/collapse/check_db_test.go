@@ -8,13 +8,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-sql-driver/mysql"
+	mysql_driver2 "github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	mysql_source "github.com/transferia/transferia/pkg/providers/mysql"
-	yt_provider "github.com/transferia/transferia/pkg/providers/yt"
+	provider_mysql "github.com/transferia/transferia/pkg/providers/mysql"
+	provider_yt "github.com/transferia/transferia/pkg/providers/yt"
 	"github.com/transferia/transferia/pkg/runtime/local"
 	"github.com/transferia/transferia/tests/helpers"
 )
@@ -30,8 +30,8 @@ func init() {
 	source.WithDefaults()
 }
 
-func makeConnConfig() *mysql.Config {
-	cfg := mysql.NewConfig()
+func makeConnConfig() *mysql_driver2.Config {
+	cfg := mysql_driver2.NewConfig()
 	cfg.Addr = fmt.Sprintf("%v:%v", source.Host, source.Port)
 	cfg.User = source.User
 	cfg.Passwd = string(source.Password)
@@ -40,8 +40,8 @@ func makeConnConfig() *mysql.Config {
 	return cfg
 }
 
-func makeTarget() yt_provider.YtDestinationModel {
-	target := yt_provider.NewYtDestinationV1(yt_provider.YtDestination{
+func makeTarget() provider_yt.YtDestinationModel {
+	target := provider_yt.NewYtDestinationV1(provider_yt.YtDestination{
 		Path:          "//home/cdc/test/mysql2yt/collapse",
 		Cluster:       targetCluster,
 		CellBundle:    "default",
@@ -69,14 +69,14 @@ func TestCollapse(t *testing.T) {
 	}
 
 	fakeClient := coordinator.NewStatefulFakeClient()
-	err = mysql_source.SyncBinlogPosition(&source, transfer.ID, fakeClient)
+	err = provider_mysql.SyncBinlogPosition(&source, transfer.ID, fakeClient)
 	require.NoError(t, err)
 
 	localWorker := local.NewLocalWorker(fakeClient, &transfer, helpers.EmptyRegistry(), logger.Log)
 	localWorker.Start()
 	defer localWorker.Stop() //nolint
 
-	conn, err := mysql.NewConnector(makeConnConfig())
+	conn, err := mysql_driver2.NewConnector(makeConnConfig())
 	require.NoError(t, err)
 
 	requests := []string{

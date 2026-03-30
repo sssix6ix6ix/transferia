@@ -4,13 +4,13 @@ import (
 	"os"
 
 	"github.com/transferia/transferia/pkg/instanceutil"
-	zp "go.uber.org/zap"
+	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"go.ytsaurus.tech/library/go/core/log"
-	corezap "go.ytsaurus.tech/library/go/core/log/zap"
+	ya_zap "go.ytsaurus.tech/library/go/core/log/zap"
 )
 
-var FatalErrorLog log.Logger = &corezap.Logger{L: zp.NewNop()}
+var FatalErrorLog log.Logger = &ya_zap.Logger{L: zap.NewNop()}
 
 type LogLevelSetter struct {
 	LogLevel string `yaml:"log_level"`
@@ -31,7 +31,7 @@ func NewConsoleLogger() log.Logger {
 	consoleLevel := getEnvLogLevels()
 	defaultPriority := levelEnablerFactory(consoleLevel.Zap)
 	syncStderr := zapcore.AddSync(os.Stderr)
-	stdErrEncoder := zapcore.NewConsoleEncoder(corezap.CLIConfig(consoleLevel.Log).EncoderConfig)
+	stdErrEncoder := zapcore.NewConsoleEncoder(ya_zap.CLIConfig(consoleLevel.Log).EncoderConfig)
 	lbCore := zapcore.NewTee(
 		zapcore.NewCore(stdErrEncoder, syncStderr, defaultPriority),
 	)
@@ -40,18 +40,18 @@ func NewConsoleLogger() log.Logger {
 }
 
 func newLogger(core zapcore.Core) log.Logger {
-	return &corezap.Logger{
-		L: zp.New(
+	return &ya_zap.Logger{
+		L: zap.New(
 			core,
-			zp.AddCaller(),
-			zp.AddCallerSkip(1),
-			zp.AddStacktrace(zp.WarnLevel),
+			zap.AddCaller(),
+			zap.AddCallerSkip(1),
+			zap.AddStacktrace(zap.WarnLevel),
 		),
 	}
 }
 
 func levelEnablerFactory(zapLvl zapcore.Level) zapcore.LevelEnabler {
-	return zp.LevelEnablerFunc(func(l zapcore.Level) bool {
+	return zap.LevelEnablerFunc(func(l zapcore.Level) bool {
 		return l >= zapLvl
 	})
 }

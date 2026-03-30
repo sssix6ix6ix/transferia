@@ -13,16 +13,16 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/library/go/test/canon"
 	"github.com/transferia/transferia/pkg/abstract"
-	"github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
 	"github.com/transferia/transferia/tests/helpers"
-	yt_helpers "github.com/transferia/transferia/tests/helpers/yt"
+	helpers_yt "github.com/transferia/transferia/tests/helpers/yt"
 )
 
 var (
 	transferType = abstract.TransferTypeSnapshotAndIncrement
 	source       = pgrecipe.RecipeSource()
-	target       = yt_helpers.RecipeYtTarget("//home/cdc/test/pg2yt_e2e")
+	target       = helpers_yt.RecipeYtTarget("//home/cdc/test/pg2yt_e2e")
 
 	waitTimeout = 300 * time.Second
 )
@@ -162,7 +162,7 @@ func Replication(t *testing.T) {
 		UPDATE test SET j = '{"key": 999.99}', jb = '{"key": 999.99}' WHERE i = 100;
 		UPDATE test_not_transformed SET j = '{"key": 999.99}', jb = '{"key": 999.99}' WHERE i = 100;`
 
-	srcConn, err := postgres.MakeConnPoolFromSrc(source, logger.Log)
+	srcConn, err := provider_postgres.MakeConnPoolFromSrc(source, logger.Log)
 	require.NoError(t, err)
 	_, err = srcConn.Exec(context.Background(), replicationQuery)
 	srcConn.Close()

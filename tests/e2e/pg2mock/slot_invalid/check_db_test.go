@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	pgcommon "github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
 	"github.com/transferia/transferia/tests/helpers"
 	mocksink "github.com/transferia/transferia/tests/helpers/mock_sink"
@@ -22,7 +22,7 @@ func TestPollingFailsOnSlotInvalidation(t *testing.T) {
 
 	source := pgrecipe.RecipeSource(
 		pgrecipe.WithInitDir("init_source"),
-		pgrecipe.WithEdit(func(pg *pgcommon.PgSource) {
+		pgrecipe.WithEdit(func(pg *provider_postgres.PgSource) {
 			pg.DBTables = []string{"public.__test1"}
 			pg.UsePolling = true
 		}),

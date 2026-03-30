@@ -12,19 +12,19 @@ import (
 	"github.com/transferia/transferia/library/go/core/metrics/solomon"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	debeziumcommon "github.com/transferia/transferia/pkg/debezium/common"
-	debeziumparameters "github.com/transferia/transferia/pkg/debezium/parameters"
-	"github.com/transferia/transferia/pkg/debezium/testutil"
-	kafka_provider "github.com/transferia/transferia/pkg/providers/kafka"
-	"github.com/transferia/transferia/pkg/providers/kafka/writer"
-	pgcommon "github.com/transferia/transferia/pkg/providers/postgres"
+	debezium_common "github.com/transferia/transferia/pkg/debezium/common"
+	debezium_parameters "github.com/transferia/transferia/pkg/debezium/parameters"
+	debezium_testutil "github.com/transferia/transferia/pkg/debezium/testutil"
+	provider_kafka "github.com/transferia/transferia/pkg/providers/kafka"
+	kafka_writer "github.com/transferia/transferia/pkg/providers/kafka/writer"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	serializer "github.com/transferia/transferia/pkg/serializer/queue"
 	"github.com/transferia/transferia/tests/helpers"
 	"go.uber.org/mock/gomock"
 )
 
 var (
-	Source = pgcommon.PgSource{
+	Source = provider_postgres.PgSource{
 		Hosts:    []string{"localhost"},
 		User:     os.Getenv("PG_LOCAL_USER"),
 		Password: model.SecretString(os.Getenv("PG_LOCAL_PASSWORD")),
@@ -33,7 +33,7 @@ var (
 	}
 )
 
-var testCases []debeziumcommon.KeyValue
+var testCases []debezium_common.KeyValue
 
 func init() {
 	_ = os.Setenv("YC", "1") // to not go to vanga
@@ -211,7 +211,7 @@ func callbackFunc(_, _, _ interface{}, msgs ...interface{}) error {
 			fmt.Printf("msg val:%s\n", *value)
 		}
 		//--------------------------------------------------------------------------------
-		testutil.CheckCanonizedDebeziumEvent2(tt, string(v.Key), value, testCases[index])
+		debezium_testutil.CheckCanonizedDebeziumEvent2(tt, string(v.Key), value, testCases[index])
 		index++
 	}
 
@@ -230,27 +230,27 @@ func TestReplication(t *testing.T) {
 	//------------------------------------------------------------------------------
 	// init testSuite
 
-	testSuite := []debeziumcommon.ChangeItemCanon{
+	testSuite := []debezium_common.ChangeItemCanon{
 		{
-			DebeziumEvents: []debeziumcommon.KeyValue{{
+			DebeziumEvents: []debezium_common.KeyValue{{
 				DebeziumKey: canonizedDebeziumInsertK,
 				DebeziumVal: &canonizedDebeziumInsertV,
 			}},
 		},
 		{
-			DebeziumEvents: []debeziumcommon.KeyValue{{
+			DebeziumEvents: []debezium_common.KeyValue{{
 				DebeziumKey: canonizedDebeziumUpdate1K,
 				DebeziumVal: &canonizedDebeziumUpdate1V,
 			}},
 		},
 		{
-			DebeziumEvents: []debeziumcommon.KeyValue{{
+			DebeziumEvents: []debezium_common.KeyValue{{
 				DebeziumKey: canonizedDebeziumUpdate2K,
 				DebeziumVal: &canonizedDebeziumUpdate2V,
 			}},
 		},
 		{
-			DebeziumEvents: []debeziumcommon.KeyValue{{
+			DebeziumEvents: []debezium_common.KeyValue{{
 				DebeziumKey: canonizedDebeziumUpdate30K,
 				DebeziumVal: &canonizedDebeziumUpdate30V,
 			}, {
@@ -262,7 +262,7 @@ func TestReplication(t *testing.T) {
 			}},
 		},
 		{
-			DebeziumEvents: []debeziumcommon.KeyValue{{
+			DebeziumEvents: []debezium_common.KeyValue{{
 				DebeziumKey: canonizedDebeziumDeleteK,
 				DebeziumVal: &canonizedDebeziumDeleteV,
 			}, {
@@ -272,7 +272,7 @@ func TestReplication(t *testing.T) {
 		},
 	}
 
-	testSuite = testutil.FixTestSuite(t, testSuite, "fullfillment", "pguser", "pg")
+	testSuite = debezium_testutil.FixTestSuite(t, testSuite, "fullfillment", "pguser", "pg")
 
 	for _, canons := range testSuite {
 		testCases = append(testCases, canons.DebeziumEvents...)
@@ -283,12 +283,12 @@ func TestReplication(t *testing.T) {
 
 	tt = t
 
-	dst := &kafka_provider.KafkaDestination{
-		Connection: &kafka_provider.KafkaConnectionOptions{
+	dst := &provider_kafka.KafkaDestination{
+		Connection: &provider_kafka.KafkaConnectionOptions{
 			TLS:     model.DefaultTLS,
 			Brokers: []string{"my_broker_0"},
 		},
-		Auth: &kafka_provider.KafkaAuth{
+		Auth: &provider_kafka.KafkaAuth{
 			Enabled:   true,
 			Mechanism: "SHA-512",
 			User:      "user1",
@@ -298,9 +298,9 @@ func TestReplication(t *testing.T) {
 		FormatSettings: model.SerializationFormat{
 			Name: model.SerializationFormatDebezium,
 			Settings: map[string]string{
-				debeziumparameters.DatabaseDBName:   "pguser",
-				debeziumparameters.AddOriginalTypes: "false",
-				debeziumparameters.SourceType:       "pg",
+				debezium_parameters.DatabaseDBName:   "pguser",
+				debezium_parameters.AddOriginalTypes: "false",
+				debezium_parameters.SourceType:       "pg",
 			},
 		},
 		ParralelWriterCount: 10,
@@ -313,14 +313,14 @@ func TestReplication(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	currWriter := writer.NewMockAbstractWriter(ctrl)
+	currWriter := kafka_writer.NewMockAbstractWriter(ctrl)
 	currWriter.EXPECT().WriteMessages(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes().Do(callbackFunc)
 	currWriter.EXPECT().Close().AnyTimes()
 
-	factory := writer.NewMockAbstractWriterFactory(ctrl)
+	factory := kafka_writer.NewMockAbstractWriterFactory(ctrl)
 	factory.EXPECT().BuildWriter([]string{"my_broker_0"}, gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(currWriter)
 
-	sink, err := kafka_provider.NewSinkImpl(
+	sink, err := provider_kafka.NewSinkImpl(
 		dst,
 		solomon.NewRegistry(nil).WithTags(map[string]string{"ts": time.Now().String()}),
 		logger.Log,
@@ -339,7 +339,7 @@ func TestReplication(t *testing.T) {
 	//-----------------------------------------------------------------------------------------------------------------
 	// execute SQL statements
 
-	srcConn, err := pgcommon.MakeConnPoolFromSrc(&Source, logger.Log)
+	srcConn, err := provider_postgres.MakeConnPoolFromSrc(&Source, logger.Log)
 	require.NoError(t, err)
 	defer srcConn.Close()
 

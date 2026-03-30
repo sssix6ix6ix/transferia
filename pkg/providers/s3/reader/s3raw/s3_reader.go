@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/s3"
+	aws_s3 "github.com/aws/aws-sdk-go/service/s3"
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/stats"
@@ -45,7 +45,7 @@ func (r *s3RawReader) ReadAt(p []byte, off int64) (int, error) {
 
 	logger.Log.Debugf("make a GetObject request for S3 object s3://%s/%s with range %s", r.fetcher.bucket, r.fetcher.key, rng)
 
-	resp, err := r.fetcher.getObject(&s3.GetObjectInput{
+	resp, err := r.fetcher.getObject(&aws_s3.GetObjectInput{
 		Bucket: aws.String(r.fetcher.bucket),
 		Key:    aws.String(r.fetcher.key),
 		Range:  aws.String(rng),

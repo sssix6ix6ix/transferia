@@ -11,14 +11,14 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
 )
 
 func TestShardingStorage_IncrementalTable(t *testing.T) {
 	_ = pgrecipe.RecipeSource(pgrecipe.WithPrefix(""), pgrecipe.WithInitDir("test_scripts"))
 	srcPort, _ := strconv.Atoi(os.Getenv("PG_LOCAL_PORT"))
-	v := &postgres.PgSource{
+	v := &provider_postgres.PgSource{
 		Hosts:    []string{"localhost"},
 		User:     os.Getenv("PG_LOCAL_USER"),
 		Password: model.SecretString(os.Getenv("PG_LOCAL_PASSWORD")),
@@ -27,7 +27,7 @@ func TestShardingStorage_IncrementalTable(t *testing.T) {
 	}
 	v.WithDefaults()
 	require.NotEqual(t, 0, v.DesiredTableSize)
-	storage, err := postgres.NewStorage(v.ToStorageParams(nil))
+	storage, err := provider_postgres.NewStorage(v.ToStorageParams(nil))
 	require.NoError(t, err)
 
 	err = storage.BeginPGSnapshot(context.TODO())
@@ -101,7 +101,7 @@ select md5(random()::text), $1 from generate_Series(1,10) as s;
 
 func TestInitialStatePopulate(t *testing.T) {
 	srcPort, _ := strconv.Atoi(os.Getenv("SOURCE_PG_LOCAL_PORT"))
-	v := &postgres.PgSource{
+	v := &provider_postgres.PgSource{
 		Hosts:    []string{"localhost"},
 		User:     os.Getenv("SOURCE_PG_LOCAL_USER"),
 		Password: model.SecretString(os.Getenv("SOURCE_PG_LOCAL_PASSWORD")),
@@ -110,7 +110,7 @@ func TestInitialStatePopulate(t *testing.T) {
 	}
 	v.WithDefaults()
 	require.NotEqual(t, 0, v.DesiredTableSize)
-	storage := new(postgres.Storage)
+	storage := new(provider_postgres.Storage)
 
 	t.Run("single table", func(t *testing.T) {
 		tables := []abstract.TableDescription{{

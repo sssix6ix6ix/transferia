@@ -2,7 +2,7 @@ package lib
 
 import (
 	"github.com/transferia/transferia/pkg/abstract"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 type logfellerSchema struct { //nolint:golint,unused
@@ -14,7 +14,7 @@ type logfellerSchema struct { //nolint:golint,unused
 func asColSchema(raw []logfellerSchema) []abstract.ColSchema { //nolint
 	res := make([]abstract.ColSchema, len(raw))
 	for i, v := range raw {
-		res[i] = abstract.NewColSchema(v.Name, schema.Type(v.Type), false)
+		res[i] = abstract.NewColSchema(v.Name, ytschema.Type(v.Type), false)
 		res[i].PrimaryKey = v.Required
 		if v.Name == "_logfeller_timestamp" {
 			res[i].PrimaryKey = true

@@ -1,7 +1,7 @@
 package resources
 
 import (
-	"github.com/transferia/transferia/library/go/core/resource"
+	library_resource "github.com/transferia/transferia/library/go/core/resource"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 )
 
@@ -31,7 +31,7 @@ func NewEmbeddedResources(resourceNames []string) (*EmbeddedResources, error) {
 	resNameToContent := make(map[string]string)
 
 	for _, name := range resourceNames {
-		content := resource.Get(name)
+		content := library_resource.Get(name)
 		if content == nil {
 			return nil, xerrors.Errorf("embedded resource %s not found", name)
 		}

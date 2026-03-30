@@ -10,11 +10,11 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/kinesis"
+	aws_credentials "github.com/aws/aws-sdk-go/aws/credentials"
+	aws_session "github.com/aws/aws-sdk-go/aws/session"
+	aws_kinesis "github.com/aws/aws-sdk-go/service/kinesis"
 	"github.com/cenkalti/backoff/v4"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
@@ -32,7 +32,7 @@ var (
 )
 
 type Source struct {
-	registry metrics.Registry
+	registry core_metrics.Registry
 	cp       coordinator.Coordinator
 	logger   log.Logger
 	config   *KinesisSource
@@ -256,11 +256,11 @@ func NewSource(
 	cp coordinator.Coordinator,
 	cfg *KinesisSource,
 	logger log.Logger,
-	registry metrics.Registry,
+	registry core_metrics.Registry,
 ) (*Source, error) {
-	cred := credentials.AnonymousCredentials
+	cred := aws_credentials.AnonymousCredentials
 	if cfg.AccessKey != "" {
-		cred = credentials.NewStaticCredentials(cfg.AccessKey, string(cfg.SecretKey), "")
+		cred = aws_credentials.NewStaticCredentials(cfg.AccessKey, string(cfg.SecretKey), "")
 	}
 	awsCfg := aws.NewConfig().
 		WithRegion(cfg.Region).
@@ -269,14 +269,14 @@ func NewSource(
 	if cfg.Endpoint != "" {
 		awsCfg.WithEndpoint(cfg.Endpoint)
 	}
-	ksis := kinesis.New(session.Must(session.NewSession(awsCfg)))
+	ksis := aws_kinesis.New(aws_session.Must(aws_session.NewSession(awsCfg)))
 
 	store := consumer.NewCoordinatorStore(cp, transferID)
 	c, err := consumer.New(
 		cfg.Stream,
 		consumer.WithStore(store),
 		consumer.WithClient(ksis),
-		consumer.WithShardIteratorType(kinesis.ShardIteratorTypeTrimHorizon),
+		consumer.WithShardIteratorType(aws_kinesis.ShardIteratorTypeTrimHorizon),
 	)
 	if err != nil {
 		return nil, xerrors.Errorf("unable to start consumer: %w", err)

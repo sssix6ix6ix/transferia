@@ -8,7 +8,7 @@ import (
 	"github.com/transferia/transferia/pkg/util"
 	"github.com/transferia/transferia/recipe/mongo/pkg/mongo_sharded_config"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
+	mongo_driver "go.mongodb.org/mongo-driver/mongo"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
@@ -61,7 +61,7 @@ func LaunchConfigReplicaSet(
 		return ConfigReplicaSet{}, xerrors.Errorf("no mongod hosts to connect to")
 	}
 	mongod := result.MongoDaemons[0]
-	err = mongod.WithRootConnection(func(client *mongo.Client) error {
+	err = mongod.WithRootConnection(func(client *mongo_driver.Client) error {
 		err := result.initConfigReplicaSet(client)
 		if err != nil {
 			return xerrors.Errorf("cannot init config replica set: %w", err)
@@ -76,7 +76,7 @@ func LaunchConfigReplicaSet(
 	return result, nil
 }
 
-func (c *ConfigReplicaSet) initConfigReplicaSet(client *mongo.Client) error {
+func (c *ConfigReplicaSet) initConfigReplicaSet(client *mongo_driver.Client) error {
 	// https://www.mongodb.com/docs/manual/reference/command/replSetInitiate/#mongodb-dbcommand-dbcmd.replSetInitiate
 	var members bson.A
 	for i, md := range c.MongoDaemons {

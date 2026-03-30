@@ -11,7 +11,7 @@ import (
 	"github.com/transferia/transferia/library/go/core/metrics/solomon"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/ydb"
+	provider_ydb "github.com/transferia/transferia/pkg/providers/ydb"
 	"github.com/transferia/transferia/tests/helpers"
 	mocksink "github.com/transferia/transferia/tests/helpers/mock_sink"
 )
@@ -19,7 +19,7 @@ import (
 const testTableName = "test_table/my_lovely_table"
 
 func TestGroup(t *testing.T) {
-	src := &ydb.YdbSource{
+	src := &provider_ydb.YdbSource{
 		Token:              model.SecretString(os.Getenv("YDB_TOKEN")),
 		Database:           helpers.GetEnvOfFail(t, "YDB_DATABASE"),
 		Instance:           helpers.GetEnvOfFail(t, "YDB_ENDPOINT"),
@@ -52,13 +52,13 @@ func TestGroup(t *testing.T) {
 	}
 
 	t.Run("init source database", func(t *testing.T) {
-		Target := &ydb.YdbDestination{
+		Target := &provider_ydb.YdbDestination{
 			Database: src.Database,
 			Token:    src.Token,
 			Instance: src.Instance,
 		}
 		Target.WithDefaults()
-		sinker, err := ydb.NewSinker(logger.Log, Target, solomon.NewRegistry(solomon.NewRegistryOpts()))
+		sinker, err := provider_ydb.NewSinker(logger.Log, Target, solomon.NewRegistry(solomon.NewRegistryOpts()))
 		require.NoError(t, err)
 
 		require.NoError(t, sinker.Push([]abstract.ChangeItem{*helpers.YDBInitChangeItem(testTableName)}))
@@ -81,7 +81,7 @@ func TestGroup(t *testing.T) {
 	)
 }
 
-func runTestCase(t *testing.T, caseName string, src *ydb.YdbSource, dst *model.MockDestination, changeItems *[]abstract.ChangeItem, srcTables []string, includeObjects []string, isError bool) {
+func runTestCase(t *testing.T, caseName string, src *provider_ydb.YdbSource, dst *model.MockDestination, changeItems *[]abstract.ChangeItem, srcTables []string, includeObjects []string, isError bool) {
 	fmt.Printf("starting test case: %s\n", caseName)
 	src.Tables = srcTables
 	*changeItems = make([]abstract.ChangeItem, 0)

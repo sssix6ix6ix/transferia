@@ -10,7 +10,7 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	pg_provider "github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
 	"github.com/transferia/transferia/pkg/worker/tasks"
 	"github.com/transferia/transferia/tests/helpers"
@@ -44,9 +44,9 @@ func TestGroup(t *testing.T) {
 }
 
 func Existence(t *testing.T) {
-	_, err := pg_provider.NewStorage(Source.ToStorageParams(nil))
+	_, err := provider_postgres.NewStorage(Source.ToStorageParams(nil))
 	require.NoError(t, err)
-	_, err = pg_provider.NewStorage(Target.ToStorageParams())
+	_, err = provider_postgres.NewStorage(Target.ToStorageParams())
 	require.NoError(t, err)
 }
 
@@ -59,7 +59,7 @@ func Verify(t *testing.T) {
 	err := tasks.VerifyDelivery(transfer, logger.Log, helpers.EmptyRegistry())
 	require.NoError(t, err)
 
-	dstStorage, err := pg_provider.NewStorage(Target.ToStorageParams())
+	dstStorage, err := provider_postgres.NewStorage(Target.ToStorageParams())
 	require.NoError(t, err)
 
 	var result bool
@@ -87,7 +87,7 @@ func Load(t *testing.T) {
 
 	//-----------------------------------------------------------------------------------------------------------------
 
-	sink, err := pg_provider.NewSink(logger.Log, helpers.TransferID, Source.ToSinkParams(), helpers.EmptyRegistry())
+	sink, err := provider_postgres.NewSink(logger.Log, helpers.TransferID, Source.ToSinkParams(), helpers.EmptyRegistry())
 	require.NoError(t, err)
 
 	arrColSchema := abstract.NewTableSchema([]abstract.ColSchema{

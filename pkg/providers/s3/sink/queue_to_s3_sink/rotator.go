@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/transferia/transferia/pkg/abstract"
-	s3_provider "github.com/transferia/transferia/pkg/providers/s3"
+	s3_model "github.com/transferia/transferia/pkg/providers/s3/model"
 )
 
 type DefaultRotator struct {
@@ -12,7 +12,7 @@ type DefaultRotator struct {
 	nextRotate time.Time
 }
 
-var _ s3_provider.Rotator = (*DefaultRotator)(nil)
+var _ s3_model.Rotator = (*DefaultRotator)(nil)
 
 func NewDefaultRotator(interval time.Duration) *DefaultRotator {
 	return &DefaultRotator{

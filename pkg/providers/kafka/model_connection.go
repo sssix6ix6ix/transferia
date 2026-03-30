@@ -5,49 +5,49 @@ import (
 	"crypto/x509"
 	"net"
 
-	"github.com/segmentio/kafka-go/sasl"
-	"github.com/segmentio/kafka-go/sasl/scram"
+	segmentio_sasl "github.com/segmentio/kafka-go/sasl"
+	segmentio_scram "github.com/segmentio/kafka-go/sasl/scram"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/connection/kafka"
+	conn_kafka "github.com/transferia/transferia/pkg/connection/kafka"
 	"github.com/transferia/transferia/pkg/util/validators"
-	franzsasl "github.com/twmb/franz-go/pkg/sasl"
-	franzscram "github.com/twmb/franz-go/pkg/sasl/scram"
+	franz_sasl "github.com/twmb/franz-go/pkg/sasl"
+	franz_scram "github.com/twmb/franz-go/pkg/sasl/scram"
 )
 
 type KafkaAuth struct {
-	Enabled   bool                             `log:"true"`
-	Mechanism kafka.KafkaSaslSecurityMechanism `log:"true"`
-	User      string                           `log:"true"`
+	Enabled   bool                                  `log:"true"`
+	Mechanism conn_kafka.KafkaSaslSecurityMechanism `log:"true"`
+	User      string                                `log:"true"`
 	Password  string
 }
 
-func (a *KafkaAuth) GetAuthMechanism() (sasl.Mechanism, error) {
+func (a *KafkaAuth) GetAuthMechanism() (segmentio_sasl.Mechanism, error) {
 	if !a.Enabled {
 		return nil, nil
 	}
-	var algo scram.Algorithm
-	if a.Mechanism == kafka.KafkaSaslSecurityMechanism_SCRAM_SHA512 {
-		algo = scram.SHA512
+	var algo segmentio_scram.Algorithm
+	if a.Mechanism == conn_kafka.KafkaSaslSecurityMechanism_SCRAM_SHA512 {
+		algo = segmentio_scram.SHA512
 	} else {
-		algo = scram.SHA256
+		algo = segmentio_scram.SHA256
 	}
-	m, err := scram.Mechanism(algo, a.User, a.Password)
+	m, err := segmentio_scram.Mechanism(algo, a.User, a.Password)
 	if err != nil {
 		return nil, err
 	}
 	return m, nil
 }
 
-func (a *KafkaAuth) GetFranzAuthMechanism() franzsasl.Mechanism {
+func (a *KafkaAuth) GetFranzAuthMechanism() franz_sasl.Mechanism {
 	if !a.Enabled {
 		return nil
 	}
-	auth := franzscram.Auth{
+	auth := franz_scram.Auth{
 		User: a.User,
 		Pass: a.Password,
 	}
-	if a.Mechanism == kafka.KafkaSaslSecurityMechanism_SCRAM_SHA512 {
+	if a.Mechanism == conn_kafka.KafkaSaslSecurityMechanism_SCRAM_SHA512 {
 		return auth.AsSha512Mechanism()
 	}
 

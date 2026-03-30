@@ -9,12 +9,12 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
-	cpclient "github.com/transferia/transferia/pkg/abstract/coordinator"
-	pgcommon "github.com/transferia/transferia/pkg/providers/postgres"
+	"github.com/transferia/transferia/pkg/abstract/coordinator"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
 	"github.com/transferia/transferia/pkg/runtime/local"
-	"github.com/transferia/transferia/pkg/transformer/registry/filter"
-	filterrowsbyids "github.com/transferia/transferia/pkg/transformer/registry/filter_rows_by_ids"
+	transformer_filter "github.com/transferia/transferia/pkg/transformer/registry/filter"
+	transformer_filter_rows_by_ids "github.com/transferia/transferia/pkg/transformer/registry/filter_rows_by_ids"
 	"github.com/transferia/transferia/pkg/worker/tasks"
 	"github.com/transferia/transferia/tests/helpers"
 )
@@ -42,15 +42,15 @@ func TestGroup(t *testing.T) {
 	})
 }
 
-func runTransfer(t *testing.T, source *pgcommon.PgSource, target *pgcommon.PgDestination) *local.LocalWorker {
+func runTransfer(t *testing.T, source *provider_postgres.PgSource, target *provider_postgres.PgDestination) *local.LocalWorker {
 	transfer := helpers.MakeTransfer(helpers.TransferID, source, target, abstract.TransferTypeSnapshotAndIncrement)
 
-	transformer, err := filterrowsbyids.NewFilterRowsByIDsTransformer(
-		filterrowsbyids.Config{
-			Tables: filter.Tables{
+	transformer, err := transformer_filter_rows_by_ids.NewFilterRowsByIDsTransformer(
+		transformer_filter_rows_by_ids.Config{
+			Tables: transformer_filter.Tables{
 				IncludeTables: []string{"testtable"},
 			},
-			Columns: filter.Columns{
+			Columns: transformer_filter.Columns{
 				IncludeColumns: []string{"id", "id2"},
 			},
 			AllowedIDs: []string{
@@ -67,10 +67,10 @@ func runTransfer(t *testing.T, source *pgcommon.PgSource, target *pgcommon.PgDes
 	require.NoError(t, err)
 	helpers.AddTransformer(t, transfer, transformer)
 
-	err = tasks.ActivateDelivery(context.TODO(), nil, cpclient.NewFakeClient(), *transfer, helpers.EmptyRegistry())
+	err = tasks.ActivateDelivery(context.TODO(), nil, coordinator.NewFakeClient(), *transfer, helpers.EmptyRegistry())
 	require.NoError(t, err)
 
-	localWorker := local.NewLocalWorker(cpclient.NewFakeClient(), transfer, helpers.EmptyRegistry(), logger.Log)
+	localWorker := local.NewLocalWorker(coordinator.NewFakeClient(), transfer, helpers.EmptyRegistry(), logger.Log)
 	localWorker.Start()
 	return localWorker
 }
@@ -83,7 +83,7 @@ func Replication(t *testing.T) {
 
 	// update while replicating
 	{
-		srcConn, err := pgcommon.MakeConnPoolFromSrc(Source, logger.Log)
+		srcConn, err := provider_postgres.MakeConnPoolFromSrc(Source, logger.Log)
 		require.NoError(t, err)
 		defer srcConn.Close()
 
@@ -108,7 +108,7 @@ func Replication(t *testing.T) {
 	{
 		require.NoError(t, helpers.WaitDestinationEqualRowsCount("public", "testtable", helpers.GetSampleableStorageByModel(t, Target), 2*time.Minute, 3))
 
-		dstConn, err := pgcommon.MakeConnPoolFromSrc(Source, logger.Log)
+		dstConn, err := provider_postgres.MakeConnPoolFromSrc(Source, logger.Log)
 		require.NoError(t, err)
 		defer dstConn.Close()
 

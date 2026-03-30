@@ -11,8 +11,8 @@ import (
 	"github.com/transferia/transferia/library/go/test/yatest"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/debezium"
-	debeziumcommon "github.com/transferia/transferia/pkg/debezium/common"
-	debeziumparameters "github.com/transferia/transferia/pkg/debezium/parameters"
+	debezium_common "github.com/transferia/transferia/pkg/debezium/common"
+	debezium_parameters "github.com/transferia/transferia/pkg/debezium/parameters"
 )
 
 func wipeOriginalTypeInfo(changeItem *abstract.ChangeItem) *abstract.ChangeItem {
@@ -22,12 +22,12 @@ func wipeOriginalTypeInfo(changeItem *abstract.ChangeItem) *abstract.ChangeItem 
 	return changeItem
 }
 
-func emit(t *testing.T, originalChangeItem *abstract.ChangeItem, setIgnoreUnknownSources bool) []debeziumcommon.KeyValue {
+func emit(t *testing.T, originalChangeItem *abstract.ChangeItem, setIgnoreUnknownSources bool) []debezium_common.KeyValue {
 	emitter, err := debezium.NewMessagesEmitter(map[string]string{
-		debeziumparameters.DatabaseDBName:   "public",
-		debeziumparameters.TopicPrefix:      "my_topic",
-		debeziumparameters.AddOriginalTypes: "true",
-		debeziumparameters.SourceType:       "pg",
+		debezium_parameters.DatabaseDBName:   "public",
+		debezium_parameters.TopicPrefix:      "my_topic",
+		debezium_parameters.AddOriginalTypes: "true",
+		debezium_parameters.SourceType:       "pg",
 	}, "1.1.2.Final", false, logger.Log)
 	require.NoError(t, err)
 	emitter.TestSetIgnoreUnknownSources(setIgnoreUnknownSources)

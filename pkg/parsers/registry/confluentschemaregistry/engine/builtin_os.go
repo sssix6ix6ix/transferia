@@ -3,15 +3,15 @@ package engine
 import (
 	"strings"
 
-	"github.com/confluentinc/confluent-kafka-go/v2/schemaregistry/confluent"
-	"github.com/confluentinc/confluent-kafka-go/v2/schemaregistry/confluent/types"
+	vanilla_confluent "github.com/confluentinc/confluent-kafka-go/v2/schemaregistry/confluent"
+	confluent_types "github.com/confluentinc/confluent-kafka-go/v2/schemaregistry/confluent/types"
 	"github.com/jhump/protoreflect/desc"
 	"github.com/jhump/protoreflect/desc/protoprint"
 	"github.com/transferia/transferia/internal/logger"
 	"go.ytsaurus.tech/library/go/core/log"
-	"google.golang.org/genproto/googleapis/api"
+	google_api "google.golang.org/genproto/googleapis/api"
 	"google.golang.org/genproto/googleapis/api/annotations"
-	rpchttp "google.golang.org/genproto/googleapis/rpc/http"
+	google_http "google.golang.org/genproto/googleapis/rpc/http"
 	"google.golang.org/genproto/googleapis/type/calendarperiod"
 	"google.golang.org/genproto/googleapis/type/color"
 	"google.golang.org/genproto/googleapis/type/date"
@@ -47,8 +47,8 @@ func init() {
 	// + somewhere we take "google/api/..." & "google/rpc/..."
 	builtins := map[string]protoreflect.FileDescriptor{
 		// basic imports list from kafka library
-		"confluent/meta.proto":                 confluent.File_schemaregistry_confluent_meta_proto,
-		"confluent/type/decimal.proto":         types.File_schemaregistry_confluent_type_decimal_proto,
+		"confluent/meta.proto":                 vanilla_confluent.File_schemaregistry_confluent_meta_proto,
+		"confluent/type/decimal.proto":         confluent_types.File_schemaregistry_confluent_type_decimal_proto,
 		"google/type/calendar_period.proto":    calendarperiod.File_google_type_calendar_period_proto,
 		"google/type/color.proto":              color.File_google_type_color_proto,
 		"google/type/date.proto":               date.File_google_type_date_proto,
@@ -75,13 +75,13 @@ func init() {
 		"google/protobuf/wrappers.proto":       wrapperspb.File_google_protobuf_wrappers_proto,
 		// annotations for rpc service
 		"google/api/annotations.proto":    annotations.File_google_api_annotations_proto,
-		"google/rpc/http.proto":           rpchttp.File_google_rpc_http_proto,
+		"google/rpc/http.proto":           google_http.File_google_rpc_http_proto,
 		"google/api/client.proto":         annotations.File_google_api_client_proto,
 		"google/api/http.proto":           annotations.File_google_api_http_proto,
 		"google/api/field_behavior.proto": annotations.File_google_api_field_behavior_proto,
 		"google/api/resource.proto":       annotations.File_google_api_resource_proto,
 		"google/api/routing.proto":        annotations.File_google_api_routing_proto,
-		"google/api/launch_stage.proto":   api.File_google_api_launch_stage_proto,
+		"google/api/launch_stage.proto":   google_api.File_google_api_launch_stage_proto,
 	}
 	fds := make([]*descriptorpb.FileDescriptorProto, 0, len(builtins))
 	for _, value := range builtins {

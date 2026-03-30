@@ -3,18 +3,18 @@ package object_fetcher
 import (
 	"context"
 
-	"github.com/aws/aws-sdk-go/aws/session"
+	aws_session "github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/logging/batching_logger"
-	"github.com/transferia/transferia/pkg/providers/s3"
-	"github.com/transferia/transferia/pkg/providers/s3/reader"
+	s3_model "github.com/transferia/transferia/pkg/providers/s3/model"
+	s3_reader "github.com/transferia/transferia/pkg/providers/s3/reader"
 	"github.com/transferia/transferia/pkg/providers/s3/s3util/coordinator_utils"
 	"github.com/transferia/transferia/pkg/providers/s3/s3util/effective_worker_num"
-	"github.com/transferia/transferia/pkg/providers/s3/s3util/list"
+	s3util_list "github.com/transferia/transferia/pkg/providers/s3/s3util/list"
 	"github.com/transferia/transferia/pkg/providers/s3/s3util/lr_window/r_window"
 	"github.com/transferia/transferia/pkg/providers/s3/s3util/s3sess"
 	"github.com/transferia/transferia/pkg/stats"
@@ -30,7 +30,7 @@ const (
 	Poller
 )
 
-func DeriveObjectFetcherType(srcModel *s3.S3Source) ObjectFetcherType {
+func DeriveObjectFetcherType(srcModel *s3_model.S3Source) ObjectFetcherType {
 	if srcModel.EventSource.SQS != nil && srcModel.EventSource.SQS.QueueName != "" {
 		return Sqs
 	} else if srcModel.EventSource.SNS != nil {
@@ -46,10 +46,10 @@ func DeriveObjectFetcherType(srcModel *s3.S3Source) ObjectFetcherType {
 func newObjectFetcher(
 	ctx context.Context,
 	logger log.Logger,
-	srcModel *s3.S3Source,
+	srcModel *s3_model.S3Source,
 	s3client s3iface.S3API,
 	coordinatorStateAdapter *coordinator_utils.TransferStateAdapter,
-	sess *session.Session,
+	sess *aws_session.Session,
 	runtime abstract.ShardingTaskRuntime,
 	rWindow *r_window.RWindow,
 ) (ObjectFetcher, error) {
@@ -96,10 +96,10 @@ func newObjectFetcher(
 func newObjectFetcherWrapped(
 	ctx context.Context,
 	logger log.Logger,
-	srcModel *s3.S3Source,
+	srcModel *s3_model.S3Source,
 	s3client s3iface.S3API,
 	coordinatorStateAdapter *coordinator_utils.TransferStateAdapter,
-	sess *session.Session,
+	sess *aws_session.Session,
 	runtimeParallelism abstract.ShardingTaskRuntime,
 	rWindow *r_window.RWindow,
 ) (ObjectFetcher, error) {
@@ -116,12 +116,12 @@ func newObjectFetcherWrapped(
 func NewWrapped(
 	ctx context.Context,
 	logger log.Logger,
-	registry metrics.Registry,
-	srcModel *s3.S3Source,
+	registry core_metrics.Registry,
+	srcModel *s3_model.S3Source,
 	transferID string,
 	cp coordinator.Coordinator,
 	runtimeParallelism abstract.ShardingTaskRuntime,
-) (ObjectFetcher, context.Context, func(), reader.Reader, *stats.SourceStats, error) {
+) (ObjectFetcher, context.Context, func(), s3_reader.Reader, *stats.SourceStats, error) {
 	sess, s3client, currReader, currMetrics, err := s3sess.NewSessClientReaderMetrics(logger, srcModel, registry)
 	if err != nil {
 		return nil, nil, nil, nil, nil, xerrors.Errorf("failed to create s3session/s3client/reader, err: %w", err)
@@ -146,7 +146,7 @@ func NewWrapped(
 func NewObjectFetcherPollerWrapped(
 	ctx context.Context,
 	logger log.Logger,
-	srcModel *s3.S3Source,
+	srcModel *s3_model.S3Source,
 	s3client s3iface.S3API,
 	coordinatorStateAdapter *coordinator_utils.TransferStateAdapter,
 	effectiveWorkerNum *effective_worker_num.EffectiveWorkerNum,
@@ -163,13 +163,13 @@ func NewObjectFetcherPollerWrapped(
 //   - 'activate' on REPLICATION_ONLY - to commit all known files
 func FetchAndCommit(
 	ctx context.Context,
-	srcModel *s3.S3Source,
+	srcModel *s3_model.S3Source,
 	transferID string,
 	logger log.Logger,
-	registry metrics.Registry,
+	registry core_metrics.Registry,
 	cp coordinator.Coordinator,
 ) error {
-	dispatcher, err := list.ListAllReturnDispatcher(ctx, logger, registry, srcModel)
+	dispatcher, err := s3util_list.ListAllReturnDispatcher(ctx, logger, registry, srcModel)
 	if err != nil {
 		return xerrors.Errorf("unable to list objects, err: %w", err)
 	}

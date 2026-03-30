@@ -6,7 +6,7 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 )
 
 func CheckRemoveTablesSupported(transfer model.Transfer) error {
@@ -43,7 +43,7 @@ func RemoveTables(ctx context.Context, cp coordinator.Coordinator, transfer mode
 	}
 	for _, src := range active {
 		switch src := src.(type) {
-		case *postgres.PgSource:
+		case *provider_postgres.PgSource:
 			tableSet := make(map[string]bool)
 			for _, table := range src.DBTables {
 				tableSet[table] = true
@@ -62,7 +62,7 @@ func RemoveTables(ctx context.Context, cp coordinator.Coordinator, transfer mode
 				return xerrors.Errorf("Cannot load source endpoint to update tables list changes: %w", err)
 			}
 			source, _ := c.(model.Source)
-			updatedSrc, _ := source.(*postgres.PgSource)
+			updatedSrc, _ := source.(*provider_postgres.PgSource)
 			updatedSrc.DBTables = src.DBTables
 			updatedSrc.ExcludedTables = src.ExcludedTables
 			if err := cp.UpdateEndpoint(transfer.ID, c); err != nil {

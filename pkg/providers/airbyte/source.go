@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
@@ -18,7 +18,7 @@ import (
 var _ abstract.Source = (*Source)(nil)
 
 type Source struct {
-	registry metrics.Registry
+	registry core_metrics.Registry
 	cp       coordinator.Coordinator
 	logger   log.Logger
 	config   *AirbyteSource
@@ -83,7 +83,7 @@ func (s *Source) Stop() {
 	s.wg.Wait()
 }
 
-func NewSource(lgr log.Logger, registry metrics.Registry, cp coordinator.Coordinator, cfg *AirbyteSource, transfer *model.Transfer) *Source {
+func NewSource(lgr log.Logger, registry core_metrics.Registry, cp coordinator.Coordinator, cfg *AirbyteSource, transfer *model.Transfer) *Source {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Source{
 		registry: registry,

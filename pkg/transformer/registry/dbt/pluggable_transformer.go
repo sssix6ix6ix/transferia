@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/transferia/transferia/internal/logger"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
@@ -18,7 +18,7 @@ import (
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
-func PluggableTransformer(transfer *model.Transfer, _ metrics.Registry, cp coordinator.Coordinator) func(abstract.Sinker) abstract.Sinker {
+func PluggableTransformer(transfer *model.Transfer, _ core_metrics.Registry, cp coordinator.Coordinator) func(abstract.Sinker) abstract.Sinker {
 	supportedDestination, err := ToSupportedDestination(transfer.Dst)
 	if err != nil {
 		return middlewares.IdentityMiddleware

@@ -7,13 +7,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/changeitem"
 	"github.com/transferia/transferia/pkg/stats"
 	"go.ytsaurus.tech/library/go/core/log"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 const transformErrorColumn string = "__transform_error"
@@ -23,7 +23,7 @@ type transformation struct {
 	transformers []abstract.Transformer
 	plan         map[abstract.TableID]map[string][]abstract.Transformer
 	sink         abstract.Sinker
-	registry     metrics.Registry
+	registry     core_metrics.Registry
 	sta          *stats.MiddlewareTransformerStats
 	logger       log.Logger
 	mutex        sync.Mutex
@@ -213,7 +213,7 @@ func errorChangeItems(errors []abstract.TransformerError) []abstract.ChangeItem 
 				TableName:    errRow.Input.Table,
 				Path:         "",
 				ColumnName:   transformErrorColumn,
-				DataType:     string(schema.TypeString),
+				DataType:     string(ytschema.TypeString),
 				PrimaryKey:   false,
 				FakeKey:      false,
 				Required:     false,
@@ -307,7 +307,7 @@ func Sinker(
 	runtime abstract.TransformationRuntimeOpts,
 	transformers []abstract.Transformer,
 	lgr log.Logger,
-	registry metrics.Registry,
+	registry core_metrics.Registry,
 ) abstract.SinkOption {
 	return func(s abstract.Sinker) abstract.Sinker {
 		tt := &transformation{

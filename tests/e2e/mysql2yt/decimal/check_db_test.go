@@ -8,16 +8,16 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/pkg/abstract"
-	"github.com/transferia/transferia/pkg/providers/mysql"
+	provider_mysql "github.com/transferia/transferia/pkg/providers/mysql"
 	"github.com/transferia/transferia/tests/helpers"
-	yt_helpers "github.com/transferia/transferia/tests/helpers/yt"
+	helpers_yt "github.com/transferia/transferia/tests/helpers/yt"
 	"go.ytsaurus.tech/yt/go/ypath"
 )
 
 // Test cases
 
 func TestSnapshotAndReplication(t *testing.T) {
-	fixture := helpers.SetupMySQL2YTTest(t, makeMysqlSource("test_snapshot_and_increment"), yt_helpers.RecipeYtTarget(string(yt_helpers.YtTestDir(t, "decimal"))))
+	fixture := helpers.SetupMySQL2YTTest(t, makeMysqlSource("test_snapshot_and_increment"), helpers_yt.RecipeYtTarget(string(helpers_yt.YtTestDir(t, "decimal"))))
 	defer fixture.Teardown(t)
 
 	transfer := helpers.MakeTransfer(helpers.TransferID, fixture.Src, fixture.Dst, abstract.TransferTypeSnapshotAndIncrement)
@@ -27,11 +27,11 @@ func TestSnapshotAndReplication(t *testing.T) {
 	helpers.ExecuteMySQLStatement(t, snapshotAndIncrementSQL, fixture.SrcStorage.ConnectionParams)
 
 	require.NoError(t, helpers.WaitEqualRowsCount(t, fixture.Src.Database, "test_snapshot_and_increment", fixture.SrcStorage, fixture.DstStorage, time.Second*30))
-	yt_helpers.CanonizeDynamicYtTable(t, fixture.YTEnv.YT, ypath.Path(fmt.Sprintf("%s/%s_test_snapshot_and_increment", fixture.YTDir, fixture.Src.Database)), "yt_table.yson")
+	helpers_yt.CanonizeDynamicYtTable(t, fixture.YTEnv.YT, ypath.Path(fmt.Sprintf("%s/%s_test_snapshot_and_increment", fixture.YTDir, fixture.Src.Database)), "yt_table.yson")
 }
 
 func TestReplication(t *testing.T) {
-	fixture := helpers.SetupMySQL2YTTest(t, makeMysqlSource("test_increment_only"), yt_helpers.RecipeYtTarget(string(yt_helpers.YtTestDir(t, "decimal"))))
+	fixture := helpers.SetupMySQL2YTTest(t, makeMysqlSource("test_increment_only"), helpers_yt.RecipeYtTarget(string(helpers_yt.YtTestDir(t, "decimal"))))
 	defer fixture.Teardown(t)
 
 	transfer := helpers.MakeTransfer(helpers.TransferID, fixture.Src, fixture.Dst, abstract.TransferTypeIncrementOnly)
@@ -41,7 +41,7 @@ func TestReplication(t *testing.T) {
 	helpers.ExecuteMySQLStatement(t, incrementOnlySQL, fixture.SrcStorage.ConnectionParams)
 
 	require.NoError(t, helpers.WaitEqualRowsCount(t, fixture.Src.Database, "test_increment_only", fixture.SrcStorage, fixture.DstStorage, time.Second*30))
-	yt_helpers.CanonizeDynamicYtTable(t, fixture.YTEnv.YT, ypath.Path(fmt.Sprintf("%s/%s_test_increment_only", fixture.YTDir, fixture.Src.Database)), "yt_table.yson")
+	helpers_yt.CanonizeDynamicYtTable(t, fixture.YTEnv.YT, ypath.Path(fmt.Sprintf("%s/%s_test_increment_only", fixture.YTDir, fixture.Src.Database)), "yt_table.yson")
 }
 
 // Initialization
@@ -56,7 +56,7 @@ var (
 
 // Helpers
 
-func makeMysqlSource(tableName string) *mysql.MysqlSource {
+func makeMysqlSource(tableName string) *provider_mysql.MysqlSource {
 	srcModel := helpers.RecipeMysqlSource()
 	srcModel.IncludeTableRegex = []string{tableName}
 	srcModel.AllowDecimalAsFloat = true

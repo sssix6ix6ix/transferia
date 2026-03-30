@@ -11,30 +11,30 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
-	dp_model "github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/model"
-	"github.com/transferia/transferia/pkg/providers/ydb"
+	"github.com/transferia/transferia/pkg/abstract/model"
+	clickhouse_model "github.com/transferia/transferia/pkg/providers/clickhouse/model"
+	provider_ydb "github.com/transferia/transferia/pkg/providers/ydb"
 	"github.com/transferia/transferia/tests/helpers"
 	ydbrecipe "github.com/transferia/transferia/tests/helpers/ydb_recipe"
-	ydb3 "github.com/ydb-platform/ydb-go-sdk/v3"
-	"github.com/ydb-platform/ydb-go-sdk/v3/table"
+	ydb_go_sdk "github.com/ydb-platform/ydb-go-sdk/v3"
+	ydb_table "github.com/ydb-platform/ydb-go-sdk/v3/table"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
-func execDDL(t *testing.T, ydbConn *ydb3.Driver, query string) {
-	err := ydbConn.Table().Do(context.Background(), func(ctx context.Context, session table.Session) (err error) {
+func execDDL(t *testing.T, ydbConn *ydb_go_sdk.Driver, query string) {
+	err := ydbConn.Table().Do(context.Background(), func(ctx context.Context, session ydb_table.Session) (err error) {
 		return session.ExecuteSchemeQuery(ctx, query)
 	})
 	require.NoError(t, err)
 }
 
-func execQuery(t *testing.T, ydbConn *ydb3.Driver, query string) {
-	err := ydbConn.Table().Do(context.Background(), func(ctx context.Context, session table.Session) (err error) {
-		writeTx := table.TxControl(
-			table.BeginTx(
-				table.WithSerializableReadWrite(),
+func execQuery(t *testing.T, ydbConn *ydb_go_sdk.Driver, query string) {
+	err := ydbConn.Table().Do(context.Background(), func(ctx context.Context, session ydb_table.Session) (err error) {
+		writeTx := ydb_table.TxControl(
+			ydb_table.BeginTx(
+				ydb_table.WithSerializableReadWrite(),
 			),
-			table.CommitTx(),
+			ydb_table.CommitTx(),
 		)
 
 		_, _, err = session.Execute(ctx, writeTx, query, nil)
@@ -46,8 +46,8 @@ func execQuery(t *testing.T, ydbConn *ydb3.Driver, query string) {
 func TestAddColumnOnReplication(t *testing.T) {
 	tableName := "test_table"
 
-	source := &ydb.YdbSource{
-		Token:              dp_model.SecretString(os.Getenv("YDB_TOKEN")),
+	source := &provider_ydb.YdbSource{
+		Token:              model.SecretString(os.Getenv("YDB_TOKEN")),
 		Database:           helpers.GetEnvOfFail(t, "YDB_DATABASE"),
 		Instance:           helpers.GetEnvOfFail(t, "YDB_ENDPOINT"),
 		Tables:             []string{tableName},
@@ -55,10 +55,10 @@ func TestAddColumnOnReplication(t *testing.T) {
 		SubNetworkID:       "",
 		Underlay:           false,
 		ServiceAccountID:   "",
-		ChangeFeedMode:     ydb.ChangeFeedModeUpdates,
+		ChangeFeedMode:     provider_ydb.ChangeFeedModeUpdates,
 	}
-	target := model.ChDestination{
-		ShardsList: []model.ClickHouseShard{
+	target := clickhouse_model.ChDestination{
+		ShardsList: []clickhouse_model.ClickHouseShard{
 			{
 				Name: "_",
 				Hosts: []string{
@@ -72,7 +72,7 @@ func TestAddColumnOnReplication(t *testing.T) {
 		HTTPPort:                helpers.GetIntFromEnv("RECIPE_CLICKHOUSE_HTTP_PORT"),
 		NativePort:              helpers.GetIntFromEnv("RECIPE_CLICKHOUSE_NATIVE_PORT"),
 		ProtocolUnspecified:     true,
-		Cleanup:                 dp_model.Drop,
+		Cleanup:                 model.Drop,
 		UpsertAbsentToastedRows: true,
 	}
 	transferType := abstract.TransferTypeIncrementOnly

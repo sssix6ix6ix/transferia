@@ -3,7 +3,7 @@ package testutil
 import (
 	"io"
 
-	"github.com/aws/aws-sdk-go/service/s3"
+	aws_s3 "github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 )
@@ -12,7 +12,7 @@ type MockS3Client struct {
 	BucketFiles map[string]map[string][]byte // bucket -> file -> data
 }
 
-func (m *MockS3Client) DeleteObject(input *s3.DeleteObjectInput) (*s3.DeleteObjectOutput, error) {
+func (m *MockS3Client) DeleteObject(input *aws_s3.DeleteObjectInput) (*aws_s3.DeleteObjectOutput, error) {
 	if _, ok := m.BucketFiles[*input.Bucket]; !ok {
 		return nil, xerrors.Errorf("bucket not found: %s", *input.Bucket)
 	}
@@ -20,7 +20,7 @@ func (m *MockS3Client) DeleteObject(input *s3.DeleteObjectInput) (*s3.DeleteObje
 		return nil, xerrors.Errorf("file not found: %s", *input.Key)
 	}
 	delete(m.BucketFiles[*input.Bucket], *input.Key)
-	return &s3.DeleteObjectOutput{}, nil
+	return &aws_s3.DeleteObjectOutput{}, nil
 }
 
 func (m *MockS3Client) Upload(input *s3manager.UploadInput) (*s3manager.UploadOutput, error) {

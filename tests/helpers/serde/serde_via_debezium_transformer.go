@@ -8,13 +8,13 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/debezium"
-	"github.com/transferia/transferia/pkg/debezium/testutil"
-	simple_transformer "github.com/transferia/transferia/tests/helpers/transformer"
+	debezium_testutil "github.com/transferia/transferia/pkg/debezium/testutil"
+	helpers_transformer "github.com/transferia/transferia/tests/helpers/transformer"
 )
 
 var CountOfProcessedMessage = 0
 
-func makeDebeziumSerDeUdf(emitter *debezium.Emitter, receiver *debezium.Receiver, checkYtTypes bool) simple_transformer.SimpleTransformerApplyUDF {
+func makeDebeziumSerDeUdf(emitter *debezium.Emitter, receiver *debezium.Receiver, checkYtTypes bool) helpers_transformer.SimpleTransformerApplyUDF {
 	return func(t *testing.T, items []abstract.ChangeItem) abstract.TransformerResult {
 		newChangeItems := make([]abstract.ChangeItem, 0)
 		for i := range items {
@@ -34,7 +34,7 @@ func makeDebeziumSerDeUdf(emitter *debezium.Emitter, receiver *debezium.Receiver
 					newChangeItems = append(newChangeItems, *changeItem)
 
 					if checkYtTypes {
-						testutil.CompareYTTypesOriginalAndRecovered(t, &items[i], changeItem)
+						debezium_testutil.CompareYTTypesOriginalAndRecovered(t, &items[i], changeItem)
 					}
 				}
 			} else {
@@ -48,11 +48,11 @@ func makeDebeziumSerDeUdf(emitter *debezium.Emitter, receiver *debezium.Receiver
 	}
 }
 
-func MakeDebeziumSerDeUdfWithCheck(emitter *debezium.Emitter, receiver *debezium.Receiver) simple_transformer.SimpleTransformerApplyUDF {
+func MakeDebeziumSerDeUdfWithCheck(emitter *debezium.Emitter, receiver *debezium.Receiver) helpers_transformer.SimpleTransformerApplyUDF {
 	return makeDebeziumSerDeUdf(emitter, receiver, true)
 }
 
-func MakeDebeziumSerDeUdfWithoutCheck(emitter *debezium.Emitter, receiver *debezium.Receiver) simple_transformer.SimpleTransformerApplyUDF {
+func MakeDebeziumSerDeUdfWithoutCheck(emitter *debezium.Emitter, receiver *debezium.Receiver) helpers_transformer.SimpleTransformerApplyUDF {
 	return makeDebeziumSerDeUdf(emitter, receiver, false)
 }
 

@@ -10,8 +10,8 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/postgres"
-	yt_provider "github.com/transferia/transferia/pkg/providers/yt"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
+	provider_yt "github.com/transferia/transferia/pkg/providers/yt"
 	"github.com/transferia/transferia/pkg/worker/tasks"
 	"github.com/transferia/transferia/tests/helpers"
 	"go.ytsaurus.tech/yt/go/ypath"
@@ -34,7 +34,7 @@ func TestYTStatic(t *testing.T) {
 	ytEnv, cancel := yttest.NewEnv(t)
 	defer cancel()
 
-	src := &postgres.PgSource{
+	src := &provider_postgres.PgSource{
 		Hosts:    []string{"localhost"},
 		User:     os.Getenv("PG_LOCAL_USER"),
 		Password: model.SecretString(os.Getenv("PG_LOCAL_PASSWORD")),
@@ -44,14 +44,14 @@ func TestYTStatic(t *testing.T) {
 	}
 	src.WithDefaults()
 
-	dstModel := &yt_provider.YtDestination{
+	dstModel := &provider_yt.YtDestination{
 		Path:          "//home/cdc/tests/e2e/pg2yt/yt_static",
 		Cluster:       os.Getenv("YT_PROXY"),
 		CellBundle:    "default",
 		PrimaryMedium: "default",
 		Static:        true,
 	}
-	dst := &yt_provider.YtDestinationWrapper{Model: dstModel}
+	dst := &provider_yt.YtDestinationWrapper{Model: dstModel}
 	dst.WithDefaults()
 
 	transfer := helpers.MakeTransfer("upload_pg_yt_static", src, dst, abstract.TransferTypeSnapshotOnly)
@@ -76,7 +76,7 @@ func TestYTStatic(t *testing.T) {
 	})
 
 	t.Run("upload_with_disabled_cleanup", func(t *testing.T) {
-		connPool, err := postgres.MakeConnPoolFromSrc(src, lgr)
+		connPool, err := provider_postgres.MakeConnPoolFromSrc(src, lgr)
 		require.NoError(t, err)
 		_, err = connPool.Exec(ctx, `
 INSERT INTO test_table
@@ -104,7 +104,7 @@ FROM generate_series(101, 200) AS t(id);
 	})
 
 	t.Run("upload_with_cleanup_drop", func(t *testing.T) {
-		connPool, err := postgres.MakeConnPoolFromSrc(src, lgr)
+		connPool, err := provider_postgres.MakeConnPoolFromSrc(src, lgr)
 		require.NoError(t, err)
 		_, err = connPool.Exec(ctx, `
 DELETE FROM test_table

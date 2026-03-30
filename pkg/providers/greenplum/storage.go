@@ -9,11 +9,11 @@ import (
 	"github.com/cenkalti/backoff/v4"
 	"github.com/jackc/pgx/v4"
 	"github.com/transferia/transferia/internal/logger"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/changeitem"
-	"github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/stats"
 	"github.com/transferia/transferia/pkg/util"
 	"go.ytsaurus.tech/library/go/core/log"
@@ -21,8 +21,8 @@ import (
 
 const tableIsShardedKey = "Offset column used as worker index"
 
-type checkConnectionFunc func(ctx context.Context, pgs *postgres.Storage, expectedSP GPSegPointer) error
-type newFlavorFunc func(in *Storage) postgres.DBFlavour
+type checkConnectionFunc func(ctx context.Context, pgs *provider_postgres.Storage, expectedSP GPSegPointer) error
+type newFlavorFunc func(in *Storage) provider_postgres.DBFlavour
 
 type Storage struct {
 	// config is NOT read-only and can change during execution
@@ -53,11 +53,11 @@ type pgStorageConfig struct {
 	DisableViewsExtraction bool
 }
 
-func defaultNewFlavor(in *Storage) postgres.DBFlavour {
+func defaultNewFlavor(in *Storage) provider_postgres.DBFlavour {
 	return NewGreenplumFlavour(in.workersCount == 1)
 }
 
-func NewStorageImpl(config *GpSource, mRegistry metrics.Registry, checkConnection checkConnectionFunc, newFlavor newFlavorFunc) *Storage {
+func NewStorageImpl(config *GpSource, mRegistry core_metrics.Registry, checkConnection checkConnectionFunc, newFlavor newFlavorFunc) *Storage {
 	return &Storage{
 		config:      config,
 		sourceStats: stats.NewSourceStats(mRegistry),
@@ -81,7 +81,7 @@ func NewStorageImpl(config *GpSource, mRegistry metrics.Registry, checkConnectio
 	}
 }
 
-func NewStorage(config *GpSource, mRegistry metrics.Registry) *Storage {
+func NewStorage(config *GpSource, mRegistry core_metrics.Registry) *Storage {
 	return NewStorageImpl(config, mRegistry, checkConnection, defaultNewFlavor)
 }
 
@@ -265,7 +265,7 @@ func (s *Storage) LoadTableImplDistributed(ctx context.Context, table abstract.T
 	return nil
 }
 
-func (s *Storage) segmentLoadTable(ctx context.Context, storage *postgres.Storage, tx *gpTx, table abstract.TableDescription, pusher abstract.Pusher) error {
+func (s *Storage) segmentLoadTable(ctx context.Context, storage *provider_postgres.Storage, tx *gpTx, table abstract.TableDescription, pusher abstract.Pusher) error {
 	s.sourceStats.Count.Inc()
 
 	err := tx.withConnection(func(conn *pgx.Conn) error {
@@ -274,7 +274,7 @@ func (s *Storage) segmentLoadTable(ctx context.Context, storage *postgres.Storag
 			return xerrors.Errorf("schema for table %s not found: %w", table.Fqtn(), err)
 		}
 
-		readQuery := storage.OrderedRead(&table, schema.Columns(), postgres.SortAsc, abstract.NoFilter, postgres.All, false)
+		readQuery := storage.OrderedRead(&table, schema.Columns(), provider_postgres.SortAsc, abstract.NoFilter, provider_postgres.All, false)
 		rows, err := conn.Query(ctx, readQuery, pgx.QueryResultFormats{pgx.BinaryFormatCode})
 		if err != nil {
 			logger.Log.Error("Failed to execute SELECT", log.String("table", table.Fqtn()), log.String("query", readQuery), log.Error(err))
@@ -282,7 +282,7 @@ func (s *Storage) segmentLoadTable(ctx context.Context, storage *postgres.Storag
 		}
 		defer rows.Close()
 
-		ciFetcher := postgres.NewChangeItemsFetcher(rows, conn, abstract.ChangeItem{
+		ciFetcher := provider_postgres.NewChangeItemsFetcher(rows, conn, abstract.ChangeItem{
 			ID:               uint32(0),
 			LSN:              uint64(0),
 			CommitTime:       uint64(time.Now().UTC().UnixNano()),
@@ -324,7 +324,7 @@ func (s *Storage) segmentLoadTable(ctx context.Context, storage *postgres.Storag
 	return err
 }
 
-func (s *Storage) schemaForTable(ctx context.Context, storage *postgres.Storage, conn *pgx.Conn, table abstract.TableDescription) (*abstract.TableSchema, error) {
+func (s *Storage) schemaForTable(ctx context.Context, storage *provider_postgres.Storage, conn *pgx.Conn, table abstract.TableDescription) (*abstract.TableSchema, error) {
 	if _, ok := s.schemas[table.ID()]; !ok {
 		loaded, err := storage.LoadSchemaForTable(ctx, conn, table)
 		if err != nil {
@@ -434,14 +434,14 @@ func (s *Storage) BeginGPSnapshot(ctx context.Context, tables []abstract.TableDe
 
 	if s.workersCount > 1 {
 		// sharded transfer requires table locking, otherwise it will not be consistent
-		lockMode := postgres.AccessShareLockMode
+		lockMode := provider_postgres.AccessShareLockMode
 		if s.config.AdvancedProps.EnforceConsistency {
-			lockMode = postgres.ShareLockMode
+			lockMode = provider_postgres.ShareLockMode
 		}
 		for _, t := range tables {
 			err := s.coordinatorTx.withConnection(func(conn *pgx.Conn) error {
 				logger.Log.Info("Locking table", log.String("table", t.Fqtn()), log.String("mode", string(lockMode)))
-				_, err := conn.Exec(ctx, postgres.LockQuery(t.ID(), lockMode))
+				_, err := conn.Exec(ctx, provider_postgres.LockQuery(t.ID(), lockMode))
 				return err
 			})
 			if err != nil {
@@ -579,7 +579,7 @@ func workerToGpSegMapping(nSegments int, nWorkers int) []*WorkerIDToGpSegs {
 // RunSlotMonitor in Greenplum returns the liveness monitor. There are no replication slots in Greenplum.
 // The liveness monitor ensures the transaction is still open and simple queries can be run on it.
 // The liveness monitor is only run in sharded transfers. It starts automatically at BeginSnapshot.
-func (s *Storage) RunSlotMonitor(ctx context.Context, serverSource interface{}, registry metrics.Registry) (abstract.SlotKiller, <-chan error, error) {
+func (s *Storage) RunSlotMonitor(ctx context.Context, serverSource interface{}, registry core_metrics.Registry) (abstract.SlotKiller, <-chan error, error) {
 	if s.livenessMonitor != nil {
 		return &abstract.StubSlotKiller{}, s.livenessMonitor.C(), nil
 	}

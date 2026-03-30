@@ -1,7 +1,7 @@
 package mysql
 
 import (
-	"github.com/go-mysql-org/go-mysql/mysql"
+	mysql_driver "github.com/go-mysql-org/go-mysql/mysql"
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
@@ -17,7 +17,7 @@ type Tracker struct {
 	transferID string
 }
 
-func (n *Tracker) StoreGtidset(gtidset mysql.GTIDSet) error {
+func (n *Tracker) StoreGtidset(gtidset mysql_driver.GTIDSet) error {
 	logger.Log.Infof("track gtidset %v", gtidset.String())
 	return n.cp.SetTransferState(n.transferID, map[string]*coordinator.TransferStateData{
 		gtidsetKey: {
@@ -33,17 +33,17 @@ func (n *Tracker) RemoveGtidset() error {
 	return n.cp.RemoveTransferState(n.transferID, []string{gtidsetKey})
 }
 
-func getFlavor(gtidset mysql.GTIDSet) MysqlFlavorType {
+func getFlavor(gtidset mysql_driver.GTIDSet) MysqlFlavorType {
 	switch gtidset.(type) {
-	case *mysql.MysqlGTIDSet:
+	case *mysql_driver.MysqlGTIDSet:
 		return MysqlFlavorTypeMysql
-	case *mysql.MariadbGTIDSet:
+	case *mysql_driver.MariadbGTIDSet:
 		return MysqlFlavorTypeMariaDB
 	}
 	return ""
 }
 
-func (n *Tracker) GetGtidset() (mysql.GTIDSet, error) {
+func (n *Tracker) GetGtidset() (mysql_driver.GTIDSet, error) {
 	res, err := n.cp.GetTransferState(n.transferID)
 	if err != nil {
 		return nil, xerrors.Errorf("unable to get transfer state: %w", err)
@@ -56,7 +56,7 @@ func (n *Tracker) GetGtidset() (mysql.GTIDSet, error) {
 	if gtidsetV == nil {
 		return nil, xerrors.Errorf("unexpected state type %v", value)
 	}
-	gtidset, err := mysql.ParseGTIDSet(gtidsetV.Flavor, gtidsetV.Gtid)
+	gtidset, err := mysql_driver.ParseGTIDSet(gtidsetV.Flavor, gtidsetV.Gtid)
 	if err != nil {
 		return nil, xerrors.Errorf("unable to parse gridset: %w", err)
 	}

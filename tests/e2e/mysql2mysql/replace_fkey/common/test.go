@@ -7,14 +7,14 @@ import (
 	"testing"
 	"time"
 
-	mysql_client "github.com/go-sql-driver/mysql"
+	mysql_driver2 "github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/mysql"
+	provider_mysql "github.com/transferia/transferia/pkg/providers/mysql"
 	"github.com/transferia/transferia/pkg/providers/mysql/mysqlrecipe"
 	"github.com/transferia/transferia/pkg/runtime/local"
 	"github.com/transferia/transferia/pkg/util"
@@ -33,9 +33,9 @@ func init() {
 }
 
 func Existence(t *testing.T) {
-	_, err := mysql.NewStorage(Source.ToStorageParams())
+	_, err := provider_mysql.NewStorage(Source.ToStorageParams())
 	require.NoError(t, err)
-	_, err = mysql.NewStorage(Target.ToStorageParams())
+	_, err = provider_mysql.NewStorage(Target.ToStorageParams())
 	require.NoError(t, err)
 }
 
@@ -57,7 +57,7 @@ func defaultChecksumParams() *tasks.ChecksumParameters {
 }
 
 func Load(t *testing.T) {
-	sourceAsDestination := mysql.MysqlDestination{
+	sourceAsDestination := provider_mysql.MysqlDestination{
 		Host:     Source.Host,
 		User:     Source.User,
 		Password: Source.Password,
@@ -65,7 +65,7 @@ func Load(t *testing.T) {
 		Port:     Source.Port,
 	}
 	sourceAsDestination.WithDefaults()
-	_, err := mysql.NewSinker(logger.Log, &sourceAsDestination, helpers.EmptyRegistry())
+	_, err := provider_mysql.NewSinker(logger.Log, &sourceAsDestination, helpers.EmptyRegistry())
 	require.NoError(t, err)
 
 	connector := &model.Transfer{
@@ -75,7 +75,7 @@ func Load(t *testing.T) {
 	}
 
 	fakeClient := coordinator.NewStatefulFakeClient()
-	err = mysql.SyncBinlogPosition(&Source, connector.ID, fakeClient)
+	err = provider_mysql.SyncBinlogPosition(&Source, connector.ID, fakeClient)
 	require.NoError(t, err)
 
 	localWorker := local.NewLocalWorker(fakeClient, connector, helpers.EmptyRegistry(), logger.Log)
@@ -88,14 +88,14 @@ func Load(t *testing.T) {
 	require.NoError(t, err)
 	logger.Log.Infof("Tables on source: %v", tables)
 
-	cfg := mysql_client.NewConfig()
+	cfg := mysql_driver2.NewConfig()
 	cfg.Addr = fmt.Sprintf("%v:%v", Source.Host, Source.Port)
 	cfg.User = Source.User
 	cfg.Passwd = string(Source.Password)
 	cfg.DBName = Source.Database
 	cfg.Net = "tcp"
 
-	mysqlConnector, err := mysql_client.NewConnector(cfg)
+	mysqlConnector, err := mysql_driver2.NewConnector(cfg)
 	require.NoError(t, err)
 	db := sql.OpenDB(mysqlConnector)
 
@@ -125,14 +125,14 @@ func Load(t *testing.T) {
 }
 
 func waitForSync(t *testing.T) error {
-	cfg := mysql_client.NewConfig()
+	cfg := mysql_driver2.NewConfig()
 	cfg.Addr = fmt.Sprintf("%v:%v", Target.Host, Target.Port)
 	cfg.User = Target.User
 	cfg.Passwd = string(Target.Password)
 	cfg.DBName = Target.Database
 	cfg.Net = "tcp"
 
-	mysqlConnector, err := mysql_client.NewConnector(cfg)
+	mysqlConnector, err := mysql_driver2.NewConnector(cfg)
 	require.NoError(t, err)
 	db := sql.OpenDB(mysqlConnector)
 

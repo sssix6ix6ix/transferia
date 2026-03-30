@@ -7,17 +7,17 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/internal/logger"
-	"github.com/transferia/transferia/internal/metrics"
+	dt_metrics "github.com/transferia/transferia/internal/metrics"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/parsers"
 	_ "github.com/transferia/transferia/pkg/parsers/registry"
-	audittrailsv1engine "github.com/transferia/transferia/pkg/parsers/registry/audittrailsv1/engine"
-	cloudeventsengine "github.com/transferia/transferia/pkg/parsers/registry/cloudevents/engine"
-	cloudloggingengine "github.com/transferia/transferia/pkg/parsers/registry/cloudlogging/engine"
-	confluentschemaregistryengine "github.com/transferia/transferia/pkg/parsers/registry/confluentschemaregistry/engine"
+	audittrailsv1_engine "github.com/transferia/transferia/pkg/parsers/registry/audittrailsv1/engine"
+	cloudevents_engine "github.com/transferia/transferia/pkg/parsers/registry/cloudevents/engine"
+	cloudlogging_engine "github.com/transferia/transferia/pkg/parsers/registry/cloudlogging/engine"
+	confluentschemaregistry_engine "github.com/transferia/transferia/pkg/parsers/registry/confluentschemaregistry/engine"
 	"github.com/transferia/transferia/pkg/parsers/registry/confluentschemaregistry/table_name_policy"
-	debeziumengine "github.com/transferia/transferia/pkg/parsers/registry/debezium/engine"
-	jsonparser "github.com/transferia/transferia/pkg/parsers/registry/json"
+	debezium_engine "github.com/transferia/transferia/pkg/parsers/registry/debezium/engine"
+	parser_json "github.com/transferia/transferia/pkg/parsers/registry/json"
 	"github.com/transferia/transferia/pkg/parsers/registry/protobuf/protoparser"
 	prototestpb "github.com/transferia/transferia/pkg/parsers/registry/protobuf/protoparser/gotest/prototest"
 	"github.com/transferia/transferia/pkg/parsers/registry/protobuf/protoscanner"
@@ -90,7 +90,7 @@ func TestUnparsed(t *testing.T) {
 	//---
 
 	t.Run("audittrailsv1", func(t *testing.T) {
-		parser, err := audittrailsv1engine.NewAuditTrailsV1ParserImpl(true, false, logger.Log, stats.NewSourceStats(metrics.NewRegistry()))
+		parser, err := audittrailsv1_engine.NewAuditTrailsV1ParserImpl(true, false, logger.Log, stats.NewSourceStats(dt_metrics.NewRegistry()))
 		require.NoError(t, err)
 		checkEx(t, parser, parsers.Message{Value: []byte("{]")})
 	})
@@ -98,26 +98,26 @@ func TestUnparsed(t *testing.T) {
 	t.Run("cloudevents", func(t *testing.T) {
 		schemaRegistryMock := confluentsrmock.NewConfluentSRMock(nil, nil)
 		defer schemaRegistryMock.Close()
-		parser := cloudeventsengine.NewCloudEventsImpl("", "uname", "pass", "", false, logger.Log, func(in string) string { return schemaRegistryMock.URL() })
+		parser := cloudevents_engine.NewCloudEventsImpl("", "uname", "pass", "", false, logger.Log, func(in string) string { return schemaRegistryMock.URL() })
 		checkEx(t, parser, parsers.Message{Value: []byte("{]")})
 	})
 	t.Run("cloudlogging", func(t *testing.T) {
-		parser := cloudloggingengine.NewCloudLoggingImpl(false, logger.Log, stats.NewSourceStats(metrics.NewRegistry()))
+		parser := cloudlogging_engine.NewCloudLoggingImpl(false, logger.Log, stats.NewSourceStats(dt_metrics.NewRegistry()))
 		checkEx(t, parser, parsers.Message{Value: []byte("{]")})
 	})
 	t.Run("confluentschemaregistry", func(t *testing.T) {
 		schemaRegistryMock := confluentsrmock.NewConfluentSRMock(nil, nil)
 		defer schemaRegistryMock.Close()
 		tableNamePolicy := table_name_policy.DefaultDerivedTableNamePolicy()
-		parser := confluentschemaregistryengine.NewConfluentSchemaRegistryImpl(schemaRegistryMock.URL(), "", "uname", "pass", false, tableNamePolicy, false, logger.Log)
+		parser := confluentschemaregistry_engine.NewConfluentSchemaRegistryImpl(schemaRegistryMock.URL(), "", "uname", "pass", false, tableNamePolicy, false, logger.Log)
 		checkEx(t, parser, parsers.Message{Value: []byte("{]")})
 	})
 	t.Run("debezium", func(t *testing.T) {
-		parser := debeziumengine.NewDebeziumImpl(logger.Log, nil, 1)
+		parser := debezium_engine.NewDebeziumImpl(logger.Log, nil, 1)
 		checkEx(t, parser, parsers.Message{Value: []byte("{]")})
 	})
 	t.Run("json", func(t *testing.T) {
-		parserConfigJSONCommon := &jsonparser.ParserConfigJSONCommon{
+		parserConfigJSONCommon := &parser_json.ParserConfigJSONCommon{
 			Fields: []abstract.ColSchema{
 				{ColumnName: "id", Required: true},
 			},
@@ -126,7 +126,7 @@ func TestUnparsed(t *testing.T) {
 			AddRest:            true,
 			AddDedupeKeys:      false,
 		}
-		parser, err := jsonparser.NewParserJSON(parserConfigJSONCommon, false, logger.Log, stats.NewSourceStats(metrics.NewRegistry()))
+		parser, err := parser_json.NewParserJSON(parserConfigJSONCommon, false, logger.Log, stats.NewSourceStats(dt_metrics.NewRegistry()))
 		require.NoError(t, err)
 		checkEx(t, parser, parsers.Message{Value: []byte("{]")})
 	})
@@ -153,7 +153,7 @@ func TestUnparsed(t *testing.T) {
 			LineSplitter:       abstract.LfLineSplitterDoNotSplit,
 		}
 
-		parser, err := protoparser.NewProtoParser(&config, stats.NewSourceStats(metrics.NewRegistry()))
+		parser, err := protoparser.NewProtoParser(&config, stats.NewSourceStats(dt_metrics.NewRegistry()))
 		require.NoError(t, err)
 		checkEx(t, parser, pMsg)
 	})

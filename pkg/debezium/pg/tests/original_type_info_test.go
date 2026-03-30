@@ -9,23 +9,23 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/debezium"
-	debeziumcommon "github.com/transferia/transferia/pkg/debezium/common"
-	debeziumparameters "github.com/transferia/transferia/pkg/debezium/parameters"
-	"github.com/transferia/transferia/pkg/debezium/pg"
-	pgcommon "github.com/transferia/transferia/pkg/providers/postgres"
+	debezium_common "github.com/transferia/transferia/pkg/debezium/common"
+	debezium_parameters "github.com/transferia/transferia/pkg/debezium/parameters"
+	debezium_pg "github.com/transferia/transferia/pkg/debezium/pg"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 )
 
 func TestOriginalType(t *testing.T) {
-	originalTypeProperties := pg.GetOriginalTypeProperties(&abstract.ColSchema{
-		Properties: map[abstract.PropertyKey]interface{}{pgcommon.DatabaseTimeZone: "Europe/Moscow"},
+	originalTypeProperties := debezium_pg.GetOriginalTypeProperties(&abstract.ColSchema{
+		Properties: map[abstract.PropertyKey]interface{}{provider_postgres.DatabaseTimeZone: "Europe/Moscow"},
 	})
 
-	originalTypeInfo := &debeziumcommon.OriginalTypeInfo{
+	originalTypeInfo := &debezium_common.OriginalTypeInfo{
 		OriginalType: "pg:timestamp without time zone",
 		Properties:   originalTypeProperties,
 	}
 
-	timestampReceiverDescr := pg.TimestampWithoutTimeZone{}
+	timestampReceiverDescr := debezium_pg.TimestampWithoutTimeZone{}
 	currTime, err := timestampReceiverDescr.Do(1136214245999999, originalTypeInfo, nil, false) // int: 1136214245999999, GMT: Monday, 2 January 2006 г., 15:04:05.999
 	require.NoError(t, err)
 
@@ -45,25 +45,25 @@ func TestPgTimestampWithoutTimezone(t *testing.T) {
 		ColumnValues: []interface{}{1, initTimeTime},
 		TableSchema: abstract.NewTableSchema([]abstract.ColSchema{
 			{ColumnName: "id", OriginalType: "pg:integer"},
-			{ColumnName: "val", OriginalType: "pg:timestamp without time zone", Properties: map[abstract.PropertyKey]interface{}{pgcommon.DatabaseTimeZone: "Europe/Moscow"}},
+			{ColumnName: "val", OriginalType: "pg:timestamp without time zone", Properties: map[abstract.PropertyKey]interface{}{provider_postgres.DatabaseTimeZone: "Europe/Moscow"}},
 		}),
 	}
 
 	// prepare engines
 
-	paramsWithOriginalTypes := debeziumparameters.EnrichedWithDefaults(map[string]string{
-		debeziumparameters.DatabaseDBName:   "public",
-		debeziumparameters.TopicPrefix:      "my_topic",
-		debeziumparameters.SourceType:       "pg",
-		debeziumparameters.AddOriginalTypes: "true",
+	paramsWithOriginalTypes := debezium_parameters.EnrichedWithDefaults(map[string]string{
+		debezium_parameters.DatabaseDBName:   "public",
+		debezium_parameters.TopicPrefix:      "my_topic",
+		debezium_parameters.SourceType:       "pg",
+		debezium_parameters.AddOriginalTypes: "true",
 	})
 	emitterWithOriginalTypes, err := debezium.NewMessagesEmitter(paramsWithOriginalTypes, "", false, logger.Log)
 	require.NoError(t, err)
-	paramsWithoutOriginalTypes := debeziumparameters.EnrichedWithDefaults(map[string]string{
-		debeziumparameters.DatabaseDBName:   "public",
-		debeziumparameters.TopicPrefix:      "my_topic",
-		debeziumparameters.SourceType:       "pg",
-		debeziumparameters.AddOriginalTypes: "false",
+	paramsWithoutOriginalTypes := debezium_parameters.EnrichedWithDefaults(map[string]string{
+		debezium_parameters.DatabaseDBName:   "public",
+		debezium_parameters.TopicPrefix:      "my_topic",
+		debezium_parameters.SourceType:       "pg",
+		debezium_parameters.AddOriginalTypes: "false",
 	})
 	emitterWithoutOriginalTypes, err := debezium.NewMessagesEmitter(paramsWithoutOriginalTypes, "", false, logger.Log)
 	require.NoError(t, err)

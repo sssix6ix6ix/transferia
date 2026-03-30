@@ -12,17 +12,17 @@ import (
 	"github.com/transferia/transferia/pkg/abstract/changeitem"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	kafkasink "github.com/transferia/transferia/pkg/providers/kafka"
+	provider_kafka "github.com/transferia/transferia/pkg/providers/kafka"
 	"github.com/transferia/transferia/pkg/runtime/local"
 	"github.com/transferia/transferia/tests/helpers"
 	mocksink "github.com/transferia/transferia/tests/helpers/mock_sink"
 )
 
 func TestReplication(t *testing.T) {
-	src, err := kafkasink.SourceRecipe()
+	src, err := provider_kafka.SourceRecipe()
 	require.NoError(t, err)
 
-	dst, err := kafkasink.DestinationRecipe()
+	dst, err := provider_kafka.DestinationRecipe()
 	require.NoError(t, err)
 	dst.FormatSettings = model.SerializationFormat{Name: model.SerializationFormatMirror}
 
@@ -44,7 +44,7 @@ func TestReplication(t *testing.T) {
 		SinkerFactory: func() abstract.Sinker { return mockSink },
 		Cleanup:       model.DisabledCleanup,
 	}
-	additionalTransfer := helpers.MakeTransfer("additional", &kafkasink.KafkaSource{
+	additionalTransfer := helpers.MakeTransfer("additional", &provider_kafka.KafkaSource{
 		Connection:  dst.Connection,
 		Auth:        dst.Auth,
 		GroupTopics: []string{"topic1", "topic2"},
@@ -78,9 +78,9 @@ func TestReplication(t *testing.T) {
 	canon.SaveJSON(t, readedData)
 }
 
-func pushData(t *testing.T, src kafkasink.KafkaSource, srcTopic string, dst kafkasink.KafkaDestination, k []byte, v []byte) {
-	srcSink, err := kafkasink.NewReplicationSink(
-		&kafkasink.KafkaDestination{
+func pushData(t *testing.T, src provider_kafka.KafkaSource, srcTopic string, dst provider_kafka.KafkaDestination, k []byte, v []byte) {
+	srcSink, err := provider_kafka.NewReplicationSink(
+		&provider_kafka.KafkaDestination{
 			Connection:          src.Connection,
 			Auth:                src.Auth,
 			Topic:               srcTopic,

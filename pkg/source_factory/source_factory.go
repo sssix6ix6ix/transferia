@@ -1,7 +1,7 @@
-package source
+package source_factory
 
 import (
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
@@ -10,7 +10,7 @@ import (
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
-func NewSource(transfer *model.Transfer, lgr log.Logger, registry metrics.Registry, cp coordinator.Coordinator) (abstract.Source, error) {
+func NewSource(transfer *model.Transfer, lgr log.Logger, registry core_metrics.Registry, cp coordinator.Coordinator) (abstract.Source, error) {
 	replicator, ok := providers.Source[providers.Replication](lgr, registry, cp, transfer)
 	if !ok {
 		lgr.Error("Unable to create source")
@@ -23,7 +23,7 @@ func NewSource(transfer *model.Transfer, lgr log.Logger, registry metrics.Regist
 	return res, nil
 }
 
-func NewAsyncSource(transfer *model.Transfer, lgr log.Logger, registry metrics.Registry, cp coordinator.Coordinator) (abstract.QueueToS3Source, error) {
+func NewAsyncSource(transfer *model.Transfer, lgr log.Logger, registry core_metrics.Registry, cp coordinator.Coordinator) (abstract.QueueToS3Source, error) {
 	replicator, ok := providers.Source[providers.PartitionableSource](lgr, registry, cp, transfer)
 	if !ok {
 		lgr.Error("Unable to create async source")

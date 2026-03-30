@@ -5,7 +5,7 @@ package metering
 
 import (
 	"github.com/transferia/transferia/internal/logger"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/pkg/abstract/model"
 )
 
@@ -19,7 +19,7 @@ func InitializeWithTags(transfer *model.Transfer, task *model.TransferOperation,
 	return
 }
 
-func NewMeteringStats(registry metrics.Registry) *MeteringStats {
+func NewMeteringStats(registry core_metrics.Registry) *MeteringStats {
 	return &MeteringStats{}
 }
 

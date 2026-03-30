@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"golang.org/x/exp/slices"
+	xslices "golang.org/x/exp/slices"
 )
 
 type Set[T comparable] struct {
@@ -76,7 +76,7 @@ func (s *Set[T]) Slice() []T {
 
 func (s *Set[T]) SortedSliceFunc(less func(a, b T) bool) []T {
 	result := s.Slice()
-	slices.SortFunc(result, func(a, b T) int {
+	xslices.SortFunc(result, func(a, b T) int {
 		if less(a, b) {
 			return -1
 		}

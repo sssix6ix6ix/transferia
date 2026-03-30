@@ -12,8 +12,8 @@ import (
 	"github.com/transferia/transferia/pkg/providers/clickhouse/chrecipe"
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
 	"github.com/transferia/transferia/pkg/runtime/shared/pod"
-	transformers_registry "github.com/transferia/transferia/pkg/transformer"
-	"github.com/transferia/transferia/pkg/transformer/registry/dbt"
+	"github.com/transferia/transferia/pkg/transformer"
+	transformer_dbt "github.com/transferia/transferia/pkg/transformer/registry/dbt"
 	_ "github.com/transferia/transferia/pkg/transformer/registry/dbt/clickhouse"
 	"github.com/transferia/transferia/tests/helpers"
 )
@@ -46,7 +46,7 @@ func TestSnapshot(t *testing.T) {
 	target.UseSchemaInTableName = true
 	target.Cleanup = model.Drop
 	transfer := helpers.MakeTransfer("testtransfer", source, target, abstract.TransferTypeSnapshotOnly)
-	addTransformationToTransfer(transfer, dbt.Config{
+	addTransformationToTransfer(transfer, transformer_dbt.Config{
 		GitRepositoryLink: fmt.Sprintf("https://%s@github.com/doublecloud/tests-clickhouse-dbt.git", githubPAT),
 		ProfileName:       "clickhouse",
 		Operation:         "run",
@@ -62,16 +62,16 @@ func TestSnapshot(t *testing.T) {
 	require.Contains(t, targetTables, *abstract.NewTableID("dbttest", "v3"))
 }
 
-func addTransformationToTransfer(transfer *model.Transfer, config dbt.Config) {
+func addTransformationToTransfer(transfer *model.Transfer, config transformer_dbt.Config) {
 	if transfer.Transformation == nil {
 		transfer.Transformation = &model.Transformation{
 			ExtraTransformers: nil,
 		}
 	}
 	if transfer.Transformation.Transformers == nil {
-		transfer.Transformation.Transformers = new(transformers_registry.Transformers)
+		transfer.Transformation.Transformers = new(transformer.Transformers)
 	}
-	transfer.Transformation.Transformers.Transformers = append(transfer.Transformation.Transformers.Transformers, transformers_registry.Transformer{
-		dbt.TransformerType: config,
+	transfer.Transformation.Transformers.Transformers = append(transfer.Transformation.Transformers.Transformers, transformer.Transformer{
+		transformer_dbt.TransformerType: config,
 	})
 }

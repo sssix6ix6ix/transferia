@@ -4,7 +4,7 @@ import (
 	"github.com/jackc/pgconn"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/errors/coded"
-	"github.com/transferia/transferia/pkg/errors/codes"
+	error_codes "github.com/transferia/transferia/pkg/errors/codes"
 )
 
 // No alias exports here; use codes from codespkg directly
@@ -42,7 +42,7 @@ func IsPgError(err error, code PgErrorCode) bool {
 func IsPKeyCheckError(err error) bool {
 	var codederr coded.CodedError
 	if xerrors.As(err, &codederr) {
-		return codederr.Code() == codes.PostgresNoPrimaryKeyCode
+		return codederr.Code() == error_codes.PostgresNoPrimaryKeyCode
 	}
 	return false
 }

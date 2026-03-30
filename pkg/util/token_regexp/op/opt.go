@@ -1,31 +1,31 @@
 package op
 
 import (
-	"github.com/transferia/transferia/pkg/util/token_regexp/abstract"
+	token_regexp_abstract "github.com/transferia/transferia/pkg/util/token_regexp/abstract"
 )
 
 type OptOp struct {
-	abstract.Relatives
-	op abstract.Op
+	token_regexp_abstract.Relatives
+	op token_regexp_abstract.Op
 }
 
 func (t *OptOp) IsOp() {}
 
-func (t *OptOp) ConsumeComplex(tokens []*abstract.Token) *abstract.MatchedResults {
-	result := abstract.NewMatchedResults()
+func (t *OptOp) ConsumeComplex(tokens []*token_regexp_abstract.Token) *token_regexp_abstract.MatchedResults {
+	result := token_regexp_abstract.NewMatchedResults()
 	if len(tokens) == 0 {
-		result.AddMatchedPath(abstract.NewMatchedPathEmpty())
+		result.AddMatchedPath(token_regexp_abstract.NewMatchedPathEmpty())
 		return result
 	}
 	switch v := t.op.(type) {
-	case abstract.OpPrimitive:
+	case token_regexp_abstract.OpPrimitive:
 		lengths := v.ConsumePrimitive(tokens)
 		result.AddMatchedPathsAfterConsumePrimitive(lengths, t.op, tokens)
-	case abstract.OpComplex:
+	case token_regexp_abstract.OpComplex:
 		localResults := v.ConsumeComplex(tokens)
 		result.AddLocalResults(localResults, t.op, nil)
 	}
-	result.AddMatchedPath(abstract.NewMatchedPathEmpty())
+	result.AddMatchedPath(token_regexp_abstract.NewMatchedPathEmpty())
 	return result
 }
 
@@ -34,12 +34,12 @@ func Opt(in any) *OptOp {
 	switch v := in.(type) {
 	case string:
 		result = &OptOp{
-			Relatives: abstract.NewRelativesImpl(),
+			Relatives: token_regexp_abstract.NewRelativesImpl(),
 			op:        Match(v),
 		}
-	case abstract.Op:
+	case token_regexp_abstract.Op:
 		result = &OptOp{
-			Relatives: abstract.NewRelativesImpl(),
+			Relatives: token_regexp_abstract.NewRelativesImpl(),
 			op:        v,
 		}
 	default:

@@ -6,15 +6,15 @@ import (
 	"fmt"
 	"testing"
 
-	mysql_client "github.com/go-sql-driver/mysql"
+	mysql_driver2 "github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/mysql"
+	provider_mysql "github.com/transferia/transferia/pkg/providers/mysql"
 	"github.com/transferia/transferia/pkg/providers/mysql/mysqlrecipe"
-	"github.com/transferia/transferia/pkg/storage"
+	"github.com/transferia/transferia/pkg/storage_factory"
 	"github.com/transferia/transferia/pkg/worker/tasks"
 	"github.com/transferia/transferia/tests/helpers"
 )
@@ -44,21 +44,21 @@ func TestGroup(t *testing.T) {
 }
 
 func Existence(t *testing.T) {
-	_, err := mysql.NewStorage(Source.ToStorageParams())
+	_, err := provider_mysql.NewStorage(Source.ToStorageParams())
 	require.NoError(t, err)
-	_, err = mysql.NewStorage(Target.ToStorageParams())
+	_, err = provider_mysql.NewStorage(Target.ToStorageParams())
 	require.NoError(t, err)
 }
 
 func dropData(t *testing.T) {
-	cfg := mysql_client.NewConfig()
+	cfg := mysql_driver2.NewConfig()
 	cfg.Addr = fmt.Sprintf("%v:%v", Source.Host, Source.Port)
 	cfg.User = Source.User
 	cfg.Passwd = string(Source.Password)
 	cfg.DBName = Source.Database
 	cfg.Net = "tcp"
 
-	mysqlConnector, err := mysql_client.NewConnector(cfg)
+	mysqlConnector, err := mysql_driver2.NewConnector(cfg)
 	require.NoError(t, err)
 	db := sql.OpenDB(mysqlConnector)
 
@@ -81,14 +81,14 @@ func dropData(t *testing.T) {
 }
 
 func checkTarget(t *testing.T) {
-	cfg := mysql_client.NewConfig()
+	cfg := mysql_driver2.NewConfig()
 	cfg.Addr = fmt.Sprintf("%v:%v", Target.Host, Target.Port)
 	cfg.User = Target.User
 	cfg.Passwd = string(Target.Password)
 	cfg.DBName = Target.Database
 	cfg.Net = "tcp"
 
-	mysqlConnector, err := mysql_client.NewConnector(cfg)
+	mysqlConnector, err := mysql_driver2.NewConnector(cfg)
 	require.NoError(t, err)
 	db := sql.OpenDB(mysqlConnector)
 
@@ -116,11 +116,11 @@ func Snapshot(t *testing.T) {
 	transfer := helpers.MakeTransfer(helpers.TransferID, &Source, &Target, abstract.TransferTypeSnapshotOnly)
 	transfer = helpers.WithLocalRuntime(transfer, 1, 1)
 
-	currStorage, err := storage.NewStorage(transfer, coordinator.NewFakeClient(), helpers.EmptyRegistry())
+	currStorage, err := storage_factory.NewStorage(transfer, coordinator.NewFakeClient(), helpers.EmptyRegistry())
 	require.NoError(t, err)
 	defer currStorage.Close()
 
-	mysqlStorage, ok := currStorage.(*mysql.Storage)
+	mysqlStorage, ok := currStorage.(*provider_mysql.Storage)
 	require.True(t, ok)
 	tables, err := model.FilteredTableList(currStorage, transfer)
 	require.NoError(t, err)

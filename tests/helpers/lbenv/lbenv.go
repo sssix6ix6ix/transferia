@@ -7,11 +7,11 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/kikimr/public/sdk/go/persqueue"
-	"github.com/transferia/transferia/kikimr/public/sdk/go/persqueue/recipe"
+	persqueue_recipe "github.com/transferia/transferia/kikimr/public/sdk/go/persqueue/recipe"
 )
 
 type LBEnv struct {
-	*recipe.Env
+	*persqueue_recipe.Env
 
 	t   *testing.T
 	ctx context.Context
@@ -48,7 +48,7 @@ func (e *LBEnv) resetConsumerOffsets() {
 func NewLbEnv(t *testing.T) (e *LBEnv, stop func()) {
 	e = &LBEnv{t: t}
 
-	e.Env = recipe.New(t)
+	e.Env = persqueue_recipe.New(t)
 
 	var cancelCtx func()
 	e.ctx, cancelCtx = context.WithTimeout(context.Background(), time.Minute)

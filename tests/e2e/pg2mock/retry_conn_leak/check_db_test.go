@@ -12,7 +12,7 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	pgcommon "github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
 	"github.com/transferia/transferia/pkg/util"
 	"github.com/transferia/transferia/tests/helpers"
@@ -46,7 +46,7 @@ func TestReplication(t *testing.T) {
 	iter := 0
 	source := pgrecipe.RecipeSource(
 		pgrecipe.WithInitDir("init_source"),
-		pgrecipe.WithEdit(func(pg *pgcommon.PgSource) {
+		pgrecipe.WithEdit(func(pg *provider_postgres.PgSource) {
 			pg.DBTables = []string{"public.__test1"}
 		}),
 	)
@@ -74,7 +74,7 @@ func TestReplication(t *testing.T) {
 	defer worker.Close(t)
 
 	ctx := context.Background()
-	srcConn, err := pgcommon.MakeConnPoolFromSrc(source, logger.Log)
+	srcConn, err := provider_postgres.MakeConnPoolFromSrc(source, logger.Log)
 	require.NoError(t, err)
 	defer srcConn.Close()
 
@@ -85,7 +85,7 @@ func TestReplication(t *testing.T) {
 
 	logger.Log.Info("pusher retries done")
 	storage := helpers.GetSampleableStorageByModel(t, transfer.Src)
-	pgStorage, ok := storage.(*pgcommon.Storage)
+	pgStorage, ok := storage.(*provider_postgres.Storage)
 	require.True(t, ok)
 
 	logger.Log.Info("local worker stop")

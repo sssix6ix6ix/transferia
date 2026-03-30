@@ -9,7 +9,7 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/util/set"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	mongo_options "go.mongodb.org/mongo-driver/mongo/options"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
@@ -40,7 +40,7 @@ func (c *shardedCollectionSinkContext) Init(ctx context.Context, documentIDs []d
 	projection := keysProjection(c.shardKey.Fields())
 
 	coll := c.client.Database(c.collection.Database).Collection(c.collection.Collection)
-	cur, err := coll.Find(ctx, filter, options.Find().SetProjection(projection))
+	cur, err := coll.Find(ctx, filter, mongo_options.Find().SetProjection(projection))
 	if err != nil {
 		return xerrors.Errorf("cannot search for documents keys from %v: %w", c.collection.GetFullName(), err)
 	}

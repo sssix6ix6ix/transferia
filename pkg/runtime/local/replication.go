@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/transferia/transferia/internal/logger"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
@@ -72,7 +72,7 @@ const ReplicationStatusMessagesCategory string = "replication"
 const healthReportPeriod time.Duration = 1 * time.Minute
 const replicationRetryInterval time.Duration = 10 * time.Second
 
-func RunReplicationWithMeteringTags(ctx context.Context, cp coordinator.Coordinator, transfer *model.Transfer, registry metrics.Registry, runtimeTags map[string]interface{}) error {
+func RunReplicationWithMeteringTags(ctx context.Context, cp coordinator.Coordinator, transfer *model.Transfer, registry core_metrics.Registry, runtimeTags map[string]interface{}) error {
 	meteringStats := metering.NewMeteringStats(registry)
 	defer func() { meteringStats.Reset() }()
 	metering.InitializeWithTags(transfer, nil, runtimeTags, meteringStats)
@@ -80,13 +80,13 @@ func RunReplicationWithMeteringTags(ctx context.Context, cp coordinator.Coordina
 	return runReplication(ctx, cp, transfer, registry, logger.Log)
 }
 
-func RunReplication(ctx context.Context, cp coordinator.Coordinator, transfer *model.Transfer, registry metrics.Registry) error {
+func RunReplication(ctx context.Context, cp coordinator.Coordinator, transfer *model.Transfer, registry core_metrics.Registry) error {
 	metering.Initialize(transfer, nil)
 	shared.ApplyRuntimeLimits(transfer.RuntimeForReplication())
 	return runReplication(ctx, cp, transfer, registry, logger.Log)
 }
 
-func runReplication(ctx context.Context, cp coordinator.Coordinator, transfer *model.Transfer, registry metrics.Registry, lgr log.Logger) error {
+func runReplication(ctx context.Context, cp coordinator.Coordinator, transfer *model.Transfer, registry core_metrics.Registry, lgr log.Logger) error {
 	transfer.WithDefault()
 	transfer.FillDependentFields()
 	if err := provideradapter.ApplyForTransfer(transfer); err != nil {
@@ -130,7 +130,7 @@ func runReplication(ctx context.Context, cp coordinator.Coordinator, transfer *m
 	}
 }
 
-func replicationAttempt(ctx context.Context, cp coordinator.Coordinator, transfer *model.Transfer, registry metrics.Registry, lgr log.Logger, replicationStats *stats.ReplicationStats, retryCount int64) (err error, attemptAgain bool) {
+func replicationAttempt(ctx context.Context, cp coordinator.Coordinator, transfer *model.Transfer, registry core_metrics.Registry, lgr log.Logger, replicationStats *stats.ReplicationStats, retryCount int64) (err error, attemptAgain bool) {
 	replicationStats.Running.Set(float64(1))
 	defer func() {
 		replicationStats.Running.Set(float64(0))
@@ -206,7 +206,7 @@ func reportTransferHealth(ctx context.Context, cp coordinator.Coordinator, trans
 }
 
 // Does not return unless an error occurs
-func iteration(ctx context.Context, cp coordinator.Coordinator, dataFlow *model.Transfer, registry metrics.Registry, lgr log.Logger) (err error) {
+func iteration(ctx context.Context, cp coordinator.Coordinator, dataFlow *model.Transfer, registry core_metrics.Registry, lgr log.Logger) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = xerrors.Errorf("Panic: %v", r)

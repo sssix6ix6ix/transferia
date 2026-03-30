@@ -13,10 +13,10 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
-	dp_model "github.com/transferia/transferia/pkg/abstract/model"
+	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/httpclient"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/model"
-	yt_provider "github.com/transferia/transferia/pkg/providers/yt"
+	clickhouse_model "github.com/transferia/transferia/pkg/providers/clickhouse/model"
+	provider_yt "github.com/transferia/transferia/pkg/providers/yt"
 	"github.com/transferia/transferia/pkg/providers/yt/yt_client"
 	"github.com/transferia/transferia/tests/helpers"
 	"go.ytsaurus.tech/yt/go/ypath"
@@ -25,15 +25,15 @@ import (
 
 var (
 	TransferType = abstract.TransferTypeSnapshotOnly
-	Source       = yt_provider.YtSource{
+	Source       = provider_yt.YtSource{
 		Cluster:          os.Getenv("YT_PROXY"),
 		YtProxy:          os.Getenv("YT_PROXY"),
 		Paths:            []string{"//table_for_tests"},
 		YtToken:          "",
 		RowIdxColumnName: "row_idx",
 	}
-	Target = model.ChDestination{
-		ShardsList: []model.ClickHouseShard{
+	Target = clickhouse_model.ChDestination{
+		ShardsList: []clickhouse_model.ClickHouseShard{
 			{
 				Name: "_",
 				Hosts: []string{
@@ -48,7 +48,7 @@ var (
 		NativePort:          helpers.GetIntFromEnv("RECIPE_CLICKHOUSE_NATIVE_PORT"),
 		ProtocolUnspecified: true,
 		SSLEnabled:          false,
-		Cleanup:             dp_model.Drop,
+		Cleanup:             model.Drop,
 	}
 )
 

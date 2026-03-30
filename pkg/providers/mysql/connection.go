@@ -9,11 +9,11 @@ import (
 	"net"
 	"time"
 
-	"github.com/go-sql-driver/mysql"
+	mysql_driver2 "github.com/go-sql-driver/mysql"
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/errors/coded"
-	"github.com/transferia/transferia/pkg/errors/codes"
+	error_codes "github.com/transferia/transferia/pkg/errors/codes"
 	"github.com/transferia/transferia/pkg/util"
 	"github.com/transferia/transferia/pkg/xtls"
 )
@@ -39,8 +39,8 @@ func decorateIPv6HostWithBraces(host string) string {
 	return host
 }
 
-func Connect(params *ConnectionParams, configAction func(config *mysql.Config) error) (*sql.DB, error) {
-	config := mysql.NewConfig()
+func Connect(params *ConnectionParams, configAction func(config *mysql_driver2.Config) error) (*sql.DB, error) {
+	config := mysql_driver2.NewConfig()
 
 	// default settings
 	config.Net = "tcp"
@@ -62,7 +62,7 @@ func Connect(params *ConnectionParams, configAction func(config *mysql.Config) e
 			RootCAs:            certPool,
 		}
 		config.TLSConfig = "custom"
-		if err := mysql.RegisterTLSConfig("custom", tlsConfig); err != nil {
+		if err := mysql_driver2.RegisterTLSConfig("custom", tlsConfig); err != nil {
 			return nil, xerrors.Errorf("Can't configure TLS: %w", err)
 		}
 	}
@@ -77,7 +77,7 @@ func Connect(params *ConnectionParams, configAction func(config *mysql.Config) e
 		return nil, xerrors.New("Config parameter 'AllowAllFiles' is not allowed ")
 	}
 
-	connector, err := mysql.NewConnector(config)
+	connector, err := mysql_driver2.NewConnector(config)
 	if err != nil {
 		return nil, xerrors.Errorf("Can't create connector: %w", err)
 	}
@@ -94,20 +94,20 @@ func Connect(params *ConnectionParams, configAction func(config *mysql.Config) e
 		// DNS resolution errors (match by type or by common message patterns from drivers)
 		var dnsErr *net.DNSError
 		if xerrors.As(err, &dnsErr) {
-			return nil, coded.Errorf(codes.MySQLDNSResolutionFailed, "Can't ping server: %w", err)
+			return nil, coded.Errorf(error_codes.MySQLDNSResolutionFailed, "Can't ping server: %w", err)
 		}
 		// Check for connection timeout / dial errors
 		var opErr *net.OpError
 		if xerrors.As(err, &opErr) && opErr.Op == "dial" {
-			return nil, coded.Errorf(codes.Dial, "Can't ping server: %w", err)
+			return nil, coded.Errorf(error_codes.Dial, "Can't ping server: %w", err)
 		}
 		// MySQL error 1049 (42000): Unknown database
 		if IsErrorCode(err, ErrCodeUnknownDatabase) {
-			return nil, coded.Errorf(codes.MySQLUnknownDatabase, "Can't ping server: %w", err)
+			return nil, coded.Errorf(error_codes.MySQLUnknownDatabase, "Can't ping server: %w", err)
 		}
 		// MySQL error 1045 (28000): Access denied for user ...
 		if IsErrorCode(err, ErrCodeInvalidCredential) {
-			return nil, coded.Errorf(codes.InvalidCredential, "Can't ping server: %w", err)
+			return nil, coded.Errorf(error_codes.InvalidCredential, "Can't ping server: %w", err)
 		}
 		return nil, xerrors.Errorf("Can't ping server: %w", err)
 	}

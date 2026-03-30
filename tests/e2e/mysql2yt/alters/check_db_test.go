@@ -7,33 +7,33 @@ import (
 	"testing"
 	"time"
 
-	mysqlDriver "github.com/go-sql-driver/mysql"
+	mysql_driver2 "github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/mysql"
+	provider_mysql "github.com/transferia/transferia/pkg/providers/mysql"
 	"github.com/transferia/transferia/pkg/runtime/local"
 	"github.com/transferia/transferia/pkg/worker/tasks"
 	"github.com/transferia/transferia/tests/helpers"
-	yt_helpers "github.com/transferia/transferia/tests/helpers/yt"
+	helpers_yt "github.com/transferia/transferia/tests/helpers/yt"
 	"go.ytsaurus.tech/yt/go/ypath"
-	ytMain "go.ytsaurus.tech/yt/go/yt"
+	"go.ytsaurus.tech/yt/go/yt"
 	"go.ytsaurus.tech/yt/go/yttest"
 )
 
 var (
 	Source = *helpers.WithMysqlInclude(helpers.RecipeMysqlSource(), []string{"__test_a", "__test_b", "__test_c", "__test_d"})
-	Target = yt_helpers.RecipeYtTarget("//home/cdc/test/mysql2yt_e2e_alters")
+	Target = helpers_yt.RecipeYtTarget("//home/cdc/test/mysql2yt_e2e_alters")
 )
 
 func init() {
 	Source.WithDefaults()
 }
 
-func makeConnConfig() *mysqlDriver.Config {
-	cfg := mysqlDriver.NewConfig()
+func makeConnConfig() *mysql_driver2.Config {
+	cfg := mysql_driver2.NewConfig()
 	cfg.Addr = fmt.Sprintf("%v:%v", Source.Host, Source.Port)
 	cfg.User = Source.User
 	cfg.Passwd = string(Source.Password)
@@ -58,9 +58,9 @@ func TestGroup(t *testing.T) {
 	ytEnv, cancel := yttest.NewEnv(t)
 	defer cancel()
 
-	_, err = ytEnv.YT.CreateNode(ctx, ypath.Path("//home/cdc/test/mysql2yt_e2e_alters"), ytMain.NodeMap, &ytMain.CreateNodeOptions{Recursive: true})
+	_, err = ytEnv.YT.CreateNode(ctx, ypath.Path("//home/cdc/test/mysql2yt_e2e_alters"), yt.NodeMap, &yt.CreateNodeOptions{Recursive: true})
 	defer func() {
-		err := ytEnv.YT.RemoveNode(ctx, ypath.Path("//home/cdc/test/mysql2yt_e2e_alters"), &ytMain.RemoveNodeOptions{Recursive: true})
+		err := ytEnv.YT.RemoveNode(ctx, ypath.Path("//home/cdc/test/mysql2yt_e2e_alters"), &yt.RemoveNodeOptions{Recursive: true})
 		require.NoError(t, err)
 	}()
 	require.NoError(t, err)
@@ -73,7 +73,7 @@ func Load(t *testing.T) {
 
 	ctx := context.Background()
 
-	conn, err := mysqlDriver.NewConnector(makeConnConfig())
+	conn, err := mysql_driver2.NewConnector(makeConnConfig())
 	require.NoError(t, err)
 	db := sql.OpenDB(conn)
 
@@ -138,7 +138,7 @@ values (1, 13, 'Reverse Engineering'),
 	require.NoError(t, err)
 
 	fakeClient := coordinator.NewStatefulFakeClient()
-	err = mysql.SyncBinlogPosition(&Source, transfer.ID, fakeClient)
+	err = provider_mysql.SyncBinlogPosition(&Source, transfer.ID, fakeClient)
 	require.NoError(t, err)
 
 	wrk := local.NewLocalWorker(fakeClient, transfer, helpers.EmptyRegistry(), logger.Log)

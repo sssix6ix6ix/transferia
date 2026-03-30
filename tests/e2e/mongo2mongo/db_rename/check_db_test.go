@@ -10,21 +10,21 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	mongocommon "github.com/transferia/transferia/pkg/providers/mongo"
+	provider_mongo "github.com/transferia/transferia/pkg/providers/mongo"
 	"github.com/transferia/transferia/tests/helpers"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
 var (
 	ctx    = context.Background()
-	Source = mongocommon.MongoSource{
+	Source = provider_mongo.MongoSource{
 		Hosts:       []string{"localhost"},
 		Port:        helpers.GetIntFromEnv("MONGO_LOCAL_PORT"),
 		User:        os.Getenv("MONGO_LOCAL_USER"),
 		Password:    model.SecretString(os.Getenv("MONGO_LOCAL_PASSWORD")),
-		Collections: []mongocommon.MongoCollection{},
+		Collections: []provider_mongo.MongoCollection{},
 	}
-	Target = mongocommon.MongoDestination{
+	Target = provider_mongo.MongoDestination{
 		Hosts:    []string{"localhost"},
 		Port:     helpers.GetIntFromEnv("DB0_MONGO_LOCAL_PORT"),
 		Database: "custom_target_db",
@@ -36,22 +36,22 @@ var (
 //---------------------------------------------------------------------------------------------------------------------
 // Utils
 
-func LogMongoSource(s *mongocommon.MongoSource) {
+func LogMongoSource(s *provider_mongo.MongoSource) {
 	fmt.Printf("Source.Hosts: %v\n", s.Hosts)
 	fmt.Printf("Source.Port: %v\n", s.Port)
 	fmt.Printf("Source.User: %v\n", s.User)
 	fmt.Printf("Source.Password: %v\n", s.Password)
 }
 
-func LogMongoDestination(s *mongocommon.MongoDestination) {
+func LogMongoDestination(s *provider_mongo.MongoDestination) {
 	fmt.Printf("Target.Hosts: %v\n", s.Hosts)
 	fmt.Printf("Target.Port: %v\n", s.Port)
 	fmt.Printf("Target.User: %v\n", s.User)
 	fmt.Printf("Target.Password: %v\n", s.Password)
 }
 
-func MakeDstClient(t *mongocommon.MongoDestination) (*mongocommon.MongoClientWrapper, error) {
-	return mongocommon.Connect(ctx, t.ConnectionOptions([]string{}), nil)
+func MakeDstClient(t *provider_mongo.MongoDestination) (*provider_mongo.MongoClientWrapper, error) {
+	return provider_mongo.Connect(ctx, t.ConnectionOptions([]string{}), nil)
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -74,7 +74,7 @@ func TestGroup(t *testing.T) {
 func Ping(t *testing.T) {
 	// Ping src
 	LogMongoSource(&Source)
-	client, err := mongocommon.Connect(ctx, Source.ConnectionOptions([]string{}), nil)
+	client, err := provider_mongo.Connect(ctx, Source.ConnectionOptions([]string{}), nil)
 	require.NoError(t, err)
 	err = client.Ping(ctx, nil)
 	require.NoError(t, err)
@@ -88,7 +88,7 @@ func Ping(t *testing.T) {
 }
 
 func Snapshot(t *testing.T) {
-	client, err := mongocommon.Connect(ctx, Source.ConnectionOptions([]string{}), nil)
+	client, err := provider_mongo.Connect(ctx, Source.ConnectionOptions([]string{}), nil)
 	require.NoError(t, err)
 
 	//------------------------------------------------------------------------------------
@@ -128,7 +128,7 @@ func Snapshot(t *testing.T) {
 	//------------------------------------------------------------------------------------
 	// Check results
 
-	targetClient, err := mongocommon.Connect(ctx, Target.ConnectionOptions([]string{}), nil)
+	targetClient, err := provider_mongo.Connect(ctx, Target.ConnectionOptions([]string{}), nil)
 	require.NoError(t, err)
 
 	// Both original dbs must be absent in target (contents must appear in renamed db)

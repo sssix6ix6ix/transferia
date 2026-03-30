@@ -10,16 +10,16 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/tests/helpers"
-	yt_helpers "github.com/transferia/transferia/tests/helpers/yt"
+	helpers_yt "github.com/transferia/transferia/tests/helpers/yt"
 	"go.ytsaurus.tech/yt/go/ypath"
-	yt_main "go.ytsaurus.tech/yt/go/yt"
+	"go.ytsaurus.tech/yt/go/yt"
 	"go.ytsaurus.tech/yt/go/yttest"
 )
 
 var (
-	Source = postgres.PgSource{
+	Source = provider_postgres.PgSource{
 		ClusterID: os.Getenv("PG_CLUSTER_ID"),
 		Hosts:     []string{"localhost"},
 		User:      os.Getenv("PG_LOCAL_USER"),
@@ -29,7 +29,7 @@ var (
 		DBTables:  []string{"public.__test_a", "public.__test_b", "public.__test_c", "public.__test_d"},
 		SlotID:    "test_slot_id",
 	}
-	Target = yt_helpers.RecipeYtTarget("//home/cdc/test/pg2yt_e2e_alters")
+	Target = helpers_yt.RecipeYtTarget("//home/cdc/test/pg2yt_e2e_alters")
 )
 
 func init() {
@@ -52,9 +52,9 @@ func TestGroup(t *testing.T) {
 	ytEnv, cancel := yttest.NewEnv(t)
 	defer cancel()
 
-	_, err = ytEnv.YT.CreateNode(ctx, ypath.Path("//home/cdc/test/pg2yt_e2e_alters"), yt_main.NodeMap, &yt_main.CreateNodeOptions{Recursive: true})
+	_, err = ytEnv.YT.CreateNode(ctx, ypath.Path("//home/cdc/test/pg2yt_e2e_alters"), yt.NodeMap, &yt.CreateNodeOptions{Recursive: true})
 	defer func() {
-		err := ytEnv.YT.RemoveNode(ctx, ypath.Path("//home/cdc/test/pg2yt_e2e_alters"), &yt_main.RemoveNodeOptions{Recursive: true})
+		err := ytEnv.YT.RemoveNode(ctx, ypath.Path("//home/cdc/test/pg2yt_e2e_alters"), &yt.RemoveNodeOptions{Recursive: true})
 		require.NoError(t, err)
 	}()
 	require.NoError(t, err)
@@ -65,10 +65,10 @@ func TestGroup(t *testing.T) {
 func Load(t *testing.T) {
 	transfer := helpers.MakeTransfer(helpers.TransferID, &Source, Target, abstract.TransferTypeSnapshotAndIncrement)
 
-	srcConnConfig, err := postgres.MakeConnConfigFromSrc(logger.Log, &Source)
+	srcConnConfig, err := provider_postgres.MakeConnConfigFromSrc(logger.Log, &Source)
 	require.NoError(t, err)
 	srcConnConfig.PreferSimpleProtocol = true
-	srcConn, err := postgres.NewPgConnPool(srcConnConfig, nil)
+	srcConn, err := provider_postgres.NewPgConnPool(srcConnConfig, nil)
 	require.NoError(t, err)
 
 	//------------------------------------------------------------------------------

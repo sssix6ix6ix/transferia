@@ -4,32 +4,32 @@ import (
 	"context"
 	"time"
 
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
-	dp_model "github.com/transferia/transferia/pkg/abstract/model"
+	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/abstract2"
 	"github.com/transferia/transferia/pkg/data"
 	"github.com/transferia/transferia/pkg/middlewares"
 	"github.com/transferia/transferia/pkg/providers"
-	ch_async_sink "github.com/transferia/transferia/pkg/providers/clickhouse/async"
+	clickhouse_async "github.com/transferia/transferia/pkg/providers/clickhouse/async"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/httpclient"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/model"
-	sink_registry "github.com/transferia/transferia/pkg/sink"
+	clickhouse_model "github.com/transferia/transferia/pkg/providers/clickhouse/model"
+	"github.com/transferia/transferia/pkg/sink_factory"
 	"github.com/transferia/transferia/pkg/targets"
 	"github.com/transferia/transferia/pkg/util/gobwrapper"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
 func init() {
-	gobwrapper.RegisterName("*server.ChSource", new(model.ChSource))
-	gobwrapper.RegisterName("*server.ChDestination", new(model.ChDestination))
-	dp_model.RegisterDestination(ProviderType, func() dp_model.LoggableDestination {
-		return new(model.ChDestination)
+	gobwrapper.RegisterName("*server.ChSource", new(clickhouse_model.ChSource))
+	gobwrapper.RegisterName("*server.ChDestination", new(clickhouse_model.ChDestination))
+	model.RegisterDestination(ProviderType, func() model.LoggableDestination {
+		return new(clickhouse_model.ChDestination)
 	})
-	dp_model.RegisterSource(ProviderType, func() dp_model.LoggableSource {
-		return new(model.ChSource)
+	model.RegisterSource(ProviderType, func() model.LoggableSource {
+		return new(clickhouse_model.ChSource)
 	})
 
 	abstract.RegisterProviderName(ProviderType, "ClickHouse")
@@ -51,13 +51,13 @@ var (
 
 type Provider struct {
 	logger   log.Logger
-	registry metrics.Registry
+	registry core_metrics.Registry
 	cp       coordinator.Coordinator
-	transfer *dp_model.Transfer
+	transfer *model.Transfer
 }
 
 func (p *Provider) Target(options ...abstract.SinkOption) (abstract2.EventTarget, error) {
-	if _, ok := p.transfer.Src.(*model.ChSource); !ok {
+	if _, ok := p.transfer.Src.(*clickhouse_model.ChSource); !ok {
 		return nil, targets.UnknownTargetError
 	}
 	return NewHTTPTarget(p.transfer, p.registry, p.logger)
@@ -74,22 +74,22 @@ func (p *Provider) Sink(config middlewares.Config) (abstract.Sinker, error) {
 func (p *Provider) AsyncSink(middleware abstract.Middleware) (abstract.AsyncSink, error) {
 	if p.transfer.IsAsyncCHExp() {
 		p.logger.Warn("Using experimental asynchronous ClickHouse sink")
-		sink, err := ch_async_sink.NewSink(p.transfer, p.transfer.Dst.(*model.ChDestination), p.logger, p.registry, middleware)
+		sink, err := clickhouse_async.NewSink(p.transfer, p.transfer.Dst.(*clickhouse_model.ChDestination), p.logger, p.registry, middleware)
 		if err != nil {
 			return nil, xerrors.Errorf("error getting experimental asynchronous ClickHouse sink: %w", err)
 		}
 		return sink, nil
 	}
-	return nil, sink_registry.NoAsyncSinkErr
+	return nil, sink_factory.NoAsyncSinkErr
 }
 
 func (p *Provider) Storage() (abstract.Storage, error) {
-	src, ok := p.transfer.Src.(*model.ChSource)
+	src, ok := p.transfer.Src.(*clickhouse_model.ChSource)
 	if !ok {
 		return nil, xerrors.Errorf("unexpected source type: %T", p.transfer.Src)
 	}
 	chOpts := []StorageOpt{WithMetrics(p.registry), WithTableFilter(src)}
-	if _, ok := p.transfer.Dst.(*model.ChDestination); ok {
+	if _, ok := p.transfer.Dst.(*clickhouse_model.ChDestination); ok {
 		chOpts = append(chOpts, WithHomo())
 	}
 	storageParams, err := src.ToStorageParams()
@@ -105,7 +105,7 @@ func (p *Provider) Storage() (abstract.Storage, error) {
 }
 
 func (p *Provider) DataProvider() (abstract2.DataProvider, error) {
-	specificConfig, ok := p.transfer.Src.(*model.ChSource)
+	specificConfig, ok := p.transfer.Src.(*clickhouse_model.ChSource)
 	if !ok {
 		return nil, xerrors.Errorf("Unexpected source type: %T", p.transfer.Src)
 	}
@@ -115,7 +115,7 @@ func (p *Provider) DataProvider() (abstract2.DataProvider, error) {
 	return NewClickhouseProvider(p.logger, p.registry, specificConfig, p.transfer)
 }
 
-func (p *Provider) Activate(_ context.Context, _ *dp_model.TransferOperation, tables abstract.TableMap, callbacks providers.ActivateCallbacks) error {
+func (p *Provider) Activate(_ context.Context, _ *model.TransferOperation, tables abstract.TableMap, callbacks providers.ActivateCallbacks) error {
 	if !p.transfer.SnapshotOnly() {
 		return xerrors.New("Only allowed mode for CH source is snapshot")
 	}
@@ -149,7 +149,7 @@ func (p *Provider) TestChecks() []abstract.CheckType {
 }
 
 func (p *Provider) Test(ctx context.Context) *abstract.TestResult {
-	src, ok := p.transfer.Src.(*model.ChSource)
+	src, ok := p.transfer.Src.(*clickhouse_model.ChSource)
 	if !ok {
 		return nil
 	}
@@ -225,7 +225,7 @@ func (p *Provider) Test(ctx context.Context) *abstract.TestResult {
 	return tr
 }
 
-func New(lgr log.Logger, registry metrics.Registry, cp coordinator.Coordinator, transfer *dp_model.Transfer, _ *dp_model.TransferOperation) providers.Provider {
+func New(lgr log.Logger, registry core_metrics.Registry, cp coordinator.Coordinator, transfer *model.Transfer, _ *model.TransferOperation) providers.Provider {
 	return &Provider{
 		logger:   lgr,
 		registry: registry,

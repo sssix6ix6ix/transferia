@@ -10,15 +10,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ClickHouse/clickhouse-go/v2"
+	clickhouse_go "github.com/ClickHouse/clickhouse-go/v2"
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/library/go/test/canon"
 	"github.com/transferia/transferia/pkg/abstract"
-	dp_model "github.com/transferia/transferia/pkg/abstract/model"
-	chconn "github.com/transferia/transferia/pkg/connection/clickhouse"
+	"github.com/transferia/transferia/pkg/abstract/model"
+	conn_clickhouse "github.com/transferia/transferia/pkg/connection/clickhouse"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/conn"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/model"
-	"github.com/transferia/transferia/pkg/providers/s3"
+	clickhouse_model "github.com/transferia/transferia/pkg/providers/clickhouse/model"
+	s3_model "github.com/transferia/transferia/pkg/providers/s3/model"
 	"github.com/transferia/transferia/pkg/providers/s3/s3recipe"
 	"github.com/transferia/transferia/tests/helpers"
 )
@@ -69,15 +69,15 @@ func makeGzipData(t *testing.T, lines []string) []byte {
 	return buf.Bytes()
 }
 
-func buildSourceModel(t *testing.T) *s3.S3Source {
-	src := s3recipe.PrepareCfg(t, testBucketName, dp_model.ParsingFormatNginx)
+func buildSourceModel(t *testing.T) *s3_model.S3Source {
+	src := s3recipe.PrepareCfg(t, testBucketName, model.ParsingFormatNginx)
 	src.PathPrefix = testPathPrefix
 	src.Bucket = testBucketName
 	src.TableNamespace = TableNamespace
 	src.TableName = TableName
-	src.Format.NginxSetting = &s3.NginxSetting{Format: testNginxFormat}
+	src.Format.NginxSetting = &s3_model.NginxSetting{Format: testNginxFormat}
 	src.WithDefaults()
-	src.UnparsedPolicy = s3.UnparsedPolicyFail
+	src.UnparsedPolicy = s3_model.UnparsedPolicyFail
 	src.OutputSchema = []abstract.ColSchema{
 		{ColumnName: "remote_addr", DataType: "string", PrimaryKey: true},
 		{ColumnName: "dash1", DataType: "string"},
@@ -160,15 +160,15 @@ func TestNginxIncrement(t *testing.T) {
 	canonDst(t, dst, transfer)
 }
 
-func canonDst(t *testing.T, dst model.ChDestination, transfer *dp_model.Transfer) {
+func canonDst(t *testing.T, dst clickhouse_model.ChDestination, transfer *model.Transfer) {
 	cfg, err := dst.ToSinkParams(transfer)
 	require.NoError(t, err)
-	opt, err := conn.GetClickhouseOptions(cfg, []*chconn.Host{{
+	opt, err := conn.GetClickhouseOptions(cfg, []*conn_clickhouse.Host{{
 		Name:       dst.ShardsList[0].Hosts[0],
 		NativePort: dst.NativePort,
 	}})
 	require.NoError(t, err)
-	db := clickhouse.OpenDB(opt)
+	db := clickhouse_go.OpenDB(opt)
 	defer db.Close()
 	toCanon := make(map[string]any)
 	var ddl string
@@ -178,15 +178,15 @@ func canonDst(t *testing.T, dst model.ChDestination, transfer *dp_model.Transfer
 	canon.SaveJSON(t, toCanon)
 }
 
-func makeDst() model.ChDestination {
-	dst := model.ChDestination{
-		ShardsList:          []model.ClickHouseShard{{Name: "_", Hosts: []string{"localhost"}}},
+func makeDst() clickhouse_model.ChDestination {
+	dst := clickhouse_model.ChDestination{
+		ShardsList:          []clickhouse_model.ClickHouseShard{{Name: "_", Hosts: []string{"localhost"}}},
 		User:                "default",
 		Database:            TableNamespace,
 		HTTPPort:            helpers.GetIntFromEnv("RECIPE_CLICKHOUSE_HTTP_PORT"),
 		NativePort:          helpers.GetIntFromEnv("RECIPE_CLICKHOUSE_NATIVE_PORT"),
 		ProtocolUnspecified: true,
-		Cleanup:             dp_model.Drop,
+		Cleanup:             model.Drop,
 	}
 	dst.WithDefaults()
 	return dst

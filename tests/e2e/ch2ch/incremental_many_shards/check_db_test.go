@@ -11,10 +11,10 @@ import (
 	"github.com/stretchr/testify/require"
 	yslices "github.com/transferia/transferia/library/go/slices"
 	"github.com/transferia/transferia/pkg/abstract"
-	dp_model "github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/clickhouse"
+	"github.com/transferia/transferia/pkg/abstract/model"
+	provider_clickhouse "github.com/transferia/transferia/pkg/providers/clickhouse"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/chrecipe"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/model"
+	clickhouse_model "github.com/transferia/transferia/pkg/providers/clickhouse/model"
 	"github.com/transferia/transferia/tests/helpers"
 )
 
@@ -32,11 +32,11 @@ const cursorValue = "2019-01-03"
 func init() {
 	_ = os.Setenv("YC", "1") // to not go to vanga
 	helpers.InitSrcDst(helpers.TransferID, &Source, &Target, TransferType)
-	Source.ShardsList = []model.ClickHouseShard{
+	Source.ShardsList = []clickhouse_model.ClickHouseShard{
 		{Name: "_", Hosts: []string{"localhost"}},
 		{Name: "[", Hosts: []string{"localhost"}},
 	}
-	Target.Cleanup = dp_model.DisabledCleanup
+	Target.Cleanup = model.DisabledCleanup
 }
 
 func TestIncrementalSnapshot(t *testing.T) {
@@ -57,7 +57,7 @@ func TestIncrementalSnapshot(t *testing.T) {
 
 	storageParams, err := Source.ToStorageParams()
 	require.NoError(t, err)
-	conn, err := clickhouse.MakeConnection(storageParams)
+	conn, err := provider_clickhouse.MakeConnection(storageParams)
 	require.NoError(t, err)
 
 	addData(t, conn)

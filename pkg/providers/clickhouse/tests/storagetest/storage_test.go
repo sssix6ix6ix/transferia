@@ -9,9 +9,9 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/library/go/test/yatest"
 	"github.com/transferia/transferia/pkg/abstract"
-	"github.com/transferia/transferia/pkg/providers/clickhouse"
+	provider_clickhouse "github.com/transferia/transferia/pkg/providers/clickhouse"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/chrecipe"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/model"
+	clickhouse_model "github.com/transferia/transferia/pkg/providers/clickhouse/model"
 )
 
 func TestShardedStorage(t *testing.T) {
@@ -33,16 +33,16 @@ func TestShardedStorage(t *testing.T) {
 			chrecipe.WithInitFile(yatest.SourcePath("transfer_manager/go/pkg/providers/clickhouse/tests/storagetest/dump/src_shard3.sql")),
 		)
 	)
-	shard1, err := clickhouse.NewStorage(storageParams(t, Shard1), nil)
+	shard1, err := provider_clickhouse.NewStorage(storageParams(t, Shard1), nil)
 	require.NoError(t, err)
-	shard2, err := clickhouse.NewStorage(storageParams(t, Shard2), nil)
+	shard2, err := provider_clickhouse.NewStorage(storageParams(t, Shard2), nil)
 	require.NoError(t, err)
-	shard3, err := clickhouse.NewStorage(storageParams(t, Shard3), nil)
+	shard3, err := provider_clickhouse.NewStorage(storageParams(t, Shard3), nil)
 	require.NoError(t, err)
-	shardedStorage := clickhouse.NewShardedStorage(map[string]*clickhouse.Storage{
-		"shard1": shard1.(*clickhouse.Storage),
-		"shard2": shard2.(*clickhouse.Storage),
-		"shard3": shard3.(*clickhouse.Storage),
+	shardedStorage := provider_clickhouse.NewShardedStorage(map[string]*provider_clickhouse.Storage{
+		"shard1": shard1.(*provider_clickhouse.Storage),
+		"shard2": shard2.(*provider_clickhouse.Storage),
+		"shard3": shard3.(*provider_clickhouse.Storage),
 	})
 	tables, err := shardedStorage.TableList(nil)
 	require.NoError(t, err)
@@ -81,7 +81,7 @@ func TestTransferSystemTables(t *testing.T) {
 		chrecipe.WithInitFile(yatest.SourcePath("transfer_manager/go/pkg/providers/clickhouse/tests/storagetest/dump/src_shard1.sql")),
 	)
 	src.IncludeTables = append(src.IncludeTables, tableID.Name)
-	storage, err := clickhouse.NewStorage(storageParams(t, src), nil, clickhouse.WithTableFilter(src))
+	storage, err := provider_clickhouse.NewStorage(storageParams(t, src), nil, provider_clickhouse.WithTableFilter(src))
 	require.NoError(t, err)
 	tables, err := storage.TableList(nil)
 	require.NoError(t, err)
@@ -99,7 +99,7 @@ func TestTransferSystemTables(t *testing.T) {
 	require.True(t, hasItems)
 }
 
-func storageParams(t *testing.T, source *model.ChSource) *model.ChStorageParams {
+func storageParams(t *testing.T, source *clickhouse_model.ChSource) *clickhouse_model.ChStorageParams {
 	params, err := source.ToStorageParams()
 	require.NoError(t, err)
 

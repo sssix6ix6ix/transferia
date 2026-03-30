@@ -4,7 +4,7 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"go.ytsaurus.tech/library/go/core/log"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 type RawColumnSerializer struct {
@@ -56,8 +56,8 @@ func extractBytesValue(changeItem *abstract.ChangeItem, columnIndex int) ([]byte
 	if !ok {
 		return nil, xerrors.Errorf("table schema does not contain column %q", columnName)
 	}
-	if colSchema.DataType != string(schema.TypeString) && colSchema.DataType != string(schema.TypeBytes) {
-		return nil, xerrors.Errorf("expected type of the column %q to be %s or %s but got %s", columnName, schema.TypeString, schema.TypeBytes, colSchema.DataType)
+	if colSchema.DataType != string(ytschema.TypeString) && colSchema.DataType != string(ytschema.TypeBytes) {
+		return nil, xerrors.Errorf("expected type of the column %q to be %s or %s but got %s", columnName, ytschema.TypeString, ytschema.TypeBytes, colSchema.DataType)
 	}
 
 	// Possible types for TypeString and TypeBytes are defined here:

@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract2"
 )
@@ -35,8 +35,8 @@ type Writer interface {
 }
 
 type MeteringStats struct {
-	Preview metrics.IntGauge
-	Writers metrics.IntGauge
+	Preview core_metrics.IntGauge
+	Writers core_metrics.IntGauge
 }
 
 func (m *MeteringStats) Reset() {

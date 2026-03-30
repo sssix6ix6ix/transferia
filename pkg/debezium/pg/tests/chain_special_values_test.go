@@ -12,8 +12,8 @@ import (
 	"github.com/transferia/transferia/library/go/test/canon"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/debezium"
-	debeziumparameters "github.com/transferia/transferia/pkg/debezium/parameters"
-	pgcommon "github.com/transferia/transferia/pkg/providers/postgres"
+	debezium_parameters "github.com/transferia/transferia/pkg/debezium/parameters"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
@@ -53,10 +53,10 @@ func TestUnparametrizedDecimal(t *testing.T) {
 
 	// check values
 
-	params := debeziumparameters.EnrichedWithDefaults(map[string]string{
-		debeziumparameters.DatabaseDBName: "public",
-		debeziumparameters.TopicPrefix:    "my_topic",
-		debeziumparameters.SourceType:     "pg",
+	params := debezium_parameters.EnrichedWithDefaults(map[string]string{
+		debezium_parameters.DatabaseDBName: "public",
+		debezium_parameters.TopicPrefix:    "my_topic",
+		debezium_parameters.SourceType:     "pg",
 	})
 	afterVals, err := debezium.BuildKVMap(changeItem, params, true)
 	require.NoError(t, err)
@@ -88,10 +88,10 @@ func TestZeroDecimal(t *testing.T) {
 		}),
 	}
 
-	params := debeziumparameters.EnrichedWithDefaults(map[string]string{
-		debeziumparameters.DatabaseDBName: "public",
-		debeziumparameters.TopicPrefix:    "my_topic",
-		debeziumparameters.SourceType:     "pg",
+	params := debezium_parameters.EnrichedWithDefaults(map[string]string{
+		debezium_parameters.DatabaseDBName: "public",
+		debezium_parameters.TopicPrefix:    "my_topic",
+		debezium_parameters.SourceType:     "pg",
 	})
 	emitter, err := debezium.NewMessagesEmitter(params, "", false, logger.Log)
 	require.NoError(t, err)
@@ -153,11 +153,11 @@ func TestPgInterval(t *testing.T) {
 		"pg:interval minute to second(6)",
 	}
 
-	params := debeziumparameters.EnrichedWithDefaults(map[string]string{
-		debeziumparameters.DatabaseDBName:   "database",
-		debeziumparameters.TopicPrefix:      "databaseServerName",
-		debeziumparameters.AddOriginalTypes: "false",
-		debeziumparameters.SourceType:       "pg",
+	params := debezium_parameters.EnrichedWithDefaults(map[string]string{
+		debezium_parameters.DatabaseDBName:   "database",
+		debezium_parameters.TopicPrefix:      "databaseServerName",
+		debezium_parameters.AddOriginalTypes: "false",
+		debezium_parameters.SourceType:       "pg",
 	})
 	for _, currOriginalType := range knownOriginalTypes {
 		changeItem := abstract.ChangeItem{
@@ -181,17 +181,17 @@ func TestEnum(t *testing.T) {
 		ColumnValues: []interface{}{1, "bar"},
 		TableSchema: abstract.NewTableSchema([]abstract.ColSchema{
 			{ColumnName: "id", DataType: ytschema.TypeInt32.String(), OriginalType: "pg:integer"},
-			{ColumnName: "val", DataType: ytschema.TypeString.String(), OriginalType: "pg:my_enum_type", Properties: map[abstract.PropertyKey]interface{}{pgcommon.EnumAllValues: []string{"foo", "bar"}}},
+			{ColumnName: "val", DataType: ytschema.TypeString.String(), OriginalType: "pg:my_enum_type", Properties: map[abstract.PropertyKey]interface{}{provider_postgres.EnumAllValues: []string{"foo", "bar"}}},
 		}),
 	}
 
 	//---
 
 	emitterWithOriginalTypes, err := debezium.NewMessagesEmitter(map[string]string{
-		debeziumparameters.DatabaseDBName:   "public",
-		debeziumparameters.TopicPrefix:      "my_topic",
-		debeziumparameters.AddOriginalTypes: "true",
-		debeziumparameters.SourceType:       "pg",
+		debezium_parameters.DatabaseDBName:   "public",
+		debezium_parameters.TopicPrefix:      "my_topic",
+		debezium_parameters.AddOriginalTypes: "true",
+		debezium_parameters.SourceType:       "pg",
 	}, "1.1.2.Final", false, logger.Log)
 	require.NoError(t, err)
 	currDebeziumKV, err := emitterWithOriginalTypes.EmitKV(changeItem, time.Time{}, true, nil)
@@ -204,7 +204,7 @@ func TestEnum(t *testing.T) {
 	require.Equal(t, "bar", recoveredChangeItem.ColumnValues[1])
 	require.Equal(t, "val", recoveredChangeItem.TableSchema.Columns()[1].ColumnName)
 	require.Equal(t, "pg:my_enum_type", recoveredChangeItem.TableSchema.Columns()[1].OriginalType)
-	require.Equal(t, []string{"foo", "bar"}, recoveredChangeItem.TableSchema.Columns()[1].Properties[pgcommon.EnumAllValues])
+	require.Equal(t, []string{"foo", "bar"}, recoveredChangeItem.TableSchema.Columns()[1].Properties[provider_postgres.EnumAllValues])
 
 	canon.SaveJSON(t, *currDebeziumKV[0].DebeziumVal)
 }
@@ -219,17 +219,17 @@ func TestNegativeTimestamp(t *testing.T) {
 		ColumnValues: []interface{}{1, result},
 		TableSchema: abstract.NewTableSchema([]abstract.ColSchema{
 			{ColumnName: "id", DataType: ytschema.TypeInt32.String(), OriginalType: "pg:integer"},
-			{ColumnName: "val", DataType: ytschema.TypeTimestamp.String(), OriginalType: "pg:timestamp without time zone", Properties: map[abstract.PropertyKey]interface{}{pgcommon.DatabaseTimeZone: "W-SU"}},
+			{ColumnName: "val", DataType: ytschema.TypeTimestamp.String(), OriginalType: "pg:timestamp without time zone", Properties: map[abstract.PropertyKey]interface{}{provider_postgres.DatabaseTimeZone: "W-SU"}},
 		}),
 	}
 
 	//---
 
 	emitterWithOriginalTypes, err := debezium.NewMessagesEmitter(map[string]string{
-		debeziumparameters.DatabaseDBName:   "public",
-		debeziumparameters.TopicPrefix:      "my_topic",
-		debeziumparameters.AddOriginalTypes: "true",
-		debeziumparameters.SourceType:       "pg",
+		debezium_parameters.DatabaseDBName:   "public",
+		debezium_parameters.TopicPrefix:      "my_topic",
+		debezium_parameters.AddOriginalTypes: "true",
+		debezium_parameters.SourceType:       "pg",
 	}, "1.1.2.Final", false, logger.Log)
 	require.NoError(t, err)
 	currDebeziumKV, err := emitterWithOriginalTypes.EmitKV(changeItem, time.Time{}, true, nil)

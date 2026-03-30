@@ -1,34 +1,34 @@
 package logadapter
 
 import (
-	ydbLog "github.com/ydb-platform/ydb-go-sdk/v3/log"
+	ydb_log "github.com/ydb-platform/ydb-go-sdk/v3/log"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
-func fieldToField(field ydbLog.Field) log.Field {
+func fieldToField(field ydb_log.Field) log.Field {
 	switch field.Type() {
-	case ydbLog.IntType:
+	case ydb_log.IntType:
 		return log.Int(field.Key(), field.IntValue())
-	case ydbLog.Int64Type:
+	case ydb_log.Int64Type:
 		return log.Int64(field.Key(), field.Int64Value())
-	case ydbLog.StringType:
+	case ydb_log.StringType:
 		return log.String(field.Key(), field.StringValue())
-	case ydbLog.BoolType:
+	case ydb_log.BoolType:
 		return log.Bool(field.Key(), field.BoolValue())
-	case ydbLog.DurationType:
+	case ydb_log.DurationType:
 		return log.Duration(field.Key(), field.DurationValue())
-	case ydbLog.StringsType:
+	case ydb_log.StringsType:
 		return log.Strings(field.Key(), field.StringsValue())
-	case ydbLog.ErrorType:
+	case ydb_log.ErrorType:
 		return log.Error(field.ErrorValue())
-	case ydbLog.StringerType:
+	case ydb_log.StringerType:
 		return log.String(field.Key(), field.Stringer().String())
 	default:
 		return log.Any(field.Key(), field.AnyValue())
 	}
 }
 
-func ToCoreFields(fields []ydbLog.Field) []log.Field {
+func ToCoreFields(fields []ydb_log.Field) []log.Field {
 	ff := make([]log.Field, len(fields))
 	for i, f := range fields {
 		ff[i] = fieldToField(f)

@@ -1,8 +1,8 @@
 package topology
 
-import "github.com/transferia/transferia/pkg/connection/clickhouse"
+import conn_clickhouse "github.com/transferia/transferia/pkg/connection/clickhouse"
 
-type ShardHostMap map[int][]*clickhouse.Host
+type ShardHostMap map[int][]*conn_clickhouse.Host
 
 type Cluster struct {
 	Topology Topology

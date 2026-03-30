@@ -17,11 +17,11 @@ import (
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/abstract/typesystem"
 	"github.com/transferia/transferia/pkg/format"
-	"github.com/transferia/transferia/pkg/providers/clickhouse"
+	provider_clickhouse "github.com/transferia/transferia/pkg/providers/clickhouse"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/columntypes"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/httpuploader"
 	"github.com/transferia/transferia/pkg/transformer"
-	"github.com/transferia/transferia/pkg/transformer/registry/filter"
+	transformer_filter "github.com/transferia/transferia/pkg/transformer/registry/filter"
 	"github.com/transferia/transferia/pkg/util"
 	"go.ytsaurus.tech/library/go/core/log"
 	ytschema "go.ytsaurus.tech/yt/go/schema"
@@ -60,8 +60,8 @@ var (
 )
 
 type Config struct {
-	Tables filter.Tables `json:"tables" yaml:"tables"`
-	Query  string        `json:"query" yaml:"query,flow"`
+	Tables transformer_filter.Tables `json:"tables" yaml:"tables"`
+	Query  string                    `json:"query" yaml:"query,flow"`
 }
 
 func (c Config) Describe() model.Doc {
@@ -82,7 +82,7 @@ query: |
 }
 
 type ClickhouseTransformer struct {
-	filter         filter.Filter
+	filter         transformer_filter.Filter
 	query          string
 	logger         log.Logger
 	outputSchemas  map[abstract.TableID]*abstract.TableSchema
@@ -143,7 +143,7 @@ func (s *ClickhouseTransformer) Apply(input []abstract.ChangeItem) abstract.Tran
 }
 
 func (s *ClickhouseTransformer) prepareInput(input []abstract.ChangeItem, marshallingRules *httpuploader.MarshallingRules) ([]bytes.Buffer, error) {
-	rules := typesystem.RuleFor(clickhouse.ProviderType)
+	rules := typesystem.RuleFor(provider_clickhouse.ProviderType)
 	var res []bytes.Buffer
 	for _, col := range marshallingRules.ColSchema {
 		chType, ok := rules.Target[ytschema.Type(col.DataType)]
@@ -176,7 +176,7 @@ func (s *ClickhouseTransformer) prepareInput(input []abstract.ChangeItem, marsha
 }
 
 func (s *ClickhouseTransformer) clickhouseExec(buffer bytes.Buffer, marshallingRules *httpuploader.MarshallingRules) ([]byte, error) {
-	rules := typesystem.RuleFor(clickhouse.ProviderType)
+	rules := typesystem.RuleFor(provider_clickhouse.ProviderType)
 	var inputCols []string
 	for _, col := range marshallingRules.ColSchema {
 		chType, ok := rules.Target[ytschema.Type(col.DataType)]
@@ -318,7 +318,7 @@ func allWithError(input []abstract.ChangeItem, err error) []abstract.Transformer
 }
 
 func (s *ClickhouseTransformer) Suitable(table abstract.TableID, schema *abstract.TableSchema) bool {
-	ok := filter.MatchAnyTableNameVariant(s.filter, table)
+	ok := transformer_filter.MatchAnyTableNameVariant(s.filter, table)
 	if !ok {
 		s.logger.Info("table not fit by table ID, so skipped", log.String("table", table.Fqtn()))
 		return false
@@ -338,7 +338,7 @@ func (s *ClickhouseTransformer) ResultSchema(schema *abstract.TableSchema) (*abs
 	s.engineMutex.Lock()
 	defer s.engineMutex.Unlock()
 	var inputCols []string
-	rules := typesystem.RuleFor(clickhouse.ProviderType)
+	rules := typesystem.RuleFor(provider_clickhouse.ProviderType)
 	for _, col := range schema.Columns() {
 		chType, ok := rules.Target[ytschema.Type(col.DataType)]
 		if !ok {
@@ -408,7 +408,7 @@ func New(config Config, lgr log.Logger) (*ClickhouseTransformer, error) {
 	if os.Getenv("CH_LOCAL_PATH") != "" {
 		chPath = os.Getenv("CH_LOCAL_PATH")
 	}
-	tableFilter, err := filter.NewFilter(config.Tables.IncludeTables, config.Tables.ExcludeTables)
+	tableFilter, err := transformer_filter.NewFilter(config.Tables.IncludeTables, config.Tables.ExcludeTables)
 	if err != nil {
 		return nil, xerrors.Errorf("unable to init table filter: %w", err)
 	}

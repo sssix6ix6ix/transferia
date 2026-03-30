@@ -3,18 +3,18 @@ package logger
 import (
 	"sync"
 
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 )
 
 // mutableRegistry is a nasty hack, try not to use it. It overrides some metric
 // types which ignore records before tags are set.
 type mutableRegistry struct {
-	metrics.Registry
+	core_metrics.Registry
 	metrics []mutableMetric
 	mutex   sync.Mutex // just in case
 }
 
-func NewMutableRegistry(registry metrics.Registry) metrics.Registry {
+func NewMutableRegistry(registry core_metrics.Registry) core_metrics.Registry {
 	return &mutableRegistry{
 		Registry: registry,
 		metrics:  nil,
@@ -22,7 +22,7 @@ func NewMutableRegistry(registry metrics.Registry) metrics.Registry {
 	}
 }
 
-func (r *mutableRegistry) WithTags(tags map[string]string) metrics.Registry {
+func (r *mutableRegistry) WithTags(tags map[string]string) core_metrics.Registry {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 
@@ -33,7 +33,7 @@ func (r *mutableRegistry) WithTags(tags map[string]string) metrics.Registry {
 	return r.Registry
 }
 
-func (r *mutableRegistry) Counter(name string) metrics.Counter {
+func (r *mutableRegistry) Counter(name string) core_metrics.Counter {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 
@@ -42,7 +42,7 @@ func (r *mutableRegistry) Counter(name string) metrics.Counter {
 	return counter
 }
 
-func (r *mutableRegistry) Histogram(name string, buckets metrics.Buckets) metrics.Histogram {
+func (r *mutableRegistry) Histogram(name string, buckets core_metrics.Buckets) core_metrics.Histogram {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 
@@ -55,7 +55,7 @@ func (r *mutableRegistry) Histogram(name string, buckets metrics.Buckets) metric
 // interface 'mutableMetric'
 
 type mutableMetric interface {
-	Init(registry metrics.Registry)
+	Init(registry core_metrics.Registry)
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -63,10 +63,10 @@ type mutableMetric interface {
 
 type mutableCounter struct {
 	name    string
-	counter metrics.Counter
+	counter core_metrics.Counter
 }
 
-func (c *mutableCounter) Init(registry metrics.Registry) {
+func (c *mutableCounter) Init(registry core_metrics.Registry) {
 	c.counter = registry.Counter(c.name)
 }
 
@@ -94,11 +94,11 @@ func newMutableCounter(name string) *mutableCounter {
 
 type mutableHistogram struct {
 	name      string
-	buckets   metrics.Buckets
-	histogram metrics.Histogram
+	buckets   core_metrics.Buckets
+	histogram core_metrics.Histogram
 }
 
-func (h *mutableHistogram) Init(registry metrics.Registry) {
+func (h *mutableHistogram) Init(registry core_metrics.Registry) {
 	h.histogram = registry.Histogram(h.name, h.buckets)
 }
 
@@ -108,7 +108,7 @@ func (h *mutableHistogram) RecordValue(value float64) {
 	}
 }
 
-func newMutableHistogram(name string, buckets metrics.Buckets) *mutableHistogram {
+func newMutableHistogram(name string, buckets core_metrics.Buckets) *mutableHistogram {
 	return &mutableHistogram{
 		name:      name,
 		buckets:   buckets,

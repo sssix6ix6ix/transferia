@@ -4,7 +4,7 @@ import (
 	"io"
 
 	"github.com/pingcap/parser/ast"
-	"github.com/pingcap/parser/format"
+	pingcap_format "github.com/pingcap/parser/format"
 )
 
 func init() {
@@ -41,7 +41,7 @@ func (ve *valueExpr) GetDatumString() string                        { return "" 
 func (ve *valueExpr) GetString() string                             { return "" }
 func (ve *valueExpr) GetProjectionOffset() int                      { return 0 }
 func (ve *valueExpr) SetProjectionOffset(offset int)                {}
-func (ve *valueExpr) Restore(ctx *format.RestoreCtx) error          { return nil }
+func (ve *valueExpr) Restore(ctx *pingcap_format.RestoreCtx) error  { return nil }
 func (ve *valueExpr) Accept(v ast.Visitor) (node ast.Node, ok bool) { return node, ok }
 func (ve *valueExpr) Text() string                                  { return "" }
 func (ve *valueExpr) SetText(text string)                           {}

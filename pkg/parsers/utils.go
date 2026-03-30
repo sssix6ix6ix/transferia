@@ -10,12 +10,12 @@ import (
 
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	"github.com/transferia/transferia/pkg/parsers/resources"
+	parsers_resources "github.com/transferia/transferia/pkg/parsers/resources"
 	"github.com/transferia/transferia/pkg/util"
 	"github.com/transferia/transferia/pkg/util/jsonx"
 	"go.ytsaurus.tech/library/go/core/log"
 	"go.ytsaurus.tech/yt/go/ypath"
-	"golang.org/x/exp/maps"
+	xmaps "golang.org/x/exp/maps"
 )
 
 type schema struct {
@@ -42,7 +42,7 @@ func decodeSchema(content string) ([]abstract.ColSchema, error) {
 	return sch.Fields, nil
 }
 
-func SchemaByFieldsAndResource(logger log.Logger, res resources.AbstractResources, fields []abstract.ColSchema, schemaResourceName string) ([]abstract.ColSchema, error) {
+func SchemaByFieldsAndResource(logger log.Logger, res parsers_resources.AbstractResources, fields []abstract.ColSchema, schemaResourceName string) ([]abstract.ColSchema, error) {
 	var baseFields []abstract.ColSchema
 	if len(fields) > 0 {
 		baseFields = fields
@@ -130,12 +130,12 @@ func getParserNameByStruct(in interface{}) string {
 }
 
 func GetParserNameByMap(parserConfig map[string]interface{}) string {
-	return maps.Keys(parserConfig)[0]
+	return xmaps.Keys(parserConfig)[0]
 }
 
 func IsThisParserConfig(parserConfig map[string]interface{}, config interface{}) bool {
-	if len(maps.Keys(parserConfig)) != 0 {
-		parserName := maps.Keys(parserConfig)[0]
+	if len(xmaps.Keys(parserConfig)) != 0 {
+		parserName := xmaps.Keys(parserConfig)[0]
 		return parserName == ParserConfigNameByStruct(config)
 	}
 	return false

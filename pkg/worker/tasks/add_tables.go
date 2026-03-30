@@ -5,13 +5,13 @@ import (
 	"sort"
 
 	"github.com/transferia/transferia/internal/logger"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/errors"
 	"github.com/transferia/transferia/pkg/errors/categories"
-	"github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
@@ -27,7 +27,7 @@ func CheckAddTablesSupported(transfer model.Transfer) error {
 	return nil
 }
 
-func AddTables(ctx context.Context, cp coordinator.Coordinator, transfer model.Transfer, task model.TransferOperation, tables []string, registry metrics.Registry) error {
+func AddTables(ctx context.Context, cp coordinator.Coordinator, transfer model.Transfer, task model.TransferOperation, tables []string, registry core_metrics.Registry) error {
 	if err := CheckAddTablesSupported(transfer); err != nil {
 		return xerrors.Errorf("Unable to add tables: %v", err)
 	}
@@ -88,7 +88,7 @@ func AddTables(ctx context.Context, cp coordinator.Coordinator, transfer model.T
 
 func isAllowedSourceType(source model.Source) bool {
 	switch source.(type) {
-	case *postgres.PgSource:
+	case *provider_postgres.PgSource:
 		return true
 	}
 	return false
@@ -96,13 +96,13 @@ func isAllowedSourceType(source model.Source) bool {
 
 func verifyCanAddTables(source model.Source, tables []string, transfer *model.Transfer) error {
 	switch src := source.(type) {
-	case *postgres.PgSource:
-		if err := postgres.VerifyPostgresTablesNames(tables); err != nil {
+	case *provider_postgres.PgSource:
+		if err := provider_postgres.VerifyPostgresTablesNames(tables); err != nil {
 			return xerrors.Errorf("Invalid tables names: %w", err)
 		}
 		oldTables := src.DBTables
 		src.DBTables = tables
-		err := postgres.VerifyPostgresTables(src, transfer, logger.Log)
+		err := provider_postgres.VerifyPostgresTables(src, transfer, logger.Log)
 		src.DBTables = oldTables
 		if err != nil {
 			return xerrors.Errorf("Postgres has no desired tables %v on cluster %v (%w)", tables, src.ClusterID, err)
@@ -115,15 +115,15 @@ func verifyCanAddTables(source model.Source, tables []string, transfer *model.Tr
 	}
 }
 
-func applyAddedTablesSchema(transfer *model.Transfer, task *model.TransferOperation, registry metrics.Registry) error {
+func applyAddedTablesSchema(transfer *model.Transfer, task *model.TransferOperation, registry core_metrics.Registry) error {
 	switch src := transfer.Src.(type) {
-	case *postgres.PgSource:
+	case *provider_postgres.PgSource:
 		if src.PreSteps.AnyStepIsTrue() {
-			pgdump, err := postgres.ExtractPgDumpSchema(transfer)
+			pgdump, err := provider_postgres.ExtractPgDumpSchema(transfer)
 			if err != nil {
 				return errors.CategorizedErrorf(categories.Source, "failed to extract schema from source: %w", err)
 			}
-			if err := postgres.ApplyPgDumpPreSteps(pgdump, transfer, task, registry); err != nil {
+			if err := provider_postgres.ApplyPgDumpPreSteps(pgdump, transfer, task, registry); err != nil {
 				return errors.CategorizedErrorf(categories.Target, "failed to apply pre-steps to transfer schema: %w", err)
 			}
 		}
@@ -134,7 +134,7 @@ func applyAddedTablesSchema(transfer *model.Transfer, task *model.TransferOperat
 
 func replaceSourceTables(source model.Source, targetTables []string) (oldTables []string) {
 	switch src := source.(type) {
-	case *postgres.PgSource:
+	case *provider_postgres.PgSource:
 		oldTables = src.DBTables
 		src.DBTables = targetTables
 	}
@@ -150,7 +150,7 @@ func setSourceTables(source model.Source, tableSet map[string]bool) {
 	}
 	sort.Strings(result)
 	switch src := source.(type) {
-	case *postgres.PgSource:
+	case *provider_postgres.PgSource:
 		src.DBTables = result
 	}
 }

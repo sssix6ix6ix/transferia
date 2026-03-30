@@ -11,29 +11,29 @@ import (
 	"regexp"
 	"strings"
 	"sync"
-	"text/template"
+	text_template "text/template"
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/dustin/go-humanize"
 	"github.com/google/uuid"
 	"github.com/transferia/transferia/internal/logger"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/ydb/decimal"
+	ydb_decimal "github.com/transferia/transferia/pkg/providers/ydb/decimal"
 	"github.com/transferia/transferia/pkg/stats"
 	"github.com/transferia/transferia/pkg/xtls"
-	"github.com/ydb-platform/ydb-go-sdk/v3"
-	"github.com/ydb-platform/ydb-go-sdk/v3/credentials"
-	"github.com/ydb-platform/ydb-go-sdk/v3/scheme"
+	ydb_go_sdk "github.com/ydb-platform/ydb-go-sdk/v3"
+	ydb_credentials "github.com/ydb-platform/ydb-go-sdk/v3/credentials"
+	ydb_scheme "github.com/ydb-platform/ydb-go-sdk/v3/scheme"
 	"github.com/ydb-platform/ydb-go-sdk/v3/sugar"
-	"github.com/ydb-platform/ydb-go-sdk/v3/table"
-	"github.com/ydb-platform/ydb-go-sdk/v3/table/types"
+	ydb_table "github.com/ydb-platform/ydb-go-sdk/v3/table"
+	ydb_table_types "github.com/ydb-platform/ydb-go-sdk/v3/table/types"
 	"go.ytsaurus.tech/library/go/core/log"
 	"go.ytsaurus.tech/yt/go/crc64"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 	"go.ytsaurus.tech/yt/go/yson"
 )
 
@@ -51,7 +51,7 @@ var rowTooLargeRegexp = regexp.MustCompile(`Row cell size of [0-9]+ bytes is lar
 
 type TemplateCol struct{ Name, Typ, Optional, Comma string }
 
-var insertTemplate, _ = template.New("query").Parse(`
+var insertTemplate, _ = text_template.New("query").Parse(`
 {{- /*gotype: TemplateModel*/ -}}
 --!syntax_v1
 DECLARE $batch AS List<
@@ -67,7 +67,7 @@ SELECT{{ range .Cols }}
 FROM AS_TABLE($batch)
 `)
 
-var deleteTemplate, _ = template.New("query").Parse(`
+var deleteTemplate, _ = text_template.New("query").Parse(`
 {{- /*gotype: TemplateModel*/ -}}
 --!syntax_v1
 DECLARE $batch AS Struct<{{ range .Cols }}
@@ -79,10 +79,10 @@ WHERE 1=1
 	and ` + "`{{ .Name }}`" + ` = $batch.` + "`{{ .Name }}`" + `{{ end }}
 `)
 
-var createTableQueryTemplate, _ = template.New(
+var createTableQueryTemplate, _ = text_template.New(
 	"createTableQuery",
 ).Funcs(
-	template.FuncMap{
+	text_template.FuncMap{
 		"join": strings.Join,
 	},
 ).Parse(`
@@ -124,7 +124,7 @@ type ColumnTemplate struct {
 	NotNull bool
 }
 
-var TypeYdbDecimal types.Type = types.DecimalType(22, 9)
+var TypeYdbDecimal ydb_table_types.Type = ydb_table_types.DecimalType(22, 9)
 
 type AllowedIn string
 
@@ -138,37 +138,37 @@ const (
 // https://ydb.tech/ru/docs/yql/reference/types/primitive
 // https://ydb.tech/ru/docs/concepts/column-table#olap-data-types
 // unmentioned types can't be primary keys
-var primaryIsAllowedFor = map[types.Type]AllowedIn{
+var primaryIsAllowedFor = map[ydb_table_types.Type]AllowedIn{
 	// we cast bool to uint8 for OLAP tables
-	types.TypeBool: BOTH,
+	ydb_table_types.TypeBool: BOTH,
 	// we cast int8/16 to int 32 for OLAP tables
-	types.TypeInt8:  BOTH,
-	types.TypeInt16: BOTH,
-	types.TypeInt32: BOTH,
-	types.TypeInt64: BOTH,
+	ydb_table_types.TypeInt8:  BOTH,
+	ydb_table_types.TypeInt16: BOTH,
+	ydb_table_types.TypeInt32: BOTH,
+	ydb_table_types.TypeInt64: BOTH,
 
-	types.TypeUint8:  BOTH,
-	types.TypeUint16: BOTH,
-	types.TypeUint32: BOTH,
-	types.TypeUint64: BOTH,
+	ydb_table_types.TypeUint8:  BOTH,
+	ydb_table_types.TypeUint16: BOTH,
+	ydb_table_types.TypeUint32: BOTH,
+	ydb_table_types.TypeUint64: BOTH,
 
 	// we cast dynumber/decimal to string for OLAP tables
-	types.TypeDyNumber: BOTH,
-	TypeYdbDecimal:     OLAP,
+	ydb_table_types.TypeDyNumber: BOTH,
+	TypeYdbDecimal:               OLAP,
 
-	types.TypeDate:      BOTH,
-	types.TypeDatetime:  BOTH,
-	types.TypeTimestamp: BOTH,
+	ydb_table_types.TypeDate:      BOTH,
+	ydb_table_types.TypeDatetime:  BOTH,
+	ydb_table_types.TypeTimestamp: BOTH,
 
-	types.TypeString: BOTH,
-	types.TypeUTF8:   BOTH,
-	types.TypeUUID:   OLTP,
+	ydb_table_types.TypeString: BOTH,
+	ydb_table_types.TypeUTF8:   BOTH,
+	ydb_table_types.TypeUUID:   OLTP,
 	// we cast interval to int64 for OLAP tables
-	types.TypeInterval: BOTH,
+	ydb_table_types.TypeInterval: BOTH,
 
-	types.TypeTzDate:      OLTP,
-	types.TypeTzDatetime:  OLTP,
-	types.TypeTzTimestamp: OLTP,
+	ydb_table_types.TypeTzDate:      OLTP,
+	ydb_table_types.TypeTzDatetime:  OLTP,
+	ydb_table_types.TypeTzTimestamp: OLTP,
 }
 
 type CreateTableTemplate struct {
@@ -180,7 +180,7 @@ type CreateTableTemplate struct {
 	DefaultCompression    string
 }
 
-var alterTableQueryTemplate, _ = template.New(
+var alterTableQueryTemplate, _ = text_template.New(
 	"alterTableQuery",
 ).Parse(`
 {{- /* gotype: AlterTableTemplate */ -}}
@@ -198,7 +198,7 @@ type AlterTableTemplate struct {
 	DropColumns []string
 }
 
-var dropTableQueryTemplate, _ = template.New(
+var dropTableQueryTemplate, _ = text_template.New(
 	"dropTableQuery",
 ).Parse(`
 {{- /* gotype: DropTableTemplate */ -}}
@@ -227,7 +227,7 @@ type sinker struct {
 	cache   map[ydbPath]*abstract.TableSchema
 	once    sync.Once
 	closeCh chan struct{}
-	db      *ydb.Driver
+	db      *ydb_go_sdk.Driver
 }
 
 func (s *sinker) getRootPath() string {
@@ -281,7 +281,7 @@ func (s *sinker) checkTable(tablePath ydbPath, schema *abstract.TableSchema) err
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	exist, err := sugar.IsEntryExists(ctx, s.db.Scheme(), s.getFullPath(tablePath), scheme.EntryTable, scheme.EntryColumnTable)
+	exist, err := sugar.IsEntryExists(ctx, s.db.Scheme(), s.getFullPath(tablePath), ydb_scheme.EntryTable, ydb_scheme.EntryColumnTable)
 	if err != nil {
 		s.logger.Warnf("unable to check existence of table %s: %s", tablePath, err.Error())
 	} else {
@@ -302,7 +302,7 @@ func (s *sinker) checkTable(tablePath ydbPath, schema *abstract.TableSchema) err
 				return xerrors.Errorf("unable to make directory: %w", err)
 			}
 		}
-		if err := s.db.Table().Do(ctx, func(ctx context.Context, session table.Session) error {
+		if err := s.db.Table().Do(ctx, func(ctx context.Context, session ydb_table.Session) error {
 			columns := make([]ColumnTemplate, 0)
 			keys := make([]string, 0)
 			for _, col := range schema.Columns() {
@@ -311,7 +311,7 @@ func (s *sinker) checkTable(tablePath ydbPath, schema *abstract.TableSchema) err
 				}
 
 				ydbType := s.ydbType(col.DataType, col.OriginalType)
-				if ydbType == types.TypeUnknown {
+				if ydbType == ydb_table_types.TypeUnknown {
 					return abstract.NewFatalError(xerrors.Errorf("YDB create table type %v not supported", col.DataType))
 				}
 
@@ -333,7 +333,7 @@ func (s *sinker) checkTable(tablePath ydbPath, schema *abstract.TableSchema) err
 			}
 
 			if s.config.ShardCount > 0 {
-				columns = append(columns, ColumnTemplate{"_shard_key", types.TypeUint64.Yql(), s.config.IsTableColumnOriented})
+				columns = append(columns, ColumnTemplate{"_shard_key", ydb_table_types.TypeUint64.Yql(), s.config.IsTableColumnOriented})
 
 				keys = append([]string{"_shard_key"}, keys...)
 
@@ -360,7 +360,7 @@ func (s *sinker) checkTable(tablePath ydbPath, schema *abstract.TableSchema) err
 			return xerrors.Errorf("unable to create table: %s: %w", s.getFullPath(tablePath), err)
 		}
 	} else {
-		if err := s.db.Table().Do(context.Background(), func(ctx context.Context, session table.Session) error {
+		if err := s.db.Table().Do(context.Background(), func(ctx context.Context, session ydb_table.Session) error {
 			describeTableCtx, cancelDescribeTableCtx := context.WithTimeout(ctx, time.Minute)
 			defer cancelDescribeTableCtx()
 			desc, err := session.DescribeTable(describeTableCtx, s.getFullPath(tablePath))
@@ -450,15 +450,15 @@ func (s *sinker) rotateTable() error {
 	return nil
 }
 
-func (s *sinker) recursiveCleanupOldTables(currPath ydbPath, dir scheme.Directory, baseTime time.Time) {
+func (s *sinker) recursiveCleanupOldTables(currPath ydbPath, dir ydb_scheme.Directory, baseTime time.Time) {
 	for _, child := range dir.Children {
 		if child.Name == ".sys_health" || child.Name == ".sys" {
 			continue
 		}
 		switch child.Type {
-		case scheme.EntryDirectory:
+		case ydb_scheme.EntryDirectory:
 			dirPath := path.Join(s.config.Database, string(currPath), child.Name)
-			d, err := func() (scheme.Directory, error) {
+			d, err := func() (ydb_scheme.Directory, error) {
 				ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 				defer cancel()
 				return s.db.Scheme().ListDirectory(ctx, dirPath)
@@ -468,7 +468,7 @@ func (s *sinker) recursiveCleanupOldTables(currPath ydbPath, dir scheme.Director
 				continue
 			}
 			s.recursiveCleanupOldTables(currPath.MakeChildPath(child.Name), d, baseTime)
-		case scheme.EntryTable, scheme.EntryColumnTable:
+		case ydb_scheme.EntryTable, ydb_scheme.EntryColumnTable:
 			var tableTime time.Time
 			switch s.config.Rotation.PartType {
 			case model.RotatorPartHour:
@@ -494,7 +494,7 @@ func (s *sinker) recursiveCleanupOldTables(currPath ydbPath, dir scheme.Director
 			}
 			if tableTime.Before(baseTime) {
 				s.logger.Infof("Old table need to be deleted %v, table time: %v, base time: %v", child.Name, tableTime, baseTime)
-				if err := s.db.Table().Do(context.Background(), func(ctx context.Context, session table.Session) error {
+				if err := s.db.Table().Do(context.Background(), func(ctx context.Context, session ydb_table.Session) error {
 					dropTable := DropTableTemplate{s.getFullPath(currPath.MakeChildPath(child.Name))}
 
 					var query strings.Builder
@@ -513,7 +513,7 @@ func (s *sinker) recursiveCleanupOldTables(currPath ydbPath, dir scheme.Director
 			} else {
 				childPath := s.getFullPath(currPath.MakeChildPath(child.Name))
 				nextTablePath := ydbPath(s.config.Rotation.Next(string(currPath)))
-				if err := s.db.Table().Do(context.TODO(), func(ctx context.Context, session table.Session) error {
+				if err := s.db.Table().Do(context.TODO(), func(ctx context.Context, session ydb_table.Session) error {
 					desc, err := session.DescribeTable(ctx, childPath)
 					if err != nil {
 						return xerrors.Errorf("Cannot describe table %s: %w", childPath, err)
@@ -576,7 +576,7 @@ func (s *sinker) Push(input []abstract.ChangeItem) error {
 				s.logger.Infof("Skipped dropping/truncating table '%v' due cleanup policy", s.getFullPath(tablePath))
 				continue
 			}
-			exists, err := sugar.IsEntryExists(context.Background(), s.db.Scheme(), s.getFullPath(tablePath), scheme.EntryTable, scheme.EntryColumnTable)
+			exists, err := sugar.IsEntryExists(context.Background(), s.db.Scheme(), s.getFullPath(tablePath), ydb_scheme.EntryTable, ydb_scheme.EntryColumnTable)
 			if err != nil {
 				return xerrors.Errorf("unable to check table existence %s: %w", s.getFullPath(tablePath), err)
 			}
@@ -586,7 +586,7 @@ func (s *sinker) Push(input []abstract.ChangeItem) error {
 			}
 
 			s.logger.Infof("try to drop table: %v", s.getFullPath(tablePath))
-			if err := s.db.Table().Do(context.Background(), func(ctx context.Context, session table.Session) error {
+			if err := s.db.Table().Do(context.Background(), func(ctx context.Context, session ydb_table.Session) error {
 				dropTable := DropTableTemplate{s.getFullPath(tablePath)}
 
 				var query strings.Builder
@@ -797,22 +797,22 @@ func (s *sinker) insert(tablePath ydbPath, batch []abstract.ChangeItem) error {
 	for i, v := range colSchemas {
 		rev[v.ColumnName] = i
 	}
-	rows := make([]types.Value, len(batch))
+	rows := make([]ydb_table_types.Value, len(batch))
 	var finalSchema []abstract.ColSchema
 	for _, c := range batch[0].ColumnNames {
 		finalSchema = append(finalSchema, colSchemas[rev[c]])
 	}
 	for i, r := range batch {
-		fields := make([]types.StructValueOption, 0)
+		fields := make([]ydb_table_types.StructValueOption, 0)
 		for j, c := range r.ColumnNames {
 			val, opt, err := s.ydbVal(colSchemas[rev[c]].DataType, colSchemas[rev[c]].OriginalType, r.ColumnValues[j])
 			if err != nil {
 				return xerrors.Errorf("%s: unable to build val: %w", c, err)
 			}
 			if !colSchemas[rev[c]].Required && !opt {
-				val = types.OptionalValue(val)
+				val = ydb_table_types.OptionalValue(val)
 			}
-			fields = append(fields, types.StructFieldValue(c, val))
+			fields = append(fields, ydb_table_types.StructFieldValue(c, val))
 		}
 		if s.config.ShardCount > 0 {
 			var cs uint64
@@ -822,20 +822,20 @@ func (s *sinker) insert(tablePath ydbPath, batch []abstract.ChangeItem) error {
 			default:
 				cs = crc64.Checksum([]byte(fmt.Sprintf("%v", v)))
 			}
-			fields = append(fields, types.StructFieldValue("_shard_key", types.OptionalValue(types.Uint64Value(cs))))
+			fields = append(fields, ydb_table_types.StructFieldValue("_shard_key", ydb_table_types.OptionalValue(ydb_table_types.Uint64Value(cs))))
 		}
-		rows[i] = types.StructValue(fields...)
+		rows[i] = ydb_table_types.StructValue(fields...)
 	}
 
-	batchList := types.ListValue(rows...)
+	batchList := ydb_table_types.ListValue(rows...)
 	if s.config.LegacyWriter {
-		writeTx := table.TxControl(
-			table.BeginTx(
-				table.WithSerializableReadWrite(),
+		writeTx := ydb_table.TxControl(
+			ydb_table.BeginTx(
+				ydb_table.WithSerializableReadWrite(),
 			),
-			table.CommitTx(),
+			ydb_table.CommitTx(),
 		)
-		err := s.db.Table().Do(ctx, func(ctx context.Context, session table.Session) (err error) {
+		err := s.db.Table().Do(ctx, func(ctx context.Context, session ydb_table.Session) (err error) {
 			q := s.insertQuery(tablePath, finalSchema)
 			s.logger.Debug(q)
 			stmt, err := session.Prepare(ctx, q)
@@ -843,8 +843,8 @@ func (s *sinker) insert(tablePath ydbPath, batch []abstract.ChangeItem) error {
 				s.logger.Warn(fmt.Sprintf("Unable to prepare insert query:\n%v", q))
 				return xerrors.Errorf("unable to prepare insert query: %w", err)
 			}
-			_, _, err = stmt.Execute(ctx, writeTx, table.NewQueryParameters(
-				table.ValueParam("$batch", batchList),
+			_, _, err = stmt.Execute(ctx, writeTx, ydb_table.NewQueryParameters(
+				ydb_table.ValueParam("$batch", batchList),
 			))
 			if err != nil {
 				s.logger.Warn(fmt.Sprintf("unable to execute:\n%v", q), log.Error(err))
@@ -860,7 +860,7 @@ func (s *sinker) insert(tablePath ydbPath, batch []abstract.ChangeItem) error {
 	}
 
 	tableFullPath := s.getFullPath(tablePath)
-	bulkUpsertBatch := table.BulkUpsertDataRows(batchList)
+	bulkUpsertBatch := ydb_table.BulkUpsertDataRows(batchList)
 	if err := s.db.Table().BulkUpsert(ctx, tableFullPath, bulkUpsertBatch); err != nil {
 		s.logger.Warn("unable to upload rows", log.Error(err), log.String("table", tableFullPath))
 		if s.config.IgnoreRowTooLargeErrors && rowTooLargeRegexp.MatchString(err.Error()) {
@@ -884,9 +884,9 @@ func (s *sinker) fitTime(t time.Time) (time.Time, error) {
 	return t, nil
 }
 
-func (s *sinker) extractTimeValue(val *time.Time, dataType, originalType string) (types.Value, error) {
+func (s *sinker) extractTimeValue(val *time.Time, dataType, originalType string) (ydb_table_types.Value, error) {
 	if val == nil {
-		return types.NullValue(s.ydbType(dataType, originalType)), nil
+		return ydb_table_types.NullValue(s.ydbType(dataType, originalType)), nil
 	}
 
 	fitTime, err := s.fitTime(*val)
@@ -894,20 +894,20 @@ func (s *sinker) extractTimeValue(val *time.Time, dataType, originalType string)
 		return nil, xerrors.Errorf("Time not fit YDB restriction: %w", err)
 	}
 
-	switch schema.Type(dataType) {
-	case schema.TypeDate:
-		return types.DateValueFromTime(fitTime), nil
-	case schema.TypeDatetime:
-		return types.DatetimeValueFromTime(fitTime), nil
-	case schema.TypeTimestamp:
-		return types.TimestampValueFromTime(fitTime), nil
+	switch ytschema.Type(dataType) {
+	case ytschema.TypeDate:
+		return ydb_table_types.DateValueFromTime(fitTime), nil
+	case ytschema.TypeDatetime:
+		return ydb_table_types.DatetimeValueFromTime(fitTime), nil
+	case ytschema.TypeTimestamp:
+		return ydb_table_types.TimestampValueFromTime(fitTime), nil
 	}
 	return nil, xerrors.Errorf("unable to marshal %s value (%v) as a time type", dataType, val)
 }
 
-func (s *sinker) ydbVal(dataType, originalType string, val interface{}) (types.Value, bool, error) {
+func (s *sinker) ydbVal(dataType, originalType string, val interface{}) (ydb_table_types.Value, bool, error) {
 	if val == nil {
-		return types.NullValue(s.ydbType(dataType, originalType)), true, nil
+		return ydb_table_types.NullValue(s.ydbType(dataType, originalType)), true, nil
 	}
 
 	switch originalType {
@@ -915,25 +915,25 @@ func (s *sinker) ydbVal(dataType, originalType string, val interface{}) (types.V
 		switch v := val.(type) {
 		case string:
 			if s.config.IsTableColumnOriented {
-				return types.StringValueFromString(v), false, nil
+				return ydb_table_types.StringValueFromString(v), false, nil
 			}
-			return types.DyNumberValue(v), false, nil
+			return ydb_table_types.DyNumberValue(v), false, nil
 		case json.Number:
 			if s.config.IsTableColumnOriented {
-				return types.StringValueFromString(v.String()), false, nil
+				return ydb_table_types.StringValueFromString(v.String()), false, nil
 			}
-			return types.DyNumberValue(v.String()), false, nil
+			return ydb_table_types.DyNumberValue(v.String()), false, nil
 		}
 	case "ydb:Decimal":
 		valStr := val.(string)
 		if s.config.IsTableColumnOriented {
-			return types.StringValueFromString(valStr), false, nil
+			return ydb_table_types.StringValueFromString(valStr), false, nil
 		}
-		v, err := decimal.Parse(valStr, 22, 9)
+		v, err := ydb_decimal.Parse(valStr, 22, 9)
 		if err != nil {
 			return nil, true, xerrors.Errorf("unable to parse decimal number: %s", valStr)
 		}
-		return types.DecimalValueFromBigInt(v, 22, 9), false, nil
+		return ydb_table_types.DecimalValueFromBigInt(v, 22, 9), false, nil
 	case "ydb:Interval":
 		var duration time.Duration
 		switch v := val.(type) {
@@ -951,30 +951,30 @@ func (s *sinker) ydbVal(dataType, originalType string, val interface{}) (types.V
 			return nil, true, xerrors.Errorf("unknown ydb:Interval type: %T", val)
 		}
 		if s.config.IsTableColumnOriented {
-			return types.Int64Value(duration.Nanoseconds()), false, nil
+			return ydb_table_types.Int64Value(duration.Nanoseconds()), false, nil
 		}
-		return types.IntervalValueFromDuration(duration), false, nil
+		return ydb_table_types.IntervalValueFromDuration(duration), false, nil
 	case "ydb:Datetime":
 		switch vv := val.(type) {
 		case time.Time:
-			return types.DatetimeValueFromTime(vv), false, nil
+			return ydb_table_types.DatetimeValueFromTime(vv), false, nil
 		case *time.Time:
 			if vv != nil {
-				return types.DatetimeValueFromTime(*vv), false, nil
+				return ydb_table_types.DatetimeValueFromTime(*vv), false, nil
 			}
-			return types.NullValue(s.ydbType(dataType, originalType)), true, nil
+			return ydb_table_types.NullValue(s.ydbType(dataType, originalType)), true, nil
 		default:
 			return nil, true, xerrors.Errorf("Unable to marshal timestamp value: %v with type: %T", vv, vv)
 		}
 	case "ydb:Date":
 		switch vv := val.(type) {
 		case time.Time:
-			return types.DateValueFromTime(vv), false, nil
+			return ydb_table_types.DateValueFromTime(vv), false, nil
 		case *time.Time:
 			if vv != nil {
-				return types.DateValueFromTime(*vv), false, nil
+				return ydb_table_types.DateValueFromTime(*vv), false, nil
 			}
-			return types.NullValue(s.ydbType(dataType, originalType)), true, nil
+			return ydb_table_types.NullValue(s.ydbType(dataType, originalType)), true, nil
 		default:
 			return nil, true, xerrors.Errorf("Unable to marshal timestamp value: %v with type: %T", vv, vv)
 		}
@@ -982,13 +982,13 @@ func (s *sinker) ydbVal(dataType, originalType string, val interface{}) (types.V
 		switch vv := val.(type) {
 		case string:
 			if s.config.IsTableColumnOriented {
-				return types.UTF8Value(vv), false, nil
+				return ydb_table_types.UTF8Value(vv), false, nil
 			}
 			uuidVal, err := uuid.Parse(vv)
 			if err != nil {
 				return nil, true, xerrors.Errorf("Unable to parse UUID value: %w", err)
 			}
-			return types.UuidValue(uuidVal), false, nil
+			return ydb_table_types.UuidValue(uuidVal), false, nil
 		default:
 			return nil, true, xerrors.Errorf("unknown ydb:Uuid type: %T, val=%s", val, val)
 		}
@@ -998,21 +998,21 @@ func (s *sinker) ydbVal(dataType, originalType string, val interface{}) (types.V
 		case "ydb:Int8":
 			switch vv := val.(type) {
 			case int8:
-				return types.Int8Value(int8(vv)), false, nil
+				return ydb_table_types.Int8Value(int8(vv)), false, nil
 			default:
 				return nil, true, xerrors.Errorf("Unable to convert %s value: %v with type: %T", originalType, vv, vv)
 			}
 		case "ydb:Int16":
 			switch vv := val.(type) {
 			case int16:
-				return types.Int16Value(int16(vv)), false, nil
+				return ydb_table_types.Int16Value(int16(vv)), false, nil
 			default:
 				return nil, true, xerrors.Errorf("Unable to convert %s value: %v with type: %T", originalType, vv, vv)
 			}
 		case "ydb:Uint16":
 			switch vv := val.(type) {
 			case uint16:
-				return types.Uint16Value(uint16(vv)), false, nil
+				return ydb_table_types.Uint16Value(uint16(vv)), false, nil
 			default:
 				return nil, true, xerrors.Errorf("Unable to convert %s value: %v with type: %T", originalType, vv, vv)
 			}
@@ -1021,10 +1021,10 @@ func (s *sinker) ydbVal(dataType, originalType string, val interface{}) (types.V
 
 	switch dataType {
 	case "DateTime":
-		return types.DatetimeValueFromTime(val.(time.Time)), false, nil
+		return ydb_table_types.DatetimeValueFromTime(val.(time.Time)), false, nil
 	default:
-		switch schema.Type(dataType) {
-		case schema.TypeDate, schema.TypeDatetime, schema.TypeTimestamp:
+		switch ytschema.Type(dataType) {
+		case ytschema.TypeDate, ytschema.TypeDatetime, ytschema.TypeTimestamp:
 			switch vv := val.(type) {
 			case time.Time:
 				value, err := s.extractTimeValue(&vv, dataType, originalType)
@@ -1040,9 +1040,9 @@ func (s *sinker) ydbVal(dataType, originalType string, val interface{}) (types.V
 				return value, true, nil
 			default:
 				return nil, false, xerrors.Errorf("unable to marshal %s value: %v with type: %T",
-					schema.Type(dataType), vv, vv)
+					ytschema.Type(dataType), vv, vv)
 			}
-		case schema.TypeAny:
+		case ytschema.TypeAny:
 			var data []byte
 			var err error
 			if originalType == "ydb:Yson" {
@@ -1058,149 +1058,149 @@ func (s *sinker) ydbVal(dataType, originalType string, val interface{}) (types.V
 			}
 			switch originalType {
 			case "ydb:Yson":
-				return types.YSONValueFromBytes(data), false, nil
+				return ydb_table_types.YSONValueFromBytes(data), false, nil
 			case "ydb:Json":
-				return types.JSONValueFromBytes(data), false, nil
+				return ydb_table_types.JSONValueFromBytes(data), false, nil
 			case "ydb:JsonDocument":
-				return types.JSONDocumentValueFromBytes(data), false, nil
+				return ydb_table_types.JSONDocumentValueFromBytes(data), false, nil
 			default:
-				return types.JSONValueFromBytes(data), false, nil
+				return ydb_table_types.JSONValueFromBytes(data), false, nil
 			}
-		case schema.TypeBytes:
+		case ytschema.TypeBytes:
 			switch v := val.(type) {
 			case string:
-				return types.BytesValue([]byte(v)), false, nil
+				return ydb_table_types.BytesValue([]byte(v)), false, nil
 			case []uint8:
-				return types.BytesValue(v), false, nil
+				return ydb_table_types.BytesValue(v), false, nil
 			default:
 				r, err := json.Marshal(val)
 				if err != nil {
 					return nil, false, xerrors.Errorf("unable to json marshal: %w", err)
 				}
-				return types.BytesValue(r), false, nil
+				return ydb_table_types.BytesValue(r), false, nil
 			}
-		case schema.TypeString:
+		case ytschema.TypeString:
 			switch v := val.(type) {
 			case string:
-				return types.UTF8Value(v), false, nil
+				return ydb_table_types.UTF8Value(v), false, nil
 			case time.Time:
-				return types.UTF8Value(v.String()), false, nil
+				return ydb_table_types.UTF8Value(v.String()), false, nil
 			case uuid.UUID:
-				return types.UTF8Value(v.String()), false, nil
+				return ydb_table_types.UTF8Value(v.String()), false, nil
 			default:
 				r, err := json.Marshal(val)
 				if err != nil {
 					return nil, false, xerrors.Errorf("unable to json marshal: %w", err)
 				}
-				return types.UTF8Value(string(r)), false, nil
+				return ydb_table_types.UTF8Value(string(r)), false, nil
 			}
-		case schema.TypeFloat32:
+		case ytschema.TypeFloat32:
 			switch t := val.(type) {
 			case float64:
-				return types.FloatValue(float32(t)), false, nil
+				return ydb_table_types.FloatValue(float32(t)), false, nil
 			case float32:
-				return types.FloatValue(t), false, nil
+				return ydb_table_types.FloatValue(t), false, nil
 			case json.Number:
 				valDouble, err := t.Float64()
 				if err != nil {
 					return nil, true, xerrors.Errorf("unable to convert json.Number to double: %s", t.String())
 				}
-				return types.FloatValue(float32(valDouble)), false, nil
+				return ydb_table_types.FloatValue(float32(valDouble)), false, nil
 			default:
 				return nil, true, xerrors.Errorf("unexpected data type: %T for: %s", val, dataType)
 			}
-		case schema.TypeFloat64:
+		case ytschema.TypeFloat64:
 			switch t := val.(type) {
 			case float64:
-				return types.DoubleValue(t), false, nil
+				return ydb_table_types.DoubleValue(t), false, nil
 			case float32:
-				return types.DoubleValue(float64(t)), false, nil
+				return ydb_table_types.DoubleValue(float64(t)), false, nil
 			case *json.Number:
 				valDouble, err := t.Float64()
 				if err != nil {
 					return nil, true, xerrors.Errorf("unable to convert *json.Number to double: %s", t.String())
 				}
-				return types.DoubleValue(valDouble), false, nil
+				return ydb_table_types.DoubleValue(valDouble), false, nil
 			case json.Number:
 				valDouble, err := t.Float64()
 				if err != nil {
 					return nil, true, xerrors.Errorf("unable to convert json.Number to double: %s", t.String())
 				}
-				return types.DoubleValue(valDouble), false, nil
+				return ydb_table_types.DoubleValue(valDouble), false, nil
 			default:
 				return nil, true, xerrors.Errorf("unexpected data type: %T for: %s", val, dataType)
 			}
-		case schema.TypeBoolean:
+		case ytschema.TypeBoolean:
 			asBool := val.(bool)
 			if s.config.IsTableColumnOriented {
 				asUint := uint8(0)
 				if asBool {
 					asUint = uint8(1)
 				}
-				return types.Uint8Value(asUint), false, nil
+				return ydb_table_types.Uint8Value(asUint), false, nil
 			}
-			return types.BoolValue(asBool), false, nil
-		case schema.TypeInt32, schema.TypeInt16, schema.TypeInt8:
+			return ydb_table_types.BoolValue(asBool), false, nil
+		case ytschema.TypeInt32, ytschema.TypeInt16, ytschema.TypeInt8:
 			switch t := val.(type) {
 			case int:
-				return types.Int32Value(int32(t)), false, nil
+				return ydb_table_types.Int32Value(int32(t)), false, nil
 			case int8:
-				return types.Int32Value(int32(t)), false, nil
+				return ydb_table_types.Int32Value(int32(t)), false, nil
 			case int16:
-				return types.Int32Value(int32(t)), false, nil
+				return ydb_table_types.Int32Value(int32(t)), false, nil
 			case int32:
-				return types.Int32Value(t), false, nil
+				return ydb_table_types.Int32Value(t), false, nil
 			case int64:
-				return types.Int32Value(int32(t)), false, nil
+				return ydb_table_types.Int32Value(int32(t)), false, nil
 			default:
 				return nil, true, xerrors.Errorf("unexpected data type: %T for: %s", val, dataType)
 			}
-		case schema.TypeInt64:
+		case ytschema.TypeInt64:
 			switch t := val.(type) {
 			case int:
-				return types.Int64Value(int64(t)), false, nil
+				return ydb_table_types.Int64Value(int64(t)), false, nil
 			case int64:
-				return types.Int64Value(t), false, nil
+				return ydb_table_types.Int64Value(t), false, nil
 			default:
 				return nil, true, xerrors.Errorf("unexpected data type: %T for: %s", val, dataType)
 			}
-		case schema.TypeUint8:
+		case ytschema.TypeUint8:
 			switch t := val.(type) {
 			case int:
-				return types.Uint8Value(uint8(t)), false, nil
+				return ydb_table_types.Uint8Value(uint8(t)), false, nil
 			case uint8:
-				return types.Uint8Value(t), false, nil
+				return ydb_table_types.Uint8Value(t), false, nil
 			default:
 				return nil, true, xerrors.Errorf("unexpected data type: %T for: %s", val, dataType)
 			}
-		case schema.TypeUint32, schema.TypeUint16:
+		case ytschema.TypeUint32, ytschema.TypeUint16:
 			switch t := val.(type) {
 			case int:
-				return types.Uint32Value(uint32(t)), false, nil
+				return ydb_table_types.Uint32Value(uint32(t)), false, nil
 			case uint16:
-				return types.Uint32Value(uint32(t)), false, nil
+				return ydb_table_types.Uint32Value(uint32(t)), false, nil
 			case uint32:
-				return types.Uint32Value(t), false, nil
+				return ydb_table_types.Uint32Value(t), false, nil
 			default:
 				return nil, true, xerrors.Errorf("unexpected data type: %T for: %s", val, dataType)
 			}
-		case schema.TypeUint64:
+		case ytschema.TypeUint64:
 			switch t := val.(type) {
 			case int:
-				return types.Uint64Value(uint64(t)), false, nil
+				return ydb_table_types.Uint64Value(uint64(t)), false, nil
 			case uint64:
-				return types.Uint64Value(t), false, nil
+				return ydb_table_types.Uint64Value(t), false, nil
 			default:
 				return nil, true, xerrors.Errorf("unexpected data type: %T for: %s", val, dataType)
 			}
-		case schema.TypeInterval:
+		case ytschema.TypeInterval:
 			switch t := val.(type) {
 			case time.Duration:
 				if s.config.IsTableColumnOriented {
-					return types.Int64Value(t.Nanoseconds()), false, nil
+					return ydb_table_types.Int64Value(t.Nanoseconds()), false, nil
 				}
 				// what the point in losing accuracy?
-				return types.IntervalValueFromMicroseconds(t.Microseconds()), false, nil
+				return ydb_table_types.IntervalValueFromMicroseconds(t.Microseconds()), false, nil
 			default:
 				return nil, true, xerrors.Errorf("unexpected data type: %T for: %s", val, dataType)
 			}
@@ -1210,144 +1210,144 @@ func (s *sinker) ydbVal(dataType, originalType string, val interface{}) (types.V
 	}
 }
 
-func (s *sinker) ydbType(dataType, originalType string) types.Type {
+func (s *sinker) ydbType(dataType, originalType string) ydb_table_types.Type {
 	if s.config.IsTableColumnOriented && strings.HasPrefix(originalType, "ydb:Tz") {
 		// btw looks like Tz* and uuid params are not supported due to lack of conversion in ydbVal func
 		// tests are passing due to those types being commented
-		return types.TypeUnknown
+		return ydb_table_types.TypeUnknown
 	}
 	if strings.HasPrefix(originalType, "ydb:") {
 		originalTypeStr := strings.TrimPrefix(originalType, "ydb:")
 		switch originalTypeStr {
 		case "Bool":
 			if s.config.IsTableColumnOriented {
-				return types.TypeUint8
+				return ydb_table_types.TypeUint8
 			}
-			return types.TypeBool
+			return ydb_table_types.TypeBool
 		case "Int8":
 			if s.config.IsTableColumnOriented {
-				return types.TypeInt32
+				return ydb_table_types.TypeInt32
 			}
-			return types.TypeInt8
+			return ydb_table_types.TypeInt8
 		case "Uint8":
-			return types.TypeUint8
+			return ydb_table_types.TypeUint8
 		case "Int16":
 			if s.config.IsTableColumnOriented {
-				return types.TypeInt32
+				return ydb_table_types.TypeInt32
 			}
-			return types.TypeInt16
+			return ydb_table_types.TypeInt16
 		case "Uint16":
 			if s.config.IsTableColumnOriented {
-				return types.TypeUint32
+				return ydb_table_types.TypeUint32
 			}
-			return types.TypeUint16
+			return ydb_table_types.TypeUint16
 		case "Int32":
-			return types.TypeInt32
+			return ydb_table_types.TypeInt32
 		case "Uint32":
-			return types.TypeUint32
+			return ydb_table_types.TypeUint32
 		case "Int64":
-			return types.TypeInt64
+			return ydb_table_types.TypeInt64
 		case "Uint64":
-			return types.TypeUint64
+			return ydb_table_types.TypeUint64
 		case "Float":
-			return types.TypeFloat
+			return ydb_table_types.TypeFloat
 		case "Double":
-			return types.TypeDouble
+			return ydb_table_types.TypeDouble
 		case "Decimal":
 			if s.config.IsTableColumnOriented {
-				return types.TypeString
+				return ydb_table_types.TypeString
 			}
 			return TypeYdbDecimal
 		case "Date":
-			return types.TypeDate
+			return ydb_table_types.TypeDate
 		case "Datetime":
-			return types.TypeDatetime
+			return ydb_table_types.TypeDatetime
 		case "Timestamp":
-			return types.TypeTimestamp
+			return ydb_table_types.TypeTimestamp
 		case "Interval":
 			if s.config.IsTableColumnOriented {
-				return types.TypeInt64
+				return ydb_table_types.TypeInt64
 			}
-			return types.TypeInterval
+			return ydb_table_types.TypeInterval
 		case "TzDate":
-			return types.TypeTzDate
+			return ydb_table_types.TypeTzDate
 		case "TzDatetime":
-			return types.TypeTzDatetime
+			return ydb_table_types.TypeTzDatetime
 		case "TzTimestamp":
-			return types.TypeTzTimestamp
+			return ydb_table_types.TypeTzTimestamp
 		case "String":
-			return types.TypeString
+			return ydb_table_types.TypeString
 		case "Utf8":
-			return types.TypeUTF8
+			return ydb_table_types.TypeUTF8
 		case "Yson":
-			return types.TypeYSON
+			return ydb_table_types.TypeYSON
 		case "Json":
-			return types.TypeJSON
+			return ydb_table_types.TypeJSON
 		case "Uuid":
 			if s.config.IsTableColumnOriented {
-				return types.TypeUTF8
+				return ydb_table_types.TypeUTF8
 			}
-			return types.TypeUUID
+			return ydb_table_types.TypeUUID
 		case "JsonDocument":
-			return types.TypeJSONDocument
+			return ydb_table_types.TypeJSONDocument
 		case "DyNumber":
 			if s.config.IsTableColumnOriented {
-				return types.TypeString
+				return ydb_table_types.TypeString
 			}
-			return types.TypeDyNumber
+			return ydb_table_types.TypeDyNumber
 		default:
-			return types.TypeUnknown
+			return ydb_table_types.TypeUnknown
 		}
 	}
 
 	switch dataType {
 	case "DateTime":
-		return types.TypeDatetime
+		return ydb_table_types.TypeDatetime
 	default:
-		switch schema.Type(dataType) {
-		case schema.TypeInterval:
+		switch ytschema.Type(dataType) {
+		case ytschema.TypeInterval:
 			if s.config.IsTableColumnOriented {
-				return types.TypeInt64
+				return ydb_table_types.TypeInt64
 			}
-			return types.TypeInterval
-		case schema.TypeDate:
-			return types.TypeDate
-		case schema.TypeDatetime:
-			return types.TypeDatetime
-		case schema.TypeTimestamp:
-			return types.TypeTimestamp
-		case schema.TypeAny:
-			return types.TypeJSON
-		case schema.TypeString:
-			return types.TypeUTF8
-		case schema.TypeBytes:
-			return types.TypeString
-		case schema.TypeFloat32:
-			return types.TypeFloat
-		case schema.TypeFloat64:
-			return types.TypeDouble
-		case schema.TypeBoolean:
+			return ydb_table_types.TypeInterval
+		case ytschema.TypeDate:
+			return ydb_table_types.TypeDate
+		case ytschema.TypeDatetime:
+			return ydb_table_types.TypeDatetime
+		case ytschema.TypeTimestamp:
+			return ydb_table_types.TypeTimestamp
+		case ytschema.TypeAny:
+			return ydb_table_types.TypeJSON
+		case ytschema.TypeString:
+			return ydb_table_types.TypeUTF8
+		case ytschema.TypeBytes:
+			return ydb_table_types.TypeString
+		case ytschema.TypeFloat32:
+			return ydb_table_types.TypeFloat
+		case ytschema.TypeFloat64:
+			return ydb_table_types.TypeDouble
+		case ytschema.TypeBoolean:
 			if s.config.IsTableColumnOriented {
-				return types.TypeUint8
+				return ydb_table_types.TypeUint8
 			}
-			return types.TypeBool
-		case schema.TypeInt32, schema.TypeInt16, schema.TypeInt8:
-			return types.TypeInt32
-		case schema.TypeInt64:
-			return types.TypeInt64
-		case schema.TypeUint8:
-			return types.TypeUint8
-		case schema.TypeUint32, schema.TypeUint16:
-			return types.TypeUint32
-		case schema.TypeUint64:
-			return types.TypeUint64
+			return ydb_table_types.TypeBool
+		case ytschema.TypeInt32, ytschema.TypeInt16, ytschema.TypeInt8:
+			return ydb_table_types.TypeInt32
+		case ytschema.TypeInt64:
+			return ydb_table_types.TypeInt64
+		case ytschema.TypeUint8:
+			return ydb_table_types.TypeUint8
+		case ytschema.TypeUint32, ytschema.TypeUint16:
+			return ydb_table_types.TypeUint32
+		case ytschema.TypeUint64:
+			return ydb_table_types.TypeUint64
 		default:
-			return types.TypeUnknown
+			return ydb_table_types.TypeUnknown
 		}
 	}
 }
 
-func (s *sinker) isPrimaryKey(ydbType types.Type, column abstract.ColSchema) (bool, error) {
+func (s *sinker) isPrimaryKey(ydbType ydb_table_types.Type, column abstract.ColSchema) (bool, error) {
 	if !column.PrimaryKey {
 		return false, nil
 	}
@@ -1383,41 +1383,41 @@ func (s *sinker) adjustTypName(typ string) string {
 	case "DateTime":
 		return "Datetime"
 	default:
-		switch schema.Type(typ) {
-		case schema.TypeInterval:
+		switch ytschema.Type(typ) {
+		case ytschema.TypeInterval:
 			if s.config.IsTableColumnOriented {
 				return "Int64"
 			}
 			return "Interval"
-		case schema.TypeDate:
+		case ytschema.TypeDate:
 			return "Date"
-		case schema.TypeDatetime:
+		case ytschema.TypeDatetime:
 			return "Datetime"
-		case schema.TypeTimestamp:
+		case ytschema.TypeTimestamp:
 			return "Timestamp"
-		case schema.TypeAny:
+		case ytschema.TypeAny:
 			return "Json"
-		case schema.TypeString:
+		case ytschema.TypeString:
 			return "Utf8"
-		case schema.TypeBytes:
+		case ytschema.TypeBytes:
 			return "String"
-		case schema.TypeFloat64:
+		case ytschema.TypeFloat64:
 			// TODO What to do with real float?
 			return "Double"
-		case schema.TypeBoolean:
+		case ytschema.TypeBoolean:
 			if s.config.IsTableColumnOriented {
 				return "Uint8"
 			}
 			return "Bool"
-		case schema.TypeInt32, schema.TypeInt16, schema.TypeInt8:
+		case ytschema.TypeInt32, ytschema.TypeInt16, ytschema.TypeInt8:
 			return "Int32"
-		case schema.TypeInt64:
+		case ytschema.TypeInt64:
 			return "Int64"
-		case schema.TypeUint8:
+		case ytschema.TypeUint8:
 			return "Uint8"
-		case schema.TypeUint32, schema.TypeUint16:
+		case ytschema.TypeUint32, ytschema.TypeUint16:
 			return "Uint32"
-		case schema.TypeUint64:
+		case ytschema.TypeUint64:
 			return "Uint64"
 		default:
 			return "Unknown"
@@ -1437,16 +1437,16 @@ func (s *sinker) delete(tablePath ydbPath, item abstract.ChangeItem) error {
 	for _, c := range item.OldKeys.KeyNames {
 		finalSchema = append(finalSchema, colSchemas[rev[c]])
 	}
-	fields := make([]types.StructValueOption, 0)
+	fields := make([]ydb_table_types.StructValueOption, 0)
 	for i, c := range item.OldKeys.KeyNames {
 		val, opt, err := s.ydbVal(colSchemas[rev[c]].DataType, colSchemas[rev[c]].OriginalType, item.OldKeys.KeyValues[i])
 		if err != nil {
 			return xerrors.Errorf("unable to build ydb val: %w", err)
 		}
 		if !colSchemas[rev[c]].Required && !opt {
-			val = types.OptionalValue(val)
+			val = ydb_table_types.OptionalValue(val)
 		}
-		fields = append(fields, types.StructFieldValue(c, val))
+		fields = append(fields, ydb_table_types.StructFieldValue(c, val))
 	}
 	if s.config.ShardCount > 0 {
 		var cs uint64
@@ -1456,17 +1456,17 @@ func (s *sinker) delete(tablePath ydbPath, item abstract.ChangeItem) error {
 		default:
 			cs = crc64.Checksum([]byte(fmt.Sprintf("%v", v)))
 		}
-		fields = append(fields, types.StructFieldValue("_shard_key", types.OptionalValue(types.Uint64Value(cs))))
+		fields = append(fields, ydb_table_types.StructFieldValue("_shard_key", ydb_table_types.OptionalValue(ydb_table_types.Uint64Value(cs))))
 	}
-	batch := types.StructValue(fields...)
-	writeTx := table.TxControl(
-		table.BeginTx(
-			table.WithSerializableReadWrite(),
+	batch := ydb_table_types.StructValue(fields...)
+	writeTx := ydb_table.TxControl(
+		ydb_table.BeginTx(
+			ydb_table.WithSerializableReadWrite(),
 		),
-		table.CommitTx(),
+		ydb_table.CommitTx(),
 	)
 
-	return s.db.Table().Do(ctx, func(ctx context.Context, session table.Session) (err error) {
+	return s.db.Table().Do(ctx, func(ctx context.Context, session ydb_table.Session) (err error) {
 		q := s.deleteQuery(tablePath, finalSchema)
 		s.logger.Debug(q)
 		stmt, err := session.Prepare(ctx, q)
@@ -1474,8 +1474,8 @@ func (s *sinker) delete(tablePath ydbPath, item abstract.ChangeItem) error {
 			s.logger.Warn(fmt.Sprintf("Unable to prepare delete query:\n%v", q))
 			return xerrors.Errorf("unable to prepare delete query: %w", err)
 		}
-		_, _, err = stmt.Execute(ctx, writeTx, table.NewQueryParameters(
-			table.ValueParam("$batch", batch),
+		_, _, err = stmt.Execute(ctx, writeTx, ydb_table.NewQueryParameters(
+			ydb_table.ValueParam("$batch", batch),
 		))
 		if err != nil {
 			s.logger.Warn(fmt.Sprintf("unable to execute:\n%v", q), log.Error(err))
@@ -1485,7 +1485,7 @@ func (s *sinker) delete(tablePath ydbPath, item abstract.ChangeItem) error {
 	})
 }
 
-func NewSinker(lgr log.Logger, cfg *YdbDestination, mtrcs metrics.Registry) (abstract.Sinker, error) {
+func NewSinker(lgr log.Logger, cfg *YdbDestination, mtrcs core_metrics.Registry) (abstract.Sinker, error) {
 	var err error
 	var tlsConfig *tls.Config
 	if cfg.TLSEnabled {
@@ -1497,7 +1497,7 @@ func NewSinker(lgr log.Logger, cfg *YdbDestination, mtrcs metrics.Registry) (abs
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	var creds credentials.Credentials
+	var creds ydb_credentials.Credentials
 	creds, err = ResolveCredentials(
 		cfg.UserdataAuth,
 		string(cfg.Token),

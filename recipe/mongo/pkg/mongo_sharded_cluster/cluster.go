@@ -12,7 +12,7 @@ import (
 	"github.com/transferia/transferia/pkg/util"
 	"github.com/transferia/transferia/recipe/mongo/pkg/mongo_sharded_config"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
+	mongo_driver "go.mongodb.org/mongo-driver/mongo"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
@@ -103,7 +103,7 @@ func StartCluster(logger log.Logger, envInfo EnvironmentInfo, config mongo_shard
 		}
 	})
 	// perform post-actions from config
-	err = mongos.WithRootConnection(func(client *mongo.Client) error {
+	err = mongos.WithRootConnection(func(client *mongo_driver.Client) error {
 		createAdminReq := config.PostSteps.CreateAdminUser
 		if createAdminReq.User == "" && createAdminReq.Password == "" && createAdminReq.AuthSource == "" {
 			// no need to create anything

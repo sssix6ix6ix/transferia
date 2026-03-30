@@ -5,8 +5,8 @@ import (
 
 	aws_s3 "github.com/aws/aws-sdk-go/service/s3"
 	"github.com/transferia/transferia/pkg/abstract"
-	"github.com/transferia/transferia/pkg/providers/s3/pusher"
-	"go.ytsaurus.tech/yt/go/schema"
+	s3_pusher "github.com/transferia/transferia/pkg/providers/s3/pusher"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 var (
@@ -19,12 +19,12 @@ var (
 )
 
 type Reader interface {
-	Read(ctx context.Context, filePath string, pusher pusher.Pusher) error
+	Read(ctx context.Context, filePath string, pusher s3_pusher.Pusher) error
 
 	// ParsePassthrough is used in the parsqueue pusher for replications.
 	// Since actual parsing in the S3 parsers is a rather complex process, tailored to each format, this methods
 	// is just mean as a simple passthrough to fulfill the parsqueue signature contract and forwards the already parsed CI elements for pushing.
-	ParsePassthrough(chunk pusher.Chunk) []abstract.ChangeItem
+	ParsePassthrough(chunk s3_pusher.Chunk) []abstract.ChangeItem
 
 	// ObjectsFilter that is default for Reader implementation (e.g. filter that leaves only .parquet files).
 	ObjectsFilter() ObjectsFilter
@@ -51,8 +51,8 @@ func IsNotEmpty(file *aws_s3.Object) bool {
 }
 
 func AppendSystemColsTableSchema(cols []abstract.ColSchema, isPkey bool) *abstract.TableSchema {
-	fileName := abstract.NewColSchema(FileNameSystemCol, schema.TypeString, isPkey)
-	rowIndex := abstract.NewColSchema(RowIndexSystemCol, schema.TypeUint64, isPkey)
+	fileName := abstract.NewColSchema(FileNameSystemCol, ytschema.TypeString, isPkey)
+	rowIndex := abstract.NewColSchema(RowIndexSystemCol, ytschema.TypeUint64, isPkey)
 	cols = append([]abstract.ColSchema{fileName, rowIndex}, cols...)
 	return abstract.NewTableSchema(cols)
 }
@@ -63,13 +63,13 @@ func FlushChunk(
 	offset uint64,
 	currentSize int64,
 	buff []abstract.ChangeItem,
-	somePusher pusher.Pusher,
+	somePusher s3_pusher.Pusher,
 ) error {
 	if len(buff) == 0 {
 		return nil
 	}
 
-	chunk := pusher.NewChunk(filePath, false, offset, currentSize, buff)
+	chunk := s3_pusher.NewChunk(filePath, false, offset, currentSize, buff)
 	if err := somePusher.Push(ctx, chunk); err != nil {
 		return err
 	}

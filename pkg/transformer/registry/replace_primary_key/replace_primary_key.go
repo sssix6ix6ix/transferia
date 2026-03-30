@@ -7,7 +7,7 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/transformer"
-	"github.com/transferia/transferia/pkg/transformer/registry/filter"
+	transformer_filter "github.com/transferia/transferia/pkg/transformer/registry/filter"
 	"github.com/transferia/transferia/pkg/util/set"
 	"go.ytsaurus.tech/library/go/core/log"
 )
@@ -21,12 +21,12 @@ func init() {
 }
 
 type Config struct {
-	Keys   []string      `json:"keys"`
-	Tables filter.Tables `json:"tables"`
+	Keys   []string                  `json:"keys"`
+	Tables transformer_filter.Tables `json:"tables"`
 }
 
 type ReplacePrimaryKeyTransformer struct {
-	Tables filter.Filter
+	Tables transformer_filter.Filter
 	Keys   []string
 	keySet *set.Set[string]
 }
@@ -97,7 +97,7 @@ func (r *ReplacePrimaryKeyTransformer) Apply(input []abstract.ChangeItem) abstra
 }
 
 func (r *ReplacePrimaryKeyTransformer) Suitable(table abstract.TableID, schema *abstract.TableSchema) bool {
-	return filter.MatchAnyTableNameVariant(r.Tables, table) && r.containsAllKeys(schema.Columns().ColumnNames())
+	return transformer_filter.MatchAnyTableNameVariant(r.Tables, table) && r.containsAllKeys(schema.Columns().ColumnNames())
 }
 
 func (r *ReplacePrimaryKeyTransformer) ResultSchema(original *abstract.TableSchema) (*abstract.TableSchema, error) {
@@ -135,7 +135,7 @@ func NewReplacePrimaryKeyTransformer(cfg Config) (*ReplacePrimaryKeyTransformer,
 	if len(cfg.Keys) != keySet.Len() {
 		return nil, xerrors.Errorf("Can't use same keys column names twice: %s", strings.Join(cfg.Keys, ", "))
 	}
-	tbls, err := filter.NewFilter(cfg.Tables.IncludeTables, cfg.Tables.ExcludeTables)
+	tbls, err := transformer_filter.NewFilter(cfg.Tables.IncludeTables, cfg.Tables.ExcludeTables)
 	if err != nil {
 		return nil, xerrors.Errorf("unable to create tables filter: %w", err)
 	}

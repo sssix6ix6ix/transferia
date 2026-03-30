@@ -11,14 +11,14 @@ import (
 	"github.com/transferia/transferia/library/go/core/metrics/solomon"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/ydb"
+	provider_ydb "github.com/transferia/transferia/pkg/providers/ydb"
 	"github.com/transferia/transferia/tests/helpers"
 )
 
 //---------------------------------------------------------------------------------------------------------------------
 
 func TestGroup(t *testing.T) {
-	src := &ydb.YdbSource{
+	src := &provider_ydb.YdbSource{
 		Token:              model.SecretString(os.Getenv("YDB_TOKEN")),
 		Database:           helpers.GetEnvOfFail(t, "YDB_DATABASE"),
 		Instance:           helpers.GetEnvOfFail(t, "YDB_ENDPOINT"),
@@ -30,13 +30,13 @@ func TestGroup(t *testing.T) {
 	}
 
 	t.Run("init source database", func(t *testing.T) {
-		Target := &ydb.YdbDestination{
+		Target := &provider_ydb.YdbDestination{
 			Database: src.Database,
 			Token:    src.Token,
 			Instance: src.Instance,
 		}
 		Target.WithDefaults()
-		sinker, err := ydb.NewSinker(logger.Log, Target, solomon.NewRegistry(solomon.NewRegistryOpts()))
+		sinker, err := provider_ydb.NewSinker(logger.Log, Target, solomon.NewRegistry(solomon.NewRegistryOpts()))
 		require.NoError(t, err)
 
 		require.NoError(t, sinker.Push([]abstract.ChangeItem{*helpers.YDBInitChangeItem("in/test_table/dir1/my_lovely_table")}))
@@ -46,7 +46,7 @@ func TestGroup(t *testing.T) {
 		require.NoError(t, sinker.Push([]abstract.ChangeItem{*helpers.YDBInitChangeItem("in/test_dir/dir2/table1")}))
 	})
 
-	dst := &ydb.YdbDestination{
+	dst := &provider_ydb.YdbDestination{
 		Token:    model.SecretString(os.Getenv("YDB_TOKEN")),
 		Database: helpers.GetEnvOfFail(t, "YDB_DATABASE"),
 		Instance: helpers.GetEnvOfFail(t, "YDB_ENDPOINT"),
@@ -111,7 +111,7 @@ func TestGroup(t *testing.T) {
 	)
 }
 
-func runTestCase(t *testing.T, caseName string, src *ydb.YdbSource, dst *ydb.YdbDestination, useFullPath bool, pathsIn []string, pathsExpected []string) {
+func runTestCase(t *testing.T, caseName string, src *provider_ydb.YdbSource, dst *provider_ydb.YdbDestination, useFullPath bool, pathsIn []string, pathsExpected []string) {
 	fmt.Printf("starting test case: %s\n", caseName)
 	src.UseFullPaths = useFullPath
 	src.Tables = pathsIn
@@ -122,9 +122,9 @@ func runTestCase(t *testing.T, caseName string, src *ydb.YdbSource, dst *ydb.Ydb
 	fmt.Printf("finishing test case: %s\n", caseName)
 }
 
-func checkTables(t *testing.T, caseName string, src *ydb.YdbSource, expectedPaths []string) {
+func checkTables(t *testing.T, caseName string, src *provider_ydb.YdbSource, expectedPaths []string) {
 	src.Tables = nil
-	storage, err := ydb.NewStorage(src.ToStorageParams(), solomon.NewRegistry(solomon.NewRegistryOpts()))
+	storage, err := provider_ydb.NewStorage(src.ToStorageParams(), solomon.NewRegistry(solomon.NewRegistryOpts()))
 	require.NoError(t, err)
 
 	tableMap, err := storage.TableList(nil)

@@ -3,9 +3,9 @@ package container
 import (
 	"time"
 
-	"github.com/docker/docker/api/types/container"
+	docker_container "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
-	corev1 "k8s.io/api/core/v1"
+	k8s_api "k8s.io/api/core/v1"
 )
 
 type Volume struct {
@@ -20,7 +20,7 @@ type ContainerOpts struct {
 	Env           map[string]string
 	LogOptions    map[string]string
 	Namespace     string
-	RestartPolicy corev1.RestartPolicy
+	RestartPolicy k8s_api.RestartPolicy
 	PodName       string
 	Image         string
 	LogDriver     string
@@ -59,14 +59,14 @@ func (c *ContainerOpts) ToDockerOpts() DockerOpts {
 		})
 	}
 
-	var restartPolicy container.RestartPolicy
+	var restartPolicy docker_container.RestartPolicy
 	switch c.RestartPolicy {
-	case corev1.RestartPolicyAlways:
-		restartPolicy.Name = container.RestartPolicyAlways
-	case corev1.RestartPolicyOnFailure:
-		restartPolicy.Name = container.RestartPolicyOnFailure
-	case corev1.RestartPolicyNever:
-		restartPolicy.Name = container.RestartPolicyDisabled
+	case k8s_api.RestartPolicyAlways:
+		restartPolicy.Name = docker_container.RestartPolicyAlways
+	case k8s_api.RestartPolicyOnFailure:
+		restartPolicy.Name = docker_container.RestartPolicyOnFailure
+	case k8s_api.RestartPolicyNever:
+		restartPolicy.Name = docker_container.RestartPolicyDisabled
 	}
 
 	return DockerOpts{
@@ -87,28 +87,28 @@ func (c *ContainerOpts) ToDockerOpts() DockerOpts {
 }
 
 func (c *ContainerOpts) ToK8sOpts() K8sOpts {
-	var envVars []corev1.EnvVar
+	var envVars []k8s_api.EnvVar
 	for key, value := range c.Env {
-		envVars = append(envVars, corev1.EnvVar{
+		envVars = append(envVars, k8s_api.EnvVar{
 			Name:  key,
 			Value: value,
 		})
 	}
 
-	var k8sVolumes []corev1.Volume
-	var volumeMounts []corev1.VolumeMount
+	var k8sVolumes []k8s_api.Volume
+	var volumeMounts []k8s_api.VolumeMount
 	for _, vol := range c.Volumes {
 		volumeName := vol.Name
-		k8sVolumes = append(k8sVolumes, corev1.Volume{
+		k8sVolumes = append(k8sVolumes, k8s_api.Volume{
 			Name: volumeName,
-			VolumeSource: corev1.VolumeSource{
-				HostPath: &corev1.HostPathVolumeSource{
+			VolumeSource: k8s_api.VolumeSource{
+				HostPath: &k8s_api.HostPathVolumeSource{
 					Path: vol.HostPath,
 				},
 			},
 		})
 
-		volumeMounts = append(volumeMounts, corev1.VolumeMount{
+		volumeMounts = append(volumeMounts, k8s_api.VolumeMount{
 			Name:      volumeName,
 			MountPath: vol.ContainerPath,
 			ReadOnly:  vol.ReadOnly,

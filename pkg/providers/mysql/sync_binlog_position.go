@@ -3,7 +3,7 @@ package mysql
 import (
 	"context"
 
-	"github.com/go-mysql-org/go-mysql/mysql"
+	mysql_driver "github.com/go-mysql-org/go-mysql/mysql"
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
@@ -62,7 +62,7 @@ func SyncBinlogPosition(src *MysqlSource, id string, cp coordinator.Coordinator)
 	if gtidModeEnabled {
 		logger.Log.Infof("GTID mode is ON, trying to parse gtid: [%s]", gtid)
 
-		gtidSet, err := mysql.ParseGTIDSet(flavor, gtid)
+		gtidSet, err := mysql_driver.ParseGTIDSet(flavor, gtid)
 		if err != nil {
 			return xerrors.Errorf("failed to parse gtidset: %w", err)
 		}

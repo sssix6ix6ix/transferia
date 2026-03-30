@@ -4,13 +4,13 @@ import (
 	"context"
 
 	"github.com/cenkalti/backoff/v4"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/metrics/solomon"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	debeziumparameters "github.com/transferia/transferia/pkg/debezium/parameters"
+	debezium_parameters "github.com/transferia/transferia/pkg/debezium/parameters"
 	"github.com/transferia/transferia/pkg/middlewares"
 	"github.com/transferia/transferia/pkg/providers"
 	"github.com/transferia/transferia/pkg/util/gobwrapper"
@@ -77,7 +77,7 @@ var (
 
 type Provider struct {
 	logger   log.Logger
-	registry metrics.Registry
+	registry core_metrics.Registry
 	cp       coordinator.Coordinator
 	transfer *model.Transfer
 }
@@ -144,7 +144,7 @@ func (p *Provider) Storage() (abstract.Storage, error) {
 	if serializer, ok := p.transfer.Dst.(model.Serializable); ok {
 		serializationFormat, _ := serializer.Serializer()
 		if serializationFormat.Name == model.SerializationFormatDebezium {
-			timeZone := debeziumparameters.GetMysqlTimeZone(serializationFormat.Settings)
+			timeZone := debezium_parameters.GetMysqlTimeZone(serializationFormat.Settings)
 			src.Timezone = timeZone
 		}
 	}
@@ -171,7 +171,7 @@ func (p *Provider) Source() (abstract.Source, error) {
 	if serializer, ok := p.transfer.Dst.(model.Serializable); ok {
 		serializationFormat, _ := serializer.Serializer()
 		if serializationFormat.Name == model.SerializationFormatDebezium {
-			timeZone := debeziumparameters.GetMysqlTimeZone(serializationFormat.Settings)
+			timeZone := debezium_parameters.GetMysqlTimeZone(serializationFormat.Settings)
 			src.Timezone = timeZone
 		}
 	}
@@ -283,7 +283,7 @@ func (p *Provider) Type() abstract.ProviderType {
 	return ProviderType
 }
 
-func New(lgr log.Logger, registry metrics.Registry, cp coordinator.Coordinator, transfer *model.Transfer, operation *model.TransferOperation) providers.Provider {
+func New(lgr log.Logger, registry core_metrics.Registry, cp coordinator.Coordinator, transfer *model.Transfer, operation *model.TransferOperation) providers.Provider {
 	return &Provider{
 		logger:   lgr,
 		registry: registry,

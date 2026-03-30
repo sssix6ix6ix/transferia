@@ -6,7 +6,7 @@ import (
 
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/errors/coded"
-	"github.com/transferia/transferia/pkg/errors/codes"
+	error_codes "github.com/transferia/transferia/pkg/errors/codes"
 )
 
 type DBSchema map[TableID]*TableSchema
@@ -39,7 +39,7 @@ func (s DBSchema) CheckPrimaryKeys(filter includeable) error {
 			continue
 		}
 		if !columns.Columns().HasPrimaryKey() {
-			errs = append(errs, coded.Errorf(codes.GenericNoPKey, "%s: no key columns found", tID.Fqtn()))
+			errs = append(errs, coded.Errorf(error_codes.GenericNoPKey, "%s: no key columns found", tID.Fqtn()))
 		}
 	}
 	if err := errors.Join(errs...); err != nil {

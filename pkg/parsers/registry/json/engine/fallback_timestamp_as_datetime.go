@@ -5,8 +5,8 @@ import (
 
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/typesystem"
-	"github.com/transferia/transferia/pkg/parsers/generic"
-	"go.ytsaurus.tech/yt/go/schema"
+	generic_parser "github.com/transferia/transferia/pkg/parsers/generic"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 // isParsedItem - check if table is the result of generic-parser with opts.AddDedupeKeys columns
@@ -17,12 +17,12 @@ func isParsedItem(ci *abstract.ChangeItem) bool {
 	if len(ci.TableSchema.Columns()) <= 4 {
 		return false
 	}
-	timestampIndex := generic.TimestampIDX(ci.ColumnNames)
-	if ci.TableSchema.Columns()[timestampIndex].ColumnName != generic.ColNameTimestamp ||
-		ci.TableSchema.Columns()[timestampIndex].DataType != schema.TypeTimestamp.String() ||
-		ci.ColumnNames[generic.PartitionIDX(ci.ColumnNames)] != generic.ColNamePartition ||
-		ci.ColumnNames[generic.OffsetIDX(ci.ColumnNames)] != generic.ColNameOffset ||
-		ci.ColumnNames[generic.ElemIDX(ci.ColumnNames)] != generic.ColNameIdx {
+	timestampIndex := generic_parser.TimestampIDX(ci.ColumnNames)
+	if ci.TableSchema.Columns()[timestampIndex].ColumnName != generic_parser.ColNameTimestamp ||
+		ci.TableSchema.Columns()[timestampIndex].DataType != ytschema.TypeTimestamp.String() ||
+		ci.ColumnNames[generic_parser.PartitionIDX(ci.ColumnNames)] != generic_parser.ColNamePartition ||
+		ci.ColumnNames[generic_parser.OffsetIDX(ci.ColumnNames)] != generic_parser.ColNameOffset ||
+		ci.ColumnNames[generic_parser.ElemIDX(ci.ColumnNames)] != generic_parser.ColNameIdx {
 		return false
 	}
 	return true
@@ -39,11 +39,11 @@ func isUnparsedItem(ci *abstract.ChangeItem) bool {
 	if !strings.HasSuffix(ci.Table, "_unparsed") {
 		return false
 	}
-	if ci.TableSchema.Columns()[0].ColumnName != generic.ColNameTimestamp ||
-		ci.TableSchema.Columns()[0].DataType != schema.TypeTimestamp.String() ||
-		ci.ColumnNames[1] != generic.ColNamePartition ||
-		ci.ColumnNames[2] != generic.ColNameOffset ||
-		ci.ColumnNames[3] != generic.ColNameIdx {
+	if ci.TableSchema.Columns()[0].ColumnName != generic_parser.ColNameTimestamp ||
+		ci.TableSchema.Columns()[0].DataType != ytschema.TypeTimestamp.String() ||
+		ci.ColumnNames[1] != generic_parser.ColNamePartition ||
+		ci.ColumnNames[2] != generic_parser.ColNameOffset ||
+		ci.ColumnNames[3] != generic_parser.ColNameIdx {
 		return false
 	}
 	return true
@@ -53,10 +53,10 @@ func GenericParserTimestampFallback(ci *abstract.ChangeItem) (*abstract.ChangeIt
 	switch ci.Kind {
 	case abstract.InsertKind:
 		if isParsedItem(ci) {
-			ci.TableSchema.Columns()[generic.TimestampIDX(ci.ColumnNames)].DataType = schema.TypeDatetime.String()
+			ci.TableSchema.Columns()[generic_parser.TimestampIDX(ci.ColumnNames)].DataType = ytschema.TypeDatetime.String()
 			return ci, nil
 		} else if isUnparsedItem(ci) {
-			ci.TableSchema.Columns()[0].DataType = schema.TypeDatetime.String()
+			ci.TableSchema.Columns()[0].DataType = ytschema.TypeDatetime.String()
 			return ci, nil
 		}
 		return ci, typesystem.FallbackDoesNotApplyErr

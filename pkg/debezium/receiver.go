@@ -7,16 +7,16 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/changeitem"
-	debeziumcommon "github.com/transferia/transferia/pkg/debezium/common"
-	debeziumparameters "github.com/transferia/transferia/pkg/debezium/parameters"
+	debezium_common "github.com/transferia/transferia/pkg/debezium/common"
+	debezium_parameters "github.com/transferia/transferia/pkg/debezium/parameters"
 	"github.com/transferia/transferia/pkg/debezium/unpacker"
 	"github.com/transferia/transferia/pkg/schemaregistry/confluent"
-	"github.com/transferia/transferia/pkg/schemaregistry/format"
+	schemaregistry_format "github.com/transferia/transferia/pkg/schemaregistry/format"
 	"github.com/transferia/transferia/pkg/util"
 )
 
 type Receiver struct {
-	originalTypes         map[abstract.TableID]map[string]*debeziumcommon.OriginalTypeInfo // map: table -> [fieldName -> originalType]
+	originalTypes         map[abstract.TableID]map[string]*debezium_common.OriginalTypeInfo // map: table -> [fieldName -> originalType]
 	Unpacker              unpacker.Unpacker
 	schemaFormat          string
 	tableSchemaCache      map[string]tableSchemaCacheItem
@@ -26,10 +26,10 @@ type Receiver struct {
 type tableSchemaCacheItem struct {
 	beforeSchema   *abstract.TableSchema
 	afterSchema    *abstract.TableSchema
-	debeziumSchema *debeziumcommon.Schema
+	debeziumSchema *debezium_common.Schema
 }
 
-func (r *Receiver) originalType(schema, tableName, fieldName string) *debeziumcommon.OriginalTypeInfo {
+func (r *Receiver) originalType(schema, tableName, fieldName string) *debezium_common.OriginalTypeInfo {
 	currTableID := abstract.TableID{
 		Namespace: schema,
 		Name:      tableName,
@@ -39,10 +39,10 @@ func (r *Receiver) originalType(schema, tableName, fieldName string) *debeziumco
 			return currOriginalTypeInfo
 		}
 	}
-	return &debeziumcommon.OriginalTypeInfo{OriginalType: "", Properties: nil}
+	return &debezium_common.OriginalTypeInfo{OriginalType: "", Properties: nil}
 }
 
-func (r *Receiver) receiveTableSchema(schema *debeziumcommon.Schema, schemaName, tableName string) (*abstract.TableSchema, error) {
+func (r *Receiver) receiveTableSchema(schema *debezium_common.Schema, schemaName, tableName string) (*abstract.TableSchema, error) {
 	var tableSchema []abstract.ColSchema
 	for i := range schema.Fields {
 		originalType := r.originalType(schemaName, tableName, schema.Fields[i].Field)
@@ -60,7 +60,7 @@ func (r *Receiver) receiveTableSchema(schema *debeziumcommon.Schema, schemaName,
 	}
 	return abstract.NewTableSchema(tableSchema), nil
 }
-func (r *Receiver) receiveSchema(schema []byte, tableName, schemaName string) (*abstract.TableSchema, *abstract.TableSchema, *debeziumcommon.Schema, error) {
+func (r *Receiver) receiveSchema(schema []byte, tableName, schemaName string) (*abstract.TableSchema, *abstract.TableSchema, *debezium_common.Schema, error) {
 	r.tableSchemaCacheMutex.RLock()
 	cache, ok := r.tableSchemaCache[util.Hash(string(schema))]
 	r.tableSchemaCacheMutex.RUnlock()
@@ -71,7 +71,7 @@ func (r *Receiver) receiveSchema(schema []byte, tableName, schemaName string) (*
 	if err != nil {
 		return nil, nil, nil, xerrors.Errorf("can't convert schema format, err: %w", err)
 	}
-	debeziumSchema, err := debeziumcommon.UnmarshalSchema(convertedSchema)
+	debeziumSchema, err := debezium_common.UnmarshalSchema(convertedSchema)
 	if err != nil {
 		return nil, nil, nil, xerrors.Errorf("can't unmarshal converted schema, err: %w", err)
 	}
@@ -95,7 +95,7 @@ func (r *Receiver) receiveSchema(schema []byte, tableName, schemaName string) (*
 	return beforeSchema, afterSchema, debeziumSchema, nil
 }
 
-func (r *Receiver) add(changeItem *abstract.ChangeItem, inSchemaDescr *debeziumcommon.Schema, inVal interface{}, originalType *debeziumcommon.OriginalTypeInfo, kind abstract.Kind, ytType string, isKey bool) error {
+func (r *Receiver) add(changeItem *abstract.ChangeItem, inSchemaDescr *debezium_common.Schema, inVal interface{}, originalType *debezium_common.OriginalTypeInfo, kind abstract.Kind, ytType string, isKey bool) error {
 	resultVal, isAbsent, err := receiveFieldChecked(ytType, inSchemaDescr, inVal, originalType)
 	if err != nil {
 		return xerrors.Errorf("unable to get field description, err: %w", err)
@@ -122,8 +122,8 @@ func (r *Receiver) add(changeItem *abstract.ChangeItem, inSchemaDescr *debeziumc
 
 func (r *Receiver) convertSchemaFormat(schema []byte) ([]byte, error) {
 	switch r.schemaFormat {
-	case debeziumparameters.ConverterConfluentJSON:
-		var confluentSchema format.ConfluentJSONSchema
+	case debezium_parameters.ConverterConfluentJSON:
+		var confluentSchema schemaregistry_format.ConfluentJSONSchema
 		if err := json.Unmarshal(schema, &confluentSchema); err != nil {
 			return nil, xerrors.Errorf("can't unmarshal confluent schema, err: %w", err)
 		}
@@ -132,7 +132,7 @@ func (r *Receiver) convertSchemaFormat(schema []byte) ([]byte, error) {
 			return nil, xerrors.Errorf("unable to marshal schema in confluent json format, err: %w", err)
 		}
 		return rawSchema, nil
-	case debeziumparameters.ConverterApacheKafkaJSON:
+	case debezium_parameters.ConverterApacheKafkaJSON:
 		fallthrough
 	default:
 		return schema, nil
@@ -149,7 +149,7 @@ func (r *Receiver) Receive(in string) (*abstract.ChangeItem, error) {
 }
 
 func (r *Receiver) receive(schema, payload []byte) (*abstract.ChangeItem, error) {
-	payloadStruct, err := debeziumcommon.UnmarshalPayload(payload)
+	payloadStruct, err := debezium_common.UnmarshalPayload(payload)
 	if err != nil {
 		return nil, xerrors.Errorf("unable to unmarshal json payload: %s, err: %w", string(payload), err)
 	}
@@ -168,7 +168,7 @@ func (r *Receiver) receive(schema, payload []byte) (*abstract.ChangeItem, error)
 	}
 	var currValuesMap map[string]interface{}
 	var currTableSchema *abstract.TableSchema
-	var currDebeziumSchema *debeziumcommon.Schema
+	var currDebeziumSchema *debezium_common.Schema
 	if kind == abstract.DeleteKind {
 		currValuesMap = payloadStruct.Before
 		currTableSchema = beforeSchema
@@ -219,11 +219,11 @@ func (r *Receiver) receive(schema, payload []byte) (*abstract.ChangeItem, error)
 	return result, nil
 }
 
-func NewReceiver(originalTypes map[abstract.TableID]map[string]*debeziumcommon.OriginalTypeInfo, schemaRegistryClient *confluent.SchemaRegistryClient) *Receiver {
+func NewReceiver(originalTypes map[abstract.TableID]map[string]*debezium_common.OriginalTypeInfo, schemaRegistryClient *confluent.SchemaRegistryClient) *Receiver {
 	currUnpacker := unpacker.NewMessageUnpacker(schemaRegistryClient)
-	var schemaFormat = debeziumparameters.ConverterApacheKafkaJSON
+	var schemaFormat = debezium_parameters.ConverterApacheKafkaJSON
 	if schemaRegistryClient != nil {
-		schemaFormat = debeziumparameters.ConverterConfluentJSON
+		schemaFormat = debezium_parameters.ConverterConfluentJSON
 	}
 	return &Receiver{
 		originalTypes:         originalTypes,

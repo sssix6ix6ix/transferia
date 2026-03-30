@@ -10,21 +10,21 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/internal/logger"
-	"github.com/transferia/transferia/internal/metrics"
+	dt_metrics "github.com/transferia/transferia/internal/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/format"
 	"github.com/transferia/transferia/pkg/parsers"
-	"github.com/transferia/transferia/pkg/parsers/generic"
+	generic_parser "github.com/transferia/transferia/pkg/parsers/generic"
 	_ "github.com/transferia/transferia/pkg/parsers/registry"
-	jsonparser "github.com/transferia/transferia/pkg/parsers/registry/json"
-	"github.com/transferia/transferia/pkg/parsers/registry/tskv"
-	"github.com/transferia/transferia/pkg/parsers/tests/samples"
-	"github.com/transferia/transferia/pkg/providers/kafka"
+	parser_json "github.com/transferia/transferia/pkg/parsers/registry/json"
+	parser_tskv "github.com/transferia/transferia/pkg/parsers/registry/tskv"
+	parsers_tests_samples "github.com/transferia/transferia/pkg/parsers/tests/samples"
+	provider_kafka "github.com/transferia/transferia/pkg/providers/kafka"
 	"github.com/transferia/transferia/pkg/stats"
 	"go.uber.org/zap/zapcore"
 	"go.ytsaurus.tech/library/go/core/log"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 func parserConfigStructToMap(t *testing.T, parserConfigUnwrapped parsers.AbstractParserConfig) map[string]interface{} {
@@ -40,43 +40,43 @@ func parserConfigMapToStruct(t *testing.T, parserConfigMap map[string]interface{
 }
 
 func ParserConfigMap(name string) map[string]interface{} {
-	var source kafka.KafkaSource
-	_ = json.Unmarshal([]byte(samples.Configs[name]), &source)
+	var source provider_kafka.KafkaSource
+	_ = json.Unmarshal([]byte(parsers_tests_samples.Configs[name]), &source)
 	source.WithDefaults()
 	return source.ParserConfig
 }
 
-func GetGenericParserImpl(in parsers.Parser) *generic.GenericParser {
+func GetGenericParserImpl(in parsers.Parser) *generic_parser.GenericParser {
 	wrapper := in.(parsers.WrappedParser)
-	return wrapper.Unwrap().(*generic.GenericParser)
+	return wrapper.Unwrap().(*generic_parser.GenericParser)
 }
 
 // tests
 
 func TestParser_Do(t *testing.T) {
-	parser, err := parsers.NewParserFromMap(ParserConfigMap(samples.MetrikaSample), false, logger.Log, stats.NewSourceStats(metrics.NewRegistry().WithTags(map[string]string{
+	parser, err := parsers.NewParserFromMap(ParserConfigMap(parsers_tests_samples.MetrikaSample), false, logger.Log, stats.NewSourceStats(dt_metrics.NewRegistry().WithTags(map[string]string{
 		"id": "TestParser_Do",
 	})))
 	require.NoError(t, err)
-	res := parser.Do(samples.Data[samples.MetrikaSample], abstract.Partition{})
+	res := parser.Do(parsers_tests_samples.Data[parsers_tests_samples.MetrikaSample], abstract.Partition{})
 	require.Equal(t, 1, len(res))
 }
 
 func TestParser_TableSplitter(t *testing.T) {
-	parserConfigMap := ParserConfigMap(samples.MetrikaSample)
+	parserConfigMap := ParserConfigMap(parsers_tests_samples.MetrikaSample)
 
 	testCase := func(cols []string) string {
-		parserConfigUnwrapped := parserConfigMapToStruct(t, parserConfigMap).(*tskv.ParserConfigTSKVLb)
+		parserConfigUnwrapped := parserConfigMapToStruct(t, parserConfigMap).(*parser_tskv.ParserConfigTSKVLb)
 		parserConfigUnwrapped.TableSplitter = &abstract.TableSplitter{
 			Columns: cols,
 		}
 		parserConfigMapFinal := parserConfigStructToMap(t, parserConfigUnwrapped)
 
-		parser, err := parsers.NewParserFromMap(parserConfigMapFinal, false, logger.Log, stats.NewSourceStats(metrics.NewRegistry().WithTags(map[string]string{
+		parser, err := parsers.NewParserFromMap(parserConfigMapFinal, false, logger.Log, stats.NewSourceStats(dt_metrics.NewRegistry().WithTags(map[string]string{
 			"id": "TestParser_Do",
 		})))
 		require.NoError(t, err)
-		res := parser.Do(samples.Data[samples.MetrikaSample], abstract.Partition{
+		res := parser.Do(parsers_tests_samples.Data[parsers_tests_samples.MetrikaSample], abstract.Partition{
 			Partition: 777,
 			Topic:     "my/lovely/topic",
 		})
@@ -145,14 +145,14 @@ func testTableSplitterOnChangeItem(
 	columns []string,
 	item map[string]interface{},
 ) string {
-	parserConfigMap := ParserConfigMap(samples.MetrikaSample)
-	parserConfigUnwrapped := parserConfigMapToStruct(t, parserConfigMap).(*tskv.ParserConfigTSKVLb)
+	parserConfigMap := ParserConfigMap(parsers_tests_samples.MetrikaSample)
+	parserConfigUnwrapped := parserConfigMapToStruct(t, parserConfigMap).(*parser_tskv.ParserConfigTSKVLb)
 	parserConfigUnwrapped.TableSplitter = &abstract.TableSplitter{
 		Columns: columns,
 	}
 	parserConfigMapFinal := parserConfigStructToMap(t, parserConfigUnwrapped)
 
-	parser, err := parsers.NewParserFromMap(parserConfigMapFinal, false, logger.Log, stats.NewSourceStats(metrics.NewRegistry().WithTags(map[string]string{
+	parser, err := parsers.NewParserFromMap(parserConfigMapFinal, false, logger.Log, stats.NewSourceStats(dt_metrics.NewRegistry().WithTags(map[string]string{
 		"id": "TestParser_Do",
 	})))
 	require.NoError(t, err)
@@ -163,7 +163,7 @@ func testTableSplitterOnChangeItem(
 			break
 		}
 	}
-	gparser, ok := parser.(*generic.GenericParser)
+	gparser, ok := parser.(*generic_parser.GenericParser)
 	require.True(t, ok)
 
 	var columnValues []interface{}
@@ -171,27 +171,27 @@ func testTableSplitterOnChangeItem(
 }
 
 func TestParser_DoTM280(t *testing.T) {
-	parser, err := parsers.NewParserFromMap(ParserConfigMap(samples.TM280Sample), false, logger.Log, stats.NewSourceStats(metrics.NewRegistry().WithTags(map[string]string{
+	parser, err := parsers.NewParserFromMap(ParserConfigMap(parsers_tests_samples.TM280Sample), false, logger.Log, stats.NewSourceStats(dt_metrics.NewRegistry().WithTags(map[string]string{
 		"id": "TestParser_DoTM280",
 	})))
 	require.NoError(t, err)
-	res := parser.Do(samples.Data[samples.TM280Sample], abstract.Partition{})
+	res := parser.Do(parsers_tests_samples.Data[parsers_tests_samples.TM280Sample], abstract.Partition{})
 	require.Equal(t, 2, len(res))
 	require.Equal(t, res[0].ColumnValues[0], uint64(960372025831085293))
 	require.Equal(t, res[1].ColumnValues[0], uint64(18446744073709551615))
 }
 
 func TestGenericParser_DoMetrikaComplex(t *testing.T) {
-	parser, err := parsers.NewParserFromMap(ParserConfigMap(samples.MetikaComplexSample), false, logger.Log, stats.NewSourceStats(metrics.NewRegistry().WithTags(map[string]string{
+	parser, err := parsers.NewParserFromMap(ParserConfigMap(parsers_tests_samples.MetikaComplexSample), false, logger.Log, stats.NewSourceStats(dt_metrics.NewRegistry().WithTags(map[string]string{
 		"id": "TestGenericParser_DoMetrikaComplex",
 	})))
 	require.NoError(t, err)
-	res := parser.Do(samples.Data[samples.MetikaComplexSample], abstract.Partition{})
+	res := parser.Do(parsers_tests_samples.Data[parsers_tests_samples.MetikaComplexSample], abstract.Partition{})
 	require.Equal(t, 1, len(res))
 }
 
 func TestGenericParser_DoSensitive(t *testing.T) {
-	parser, err := parsers.NewParserFromMap(ParserConfigMap(samples.SensitiveSample), false, logger.Log, stats.NewSourceStats(metrics.NewRegistry().WithTags(map[string]string{
+	parser, err := parsers.NewParserFromMap(ParserConfigMap(parsers_tests_samples.SensitiveSample), false, logger.Log, stats.NewSourceStats(dt_metrics.NewRegistry().WithTags(map[string]string{
 		"id": "TestGenericParser_DoSensitive",
 	})))
 
@@ -200,7 +200,7 @@ func TestGenericParser_DoSensitive(t *testing.T) {
 		t.Skip()
 	}
 	require.NoError(t, err)
-	resArr := parser.Do(samples.Data[samples.SensitiveSample], abstract.Partition{})
+	resArr := parser.Do(parsers_tests_samples.Data[parsers_tests_samples.SensitiveSample], abstract.Partition{})
 	require.Equal(t, 1, len(resArr))
 	res := resArr[0]
 	fieldsWithSecretErasure := 0
@@ -216,7 +216,7 @@ func TestGenericParser_DoSensitive(t *testing.T) {
 }
 
 func TestGenericParser_DoSensitiveDisabled(t *testing.T) {
-	parser, err := parsers.NewParserFromMap(ParserConfigMap(samples.SensitiveDisabledSample), false, logger.Log, stats.NewSourceStats(metrics.NewRegistry().WithTags(map[string]string{
+	parser, err := parsers.NewParserFromMap(ParserConfigMap(parsers_tests_samples.SensitiveDisabledSample), false, logger.Log, stats.NewSourceStats(dt_metrics.NewRegistry().WithTags(map[string]string{
 		"id": "TestGenericParser_DoSensitiveDisabled",
 	})))
 
@@ -225,7 +225,7 @@ func TestGenericParser_DoSensitiveDisabled(t *testing.T) {
 		t.Skip()
 	}
 	require.NoError(t, err)
-	resArr := parser.Do(samples.Data[samples.SensitiveDisabledSample], abstract.Partition{})
+	resArr := parser.Do(parsers_tests_samples.Data[parsers_tests_samples.SensitiveDisabledSample], abstract.Partition{})
 	require.Equal(t, 1, len(resArr))
 	res := resArr[0]
 	fieldsWithSecretErasure := 0
@@ -241,7 +241,7 @@ func TestGenericParser_DoSensitiveDisabled(t *testing.T) {
 }
 
 func TestGenericParser_DoKikimr(t *testing.T) {
-	parser, err := parsers.NewParserFromMap(ParserConfigMap(samples.KikimrSample), false, logger.Log, stats.NewSourceStats(metrics.NewRegistry().WithTags(map[string]string{
+	parser, err := parsers.NewParserFromMap(ParserConfigMap(parsers_tests_samples.KikimrSample), false, logger.Log, stats.NewSourceStats(dt_metrics.NewRegistry().WithTags(map[string]string{
 		"id": "TestGenericParser_DoKikimr",
 	})))
 
@@ -250,12 +250,12 @@ func TestGenericParser_DoKikimr(t *testing.T) {
 		t.Skip()
 	}
 	require.NoError(t, err)
-	res := parser.Do(samples.Data[samples.KikimrSample], abstract.Partition{})
+	res := parser.Do(parsers_tests_samples.Data[parsers_tests_samples.KikimrSample], abstract.Partition{})
 	require.Equal(t, 213, len(res))
 }
 
 func TestGenericParser_DoKikimrNew(t *testing.T) {
-	parser, err := parsers.NewParserFromMap(ParserConfigMap(samples.KikimrNew), false, logger.Log, stats.NewSourceStats(metrics.NewRegistry().WithTags(map[string]string{
+	parser, err := parsers.NewParserFromMap(ParserConfigMap(parsers_tests_samples.KikimrNew), false, logger.Log, stats.NewSourceStats(dt_metrics.NewRegistry().WithTags(map[string]string{
 		"id": "TestGenericParser_DoKikimrNew",
 	})))
 
@@ -264,7 +264,7 @@ func TestGenericParser_DoKikimrNew(t *testing.T) {
 		t.Skip()
 	}
 	require.NoError(t, err)
-	res := parser.Do(samples.Data[samples.KikimrNew], abstract.Partition{})
+	res := parser.Do(parsers_tests_samples.Data[parsers_tests_samples.KikimrNew], abstract.Partition{})
 	abstract.Dump(res)
 	if len(res) > 0 {
 		require.Equal(t, 6, len(res[len(res)-1].ColumnValues))
@@ -272,12 +272,12 @@ func TestGenericParser_DoKikimrNew(t *testing.T) {
 }
 
 func TestParser_DoJson(t *testing.T) {
-	parser, err := parsers.NewParserFromMap(ParserConfigMap(samples.JSONSample), false, logger.Log, stats.NewSourceStats(metrics.NewRegistry().WithTags(map[string]string{
+	parser, err := parsers.NewParserFromMap(ParserConfigMap(parsers_tests_samples.JSONSample), false, logger.Log, stats.NewSourceStats(dt_metrics.NewRegistry().WithTags(map[string]string{
 		"id": "TestGenericParser_DoJson",
 	})))
 	require.NoError(t, err)
 	t.Run("change items", func(t *testing.T) {
-		res := parser.Do(samples.Data[samples.JSONSample], *new(abstract.Partition))
+		res := parser.Do(parsers_tests_samples.Data[parsers_tests_samples.JSONSample], *new(abstract.Partition))
 		require.Equal(t, 36, len(res))
 		offset := uint64(0)
 		for _, row := range res {
@@ -296,9 +296,9 @@ func TestParser_DoJson(t *testing.T) {
 }
 
 func TestMdbSample(t *testing.T) {
-	parser, err := parsers.NewParserFromMap(ParserConfigMap(samples.MdbSample), false, logger.Log, stats.NewSourceStats(metrics.NewRegistry()))
+	parser, err := parsers.NewParserFromMap(ParserConfigMap(parsers_tests_samples.MdbSample), false, logger.Log, stats.NewSourceStats(dt_metrics.NewRegistry()))
 	require.NoError(t, err)
-	res := parser.Do(samples.Data[samples.MdbSample], abstract.Partition{})
+	res := parser.Do(parsers_tests_samples.Data[parsers_tests_samples.MdbSample], abstract.Partition{})
 	abstract.Dump(res)
 	if len(res) > 0 {
 		require.Equal(t, 29, len(res[len(res)-1].ColumnValues))
@@ -306,23 +306,23 @@ func TestMdbSample(t *testing.T) {
 }
 
 func TestTSKVWithEbmedNewLine(t *testing.T) {
-	parser, err := parsers.NewParserFromMap(ParserConfigMap(samples.TM5249), false, logger.Log, stats.NewSourceStats(metrics.NewRegistry().WithTags(map[string]string{
+	parser, err := parsers.NewParserFromMap(ParserConfigMap(parsers_tests_samples.TM5249), false, logger.Log, stats.NewSourceStats(dt_metrics.NewRegistry().WithTags(map[string]string{
 		"id": "TestParser_Do",
 	})))
 	require.NoError(t, err)
-	res := parser.Do(samples.Data[samples.TM5249], abstract.Partition{})
+	res := parser.Do(parsers_tests_samples.Data[parsers_tests_samples.TM5249], abstract.Partition{})
 	abstract.Dump(res)
 	require.Equal(t, 2, len(res))
 }
 
 func TestLogfellerTimestampParse(t *testing.T) {
-	parserName := samples.LogfellerTimestamps
+	parserName := parsers_tests_samples.LogfellerTimestamps
 	parser, err := parsers.NewParserFromMap(
 		ParserConfigMap(parserName),
 		false,
 		logger.Log,
 		stats.NewSourceStats(
-			metrics.NewRegistry().WithTags(
+			dt_metrics.NewRegistry().WithTags(
 				map[string]string{"id": "TestLogfellerTimestampParse"},
 			),
 		),
@@ -337,14 +337,14 @@ func TestLogfellerTimestampParse(t *testing.T) {
 
 	{
 		// abstract 1 parser
-		res := parser.Do(samples.Data[parserName], *new(abstract.Partition))
+		res := parser.Do(parsers_tests_samples.Data[parserName], *new(abstract.Partition))
 		require.Equal(t, 1, len(res))
 		fields := res[0].AsMap()
 		// Timestamps
-		require.Equal(t, schema.Timestamp(1234567890123456).Time().UTC(), fields["default"])
-		require.Equal(t, schema.Timestamp(1234567890123456).Time().UTC(), fields["microseconds"])
-		require.Equal(t, schema.Timestamp(1234567890123000).Time().UTC(), fields["milliseconds"])
-		require.Equal(t, schema.Timestamp(1234567890000000).Time().UTC(), fields["seconds"])
+		require.Equal(t, ytschema.Timestamp(1234567890123456).Time().UTC(), fields["default"])
+		require.Equal(t, ytschema.Timestamp(1234567890123456).Time().UTC(), fields["microseconds"])
+		require.Equal(t, ytschema.Timestamp(1234567890123000).Time().UTC(), fields["milliseconds"])
+		require.Equal(t, ytschema.Timestamp(1234567890000000).Time().UTC(), fields["seconds"])
 
 		// Datetime (seconds)
 		require.Equal(t, time.Unix(1234567890, 0), fields["datetime_default"].(time.Time))
@@ -361,15 +361,15 @@ func TestLogfellerTimestampParse(t *testing.T) {
 }
 
 func TestGenericParser_Parse_vs_Do(t *testing.T) {
-	for k := range samples.Configs {
+	for k := range parsers_tests_samples.Configs {
 		t.Run(k, func(t *testing.T) {
-			var source kafka.KafkaSource
-			_ = json.Unmarshal([]byte(samples.Configs[k]), &source)
+			var source provider_kafka.KafkaSource
+			_ = json.Unmarshal([]byte(parsers_tests_samples.Configs[k]), &source)
 			if parsers.GetParserNameByMap(source.ParserConfig) == "yql.lb" { // skip YQL-parser, test only generic & logfeller parsers
 				return
 			}
 			configMap := ParserConfigMap(k)
-			parser, err := parsers.NewParserFromMap(configMap, false, logger.Log, stats.NewSourceStats(metrics.NewRegistry().WithTags(map[string]string{
+			parser, err := parsers.NewParserFromMap(configMap, false, logger.Log, stats.NewSourceStats(dt_metrics.NewRegistry().WithTags(map[string]string{
 				"id": "TestGenericParser_Parse_vs_Do",
 			})))
 			if xerrors.Is(err, parsers.UnknownParserErr) {
@@ -381,7 +381,7 @@ func TestGenericParser_Parse_vs_Do(t *testing.T) {
 				return
 			}
 			require.NoError(t, err)
-			res := parser.Do(samples.Data[k], *new(abstract.Partition))
+			res := parser.Do(parsers_tests_samples.Data[k], *new(abstract.Partition))
 			var changes []abstract.ChangeItem
 			t.Logf("old parser: %v len", len(res))
 			abstract.Dump(res)
@@ -392,9 +392,9 @@ func TestGenericParser_Parse_vs_Do(t *testing.T) {
 }
 
 func TestGenericParserDatetimeZone(t *testing.T) {
-	parserConfigStruct := &jsonparser.ParserConfigJSONLb{
+	parserConfigStruct := &parser_json.ParserConfigJSONLb{
 		Fields: []abstract.ColSchema{
-			{ColumnName: "timestamp", DataType: schema.TypeDatetime.String()},
+			{ColumnName: "timestamp", DataType: ytschema.TypeDatetime.String()},
 		},
 		TimeField: &abstract.TimestampCol{
 			Col:    "timestamp",
@@ -403,7 +403,7 @@ func TestGenericParserDatetimeZone(t *testing.T) {
 	}
 	configMap, err := parsers.ParserConfigStructToMap(parserConfigStruct)
 	require.NoError(t, err)
-	parser, err := parsers.NewParserFromMap(configMap, false, logger.Log, stats.NewSourceStats(metrics.NewRegistry()))
+	parser, err := parsers.NewParserFromMap(configMap, false, logger.Log, stats.NewSourceStats(dt_metrics.NewRegistry()))
 	require.NoError(t, err)
 
 	res := parser.Do(parsers.Message{
@@ -428,15 +428,15 @@ func TestGenericParserDatetimeZone(t *testing.T) {
 
 func BenchmarkGenericParser(b *testing.B) {
 	for _, testCase := range []string{
-		samples.MetrikaSample, // tskv
-		samples.TaxiSample,    // tskv
-		samples.MdbSample,     // json
-		samples.JSONSample,    // json
+		parsers_tests_samples.MetrikaSample, // tskv
+		parsers_tests_samples.TaxiSample,    // tskv
+		parsers_tests_samples.MdbSample,     // json
+		parsers_tests_samples.JSONSample,    // json
 	} {
-		parser, err := parsers.NewParserFromMap(ParserConfigMap(testCase), false, logger.LoggerWithLevel(zapcore.WarnLevel), stats.NewSourceStats(metrics.NewRegistry()))
+		parser, err := parsers.NewParserFromMap(ParserConfigMap(testCase), false, logger.LoggerWithLevel(zapcore.WarnLevel), stats.NewSourceStats(dt_metrics.NewRegistry()))
 		require.NoError(b, err)
 		for _, size := range []int{1, 5, 10} {
-			d := samples.Data[testCase]
+			d := parsers_tests_samples.Data[testCase]
 			for i := 1; i < size; i++ {
 				d.Value = append(d.Value, []byte("\n")...)
 				d.Value = append(d.Value, d.Value...)
@@ -456,17 +456,17 @@ func BenchmarkGenericParser(b *testing.B) {
 
 func BenchmarkGenericParser_Do(b *testing.B) {
 	for _, testCase := range []string{
-		samples.JSONSample,      // json
-		samples.MetrikaSample,   // tskv
-		samples.TaxiSample,      // tskv
-		samples.SensitiveSample, // logfeller
-		samples.KikimrSample,    // logfeller
+		parsers_tests_samples.JSONSample,      // json
+		parsers_tests_samples.MetrikaSample,   // tskv
+		parsers_tests_samples.TaxiSample,      // tskv
+		parsers_tests_samples.SensitiveSample, // logfeller
+		parsers_tests_samples.KikimrSample,    // logfeller
 	} {
 		for _, size := range []int{1} {
 			b.Run(fmt.Sprint(testCase, "/", size), func(b *testing.B) {
-				parser, err := parsers.NewParserFromMap(ParserConfigMap(testCase), false, logger.Log, stats.NewSourceStats(metrics.NewRegistry()))
+				parser, err := parsers.NewParserFromMap(ParserConfigMap(testCase), false, logger.Log, stats.NewSourceStats(dt_metrics.NewRegistry()))
 				require.NoError(b, err)
-				d := samples.Data[testCase]
+				d := parsers_tests_samples.Data[testCase]
 				for i := 1; i < size; i++ {
 					d.Value = append(d.Value, []byte("\n")...)
 					d.Value = append(d.Value, d.Value...)
@@ -485,7 +485,7 @@ func BenchmarkGenericParser_Do(b *testing.B) {
 }
 
 func TestParseVal(t *testing.T) {
-	parserW, err := parsers.NewParserFromMap(ParserConfigMap(samples.MdbSample), false, logger.Log, stats.NewSourceStats(metrics.NewRegistry()))
+	parserW, err := parsers.NewParserFromMap(ParserConfigMap(parsers_tests_samples.MdbSample), false, logger.Log, stats.NewSourceStats(dt_metrics.NewRegistry()))
 	require.NoError(t, err)
 
 	parser := GetGenericParserImpl(parserW)
@@ -493,7 +493,7 @@ func TestParseVal(t *testing.T) {
 	// v.(uint64)
 
 	t.Run("uint32", func(t *testing.T) {
-		uint32Res, err := parser.ParseVal(uint64(1), schema.TypeUint32.String())
+		uint32Res, err := parser.ParseVal(uint64(1), ytschema.TypeUint32.String())
 		require.NoError(t, err)
 		require.Equal(t, uint32(0x1), uint32Res)
 	})

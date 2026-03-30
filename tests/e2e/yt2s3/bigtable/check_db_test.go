@@ -16,23 +16,23 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/changeitem"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
-	dp_model "github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/s3"
+	"github.com/transferia/transferia/pkg/abstract/model"
+	s3_model "github.com/transferia/transferia/pkg/providers/s3/model"
 	"github.com/transferia/transferia/pkg/providers/s3/s3recipe"
-	yt_provider "github.com/transferia/transferia/pkg/providers/yt"
+	provider_yt "github.com/transferia/transferia/pkg/providers/yt"
 	"github.com/transferia/transferia/pkg/providers/yt/yt_client"
 	"github.com/transferia/transferia/pkg/terryid"
 	"github.com/transferia/transferia/pkg/worker/tasks"
 	"github.com/transferia/transferia/tests/helpers"
 	mocksink "github.com/transferia/transferia/tests/helpers/mock_sink"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 	"go.ytsaurus.tech/yt/go/ypath"
 	"go.ytsaurus.tech/yt/go/yt"
 )
 
 var (
 	transferType = abstract.TransferTypeSnapshotOnly
-	source       = &yt_provider.YtSource{
+	source       = &provider_yt.YtSource{
 		Cluster:          os.Getenv("YT_PROXY"),
 		YtProxy:          os.Getenv("YT_PROXY"),
 		Paths:            []string{"//table_for_tests"},
@@ -47,7 +47,7 @@ func init() {
 	_ = os.Setenv("YT_LOG_LEVEL", "trace")
 }
 
-func runSecondaryWorker(ctx context.Context, t *testing.T, cp coordinator.Coordinator, transfer *dp_model.Transfer, operationID string, workerIndex int, wg *sync.WaitGroup) {
+func runSecondaryWorker(ctx context.Context, t *testing.T, cp coordinator.Coordinator, transfer *model.Transfer, operationID string, workerIndex int, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	time.Sleep(3 * time.Second)
@@ -59,11 +59,11 @@ func runSecondaryWorker(ctx context.Context, t *testing.T, cp coordinator.Coordi
 		ShardingUpload: transfer.Runtime.(*abstract.LocalRuntime).ShardingUpload,
 	}
 
-	task := &dp_model.TransferOperation{
+	task := &model.TransferOperation{
 		OperationID: operationID,
 		TransferID:  transfer.ID,
 		TaskType:    abstract.TaskType{Task: abstract.Activate{}},
-		Status:      dp_model.RunningTask,
+		Status:      model.RunningTask,
 		CreatedAt:   taskCreatedAt,
 	}
 
@@ -85,7 +85,7 @@ func runSecondaryWorker(ctx context.Context, t *testing.T, cp coordinator.Coordi
 }
 
 func TestBigTable(t *testing.T) {
-	target := s3recipe.PrepareS3(t, t.Name(), dp_model.ParsingFormatJSON, s3.NoEncoding)
+	target := s3recipe.PrepareS3(t, t.Name(), model.ParsingFormatJSON, s3_model.NoEncoding)
 	helpers.InitSrcDst(helpers.TransferID, source, target, transferType)
 
 	transfer := helpers.MakeTransfer(helpers.TransferID, source, target, transferType)
@@ -98,7 +98,7 @@ func TestBigTable(t *testing.T) {
 	err = ytc.GetNode(context.Background(), ypath.NewRich(source.Paths[0]).YPath().Attr("row_count"), &rowCount, nil)
 	require.NoError(t, err)
 
-	s3Src := &s3.S3Source{
+	s3Src := &s3_model.S3Source{
 		Bucket:           target.Bucket,
 		ConnectionConfig: target.ConnectionConfig(),
 		PathPrefix:       "",
@@ -107,18 +107,18 @@ func TestBigTable(t *testing.T) {
 		InflightLimit:    0,
 		TableName:        "test",
 		TableNamespace:   "",
-		InputFormat:      dp_model.ParsingFormatJSONLine,
+		InputFormat:      model.ParsingFormatJSONLine,
 		OutputSchema: []changeitem.ColSchema{
-			changeitem.NewColSchema("row_idx", schema.TypeInt64, false),
-			changeitem.NewColSchema("some_number", schema.TypeInt64, false),
-			changeitem.NewColSchema("text_val", schema.TypeString, false),
-			changeitem.NewColSchema("yson_val", schema.TypeAny, false),
+			changeitem.NewColSchema("row_idx", ytschema.TypeInt64, false),
+			changeitem.NewColSchema("some_number", ytschema.TypeInt64, false),
+			changeitem.NewColSchema("text_val", ytschema.TypeString, false),
+			changeitem.NewColSchema("yson_val", ytschema.TypeAny, false),
 		},
 		AirbyteFormat:  "",
 		PathPattern:    "",
 		Concurrency:    0,
-		Format:         s3.Format{},
-		EventSource:    s3.EventSource{},
+		Format:         s3_model.Format{},
+		EventSource:    s3_model.EventSource{},
 		UnparsedPolicy: "",
 	}
 
@@ -147,9 +147,9 @@ func TestBigTable(t *testing.T) {
 		}
 		return nil
 	})
-	targetMock := &dp_model.MockDestination{
+	targetMock := &model.MockDestination{
 		SinkerFactory: func() abstract.Sinker { return sinkMock },
-		Cleanup:       dp_model.DisabledCleanup,
+		Cleanup:       model.DisabledCleanup,
 	}
 	helpers.InitSrcDst(helpers.TransferID, s3Src, targetMock, transferType)
 	transfer = helpers.MakeTransfer(helpers.TransferID, s3Src, targetMock, transferType)
@@ -176,7 +176,7 @@ func TestBigTable(t *testing.T) {
 
 func TestBigTableWithParallelWorkers(t *testing.T) {
 	source.DesiredPartSizeBytes = 1024 * 1024 // 1MB
-	target := s3recipe.PrepareS3(t, t.Name(), dp_model.ParsingFormatJSON, s3.NoEncoding)
+	target := s3recipe.PrepareS3(t, t.Name(), model.ParsingFormatJSON, s3_model.NoEncoding)
 	target.MaxItemsPerFile = 30000
 	helpers.InitSrcDst(helpers.TransferID, source, target, transferType)
 
@@ -197,11 +197,11 @@ func TestBigTableWithParallelWorkers(t *testing.T) {
 		go runSecondaryWorker(ctx, t, cp, transfer, operationID, i, &wg)
 	}
 
-	task := &dp_model.TransferOperation{
+	task := &model.TransferOperation{
 		OperationID: operationID,
 		TransferID:  transfer.ID,
 		TaskType:    abstract.TaskType{Task: abstract.Activate{}},
-		Status:      dp_model.RunningTask,
+		Status:      model.RunningTask,
 		CreatedAt:   taskCreatedAt,
 	}
 
@@ -219,7 +219,7 @@ func TestBigTableWithParallelWorkers(t *testing.T) {
 	err = ytc.GetNode(context.Background(), ypath.NewRich(source.Paths[0]).YPath().Attr("row_count"), &rowCount, nil)
 	require.NoError(t, err)
 
-	s3Src := &s3.S3Source{
+	s3Src := &s3_model.S3Source{
 		Bucket:           target.Bucket,
 		ConnectionConfig: target.ConnectionConfig(),
 		PathPrefix:       "",
@@ -228,18 +228,18 @@ func TestBigTableWithParallelWorkers(t *testing.T) {
 		InflightLimit:    0,
 		TableName:        "test",
 		TableNamespace:   "",
-		InputFormat:      dp_model.ParsingFormatJSONLine,
+		InputFormat:      model.ParsingFormatJSONLine,
 		OutputSchema: []changeitem.ColSchema{
-			changeitem.NewColSchema("row_idx", schema.TypeInt64, false),
-			changeitem.NewColSchema("some_number", schema.TypeInt64, false),
-			changeitem.NewColSchema("text_val", schema.TypeString, false),
-			changeitem.NewColSchema("yson_val", schema.TypeAny, false),
+			changeitem.NewColSchema("row_idx", ytschema.TypeInt64, false),
+			changeitem.NewColSchema("some_number", ytschema.TypeInt64, false),
+			changeitem.NewColSchema("text_val", ytschema.TypeString, false),
+			changeitem.NewColSchema("yson_val", ytschema.TypeAny, false),
 		},
 		AirbyteFormat:  "",
 		PathPattern:    "",
 		Concurrency:    0,
-		Format:         s3.Format{},
-		EventSource:    s3.EventSource{},
+		Format:         s3_model.Format{},
+		EventSource:    s3_model.EventSource{},
 		UnparsedPolicy: "",
 	}
 
@@ -270,9 +270,9 @@ func TestBigTableWithParallelWorkers(t *testing.T) {
 			return nil
 		},
 	}
-	targetMock := &dp_model.MockDestination{
+	targetMock := &model.MockDestination{
 		SinkerFactory: func() abstract.Sinker { return sinkMock },
-		Cleanup:       dp_model.DisabledCleanup,
+		Cleanup:       model.DisabledCleanup,
 	}
 
 	logger.Log.Info("start transfer from s3 to mock sink")

@@ -6,20 +6,20 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	"github.com/transferia/transferia/pkg/connection/clickhouse"
+	conn_clickhouse "github.com/transferia/transferia/pkg/connection/clickhouse"
 	"github.com/transferia/transferia/pkg/dbaas"
 )
 
-func ResolveHostsFromMDBCluster(clusterID string, shardGroup string, nativePort, httpPort int) ([]*clickhouse.Host, map[string][]*clickhouse.Host, error) {
+func ResolveHostsFromMDBCluster(clusterID string, shardGroup string, nativePort, httpPort int) ([]*conn_clickhouse.Host, map[string][]*conn_clickhouse.Host, error) {
 	hosts, err := resolveShardGroupHosts(clusterID, shardGroup)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	shards := make(map[string][]*clickhouse.Host)
-	resultHosts := make([]*clickhouse.Host, 0, len(hosts))
+	shards := make(map[string][]*conn_clickhouse.Host)
+	resultHosts := make([]*conn_clickhouse.Host, 0, len(hosts))
 	for _, host := range hosts {
-		connHost := &clickhouse.Host{
+		connHost := &conn_clickhouse.Host{
 			Name:       host.Name,
 			NativePort: nativePort,
 			HTTPPort:   httpPort,
@@ -36,7 +36,7 @@ func ResolveHostsFromMDBCluster(clusterID string, shardGroup string, nativePort,
 	return resultHosts, resolveShardsByHosts(resultHosts), nil
 }
 
-func ResolveShardGroupHostsAndShards(clickhouseConn *clickhouse.Connection, connectionID, shardGroup string, nativePort, httpPort int) ([]*clickhouse.Host, map[string][]*clickhouse.Host, error) {
+func ResolveShardGroupHostsAndShards(clickhouseConn *conn_clickhouse.Connection, connectionID, shardGroup string, nativePort, httpPort int) ([]*conn_clickhouse.Host, map[string][]*conn_clickhouse.Host, error) {
 	if connectionID != "" {
 		hosts, err := resolveHostsByConnection(clickhouseConn, shardGroup)
 		if err != nil {
@@ -48,8 +48,8 @@ func ResolveShardGroupHostsAndShards(clickhouseConn *clickhouse.Connection, conn
 	return ResolveHostsFromMDBCluster(clickhouseConn.ClusterID, shardGroup, nativePort, httpPort)
 }
 
-func resolveHostsByConnection(clickhouseConn *clickhouse.Connection, shardGroup string) ([]*clickhouse.Host, error) {
-	hosts := make([]*clickhouse.Host, 0)
+func resolveHostsByConnection(clickhouseConn *conn_clickhouse.Connection, shardGroup string) ([]*conn_clickhouse.Host, error) {
+	hosts := make([]*conn_clickhouse.Host, 0)
 	if shardGroup == "" {
 		return clickhouseConn.Hosts, nil
 	}
@@ -68,8 +68,8 @@ func resolveHostsByConnection(clickhouseConn *clickhouse.Connection, shardGroup 
 	return hosts, nil
 }
 
-func resolveShardsByHosts(hosts []*clickhouse.Host) map[string][]*clickhouse.Host {
-	shards := make(map[string][]*clickhouse.Host)
+func resolveShardsByHosts(hosts []*conn_clickhouse.Host) map[string][]*conn_clickhouse.Host {
+	shards := make(map[string][]*conn_clickhouse.Host)
 	for _, host := range hosts {
 		shards[host.ShardName] = append(shards[host.ShardName], host)
 	}

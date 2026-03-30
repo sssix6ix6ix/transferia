@@ -19,9 +19,9 @@ import (
 	"github.com/transferia/transferia/recipe/mongo/pkg/mongo_sharded_cluster"
 	"github.com/transferia/transferia/recipe/mongo/pkg/mongo_sharded_config"
 	"github.com/transferia/transferia/recipe/mongo/pkg/tar_utils"
-	pathutil "github.com/transferia/transferia/recipe/mongo/pkg/util"
+	mongoutil "github.com/transferia/transferia/recipe/mongo/pkg/util"
 	"go.ytsaurus.tech/library/go/core/log"
-	"go.ytsaurus.tech/library/go/core/log/zap"
+	ya_zap "go.ytsaurus.tech/library/go/core/log/zap"
 )
 
 type shardedMongoRecipe struct{}
@@ -190,8 +190,8 @@ func (y *shardedMongoRecipe) startCluster(logger log.Logger, cfgID int, configFi
 
 	envInfo := mongo_sharded_cluster.EnvironmentInfo{
 		BinaryPath:    yatest.WorkPath(mongoBinaryPath),
-		WorkspacePath: pathutil.MakeWorkPath(fmt.Sprintf("workspace_%d", cfgID)),
-		LogsPath:      pathutil.MakeOutputPath(fmt.Sprintf("logs_%d", cfgID)),
+		WorkspacePath: mongoutil.MakeWorkPath(fmt.Sprintf("workspace_%d", cfgID)),
+		LogsPath:      mongoutil.MakeOutputPath(fmt.Sprintf("logs_%d", cfgID)),
 		LdPreload:     ldPreload,
 	}
 
@@ -212,7 +212,7 @@ func (y *shardedMongoRecipe) startCluster(logger log.Logger, cfgID int, configFi
 }
 
 func (y *shardedMongoRecipe) Start() error {
-	logger, err := zap.New(zap.CLIConfig(log.InfoLevel))
+	logger, err := ya_zap.New(ya_zap.CLIConfig(log.InfoLevel))
 	if err != nil {
 		return xerrors.Errorf("cannot create logger: %w", err)
 	}
@@ -276,7 +276,7 @@ func (y *shardedMongoRecipe) Start() error {
 }
 
 func (y *shardedMongoRecipe) Stop() error {
-	logger, err := zap.New(zap.CLIConfig(log.InfoLevel))
+	logger, err := ya_zap.New(ya_zap.CLIConfig(log.InfoLevel))
 	if err != nil {
 		return xerrors.Errorf("cannot create logger: %w", err)
 	}

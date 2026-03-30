@@ -4,7 +4,7 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	s3_provider "github.com/transferia/transferia/pkg/providers/s3"
+	s3_model "github.com/transferia/transferia/pkg/providers/s3/model"
 	"go.uber.org/zap/zapcore"
 )
 
@@ -31,8 +31,8 @@ type DeltaSource struct {
 	TableNamespace string `log:"true"`
 }
 
-func (d *DeltaSource) ConnectionConfig() s3_provider.ConnectionConfig {
-	return s3_provider.ConnectionConfig{
+func (d *DeltaSource) ConnectionConfig() s3_model.ConnectionConfig {
+	return s3_model.ConnectionConfig{
 		AccessKey:        d.AccessKey,
 		S3ForcePathStyle: d.S3ForcePathStyle,
 		SecretKey:        d.SecretKey,

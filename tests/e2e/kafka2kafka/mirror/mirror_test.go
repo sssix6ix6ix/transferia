@@ -12,7 +12,7 @@ import (
 	"github.com/transferia/transferia/pkg/abstract/changeitem"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	kafkasink "github.com/transferia/transferia/pkg/providers/kafka"
+	provider_kafka "github.com/transferia/transferia/pkg/providers/kafka"
 	"github.com/transferia/transferia/pkg/runtime/local"
 	"github.com/transferia/transferia/pkg/util"
 	"github.com/transferia/transferia/tests/helpers"
@@ -24,11 +24,11 @@ func TestReplication(t *testing.T) {
 	srcTopic := "topic1"
 	dstTopic := "topic2"
 
-	src, err := kafkasink.SourceRecipe()
+	src, err := provider_kafka.SourceRecipe()
 	require.NoError(t, err)
 	src.Topic = srcTopic
 
-	dst, err := kafkasink.DestinationRecipe()
+	dst, err := provider_kafka.DestinationRecipe()
 	require.NoError(t, err)
 	dst.Topic = dstTopic
 	dst.FormatSettings = model.SerializationFormat{Name: model.SerializationFormatMirror}
@@ -38,8 +38,8 @@ func TestReplication(t *testing.T) {
 	k := []byte(`my_key`)
 	v := []byte(`blablabla`)
 
-	srcSink, err := kafkasink.NewReplicationSink(
-		&kafkasink.KafkaDestination{
+	srcSink, err := provider_kafka.NewReplicationSink(
+		&provider_kafka.KafkaDestination{
 			Connection:          src.Connection,
 			Auth:                src.Auth,
 			Topic:               src.Topic,
@@ -65,7 +65,7 @@ func TestReplication(t *testing.T) {
 		SinkerFactory: func() abstract.Sinker { return mockSink },
 		Cleanup:       model.DisabledCleanup,
 	}
-	additionalTransfer := helpers.MakeTransfer("additional", &kafkasink.KafkaSource{
+	additionalTransfer := helpers.MakeTransfer("additional", &provider_kafka.KafkaSource{
 		Connection:  dst.Connection,
 		Auth:        dst.Auth,
 		GroupTopics: []string{dst.Topic},

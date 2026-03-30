@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 
 	"github.com/transferia/transferia/internal/logger"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
@@ -15,16 +15,16 @@ import (
 	"github.com/transferia/transferia/pkg/errors"
 	"github.com/transferia/transferia/pkg/errors/categories"
 	"github.com/transferia/transferia/pkg/errors/coded"
-	"github.com/transferia/transferia/pkg/errors/codes"
+	error_codes "github.com/transferia/transferia/pkg/errors/codes"
 	"github.com/transferia/transferia/pkg/providers"
-	"github.com/transferia/transferia/pkg/storage"
+	"github.com/transferia/transferia/pkg/storage_factory"
 	"github.com/transferia/transferia/pkg/util"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
-var NoTablesError = coded.Errorf(codes.NoTablesFound, "Unable to find any tables")
+var NoTablesError = coded.Errorf(error_codes.NoTablesFound, "Unable to find any tables")
 
-func ActivateDelivery(ctx context.Context, task *model.TransferOperation, cp coordinator.Coordinator, transfer model.Transfer, registry metrics.Registry) error {
+func ActivateDelivery(ctx context.Context, task *model.TransferOperation, cp coordinator.Coordinator, transfer model.Transfer, registry core_metrics.Registry) error {
 	rollbacks := util.Rollbacks{}
 	defer rollbacks.Do()
 	rollbacks.Add(func() {
@@ -107,7 +107,7 @@ func ActivateDelivery(ctx context.Context, task *model.TransferOperation, cp coo
 	}
 
 	tables, err := ObtainAllSrcTables(&transfer, registry)
-	if !xerrors.Is(err, storage.UnsupportedSourceErr) {
+	if !xerrors.Is(err, storage_factory.UnsupportedSourceErr) {
 		if err != nil {
 			return errors.CategorizedErrorf(categories.Source, "Cannot retrieve table information from the source database: %w", err)
 		}
@@ -118,7 +118,7 @@ func ActivateDelivery(ctx context.Context, task *model.TransferOperation, cp coo
 			}
 		} else {
 			if noKeysTables := tables.NoKeysTables(); len(noKeysTables) > 0 {
-				return coded.Errorf(codes.GenericNoPKey, "PRIMARY KEY check failed: %v: no key columns found", noKeysTables)
+				return coded.Errorf(error_codes.GenericNoPKey, "PRIMARY KEY check failed: %v: no key columns found", noKeysTables)
 			}
 			if err := coordinator.ReportFakePKey(cp, transfer.ID, coordinator.FakePKeyStatusMessageCategory, tables.FakePkeyTables()); err != nil {
 				logger.Log.Warn("failed to report fake primary key presence or absence in tables", log.Error(err))
@@ -157,7 +157,7 @@ func ActivateDelivery(ctx context.Context, task *model.TransferOperation, cp coo
 			},
 			CheckIncludes: func(tables abstract.TableMap) error {
 				return snapshotLoader.CheckIncludeDirectives(tables.ConvertToTableDescriptions(), func() (abstract.Storage, error) {
-					return storage.NewStorage(snapshotLoader.transfer, coordinator.NewFakeClient(), snapshotLoader.registry)
+					return storage_factory.NewStorage(snapshotLoader.transfer, coordinator.NewFakeClient(), snapshotLoader.registry)
 				})
 			},
 			Rollbacks: &rollbacks,
@@ -176,8 +176,8 @@ func ActivateDelivery(ctx context.Context, task *model.TransferOperation, cp coo
 }
 
 // ObtainAllSrcTables uses a temporary Storage for transfer source to obtain a list of tables
-func ObtainAllSrcTables(transfer *model.Transfer, registry metrics.Registry) (abstract.TableMap, error) {
-	srcStorage, err := storage.NewStorage(transfer, coordinator.NewFakeClient(), registry)
+func ObtainAllSrcTables(transfer *model.Transfer, registry core_metrics.Registry) (abstract.TableMap, error) {
+	srcStorage, err := storage_factory.NewStorage(transfer, coordinator.NewFakeClient(), registry)
 	if err != nil {
 		return nil, xerrors.Errorf(resolveStorageErrorText, err)
 	}

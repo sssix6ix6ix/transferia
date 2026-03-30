@@ -14,8 +14,8 @@ import (
 	"github.com/transferia/transferia/pkg/util"
 	"github.com/transferia/transferia/recipe/mongo/pkg/mongo_sharded_config"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	mongo_driver "go.mongodb.org/mongo-driver/mongo"
+	mongo_options "go.mongodb.org/mongo-driver/mongo/options"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
@@ -117,7 +117,7 @@ func StartSingleMongos(
 		}
 	})
 
-	err = mongos.WithRootConnection(func(client *mongo.Client) error {
+	err = mongos.WithRootConnection(func(client *mongo_driver.Client) error {
 		for _, shard := range shardReplicaSets {
 			err := mongos.addShardReplicaSet(client, shard)
 			if err != nil {
@@ -151,10 +151,10 @@ func launchMongos(binInfo EnvironmentInfo, configPath string) error {
 	return nil
 }
 
-func (s MongoS) WithRootConnection(ctxFunc func(client *mongo.Client) error) (errResult error) {
+func (s MongoS) WithRootConnection(ctxFunc func(client *mongo_driver.Client) error) (errResult error) {
 	hostSpec := s.Fqdn()
-	client, err := mongo.NewClient(
-		new(options.ClientOptions).SetHosts([]string{hostSpec}),
+	client, err := mongo_driver.NewClient(
+		new(mongo_options.ClientOptions).SetHosts([]string{hostSpec}),
 	)
 	if err != nil {
 		return xerrors.Errorf("unable to create client for mongodb: %w", err)
@@ -173,7 +173,7 @@ func (s MongoS) WithRootConnection(ctxFunc func(client *mongo.Client) error) (er
 	return ctxFunc(client)
 }
 
-func (s MongoS) addShardReplicaSet(client *mongo.Client, shard ShardReplicaSet) error {
+func (s MongoS) addShardReplicaSet(client *mongo_driver.Client, shard ShardReplicaSet) error {
 	shardHostList := strings.Join(yslices.Map(shard.MongoDaemons, func(d MongoD) string {
 		return d.Fqdn()
 	}), ",")

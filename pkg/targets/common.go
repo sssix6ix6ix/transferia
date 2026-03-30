@@ -1,7 +1,7 @@
 package targets
 
 import (
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
@@ -13,7 +13,7 @@ import (
 
 var UnknownTargetError = xerrors.New("unknown event target for destination, try legacy sinker instead")
 
-func NewTarget(transfer *model.Transfer, task *model.TransferOperation, lgr log.Logger, mtrcs metrics.Registry, cp coordinator.Coordinator, opts ...abstract.SinkOption) (t abstract2.EventTarget, err error) {
+func NewTarget(transfer *model.Transfer, task *model.TransferOperation, lgr log.Logger, mtrcs core_metrics.Registry, cp coordinator.Coordinator, opts ...abstract.SinkOption) (t abstract2.EventTarget, err error) {
 	if factory, ok := providers.Destination[providers.Abstract2Sinker](lgr, mtrcs, cp, transfer, task); ok {
 		return factory.Target(opts...)
 	}

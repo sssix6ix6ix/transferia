@@ -1,7 +1,7 @@
 package middlewares
 
 import (
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/stats"
 )
@@ -10,7 +10,7 @@ type ExcludePredicate func(*abstract.ChangeItem) bool
 
 func ExcludeSystemTables(item *abstract.ChangeItem) bool { return item.IsSystemTable() }
 
-func Filter(registry metrics.Registry, predicates ...ExcludePredicate) func(abstract.Sinker) abstract.Sinker {
+func Filter(registry core_metrics.Registry, predicates ...ExcludePredicate) func(abstract.Sinker) abstract.Sinker {
 	return func(s abstract.Sinker) abstract.Sinker {
 		return newFilter(s, registry, predicates)
 	}
@@ -23,7 +23,7 @@ type filter struct {
 	sta *stats.MiddlewareFilterStats
 }
 
-func newFilter(downstream abstract.Sinker, registry metrics.Registry, predicates []ExcludePredicate) *filter {
+func newFilter(downstream abstract.Sinker, registry core_metrics.Registry, predicates []ExcludePredicate) *filter {
 	return &filter{
 		predicates: predicates,
 		downstream: downstream,

@@ -9,7 +9,7 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/changeitem"
 	"github.com/transferia/transferia/pkg/util"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 //go:embed data/user-activities.json
@@ -45,19 +45,19 @@ var (
 	_ StreamingData = (*UserActivities)(nil)
 
 	userActivitiesColumnSchema = abstract.NewTableSchema([]abstract.ColSchema{
-		{ColumnName: sampleSourceEventID, DataType: schema.TypeString.String(), Required: true, PrimaryKey: true},
-		{ColumnName: sampleSourceTimeColumn, DataType: schema.TypeTimestamp.String(), Required: true, PrimaryKey: true},
-		{ColumnName: sampleSourceEventType, DataType: schema.TypeString.String(), Required: true},
-		{ColumnName: sampleSourceDeviceID, DataType: schema.TypeString.String(), Required: true},
-		{ColumnName: sampleSourceDeviceType, DataType: schema.TypeString.String(), Required: true},
-		{ColumnName: sampleSourceDeviceOSColumn, DataType: schema.TypeString.String(), Required: true},
-		{ColumnName: sampleSourceCountryNameColumn, DataType: schema.TypeString.String(), Required: true},
-		{ColumnName: sampleSourceCityNameColumn, DataType: schema.TypeString.String(), Required: true},
-		{ColumnName: sampleSourceEventRevenueColumn, DataType: schema.TypeFloat64.String(), Required: false},
-		{ColumnName: sampleSourceTrafficSourceColumn, DataType: schema.TypeString.String(), Required: true},
-		{ColumnName: sampleSourceUserIDColumn, DataType: schema.TypeInt64.String(), Required: true},
-		{ColumnName: sampleSourceSessionIDColumn, DataType: schema.TypeString.String(), Required: true},
-		{ColumnName: sampleSourceEventDuration, DataType: schema.TypeFloat64.String(), Required: true},
+		{ColumnName: sampleSourceEventID, DataType: ytschema.TypeString.String(), Required: true, PrimaryKey: true},
+		{ColumnName: sampleSourceTimeColumn, DataType: ytschema.TypeTimestamp.String(), Required: true, PrimaryKey: true},
+		{ColumnName: sampleSourceEventType, DataType: ytschema.TypeString.String(), Required: true},
+		{ColumnName: sampleSourceDeviceID, DataType: ytschema.TypeString.String(), Required: true},
+		{ColumnName: sampleSourceDeviceType, DataType: ytschema.TypeString.String(), Required: true},
+		{ColumnName: sampleSourceDeviceOSColumn, DataType: ytschema.TypeString.String(), Required: true},
+		{ColumnName: sampleSourceCountryNameColumn, DataType: ytschema.TypeString.String(), Required: true},
+		{ColumnName: sampleSourceCityNameColumn, DataType: ytschema.TypeString.String(), Required: true},
+		{ColumnName: sampleSourceEventRevenueColumn, DataType: ytschema.TypeFloat64.String(), Required: false},
+		{ColumnName: sampleSourceTrafficSourceColumn, DataType: ytschema.TypeString.String(), Required: true},
+		{ColumnName: sampleSourceUserIDColumn, DataType: ytschema.TypeInt64.String(), Required: true},
+		{ColumnName: sampleSourceSessionIDColumn, DataType: ytschema.TypeString.String(), Required: true},
+		{ColumnName: sampleSourceEventDuration, DataType: ytschema.TypeFloat64.String(), Required: true},
 	})
 
 	userActivitiesColumns = []string{

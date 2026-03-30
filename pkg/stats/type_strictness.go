@@ -1,17 +1,17 @@
 package stats
 
 import (
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 )
 
 type TypeStrictnessStats struct {
-	registry metrics.Registry
+	registry core_metrics.Registry
 
-	Good metrics.Counter
-	Bad  metrics.Counter
+	Good core_metrics.Counter
+	Bad  core_metrics.Counter
 }
 
-func NewTypeStrictnessStats(registry metrics.Registry) *TypeStrictnessStats {
+func NewTypeStrictnessStats(registry core_metrics.Registry) *TypeStrictnessStats {
 	result := &TypeStrictnessStats{
 		registry: registry,
 

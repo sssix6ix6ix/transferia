@@ -8,13 +8,13 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/logging/batching_logger"
-	"github.com/transferia/transferia/pkg/providers/s3"
-	"github.com/transferia/transferia/pkg/providers/s3/reader"
+	s3_model "github.com/transferia/transferia/pkg/providers/s3/model"
+	s3_reader "github.com/transferia/transferia/pkg/providers/s3/reader"
 	"github.com/transferia/transferia/pkg/providers/s3/s3util/coordinator_utils"
 	"github.com/transferia/transferia/pkg/providers/s3/s3util/dispatcher"
 	"github.com/transferia/transferia/pkg/providers/s3/s3util/effective_worker_num"
 	"github.com/transferia/transferia/pkg/providers/s3/s3util/file"
-	"github.com/transferia/transferia/pkg/providers/s3/s3util/list"
+	s3util_list "github.com/transferia/transferia/pkg/providers/s3/s3util/list"
 	"github.com/transferia/transferia/pkg/providers/s3/s3util/lr_window/r_window"
 	"go.ytsaurus.tech/library/go/core/log"
 )
@@ -25,7 +25,7 @@ type ObjectFetcherPoller struct {
 	// input
 	ctx                     context.Context
 	logger                  log.Logger
-	srcModel                *s3.S3Source
+	srcModel                *s3_model.S3Source
 	s3client                s3iface.S3API                           // stored here only to be passed to ListNewMyFiles
 	coordinatorStateAdapter *coordinator_utils.TransferStateAdapter // stored here to make 'SetTransferState'
 
@@ -38,13 +38,13 @@ func (s *ObjectFetcherPoller) RunBackgroundThreads(_ chan error) {}
 // FetchObjects fetches objects from an S3 bucket and extracts the new objects in need of syncing from this list.
 // The last synced object is used as reference to identify new objects. The newest object is added to the internal state for storing.
 // All objects not matching the object type or pathPrefix are skipped.
-func (s *ObjectFetcherPoller) FetchObjects(inReader reader.Reader) ([]file.File, error) {
+func (s *ObjectFetcherPoller) FetchObjects(inReader s3_reader.Reader) ([]file.File, error) {
 	err := s.dispatcher.BeforeListing()
 	if err != nil {
 		return nil, xerrors.Errorf("contract is broken, err: %w", err)
 	}
 
-	err = list.ListNewMyFiles(
+	err = s3util_list.ListNewMyFiles(
 		s.ctx,
 		s.logger,
 		s.srcModel,
@@ -84,7 +84,7 @@ func (s *ObjectFetcherPoller) Close() error {
 func initDispatcherFromState(
 	logger log.Logger,
 	coordinatorStateAdapter *coordinator_utils.TransferStateAdapter,
-	srcModel *s3.S3Source,
+	srcModel *s3_model.S3Source,
 	inDispatcher *dispatcher.Dispatcher,
 ) error {
 	stateMap, err := coordinatorStateAdapter.GetTransferState()
@@ -114,7 +114,7 @@ func initDispatcherFromState(
 func newObjectFetcherPoller(
 	ctx context.Context,
 	logger log.Logger,
-	srcModel *s3.S3Source,
+	srcModel *s3_model.S3Source,
 	s3client s3iface.S3API,
 	coordinatorStateAdapter *coordinator_utils.TransferStateAdapter,
 	effectiveWorkerNum *effective_worker_num.EffectiveWorkerNum,

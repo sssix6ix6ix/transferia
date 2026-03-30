@@ -6,20 +6,20 @@ import (
 
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/util/jsonx"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 // PG2CHDataTypesComparator properly compares data types in pg2ch transfers, skipping special cases.
 func PG2CHDataTypesComparator(l, r string) bool {
 	// ClickHouse converts any to string
-	if l == schema.TypeAny.String() && r == "string" {
+	if l == ytschema.TypeAny.String() && r == "string" {
 		return true
 	}
 	// ClickHouse converts utf8 to string
-	if l == schema.TypeString.String() && r == "string" {
+	if l == ytschema.TypeString.String() && r == "string" {
 		return true
 	}
-	if l == schema.TypeBoolean.String() && r == schema.TypeUint8.String() {
+	if l == ytschema.TypeBoolean.String() && r == ytschema.TypeUint8.String() {
 		return true
 	}
 	return l == r
@@ -30,7 +30,7 @@ func PG2CHDataTypesComparator(l, r string) bool {
 // This is a version of this comparator for type system `1`.
 func PG2CHDataTypesComparatorV1(l, r string) bool {
 	// ClickHouse converts YT DateTime and Timestamp to utf8
-	if l == schema.TypeTimestamp.String() || l == schema.TypeDatetime.String() || l == schema.TypeDate.String() {
+	if l == ytschema.TypeTimestamp.String() || l == ytschema.TypeDatetime.String() || l == ytschema.TypeDate.String() {
 		return r == "string"
 	}
 	return PG2CHDataTypesComparator(l, r)

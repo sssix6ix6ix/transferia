@@ -2,13 +2,13 @@ package model
 
 import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
-	"github.com/transferia/transferia/pkg/connection/clickhouse"
+	conn_clickhouse "github.com/transferia/transferia/pkg/connection/clickhouse"
 )
 
 // ConnectionHosts returns a list of hosts which can be used to connect to the ClickHouse cluster with the given shard.
 //
 // Empty `shard` is supported.
-func ConnectionHosts(cfg *ChStorageParams, shard string) ([]*clickhouse.Host, error) {
+func ConnectionHosts(cfg *ChStorageParams, shard string) ([]*conn_clickhouse.Host, error) {
 	if !cfg.IsManaged() {
 		result := connectionHostsOnPremises(cfg, shard)
 		if len(result) == 0 {
@@ -24,14 +24,14 @@ func ConnectionHosts(cfg *ChStorageParams, shard string) ([]*clickhouse.Host, er
 	return result, nil
 }
 
-func connectionHostsOnPremises(cfg *ChStorageParams, shard string) []*clickhouse.Host {
+func connectionHostsOnPremises(cfg *ChStorageParams, shard string) []*conn_clickhouse.Host {
 	if len(cfg.ConnectionParams.Shards) > 1 && shard != "" {
 		return cfg.ConnectionParams.Shards[shard]
 	}
 	return cfg.ConnectionParams.Hosts
 }
 
-func connectionHostsManaged(cfg *ChStorageParams, shard string) ([]*clickhouse.Host, error) {
+func connectionHostsManaged(cfg *ChStorageParams, shard string) ([]*conn_clickhouse.Host, error) {
 	if shard == "" {
 		for _, v := range cfg.ConnectionParams.Shards {
 			return v, nil

@@ -8,14 +8,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/metrics/solomon"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/connection"
 	"github.com/transferia/transferia/pkg/dataplane/provideradapter"
-	"golang.org/x/exp/slices"
+	xslices "golang.org/x/exp/slices"
 )
 
 var TransferID = "dtt"
@@ -24,7 +24,7 @@ func GenerateTransferID(testName string) string {
 	return fmt.Sprintf("%s_%s", TransferID, strings.ToLower(testName))
 }
 
-func EmptyRegistry() metrics.Registry {
+func EmptyRegistry() core_metrics.Registry {
 	return solomon.NewRegistry(nil).WithTags(map[string]string{"ts": time.Now().String()})
 }
 
@@ -169,7 +169,7 @@ func RemoveColumnsFromChangeItem(item abstract.ChangeItem, columnsToRemove []str
 	res.ColumnNames = nil
 	res.ColumnValues = nil
 	for i, colName := range item.ColumnNames {
-		if !slices.Contains(columnsToRemove, colName) {
+		if !xslices.Contains(columnsToRemove, colName) {
 			res.ColumnNames = append(res.ColumnNames, colName)
 			res.ColumnValues = append(res.ColumnValues, item.ColumnValues[i])
 		}

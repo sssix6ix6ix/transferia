@@ -7,12 +7,12 @@ import (
 
 	"github.com/jackc/pgx/v4"
 	"github.com/stretchr/testify/require"
-	pgcommon "github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
-func newSource(includeTables, excludeTables []string) *pgcommon.PgSource {
+func newSource(includeTables, excludeTables []string) *provider_postgres.PgSource {
 	source := pgrecipe.RecipeSource()
 	source.User = "loser"
 	source.Password = "123"
@@ -22,7 +22,7 @@ func newSource(includeTables, excludeTables []string) *pgcommon.PgSource {
 	return source
 }
 
-func newTarget() *pgcommon.PgDestination {
+func newTarget() *provider_postgres.PgDestination {
 	return pgrecipe.RecipeTarget()
 }
 
@@ -47,7 +47,7 @@ func makeConnConfig(dbPort int) *pgx.ConnConfig {
 
 func exec(t *testing.T, dbPort int, query string, params ...interface{}) {
 	var logger log.Logger = nil
-	connPool, err := pgcommon.NewPgConnPool(makeConnConfig(dbPort), logger)
+	connPool, err := provider_postgres.NewPgConnPool(makeConnConfig(dbPort), logger)
 	require.NoError(t, err)
 
 	_, err = connPool.Exec(context.Background(), query, params...)
@@ -56,7 +56,7 @@ func exec(t *testing.T, dbPort int, query string, params ...interface{}) {
 
 func queryRow(t *testing.T, dbPort int, query string, outValue interface{}) {
 	var logger log.Logger = nil
-	connPool, err := pgcommon.NewPgConnPool(makeConnConfig(dbPort), logger)
+	connPool, err := provider_postgres.NewPgConnPool(makeConnConfig(dbPort), logger)
 	require.NoError(t, err)
 
 	err = connPool.QueryRow(context.Background(), query).Scan(outValue)

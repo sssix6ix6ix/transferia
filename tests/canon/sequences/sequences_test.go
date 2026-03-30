@@ -11,8 +11,8 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	pgcommon "github.com/transferia/transferia/pkg/providers/postgres"
-	"github.com/transferia/transferia/tests/canon"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
+	canon_test "github.com/transferia/transferia/tests/canon"
 	"github.com/transferia/transferia/tests/canon/validator"
 	"github.com/transferia/transferia/tests/helpers"
 )
@@ -30,7 +30,7 @@ var (
 
 func TestCanonizeSequences(t *testing.T) {
 	t.Setenv("YC", "1") // to not go to vanga
-	Source := &pgcommon.PgSource{
+	Source := &provider_postgres.PgSource{
 		ClusterID: os.Getenv("PG_CLUSTER_ID"),
 		Hosts:     []string{"localhost"},
 		User:      os.Getenv("PG_LOCAL_USER"),
@@ -46,7 +46,7 @@ func TestCanonizeSequences(t *testing.T) {
 		))
 	}()
 
-	conn, err := pgcommon.MakeConnPoolFromSrc(Source, logger.Log)
+	conn, err := provider_postgres.MakeConnPoolFromSrc(Source, logger.Log)
 	require.NoError(t, err)
 
 	canonizationCase := func(initSQL string, replicationSQL string) func(t *testing.T) {
@@ -76,9 +76,9 @@ func TestCanonizeSequences(t *testing.T) {
 		}
 	}
 
-	t.Run(canon.SequenceTestCases[0], canonizationCase(string(initInsertUpdateDelete), string(insertUpdateDelete)))
-	t.Run(canon.SequenceTestCases[1], canonizationCase(string(initInsertUpdateDelete), string(updatePK)))
-	t.Run(canon.SequenceTestCases[2], canonizationCase(string(initInsertUpdateDelete), string(insertUpdateInsert)))
+	t.Run(canon_test.SequenceTestCases[0], canonizationCase(string(initInsertUpdateDelete), string(insertUpdateDelete)))
+	t.Run(canon_test.SequenceTestCases[1], canonizationCase(string(initInsertUpdateDelete), string(updatePK)))
+	t.Run(canon_test.SequenceTestCases[2], canonizationCase(string(initInsertUpdateDelete), string(insertUpdateInsert)))
 	// new cases should be added here. The name of the cases MUST be placed in canon.SequenceTestCases so that the change in the set of cases is automatically propagated to all sinks under test
 }
 

@@ -5,7 +5,7 @@ import (
 
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 // toJsonValue converts a value to its JSON representation based on the schema type.
@@ -38,35 +38,35 @@ func toJsonValue(value any, colSchema *abstract.ColSchema, anyAsString bool) (an
 		return nil, xerrors.Errorf("column schema is nil")
 	}
 
-	switch schema.Type(colSchema.DataType) {
-	case schema.TypeInt8, schema.TypeInt16, schema.TypeInt32, schema.TypeInt64:
+	switch ytschema.Type(colSchema.DataType) {
+	case ytschema.TypeInt8, ytschema.TypeInt16, ytschema.TypeInt32, ytschema.TypeInt64:
 		return value, nil // → JSON number via json.Encoder
 
-	case schema.TypeUint8, schema.TypeUint16, schema.TypeUint32, schema.TypeUint64:
+	case ytschema.TypeUint8, ytschema.TypeUint16, ytschema.TypeUint32, ytschema.TypeUint64:
 		return value, nil // → JSON number via json.Encoder
 
-	case schema.TypeFloat32:
+	case ytschema.TypeFloat32:
 		return value, nil // → JSON number via json.Encoder
 
-	case schema.TypeFloat64:
+	case ytschema.TypeFloat64:
 		return value, nil // → JSON number (json.Number implements json.Marshaler)
 
-	case schema.TypeBoolean:
+	case ytschema.TypeBoolean:
 		return value, nil // → JSON boolean via json.Encoder
 
-	case schema.TypeString:
+	case ytschema.TypeString:
 		return value, nil // → JSON string via json.Encoder
 
-	case schema.TypeBytes:
+	case ytschema.TypeBytes:
 		return value, nil // → base64 JSON string (Go json.Encoder encodes []byte as base64)
 
-	case schema.TypeDate, schema.TypeDatetime, schema.TypeTimestamp:
+	case ytschema.TypeDate, ytschema.TypeDatetime, ytschema.TypeTimestamp:
 		return value, nil // → RFC3339 JSON string (time.Time implements json.Marshaler)
 
-	case schema.TypeInterval:
+	case ytschema.TypeInterval:
 		return value, nil // → JSON integer nanoseconds (time.Duration is int64)
 
-	case schema.TypeAny:
+	case ytschema.TypeAny:
 		if anyAsString {
 			valueData, err := json.Marshal(value)
 			if err != nil {

@@ -15,7 +15,7 @@ import (
 	"github.com/transferia/transferia/pkg/providers/clickhouse/columntypes"
 	"github.com/transferia/transferia/pkg/util/castx"
 	"github.com/valyala/fastjson/fastfloat"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 const marshalErrTpl = "unable to serialize column %v (value type %T): %w"
@@ -184,7 +184,7 @@ func MarshalCItoJSON(row abstract.ChangeItem, rules *MarshallingRules, buf *byte
 				buf.WriteByte('"')
 			}
 		case bool:
-			if colSchema.DataType == schema.TypeBoolean.String() {
+			if colSchema.DataType == ytschema.TypeBoolean.String() {
 				if v {
 					buf.WriteString("true")
 				} else {

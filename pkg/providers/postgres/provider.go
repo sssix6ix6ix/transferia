@@ -7,7 +7,7 @@ import (
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/transferia/transferia/internal/logger"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
@@ -16,8 +16,8 @@ import (
 	"github.com/transferia/transferia/pkg/errors/categories"
 	"github.com/transferia/transferia/pkg/middlewares"
 	"github.com/transferia/transferia/pkg/providers"
-	"github.com/transferia/transferia/pkg/providers/postgres/dblog"
-	abstract_sink "github.com/transferia/transferia/pkg/sink"
+	postgres_dblog "github.com/transferia/transferia/pkg/providers/postgres/dblog"
+	"github.com/transferia/transferia/pkg/sink_factory"
 	"github.com/transferia/transferia/pkg/stats"
 	"github.com/transferia/transferia/pkg/util"
 	"github.com/transferia/transferia/pkg/util/gobwrapper"
@@ -52,7 +52,7 @@ func init() {
 			transfer_id TEXT, schema_name TEXT, table_name TEXT, lsn BIGINT
 			Table (in target) needed for resolving data overlapping during SNAPSHOT_AND_INCREMENT transfers.
 	*/
-	abstract.RegisterSystemTables(TableConsumerKeeper, TableLSN, dblog.SignalTableName)
+	abstract.RegisterSystemTables(TableConsumerKeeper, TableLSN, postgres_dblog.SignalTableName)
 }
 
 const (
@@ -76,7 +76,7 @@ var (
 
 type Provider struct {
 	logger   log.Logger
-	registry metrics.Registry
+	registry core_metrics.Registry
 	cp       coordinator.Coordinator
 	transfer *model.Transfer
 }
@@ -405,13 +405,13 @@ func (p *Provider) DBLogCreateSlotAndInit(ctx context.Context, tracker *Tracker)
 		return xerrors.Errorf("failed to create postgres storage: %w", err)
 	}
 	// ensure SignalTable exists
-	_, err = dblog.NewPgSignalTable(ctx, pgStorage.Conn, logger.Log, p.transfer.ID, src.KeeperSchema)
+	_, err = postgres_dblog.NewPgSignalTable(ctx, pgStorage.Conn, logger.Log, p.transfer.ID, src.KeeperSchema)
 	if err != nil {
 		return xerrors.Errorf("unable to create signal table: %w", err)
 	}
 	if !exists {
 		// delete previous watermarks - only if slot previously not existed. It existed - it's just dataplane restart
-		if err := dblog.DeleteWatermarks(ctx, pgStorage.Conn, src.KeeperSchema, p.transfer.ID); err != nil {
+		if err := postgres_dblog.DeleteWatermarks(ctx, pgStorage.Conn, src.KeeperSchema, p.transfer.ID); err != nil {
 			return xerrors.Errorf("unable to delete watermarks: %w", err)
 		}
 	}
@@ -436,7 +436,7 @@ func (p *Provider) DBLogUpload(ctx context.Context, tables abstract.TableMap, ta
 		if abstract.IsSystemTable(table.Name) {
 			continue
 		}
-		asyncSink, err := abstract_sink.MakeAsyncSink(
+		asyncSink, err := sink_factory.MakeAsyncSink(
 			p.transfer,
 			task,
 			logger.Log,
@@ -459,7 +459,7 @@ func (p *Provider) DBLogUpload(ctx context.Context, tables abstract.TableMap, ta
 				return xerrors.Errorf("failed to create source wrapper: %w", err)
 			}
 
-			dblogStorage, err := dblog.NewStorage(p.logger, sourceWrapper, pgStorage, pgStorage.Conn, src.ChunkSize, p.transfer.ID, src.KeeperSchema, Represent)
+			dblogStorage, err := postgres_dblog.NewStorage(p.logger, sourceWrapper, pgStorage, pgStorage.Conn, src.ChunkSize, p.transfer.ID, src.KeeperSchema, Represent)
 			if err != nil {
 				return xerrors.Errorf("failed to create DBLog storage: %w", err)
 			}
@@ -487,10 +487,10 @@ func (p *Provider) DBLogCleanup(ctx context.Context, src *PgSource) error {
 	}
 	defer conn.Close()
 
-	return dblog.DeleteWatermarks(ctx, conn, src.KeeperSchema, p.transfer.ID)
+	return postgres_dblog.DeleteWatermarks(ctx, conn, src.KeeperSchema, p.transfer.ID)
 }
 
-func New(lgr log.Logger, registry metrics.Registry, cp coordinator.Coordinator, transfer *model.Transfer, _ *model.TransferOperation) providers.Provider {
+func New(lgr log.Logger, registry core_metrics.Registry, cp coordinator.Coordinator, transfer *model.Transfer, _ *model.TransferOperation) providers.Provider {
 	return &Provider{
 		logger:   lgr,
 		registry: registry,

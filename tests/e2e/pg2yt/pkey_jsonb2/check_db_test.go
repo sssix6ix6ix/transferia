@@ -10,14 +10,14 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	pg_provider "github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/tests/helpers"
-	yt_helpers "github.com/transferia/transferia/tests/helpers/yt"
+	helpers_yt "github.com/transferia/transferia/tests/helpers/yt"
 )
 
 var (
 	TransferType = abstract.TransferTypeSnapshotAndIncrement
-	Source       = pg_provider.PgSource{
+	Source       = provider_postgres.PgSource{
 		ClusterID: os.Getenv("PG_CLUSTER_ID"),
 		Hosts:     []string{"localhost"},
 		User:      os.Getenv("PG_LOCAL_USER"),
@@ -26,7 +26,7 @@ var (
 		Port:      helpers.GetIntFromEnv("PG_LOCAL_PORT"),
 		DBTables:  []string{"public.permalinks_setup", "public.permalinks_setup2", "public.done"},
 	}
-	Target = yt_helpers.RecipeYtTarget("//home/cdc/test/pg2yt_e2e_pkey_jsonb")
+	Target = helpers_yt.RecipeYtTarget("//home/cdc/test/pg2yt_e2e_pkey_jsonb")
 )
 
 func init() {
@@ -76,7 +76,7 @@ func TestSnapshotAndIncrement(t *testing.T) {
 
 	//------------------------------------------------------------------------------
 
-	srcConn, err := pg_provider.MakeConnPoolFromSrc(&Source, logger.Log)
+	srcConn, err := provider_postgres.MakeConnPoolFromSrc(&Source, logger.Log)
 	require.NoError(t, err)
 	defer srcConn.Close()
 

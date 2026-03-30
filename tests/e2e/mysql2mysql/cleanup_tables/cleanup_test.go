@@ -11,9 +11,9 @@ import (
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/middlewares"
 	"github.com/transferia/transferia/pkg/providers/mysql/mysqlrecipe"
-	"github.com/transferia/transferia/pkg/sink"
+	"github.com/transferia/transferia/pkg/sink_factory"
 	"github.com/transferia/transferia/pkg/worker/tasks"
-	"github.com/transferia/transferia/pkg/worker/tasks/cleanup"
+	cleanup_task "github.com/transferia/transferia/pkg/worker/tasks/cleanup"
 	"github.com/transferia/transferia/tests/helpers"
 )
 
@@ -50,10 +50,10 @@ func DropAll(t *testing.T) {
 	require.NoError(t, err)
 	logger.Log.Infof("got tables: %v", tables)
 
-	sink, err := sink.MakeAsyncSink(transfer, &model.TransferOperation{}, logger.Log, helpers.EmptyRegistry(), coordinator.NewFakeClient(), middlewares.MakeConfig(middlewares.WithNoData))
+	sink, err := sink_factory.MakeAsyncSink(transfer, &model.TransferOperation{}, logger.Log, helpers.EmptyRegistry(), coordinator.NewFakeClient(), middlewares.MakeConfig(middlewares.WithNoData))
 	require.NoError(t, err)
 
-	err = cleanup.CleanupTables(sink, tables, model.Drop)
+	err = cleanup_task.CleanupTables(sink, tables, model.Drop)
 	require.NoError(t, err)
 }
 
@@ -64,10 +64,10 @@ func DropFilter(t *testing.T) {
 	require.NoError(t, err)
 	logger.Log.Infof("got tables: %v", tables)
 
-	sink, err := sink.MakeAsyncSink(transfer, &model.TransferOperation{}, logger.Log, helpers.EmptyRegistry(), coordinator.NewFakeClient(), middlewares.MakeConfig(middlewares.WithNoData))
+	sink, err := sink_factory.MakeAsyncSink(transfer, &model.TransferOperation{}, logger.Log, helpers.EmptyRegistry(), coordinator.NewFakeClient(), middlewares.MakeConfig(middlewares.WithNoData))
 	require.NoError(t, err)
 
-	err = cleanup.CleanupTables(sink, tables, model.Drop)
+	err = cleanup_task.CleanupTables(sink, tables, model.Drop)
 	require.NoError(t, err)
 }
 
@@ -80,9 +80,9 @@ func TruncateAll(t *testing.T) {
 	require.NoError(t, err)
 	logger.Log.Infof("got tables: %v", tables)
 
-	sink, err := sink.MakeAsyncSink(transfer, &model.TransferOperation{}, logger.Log, helpers.EmptyRegistry(), coordinator.NewFakeClient(), middlewares.MakeConfig(middlewares.WithNoData))
+	sink, err := sink_factory.MakeAsyncSink(transfer, &model.TransferOperation{}, logger.Log, helpers.EmptyRegistry(), coordinator.NewFakeClient(), middlewares.MakeConfig(middlewares.WithNoData))
 	require.NoError(t, err)
 
-	err = cleanup.CleanupTables(sink, tables, model.Truncate)
+	err = cleanup_task.CleanupTables(sink, tables, model.Truncate)
 	require.NoError(t, err)
 }

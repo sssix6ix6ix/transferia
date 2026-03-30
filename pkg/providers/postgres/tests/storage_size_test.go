@@ -7,14 +7,14 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
-	"github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
 )
 
 func TestInheritTableStorageSize(t *testing.T) {
 	src := pgrecipe.RecipeSource(pgrecipe.WithPrefix(""), pgrecipe.WithInitDir("test_scripts"))
 	src.CollapseInheritTables = true
-	storage, err := postgres.NewStorage(src.ToStorageParams(nil))
+	storage, err := provider_postgres.NewStorage(src.ToStorageParams(nil))
 	require.NoError(t, err)
 	err = storage.BeginPGSnapshot(context.TODO())
 	require.NoError(t, err)
@@ -28,7 +28,7 @@ func TestInheritTableStorageSize(t *testing.T) {
 func TestInheritTableSharding(t *testing.T) {
 	src := pgrecipe.RecipeSource(pgrecipe.WithPrefix(""), pgrecipe.WithInitDir("test_scripts"))
 	src.CollapseInheritTables = true
-	storage, err := postgres.NewStorage(src.ToStorageParams(nil))
+	storage, err := provider_postgres.NewStorage(src.ToStorageParams(nil))
 	require.NoError(t, err)
 	err = storage.BeginPGSnapshot(context.TODO())
 	require.NoError(t, err)

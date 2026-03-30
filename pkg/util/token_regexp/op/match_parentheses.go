@@ -1,16 +1,16 @@
 package op
 
 import (
-	"github.com/transferia/transferia/pkg/util/token_regexp/abstract"
+	token_regexp_abstract "github.com/transferia/transferia/pkg/util/token_regexp/abstract"
 )
 
 type MatchParenthesesOp struct {
-	abstract.Relatives
+	token_regexp_abstract.Relatives
 }
 
 func (t *MatchParenthesesOp) IsOp() {}
 
-func (t *MatchParenthesesOp) ConsumePrimitive(tokens []*abstract.Token) []int {
+func (t *MatchParenthesesOp) ConsumePrimitive(tokens []*token_regexp_abstract.Token) []int {
 	if len(tokens) < 2 {
 		return nil
 	}
@@ -38,6 +38,6 @@ func (t *MatchParenthesesOp) ConsumePrimitive(tokens []*abstract.Token) []int {
 
 func MatchParentheses() *MatchParenthesesOp {
 	return &MatchParenthesesOp{
-		Relatives: abstract.NewRelativesImpl(),
+		Relatives: token_regexp_abstract.NewRelativesImpl(),
 	}
 }

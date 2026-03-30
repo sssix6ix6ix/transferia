@@ -4,30 +4,30 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/pkg/abstract"
 )
 
 type SourceStats struct {
-	registry      metrics.Registry
+	registry      core_metrics.Registry
 	rw            sync.Mutex
-	Usage         metrics.Gauge
-	CompressRatio metrics.Gauge
-	Read          metrics.Gauge
-	Extract       metrics.Gauge
-	Master        metrics.Gauge
-	DDLError      metrics.Counter
-	Error         metrics.Counter
-	Fatal         metrics.Counter
-	Size          metrics.Counter
-	Count         metrics.Counter
-	ChangeItems   metrics.Counter
-	Parsed        metrics.Counter
-	Unparsed      metrics.Counter
-	TransformTime metrics.Timer
-	DecodeTime    metrics.Timer
-	PushTime      metrics.Timer
-	DelayTime     metrics.Timer
+	Usage         core_metrics.Gauge
+	CompressRatio core_metrics.Gauge
+	Read          core_metrics.Gauge
+	Extract       core_metrics.Gauge
+	Master        core_metrics.Gauge
+	DDLError      core_metrics.Counter
+	Error         core_metrics.Counter
+	Fatal         core_metrics.Counter
+	Size          core_metrics.Counter
+	Count         core_metrics.Counter
+	ChangeItems   core_metrics.Counter
+	Parsed        core_metrics.Counter
+	Unparsed      core_metrics.Counter
+	TransformTime core_metrics.Timer
+	DecodeTime    core_metrics.Timer
+	PushTime      core_metrics.Timer
+	DelayTime     core_metrics.Timer
 	tableStat     map[string]*TableStat
 }
 
@@ -54,7 +54,7 @@ func (s *SourceStats) WithTags(tags map[string]string) *SourceStats {
 	return NewSourceStats(s.registry.WithTags(tags))
 }
 
-func NewSourceStats(registry metrics.Registry) *SourceStats {
+func NewSourceStats(registry core_metrics.Registry) *SourceStats {
 	return &SourceStats{
 		registry:      registry,
 		rw:            sync.Mutex{},

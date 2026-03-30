@@ -8,9 +8,9 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/parsers"
-	"github.com/transferia/transferia/pkg/providers/ydb"
+	provider_ydb "github.com/transferia/transferia/pkg/providers/ydb"
 	"go.uber.org/zap/zapcore"
-	"golang.org/x/exp/maps"
+	xmaps "golang.org/x/exp/maps"
 )
 
 type LfSource struct {
@@ -27,7 +27,7 @@ type LfSource struct {
 	MaxReadMessagesCount uint32          `log:"true"`
 	OnlyLocal            bool            `log:"true"`
 	LfParser             bool            `log:"true"`
-	Credentials          ydb.TokenCredentials
+	Credentials          provider_ydb.TokenCredentials
 	Port                 int  `log:"true"`
 	AllowTTLRewind       bool `log:"true"`
 
@@ -51,7 +51,7 @@ func (s *LfSource) IsLbMirror() bool {
 	if len(s.ParserConfig) == 0 {
 		return false
 	} else {
-		return maps.Keys(s.ParserConfig)[0] == "blank.lb"
+		return xmaps.Keys(s.ParserConfig)[0] == "blank.lb"
 	}
 }
 

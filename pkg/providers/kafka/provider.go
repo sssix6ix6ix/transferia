@@ -3,15 +3,15 @@ package kafka
 import (
 	"context"
 
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	yslices "github.com/transferia/transferia/library/go/slices"
 	"github.com/transferia/transferia/pkg/abstract"
-	cpclient "github.com/transferia/transferia/pkg/abstract/coordinator"
+	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/middlewares"
 	"github.com/transferia/transferia/pkg/providers"
-	"github.com/transferia/transferia/pkg/providers/kafka/client"
+	kafka_client "github.com/transferia/transferia/pkg/providers/kafka/client"
 	"github.com/transferia/transferia/pkg/util/gobwrapper"
 	"github.com/transferia/transferia/pkg/util/queues/coherence_check"
 	"github.com/transferia/transferia/pkg/util/set"
@@ -51,8 +51,8 @@ var systemTopics = set.New(
 
 type Provider struct {
 	logger   log.Logger
-	registry metrics.Registry
-	cp       cpclient.Coordinator
+	registry core_metrics.Registry
+	cp       coordinator.Coordinator
 	transfer *model.Transfer
 }
 
@@ -91,7 +91,7 @@ func (p *Provider) Sniffer(_ context.Context) (abstract.Fetchable, error) {
 		if err != nil {
 			return nil, xerrors.Errorf("unable to construct tls config: %w", err)
 		}
-		kafkaClient, err := client.NewClient(brokers, mechanism, tlsCfg, nil)
+		kafkaClient, err := kafka_client.NewClient(brokers, mechanism, tlsCfg, nil)
 		if err != nil {
 			return nil, xerrors.Errorf("unable to create kafka client, err: %w", err)
 		}
@@ -184,7 +184,7 @@ func (p *Provider) Activate(_ context.Context, _ *model.TransferOperation, _ abs
 	return nil
 }
 
-func New(lgr log.Logger, registry metrics.Registry, cp cpclient.Coordinator, transfer *model.Transfer, _ *model.TransferOperation) providers.Provider {
+func New(lgr log.Logger, registry core_metrics.Registry, cp coordinator.Coordinator, transfer *model.Transfer, _ *model.TransferOperation) providers.Provider {
 	return &Provider{
 		logger:   lgr,
 		registry: registry,

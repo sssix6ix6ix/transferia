@@ -3,14 +3,14 @@ package opensearch
 import (
 	"context"
 
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/middlewares"
 	"github.com/transferia/transferia/pkg/providers"
-	"github.com/transferia/transferia/pkg/providers/elastic"
+	provider_elastic "github.com/transferia/transferia/pkg/providers/elastic"
 	"github.com/transferia/transferia/pkg/util/gobwrapper"
 	"go.ytsaurus.tech/library/go/core/log"
 )
@@ -44,7 +44,7 @@ var (
 
 type Provider struct {
 	logger   log.Logger
-	registry metrics.Registry
+	registry core_metrics.Registry
 	cp       coordinator.Coordinator
 	transfer *model.Transfer
 }
@@ -63,7 +63,7 @@ func (p *Provider) Activate(ctx context.Context, task *model.TransferOperation, 
 	if err := callbacks.CheckIncludes(tables); err != nil {
 		return xerrors.Errorf("failed in accordance with configuration: %w", err)
 	}
-	if err := elastic.DumpIndexInfo(p.transfer, p.logger, p.registry); err != nil {
+	if err := provider_elastic.DumpIndexInfo(p.transfer, p.logger, p.registry); err != nil {
 		return xerrors.Errorf("failed to dump source indexes info: %w", err)
 	}
 	if err := callbacks.Upload(tables); err != nil {
@@ -77,8 +77,8 @@ func (p *Provider) Storage() (abstract.Storage, error) {
 	if !ok {
 		return nil, xerrors.Errorf("unexpected source type: %T", p.transfer.Src)
 	}
-	if _, ok := p.transfer.Dst.(elastic.IsElasticLikeDestination); ok {
-		result, err := NewStorage(src, p.logger, p.registry, elastic.WithHomo())
+	if _, ok := p.transfer.Dst.(provider_elastic.IsElasticLikeDestination); ok {
+		result, err := NewStorage(src, p.logger, p.registry, provider_elastic.WithHomo())
 		if err != nil {
 			return nil, xerrors.Errorf("unable to create storage with ElasticLike dst, err: %w", err)
 		}
@@ -95,7 +95,7 @@ func (p *Provider) Sink(middlewares.Config) (abstract.Sinker, error) {
 	return NewSink(dst, p.logger, p.registry)
 }
 
-func New(lgr log.Logger, registry metrics.Registry, cp coordinator.Coordinator, transfer *model.Transfer, _ *model.TransferOperation) providers.Provider {
+func New(lgr log.Logger, registry core_metrics.Registry, cp coordinator.Coordinator, transfer *model.Transfer, _ *model.TransferOperation) providers.Provider {
 	return &Provider{
 		logger:   lgr,
 		registry: registry,

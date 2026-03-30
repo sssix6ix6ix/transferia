@@ -10,11 +10,11 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/changeitem"
-	yt2 "github.com/transferia/transferia/pkg/providers/yt"
+	provider_yt "github.com/transferia/transferia/pkg/providers/yt"
 	"github.com/transferia/transferia/pkg/stats"
 	"go.ytsaurus.tech/library/go/core/log"
 	"go.ytsaurus.tech/yt/go/migrate"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 	"go.ytsaurus.tech/yt/go/ypath"
 	"go.ytsaurus.tech/yt/go/yt"
 	"golang.org/x/sync/semaphore"
@@ -28,7 +28,7 @@ type SortedTable struct {
 	columns        tableColumns // useful wrapper over []abstract.ColSchema
 	archivePath    ypath.Path
 	archiveSpawned bool
-	config         yt2.YtDestinationModel
+	config         provider_yt.YtDestinationModel
 	sem            *semaphore.Weighted
 	tableSchema    *changeitem.TableSchema
 }
@@ -327,20 +327,20 @@ func (t *SortedTable) ensureSchema(schemas []abstract.ColSchema) (schemaCompatib
 func (t *SortedTable) buildTargetTable(schemas []abstract.ColSchema) (migrate.Table, error) {
 	s := true
 	hasKeyColumns := false
-	target := schema.Schema{
+	target := ytschema.Schema{
 		UniqueKeys: true,
 		Strict:     &s,
-		Columns:    make([]schema.Column, len(schemas)),
+		Columns:    make([]ytschema.Column, len(schemas)),
 	}
 	for i, col := range schemas {
-		target.Columns[i] = schema.Column{
+		target.Columns[i] = ytschema.Column{
 			Name:       col.ColumnName,
-			Type:       schema.Type(col.DataType),
+			Type:       ytschema.Type(col.DataType),
 			Expression: col.Expression,
 		}
 
 		if col.IsKey() {
-			target.Columns[i].SortOrder = schema.SortAscending
+			target.Columns[i].SortOrder = ytschema.SortAscending
 			hasKeyColumns = true
 		}
 	}
@@ -400,17 +400,17 @@ func (t *SortedTable) spawnArchive(ctx context.Context) error {
 		PrimaryKey: true,
 	}}
 
-	baseTableInfo, err := yt2.GetNodeInfo(ctx, t.ytClient, t.path)
+	baseTableInfo, err := provider_yt.GetNodeInfo(ctx, t.ytClient, t.path)
 	if err != nil {
 		t.logger.Errorf("cannot get base table %v schema: %v", t.path, err)
 		archiveSchema = append(archiveSchema, t.columns.columns...)
 	} else {
-		baseSchema := yt2.YTColumnToColSchema(baseTableInfo.Attrs.Schema.Columns)
+		baseSchema := provider_yt.YTColumnToColSchema(baseTableInfo.Attrs.Schema.Columns)
 		archiveSchema = append(archiveSchema, baseSchema.Columns()...)
 	}
 
 	if err := backoff.Retry(func() error {
-		var ytDestination yt2.YtDestination
+		var ytDestination provider_yt.YtDestination
 		ytDestination.Cluster = t.config.Cluster()
 		ytDestination.CellBundle = t.config.CellBundle()
 		ytDestination.OptimizeFor = t.config.OptimizeFor()
@@ -420,7 +420,7 @@ func (t *SortedTable) spawnArchive(ctx context.Context) error {
 			t.ytClient,
 			t.archivePath,
 			archiveSchema,
-			yt2.NewYtDestinationV1(ytDestination),
+			provider_yt.NewYtDestinationV1(ytDestination),
 			t.metrics,
 			log.With(t.logger, log.Any("table_path", t.path)),
 		)
@@ -443,7 +443,7 @@ func NewSortedTable(
 	ytClient yt.Client,
 	path ypath.Path,
 	schema []abstract.ColSchema,
-	cfg yt2.YtDestinationModel,
+	cfg provider_yt.YtDestinationModel,
 	metrics *stats.SinkerStats,
 	logger log.Logger,
 ) (*SortedTable, error) {

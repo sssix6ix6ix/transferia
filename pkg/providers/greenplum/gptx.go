@@ -8,7 +8,7 @@ import (
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/library/go/core/xerrors"
-	"github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/util"
 	"go.ytsaurus.tech/library/go/core/log"
 )
@@ -21,7 +21,7 @@ type gpTx struct {
 	closed  bool
 }
 
-func newGpTx(ctx context.Context, storage *postgres.Storage) (*gpTx, error) {
+func newGpTx(ctx context.Context, storage *provider_postgres.Storage) (*gpTx, error) {
 	conn, err := storage.Conn.Acquire(ctx)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to acquire a connection: %w", err)
@@ -32,7 +32,7 @@ func newGpTx(ctx context.Context, storage *postgres.Storage) (*gpTx, error) {
 		conn.Release()
 	})
 
-	if _, err := conn.Exec(ctx, postgres.MakeSetSQL("statement_timeout", "0")); err != nil {
+	if _, err := conn.Exec(ctx, provider_postgres.MakeSetSQL("statement_timeout", "0")); err != nil {
 		return nil, xerrors.Errorf("failed to SET statement_timeout: %w", err)
 	}
 

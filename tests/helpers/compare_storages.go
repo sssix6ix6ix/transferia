@@ -10,14 +10,14 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/library/go/core/metrics/solomon"
 	"github.com/transferia/transferia/pkg/abstract"
-	"github.com/transferia/transferia/pkg/providers/clickhouse"
-	chModel "github.com/transferia/transferia/pkg/providers/clickhouse/model"
-	mongoStorage "github.com/transferia/transferia/pkg/providers/mongo"
-	mysqlStorage "github.com/transferia/transferia/pkg/providers/mysql"
-	pgStorage "github.com/transferia/transferia/pkg/providers/postgres"
-	"github.com/transferia/transferia/pkg/providers/ydb"
-	"github.com/transferia/transferia/pkg/providers/yt"
-	ytStorage "github.com/transferia/transferia/pkg/providers/yt/storage"
+	provider_clickhouse "github.com/transferia/transferia/pkg/providers/clickhouse"
+	clickhouse_model "github.com/transferia/transferia/pkg/providers/clickhouse/model"
+	provider_mongo "github.com/transferia/transferia/pkg/providers/mongo"
+	provider_mysql "github.com/transferia/transferia/pkg/providers/mysql"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
+	provider_ydb "github.com/transferia/transferia/pkg/providers/ydb"
+	provider_yt "github.com/transferia/transferia/pkg/providers/yt"
+	yt_storage "github.com/transferia/transferia/pkg/providers/yt/storage"
 	"github.com/transferia/transferia/pkg/worker/tasks"
 	"go.ytsaurus.tech/library/go/core/log"
 )
@@ -31,7 +31,7 @@ var technicalTables = map[string]bool{
 	"__tm_keeper":                  true, // mysql
 }
 
-func withTextSerialization(storageParams *pgStorage.PgStorageParams) *pgStorage.PgStorageParams {
+func withTextSerialization(storageParams *provider_postgres.PgStorageParams) *provider_postgres.PgStorageParams {
 	// Checksum does not support comparing binary values for now. Use
 	// the text types instead, even in homogeneous pg->pg transfers.
 	storageParams.UseBinarySerialization = false
@@ -44,67 +44,67 @@ func GetSampleableStorageByModel(t *testing.T, serverModel interface{}) abstract
 
 	switch model := serverModel.(type) {
 	// pg
-	case pgStorage.PgSource:
-		result, err = pgStorage.NewStorage(withTextSerialization(model.ToStorageParams(nil)))
-	case *pgStorage.PgSource:
-		result, err = pgStorage.NewStorage(withTextSerialization(model.ToStorageParams(nil)))
-	case pgStorage.PgDestination:
-		result, err = pgStorage.NewStorage(withTextSerialization(model.ToStorageParams()))
-	case *pgStorage.PgDestination:
-		result, err = pgStorage.NewStorage(withTextSerialization(model.ToStorageParams()))
+	case provider_postgres.PgSource:
+		result, err = provider_postgres.NewStorage(withTextSerialization(model.ToStorageParams(nil)))
+	case *provider_postgres.PgSource:
+		result, err = provider_postgres.NewStorage(withTextSerialization(model.ToStorageParams(nil)))
+	case provider_postgres.PgDestination:
+		result, err = provider_postgres.NewStorage(withTextSerialization(model.ToStorageParams()))
+	case *provider_postgres.PgDestination:
+		result, err = provider_postgres.NewStorage(withTextSerialization(model.ToStorageParams()))
 	// ch
-	case chModel.ChSource:
+	case clickhouse_model.ChSource:
 		storageParams, storageParamsErr := model.ToStorageParams()
 		require.NoError(t, storageParamsErr)
-		result, err = clickhouse.NewStorage(storageParams, nil)
-	case *chModel.ChSource:
+		result, err = provider_clickhouse.NewStorage(storageParams, nil)
+	case *clickhouse_model.ChSource:
 		storageParams, storageParamsErr := model.ToStorageParams()
 		require.NoError(t, storageParamsErr)
-		result, err = clickhouse.NewStorage(storageParams, nil)
-	case chModel.ChDestination:
+		result, err = provider_clickhouse.NewStorage(storageParams, nil)
+	case clickhouse_model.ChDestination:
 		storageParams, storageParamsErr := model.ToStorageParams()
 		require.NoError(t, storageParamsErr)
-		result, err = clickhouse.NewStorage(storageParams, nil)
-	case *chModel.ChDestination:
+		result, err = provider_clickhouse.NewStorage(storageParams, nil)
+	case *clickhouse_model.ChDestination:
 		storageParams, storageParamsErr := model.ToStorageParams()
 		require.NoError(t, storageParamsErr)
-		result, err = clickhouse.NewStorage(storageParams, nil)
+		result, err = provider_clickhouse.NewStorage(storageParams, nil)
 	// mysql
-	case mysqlStorage.MysqlSource:
-		result, err = mysqlStorage.NewStorage(model.ToStorageParams())
-	case *mysqlStorage.MysqlSource:
-		result, err = mysqlStorage.NewStorage(model.ToStorageParams())
-	case mysqlStorage.MysqlDestination:
-		result, err = mysqlStorage.NewStorage(model.ToStorageParams())
-	case *mysqlStorage.MysqlDestination:
-		result, err = mysqlStorage.NewStorage(model.ToStorageParams())
+	case provider_mysql.MysqlSource:
+		result, err = provider_mysql.NewStorage(model.ToStorageParams())
+	case *provider_mysql.MysqlSource:
+		result, err = provider_mysql.NewStorage(model.ToStorageParams())
+	case provider_mysql.MysqlDestination:
+		result, err = provider_mysql.NewStorage(model.ToStorageParams())
+	case *provider_mysql.MysqlDestination:
+		result, err = provider_mysql.NewStorage(model.ToStorageParams())
 	// mongo
-	case mongoStorage.MongoSource:
-		result, err = mongoStorage.NewStorage(model.ToStorageParams())
-	case *mongoStorage.MongoSource:
-		result, err = mongoStorage.NewStorage(model.ToStorageParams())
-	case mongoStorage.MongoDestination:
-		result, err = mongoStorage.NewStorage(model.ToStorageParams())
-	case *mongoStorage.MongoDestination:
-		result, err = mongoStorage.NewStorage(model.ToStorageParams())
+	case provider_mongo.MongoSource:
+		result, err = provider_mongo.NewStorage(model.ToStorageParams())
+	case *provider_mongo.MongoSource:
+		result, err = provider_mongo.NewStorage(model.ToStorageParams())
+	case provider_mongo.MongoDestination:
+		result, err = provider_mongo.NewStorage(model.ToStorageParams())
+	case *provider_mongo.MongoDestination:
+		result, err = provider_mongo.NewStorage(model.ToStorageParams())
 	// yt
-	case yt.YtDestination:
-		result, err = ytStorage.NewStorage(model.ToStorageParams())
-	case *yt.YtDestination:
-		result, err = ytStorage.NewStorage(model.ToStorageParams())
-	case yt.YtDestinationWrapper:
-		result, err = ytStorage.NewStorage(model.ToStorageParams())
-	case *yt.YtDestinationWrapper:
-		result, err = ytStorage.NewStorage(model.ToStorageParams())
+	case provider_yt.YtDestination:
+		result, err = yt_storage.NewStorage(model.ToStorageParams())
+	case *provider_yt.YtDestination:
+		result, err = yt_storage.NewStorage(model.ToStorageParams())
+	case provider_yt.YtDestinationWrapper:
+		result, err = yt_storage.NewStorage(model.ToStorageParams())
+	case *provider_yt.YtDestinationWrapper:
+		result, err = yt_storage.NewStorage(model.ToStorageParams())
 	// ydb for now only works for small tables
-	case ydb.YdbDestination:
-		result, err = ydb.NewStorage(model.ToStorageParams(), solomon.NewRegistry(solomon.NewRegistryOpts()))
-	case *ydb.YdbDestination:
-		result, err = ydb.NewStorage(model.ToStorageParams(), solomon.NewRegistry(solomon.NewRegistryOpts()))
-	case ydb.YdbSource:
-		result, err = ydb.NewStorage(model.ToStorageParams(), solomon.NewRegistry(solomon.NewRegistryOpts()))
-	case *ydb.YdbSource:
-		result, err = ydb.NewStorage(model.ToStorageParams(), solomon.NewRegistry(solomon.NewRegistryOpts()))
+	case provider_ydb.YdbDestination:
+		result, err = provider_ydb.NewStorage(model.ToStorageParams(), solomon.NewRegistry(solomon.NewRegistryOpts()))
+	case *provider_ydb.YdbDestination:
+		result, err = provider_ydb.NewStorage(model.ToStorageParams(), solomon.NewRegistry(solomon.NewRegistryOpts()))
+	case provider_ydb.YdbSource:
+		result, err = provider_ydb.NewStorage(model.ToStorageParams(), solomon.NewRegistry(solomon.NewRegistryOpts()))
+	case *provider_ydb.YdbSource:
+		result, err = provider_ydb.NewStorage(model.ToStorageParams(), solomon.NewRegistry(solomon.NewRegistryOpts()))
 	default:
 		require.Fail(t, fmt.Sprintf("unknown type of serverModel: %T", serverModel))
 	}
@@ -160,8 +160,8 @@ func CompareStorages(t *testing.T, sourceModel, targetModel interface{}, params 
 	srcStorage := GetSampleableStorageByModel(t, sourceModel)
 	dstStorage := GetSampleableStorageByModel(t, targetModel)
 	switch src := srcStorage.(type) {
-	case *mysqlStorage.Storage:
-		dst, ok := dstStorage.(*mysqlStorage.Storage)
+	case *provider_mysql.Storage:
+		dst, ok := dstStorage.(*provider_mysql.Storage)
 		if ok {
 			src.IsHomo = true
 			dst.IsHomo = true

@@ -10,10 +10,10 @@ import (
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/middlewares"
-	"github.com/transferia/transferia/pkg/sink"
-	transformers_registry "github.com/transferia/transferia/pkg/transformer"
-	"github.com/transferia/transferia/pkg/transformer/registry/filter"
-	replaceprimarykey "github.com/transferia/transferia/pkg/transformer/registry/replace_primary_key"
+	"github.com/transferia/transferia/pkg/sink_factory"
+	"github.com/transferia/transferia/pkg/transformer"
+	transformer_filter "github.com/transferia/transferia/pkg/transformer/registry/filter"
+	transformer_replace_primary_key "github.com/transferia/transferia/pkg/transformer/registry/replace_primary_key"
 )
 
 type mockSinker struct {
@@ -29,26 +29,26 @@ func (m *mockSinker) Push(items []abstract.ChangeItem) error {
 func TestMultipleTransformers(t *testing.T) {
 	tableName := "test_table"
 	trans := &model.Transformation{
-		Transformers: &transformers_registry.Transformers{
+		Transformers: &transformer.Transformers{
 			DebugMode: true,
-			Transformers: []transformers_registry.Transformer{
+			Transformers: []transformer.Transformer{
 				{
-					replaceprimarykey.Type: replaceprimarykey.Config{
+					transformer_replace_primary_key.Type: transformer_replace_primary_key.Config{
 						Keys: []string{
 							"field2",
 							"field1",
 						},
-						Tables: filter.Tables{
+						Tables: transformer_filter.Tables{
 							IncludeTables: []string{tableName},
 						},
 					},
 				},
 				{
-					filter.FilterColumnsTransformerType: filter.FilterColumnsConfig{
-						Tables: filter.Tables{
+					transformer_filter.FilterColumnsTransformerType: transformer_filter.FilterColumnsConfig{
+						Tables: transformer_filter.Tables{
 							IncludeTables: []string{tableName},
 						},
-						Columns: filter.Columns{
+						Columns: transformer_filter.Columns{
 							IncludeColumns: []string{
 								"field2",
 								"field1",
@@ -72,7 +72,7 @@ func TestMultipleTransformers(t *testing.T) {
 		},
 		Transformation: trans,
 	}
-	asink, err := sink.MakeAsyncSink(
+	asink, err := sink_factory.MakeAsyncSink(
 		transfer,
 		&model.TransferOperation{},
 		logger.Log,

@@ -12,16 +12,16 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/ydb"
-	yt_provider "github.com/transferia/transferia/pkg/providers/yt"
-	ytstorage "github.com/transferia/transferia/pkg/providers/yt/storage"
+	provider_ydb "github.com/transferia/transferia/pkg/providers/ydb"
+	provider_yt "github.com/transferia/transferia/pkg/providers/yt"
+	yt_storage "github.com/transferia/transferia/pkg/providers/yt/storage"
 	"github.com/transferia/transferia/pkg/worker/tasks"
 	"github.com/transferia/transferia/tests/helpers"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 func TestGroup(t *testing.T) {
-	src := &ydb.YdbSource{
+	src := &provider_ydb.YdbSource{
 		Token:              model.SecretString(os.Getenv("YDB_TOKEN")),
 		Database:           helpers.GetEnvOfFail(t, "YDB_DATABASE"),
 		Instance:           helpers.GetEnvOfFail(t, "YDB_ENDPOINT"),
@@ -31,7 +31,7 @@ func TestGroup(t *testing.T) {
 		Underlay:           false,
 		ServiceAccountID:   "",
 	}
-	dst := yt_provider.NewYtDestinationV1(yt_provider.YtDestination{
+	dst := provider_yt.NewYtDestinationV1(provider_yt.YtDestination{
 		Path:                     "//home/cdc/test/pg2yt_e2e",
 		Cluster:                  os.Getenv("YT_PROXY"),
 		CellBundle:               "default",
@@ -52,17 +52,17 @@ func TestGroup(t *testing.T) {
 
 	helpers.InitSrcDst(helpers.TransferID, src, dst, abstract.TransferTypeSnapshotOnly)
 	t.Run("seed data", func(t *testing.T) {
-		Target := &ydb.YdbDestination{
+		Target := &provider_ydb.YdbDestination{
 			Database: src.Database,
 			Token:    src.Token,
 			Instance: src.Instance,
 		}
 		Target.WithDefaults()
-		sinker, err := ydb.NewSinker(logger.Log, Target, solomon.NewRegistry(solomon.NewRegistryOpts()))
+		sinker, err := provider_ydb.NewSinker(logger.Log, Target, solomon.NewRegistry(solomon.NewRegistryOpts()))
 		require.NoError(t, err)
 		testSchema := abstract.NewTableSchema([]abstract.ColSchema{
-			{ColumnName: "id", DataType: string(schema.TypeInt32), PrimaryKey: true},
-			{ColumnName: "val", DataType: string(schema.TypeAny), OriginalType: "ydb:Yson"},
+			{ColumnName: "id", DataType: string(ytschema.TypeInt32), PrimaryKey: true},
+			{ColumnName: "val", DataType: string(ytschema.TypeAny), OriginalType: "ydb:Yson"},
 		})
 		require.NoError(t, sinker.Push([]abstract.ChangeItem{{
 			Kind:         abstract.InsertKind,
@@ -80,13 +80,13 @@ func TestGroup(t *testing.T) {
 	})
 
 	t.Run("check data", func(t *testing.T) {
-		ytStorageParams := yt_provider.YtStorageParams{
+		ytStorageParams := provider_yt.YtStorageParams{
 			Token:   dst.Token(),
 			Cluster: os.Getenv("YT_PROXY"),
 			Path:    dst.Path(),
 			Spec:    nil,
 		}
-		st, err := ytstorage.NewStorage(&ytStorageParams)
+		st, err := yt_storage.NewStorage(&ytStorageParams)
 		require.NoError(t, err)
 		var data []map[string]interface{}
 		require.NoError(t, st.LoadTable(context.Background(), abstract.TableDescription{

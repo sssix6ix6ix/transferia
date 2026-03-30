@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/cmd/trcli/check"
-	"github.com/transferia/transferia/cmd/trcli/config"
+	trcli_config "github.com/transferia/transferia/cmd/trcli/config"
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
 )
 
@@ -24,7 +24,7 @@ func TestCheck(t *testing.T) {
 	)
 	dst.MaintainTables = true // forces table creation on push
 
-	transfer, err := config.ParseTransfer(transferYaml)
+	transfer, err := trcli_config.ParseTransfer(transferYaml)
 	require.NoError(t, err)
 
 	transfer.Src = src

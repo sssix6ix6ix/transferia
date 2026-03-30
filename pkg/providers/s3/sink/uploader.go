@@ -13,7 +13,7 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/format"
-	s3_provider "github.com/transferia/transferia/pkg/providers/s3"
+	s3_model "github.com/transferia/transferia/pkg/providers/s3/model"
 	"github.com/transferia/transferia/pkg/util/set"
 	"go.ytsaurus.tech/library/go/core/log"
 )
@@ -21,7 +21,7 @@ import (
 var FatalAWSCodes = set.New("InvalidAccessKeyId")
 
 type replicationUploader struct {
-	cfg      *s3_provider.S3Destination
+	cfg      *s3_model.S3Destination
 	logger   log.Logger
 	uploader *s3manager.Uploader
 }
@@ -33,7 +33,7 @@ func (u *replicationUploader) Upload(name string, lsns []uint64, data []byte) er
 	if len(lsns) > 0 && lsns[len(lsns)-1] != 0 {
 		fileName = fmt.Sprintf("%v-%v_%v.%v", name, lsns[0], lsns[len(lsns)-1], strings.ToLower(string(u.cfg.OutputFormat)))
 	}
-	if u.cfg.OutputEncoding == s3_provider.GzipEncoding {
+	if u.cfg.OutputEncoding == s3_model.GzipEncoding {
 		fileName = fileName + ".gz"
 		gzWriter := gzip.NewWriter(buf)
 		if _, err := gzWriter.Write(data); err != nil {

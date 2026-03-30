@@ -12,9 +12,9 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/library/go/core/metrics/solomon"
 	"github.com/transferia/transferia/pkg/abstract"
-	server "github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/kafka"
-	"github.com/transferia/transferia/pkg/providers/kafka/client"
+	"github.com/transferia/transferia/pkg/abstract/model"
+	provider_kafka "github.com/transferia/transferia/pkg/providers/kafka"
+	kafka_client "github.com/transferia/transferia/pkg/providers/kafka/client"
 	"github.com/transferia/transferia/tests/helpers"
 	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
@@ -23,22 +23,22 @@ func init() {
 	_ = os.Setenv("YC", "1") // to not go to vanga
 }
 
-func buildSink(t *testing.T, broker, topicName, topicPrefix string, encoding kafka.Encoding, serializationFormat server.SerializationFormatName) abstract.Sinker {
-	kafkaDst := &kafka.KafkaDestination{
-		Connection: &kafka.KafkaConnectionOptions{
-			TLS:     server.DisabledTLS,
+func buildSink(t *testing.T, broker, topicName, topicPrefix string, encoding provider_kafka.Encoding, serializationFormat model.SerializationFormatName) abstract.Sinker {
+	kafkaDst := &provider_kafka.KafkaDestination{
+		Connection: &provider_kafka.KafkaConnectionOptions{
+			TLS:     model.DisabledTLS,
 			Brokers: []string{broker},
 		},
-		Auth:        &kafka.KafkaAuth{Enabled: false},
+		Auth:        &provider_kafka.KafkaAuth{Enabled: false},
 		Topic:       topicName,
 		TopicPrefix: topicPrefix,
-		FormatSettings: server.SerializationFormat{
+		FormatSettings: model.SerializationFormat{
 			Name: serializationFormat,
 		},
 		Compression: encoding,
 	}
 	kafkaDst.WithDefaults()
-	sink, err := kafka.NewReplicationSink(
+	sink, err := provider_kafka.NewReplicationSink(
 		kafkaDst,
 		solomon.NewRegistry(nil),
 		logger.Log,
@@ -60,7 +60,7 @@ func makeChangeItem(topicName, val string) abstract.ChangeItem {
 }
 
 func createTopic(t *testing.T, broker, topicName string) {
-	sinkWithoutCompression := buildSink(t, broker, topicName, "", kafka.NoEncoding, server.SerializationFormatJSON)
+	sinkWithoutCompression := buildSink(t, broker, topicName, "", provider_kafka.NoEncoding, model.SerializationFormatJSON)
 	require.NoError(t, sinkWithoutCompression.Push([]abstract.ChangeItem{makeChangeItem(topicName, "blablabla")}))
 }
 
@@ -73,7 +73,7 @@ func randomString(n int) string {
 	return string(b)
 }
 
-func setMaxMessageBytes(t *testing.T, kafkaClient *client.Client, topicName, value string) {
+func setMaxMessageBytes(t *testing.T, kafkaClient *kafka_client.Client, topicName, value string) {
 	// set max.message.bytes
 	err := kafkaClient.AlterConfigs(topicName, "max.message.bytes", value)
 	require.NoError(t, err)
@@ -90,13 +90,13 @@ func TestAutoDeriveBatchBytes(t *testing.T) {
 	// create topics
 	createTopic(t, broker, topicName)
 
-	kafkaClient, err := client.NewClient([]string{broker}, nil, nil, nil)
+	kafkaClient, err := kafka_client.NewClient([]string{broker}, nil, nil, nil)
 	require.NoError(t, err)
 
 	setMaxMessageBytes(t, kafkaClient, topicName, "2000000")
 
-	sinkWithoutCompression := buildSink(t, broker, topicName, "", kafka.NoEncoding, server.SerializationFormatJSON)
-	sinkWithCompression := buildSink(t, broker, topicName, "", kafka.LZ4Encoding, server.SerializationFormatJSON)
+	sinkWithoutCompression := buildSink(t, broker, topicName, "", provider_kafka.NoEncoding, model.SerializationFormatJSON)
+	sinkWithCompression := buildSink(t, broker, topicName, "", provider_kafka.LZ4Encoding, model.SerializationFormatJSON)
 
 	// try to push 1.5mb - expect OK
 	require.NoError(t, sinkWithoutCompression.Push([]abstract.ChangeItem{makeChangeItem(topicName, strings.Repeat("x", 3*512*1024))}))
@@ -130,7 +130,7 @@ func TestAutoDeriveBatchBytes(t *testing.T) {
 	setMaxMessageBytes(t, kafkaClient, topicPrefixed1, "10000000")
 	setMaxMessageBytes(t, kafkaClient, topicPrefixed2, "100000")
 
-	sinkWithoutCompressionPrefixed := buildSink(t, broker, "", prefix, kafka.NoEncoding, server.SerializationFormatDebezium)
+	sinkWithoutCompressionPrefixed := buildSink(t, broker, "", prefix, provider_kafka.NoEncoding, model.SerializationFormatDebezium)
 	// try to push 1.5mb to my_topic_prefix.public.table1 - expect OK
 	require.NoError(t, sinkWithoutCompressionPrefixed.Push(insertIntoTable1))
 	// try to push 1.5mb to my_topic_prefix.public.table1 - expect ERROR

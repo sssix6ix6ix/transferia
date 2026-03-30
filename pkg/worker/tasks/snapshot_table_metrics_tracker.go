@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/transferia/transferia/internal/logger"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
@@ -28,11 +28,11 @@ type SnapshotTableMetricsTracker struct {
 	closeOnce       sync.Once
 
 	transfer     *model.Transfer
-	registry     metrics.Registry
+	registry     core_metrics.Registry
 	totalETA     float64
 	tablesETAs   map[string]float64
-	totalGauge   metrics.Gauge
-	tablesGauges map[string]metrics.Gauge
+	totalGauge   core_metrics.Gauge
+	tablesGauges map[string]core_metrics.Gauge
 
 	sharded bool
 
@@ -48,7 +48,7 @@ type SnapshotTableMetricsTracker struct {
 func NewNotShardedSnapshotTableMetricsTracker(
 	ctx context.Context,
 	transfer *model.Transfer,
-	registry metrics.Registry,
+	registry core_metrics.Registry,
 	parts []*abstract.OperationTablePart,
 	progressUpdateMutex *sync.Mutex,
 ) *SnapshotTableMetricsTracker {
@@ -67,7 +67,7 @@ func NewNotShardedSnapshotTableMetricsTracker(
 		totalETA:     0,
 		tablesETAs:   map[string]float64{},
 		totalGauge:   nil,
-		tablesGauges: map[string]metrics.Gauge{},
+		tablesGauges: map[string]core_metrics.Gauge{},
 
 		parts:               parts,
 		progressUpdateMutex: progressUpdateMutex,
@@ -89,7 +89,7 @@ func NewNotShardedSnapshotTableMetricsTracker(
 func NewShardedSnapshotTableMetricsTracker(
 	ctx context.Context,
 	transfer *model.Transfer,
-	registry metrics.Registry,
+	registry core_metrics.Registry,
 	operationID string,
 	cpClient coordinator.Coordinator,
 ) *SnapshotTableMetricsTracker {
@@ -108,7 +108,7 @@ func NewShardedSnapshotTableMetricsTracker(
 		totalETA:     0,
 		tablesETAs:   map[string]float64{},
 		totalGauge:   nil,
-		tablesGauges: map[string]metrics.Gauge{},
+		tablesGauges: map[string]core_metrics.Gauge{},
 
 		parts:               nil,
 		progressUpdateMutex: nil,

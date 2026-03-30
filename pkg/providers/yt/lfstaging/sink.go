@@ -7,7 +7,7 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	ytcommon "github.com/transferia/transferia/pkg/providers/yt"
+	provider_yt "github.com/transferia/transferia/pkg/providers/yt"
 	"github.com/transferia/transferia/pkg/providers/yt/yt_client"
 	"go.ytsaurus.tech/library/go/core/log"
 	"go.ytsaurus.tech/yt/go/guid"
@@ -183,7 +183,7 @@ func (s sink) Close() error {
 }
 
 func NewSinker(
-	cfg *ytcommon.LfStagingDestination,
+	cfg *provider_yt.LfStagingDestination,
 	jobIndex int,
 	transfer *model.Transfer,
 	logger log.Logger,

@@ -1,21 +1,21 @@
 package reader
 
 import (
-	"github.com/aws/aws-sdk-go/aws/session"
+	aws_session "github.com/aws/aws-sdk-go/aws/session"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/s3"
+	s3_model "github.com/transferia/transferia/pkg/providers/s3/model"
 	"github.com/transferia/transferia/pkg/stats"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
 // registred reader implementations by model.ParsingFormat
-var readerImpls = map[model.ParsingFormat]func(src *s3.S3Source, lgr log.Logger, sess *session.Session, metrics *stats.SourceStats) (Reader, error){}
+var readerImpls = map[model.ParsingFormat]func(src *s3_model.S3Source, lgr log.Logger, sess *aws_session.Session, metrics *stats.SourceStats) (Reader, error){}
 
-type NewReader func(src *s3.S3Source, lgr log.Logger, sess *session.Session, metrics *stats.SourceStats) (Reader, error)
+type NewReader func(src *s3_model.S3Source, lgr log.Logger, sess *aws_session.Session, metrics *stats.SourceStats) (Reader, error)
 
 func RegisterReader(format model.ParsingFormat, ctor NewReader) {
-	wrappedCtor := func(src *s3.S3Source, lgr log.Logger, sess *session.Session, metrics *stats.SourceStats) (Reader, error) {
+	wrappedCtor := func(src *s3_model.S3Source, lgr log.Logger, sess *aws_session.Session, metrics *stats.SourceStats) (Reader, error) {
 		reader, err := ctor(src, lgr, sess, metrics)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to initialize new reader for format %s: %w", format, err)
@@ -27,9 +27,9 @@ func RegisterReader(format model.ParsingFormat, ctor NewReader) {
 }
 
 func newImpl(
-	src *s3.S3Source,
+	src *s3_model.S3Source,
 	lgr log.Logger,
-	sess *session.Session,
+	sess *aws_session.Session,
 	metrics *stats.SourceStats,
 ) (Reader, error) {
 	ctor, ok := readerImpls[src.InputFormat]
@@ -40,9 +40,9 @@ func newImpl(
 }
 
 func New(
-	src *s3.S3Source,
+	src *s3_model.S3Source,
 	lgr log.Logger,
-	sess *session.Session,
+	sess *aws_session.Session,
 	metrics *stats.SourceStats,
 ) (Reader, error) {
 	result, err := newImpl(src, lgr, sess, metrics)

@@ -1,6 +1,6 @@
 package debezium
 
-import debeziumparameters "github.com/transferia/transferia/pkg/debezium/parameters"
+import debezium_parameters "github.com/transferia/transferia/pkg/debezium/parameters"
 
 func buildSourceSchemaDescr(sourceType string) map[string]interface{} {
 	result := map[string]interface{}{
@@ -46,7 +46,7 @@ func buildSourceSchemaDescr(sourceType string) map[string]interface{} {
 		},
 	}
 	switch sourceType {
-	case debeziumparameters.SourceTypePg:
+	case debezium_parameters.SourceTypePg:
 		result["name"] = "io.debezium.connector.postgresql.Source"
 		fields = append(fields, []map[string]interface{}{
 			{
@@ -67,7 +67,7 @@ func buildSourceSchemaDescr(sourceType string) map[string]interface{} {
 				"field":    "xmin",
 			},
 		}...)
-	case debeziumparameters.SourceTypeMysql:
+	case debezium_parameters.SourceTypeMysql:
 		result["name"] = "io.debezium.connector.mysql.Source"
 		fields[len(fields)-1]["optional"] = true
 		fields = append(fields, []map[string]interface{}{

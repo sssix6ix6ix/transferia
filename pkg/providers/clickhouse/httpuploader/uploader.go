@@ -11,7 +11,7 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/conn"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/httpclient"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/model"
+	clickhouse_model "github.com/transferia/transferia/pkg/providers/clickhouse/model"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
@@ -62,7 +62,7 @@ func getPoolForTable(table string) *sync.Pool {
 func UploadCIBatch(
 	batch []abstract.ChangeItem,
 	rules *MarshallingRules,
-	config model.ChSinkServerParams,
+	config clickhouse_model.ChSinkServerParams,
 	table string,
 	avgRowSize int,
 	lgr log.Logger) (*UploadStats, error) {

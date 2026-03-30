@@ -5,12 +5,12 @@ import (
 
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	debeziumcommon "github.com/transferia/transferia/pkg/debezium/common"
-	"github.com/transferia/transferia/pkg/debezium/mysql"
-	debeziumparameters "github.com/transferia/transferia/pkg/debezium/parameters"
-	"github.com/transferia/transferia/pkg/debezium/pg"
-	"github.com/transferia/transferia/pkg/debezium/ydb"
-	pgcommon "github.com/transferia/transferia/pkg/providers/postgres"
+	debezium_common "github.com/transferia/transferia/pkg/debezium/common"
+	debezium_mysql "github.com/transferia/transferia/pkg/debezium/mysql"
+	debezium_parameters "github.com/transferia/transferia/pkg/debezium/parameters"
+	debezium_pg "github.com/transferia/transferia/pkg/debezium/pg"
+	debezium_ydb "github.com/transferia/transferia/pkg/debezium/ydb"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 )
 
 type fieldsDescr struct {
@@ -18,7 +18,7 @@ type fieldsDescr struct {
 }
 
 func getFieldDescr(colSchema abstract.ColSchema, connectorParameters map[string]string, intoArray, snapshot bool) (map[string]interface{}, error) {
-	var typeDescr *debeziumcommon.KafkaTypeDescr
+	var typeDescr *debezium_common.KafkaTypeDescr
 	var err error
 	var originalTypeProperties map[string]string
 	if colSchema.OriginalType == "" {
@@ -27,18 +27,18 @@ func getFieldDescr(colSchema abstract.ColSchema, connectorParameters map[string]
 			return nil, xerrors.Errorf("unable to get type description, err: %w", err)
 		}
 	} else if strings.HasPrefix(colSchema.OriginalType, "pg:") {
-		typeDescr, err = pg.GetKafkaTypeDescrByPgType(&colSchema)
+		typeDescr, err = debezium_pg.GetKafkaTypeDescrByPgType(&colSchema)
 		if err != nil {
 			return nil, xerrors.Errorf("unable to get pg fieldDescr: %s, err: %w", colSchema.OriginalType, err)
 		}
-		originalTypeProperties = pg.GetOriginalTypeProperties(&colSchema)
+		originalTypeProperties = debezium_pg.GetOriginalTypeProperties(&colSchema)
 	} else if strings.HasPrefix(colSchema.OriginalType, "mysql:") {
-		typeDescr, err = mysql.GetKafkaTypeDescrByMysqlType(colSchema.OriginalType)
+		typeDescr, err = debezium_mysql.GetKafkaTypeDescrByMysqlType(colSchema.OriginalType)
 		if err != nil {
 			return nil, xerrors.Errorf("unable to get mysql fieldDescr: %s, err: %w", colSchema.OriginalType, err)
 		}
 	} else if strings.HasPrefix(colSchema.OriginalType, "ydb:") {
-		typeDescr, err = ydb.GetKafkaTypeDescrByYDBType(colSchema.OriginalType)
+		typeDescr, err = debezium_ydb.GetKafkaTypeDescrByYDBType(colSchema.OriginalType)
 		if err != nil {
 			return nil, xerrors.Errorf("unable to get ydb fieldDescr: %s, err: %w", colSchema.OriginalType, err)
 		}
@@ -65,7 +65,7 @@ func getFieldDescr(colSchema abstract.ColSchema, connectorParameters map[string]
 		fieldDescr[k] = v
 	}
 
-	if debeziumparameters.GetDTAddOriginalTypeInfo(connectorParameters) == debeziumparameters.BoolTrue {
+	if debezium_parameters.GetDTAddOriginalTypeInfo(connectorParameters) == debezium_parameters.BoolTrue {
 		originalTypeInfo := make(map[string]interface{})
 		originalTypeInfo["original_type"] = colSchema.OriginalType
 
@@ -84,7 +84,7 @@ func (d *fieldsDescr) AddFieldDescr(colSchema abstract.ColSchema, snapshot bool,
 	var err error
 
 	if strings.HasSuffix(colSchema.OriginalType, "[]") {
-		elemDescr, err := getFieldDescr(pgcommon.BuildColSchemaArrayElement(colSchema), connectorParameters, true, snapshot)
+		elemDescr, err := getFieldDescr(provider_postgres.BuildColSchemaArrayElement(colSchema), connectorParameters, true, snapshot)
 		if err != nil {
 			return xerrors.Errorf("unable to get array element field descr, err: %w", err)
 		}
@@ -93,7 +93,7 @@ func (d *fieldsDescr) AddFieldDescr(colSchema abstract.ColSchema, snapshot bool,
 		fieldDescr["type"] = "array"
 		fieldDescr["optional"] = !colSchema.IsKey()
 
-		if debeziumparameters.GetDTAddOriginalTypeInfo(connectorParameters) == debeziumparameters.BoolTrue {
+		if debezium_parameters.GetDTAddOriginalTypeInfo(connectorParameters) == debezium_parameters.BoolTrue {
 			originalTypeInfo := make(map[string]string)
 			originalTypeInfo["original_type"] = colSchema.OriginalType
 			fieldDescr["__dt_original_type_info"] = originalTypeInfo

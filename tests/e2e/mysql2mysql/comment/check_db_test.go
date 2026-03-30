@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/pkg/abstract"
-	"github.com/transferia/transferia/pkg/providers/mysql"
+	provider_mysql "github.com/transferia/transferia/pkg/providers/mysql"
 	"github.com/transferia/transferia/pkg/providers/mysql/mysqlrecipe"
 	"github.com/transferia/transferia/tests/helpers"
 )
@@ -35,9 +35,9 @@ func TestGroup(t *testing.T) {
 }
 
 func Existence(t *testing.T) {
-	_, err := mysql.NewStorage(Source.ToStorageParams())
+	_, err := provider_mysql.NewStorage(Source.ToStorageParams())
 	require.NoError(t, err)
-	_, err = mysql.NewStorage(Target.ToStorageParams())
+	_, err = provider_mysql.NewStorage(Target.ToStorageParams())
 	require.NoError(t, err)
 }
 

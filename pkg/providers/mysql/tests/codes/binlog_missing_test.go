@@ -11,8 +11,8 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/errors/codes"
-	pmysql "github.com/transferia/transferia/pkg/providers/mysql"
+	error_codes "github.com/transferia/transferia/pkg/errors/codes"
+	provider_mysql "github.com/transferia/transferia/pkg/providers/mysql"
 	"github.com/transferia/transferia/pkg/providers/mysql/mysqlrecipe"
 )
 
@@ -27,10 +27,10 @@ func (n *noopAsyncSink) AsyncPush(items []abstract.ChangeItem) chan error {
 
 func TestBinlogFirstFileMissing_ReturnsCodedError(t *testing.T) {
 	src := mysqlrecipe.RecipeMysqlSource()
-	connParams, err := pmysql.NewConnectionParams(src.ToStorageParams())
+	connParams, err := provider_mysql.NewConnectionParams(src.ToStorageParams())
 	require.NoError(t, err)
 
-	db, err := pmysql.Connect(connParams, nil)
+	db, err := provider_mysql.Connect(connParams, nil)
 	require.NoError(t, err)
 	defer db.Close()
 
@@ -65,22 +65,22 @@ func TestBinlogFirstFileMissing_ReturnsCodedError(t *testing.T) {
 	require.NoError(t, err)
 
 	fakeCp := coordinator.NewStatefulFakeClient()
-	tr, err := pmysql.NewTracker(src, "test-transfer-id", fakeCp)
+	tr, err := provider_mysql.NewTracker(src, "test-transfer-id", fakeCp)
 	require.NoError(t, err)
 	require.NoError(t, tr.Store(earliest, 4))
 
 	transfer := &model.Transfer{ID: "test-transfer-id", Src: src, Dst: &model.MockDestination{}}
 	src.WithDefaults()
-	provider := pmysql.New(logger.Log, nil, coordinator.NewFakeClient(), transfer, &model.TransferOperation{})
+	provider := provider_mysql.New(logger.Log, nil, coordinator.NewFakeClient(), transfer, &model.TransferOperation{})
 
 	// Пробуем создать Source и запустить publisher
 	registry := solomon.NewRegistry(solomon.NewRegistryOpts())
-	s, err := pmysql.NewSource(src, transfer.ID, &model.DataObjects{}, logger.Log, registry, fakeCp, true)
+	s, err := provider_mysql.NewSource(src, transfer.ID, &model.DataObjects{}, logger.Log, registry, fakeCp, true)
 	require.NoError(t, err)
 	// Запускаем source с no-op sink'ом; ошибка должна вернуться при старте канала
 	err = s.Run(&noopAsyncSink{})
 	require.Error(t, err)
-	if !codes.MySQLBinlogFirstFileMissing.Contains(err) {
+	if !error_codes.MySQLBinlogFirstFileMissing.Contains(err) {
 		t.Fatalf("expected codes.MySQLBinlogFirstFileMissing, got: %v", err)
 	}
 	_ = provider // silence unused in case of build variants

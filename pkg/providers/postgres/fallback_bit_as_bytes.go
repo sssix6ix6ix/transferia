@@ -3,7 +3,7 @@ package postgres
 import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/typesystem"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 // FallbackBitAsBytes implements backward compatibility for https://st.yandex-team.ru/TM-5445#640b22b5af0c626bd522d179
@@ -15,7 +15,7 @@ func FallbackBitAsBytes(item *abstract.ChangeItem) (*abstract.ChangeItem, error)
 	for i := 0; i < len(item.TableSchema.Columns()); i++ {
 		clearedPGType := ClearOriginalType(item.TableSchema.Columns()[i].OriginalType)
 		if clearedPGType == "BIT(N)" || clearedPGType == "BIT VARYING(N)" {
-			item.TableSchema.Columns()[i].DataType = schema.TypeBytes.String()
+			item.TableSchema.Columns()[i].DataType = ytschema.TypeBytes.String()
 			fallbackApplied = true
 		}
 	}

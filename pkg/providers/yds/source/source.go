@@ -8,19 +8,19 @@ import (
 
 	"github.com/transferia/transferia/kikimr/public/sdk/go/persqueue"
 	"github.com/transferia/transferia/kikimr/public/sdk/go/persqueue/log/corelogadapter"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/format"
 	"github.com/transferia/transferia/pkg/functions"
 	"github.com/transferia/transferia/pkg/parsequeue"
 	"github.com/transferia/transferia/pkg/parsers"
-	gp "github.com/transferia/transferia/pkg/parsers/generic"
-	"github.com/transferia/transferia/pkg/parsers/resources"
-	"github.com/transferia/transferia/pkg/providers/ydb"
+	generic_parser "github.com/transferia/transferia/pkg/parsers/generic"
+	parsers_resources "github.com/transferia/transferia/pkg/parsers/resources"
+	provider_ydb "github.com/transferia/transferia/pkg/providers/ydb"
 	"github.com/transferia/transferia/pkg/stats"
 	"github.com/transferia/transferia/pkg/util"
-	"github.com/transferia/transferia/pkg/util/queues"
+	util_queues "github.com/transferia/transferia/pkg/util/queues"
 	"github.com/transferia/transferia/pkg/util/queues/lbyds"
 	"github.com/transferia/transferia/pkg/xtls"
 	"go.ytsaurus.tech/library/go/core/log"
@@ -153,7 +153,7 @@ func (p *Source) run(parseQ *parsequeue.WaitableParseQueue[committableBatch]) er
 				p.logger.Debug("got lb_offsets", log.Any("range", ranges))
 
 				p.metrics.Master.Set(1)
-				messagesSize, messagesCount := queues.BatchStatistics(batches)
+				messagesSize, messagesCount := util_queues.BatchStatistics(batches)
 				p.metrics.Size.Add(messagesSize)
 				p.metrics.Count.Add(messagesCount)
 
@@ -261,8 +261,8 @@ func (p *Source) Fetch() ([]abstract.ChangeItem, error) {
 }
 
 func (p *Source) watchParserResource(parser parsers.Parser) {
-	var resource resources.AbstractResources
-	if resourceable, ok := parser.(resources.Resourceable); ok {
+	var resource parsers_resources.AbstractResources
+	if resourceable, ok := parser.(parsers_resources.Resourceable); ok {
 		resource = resourceable.ResourcesObj()
 	} else {
 		return
@@ -308,7 +308,7 @@ func (p *Source) ack(data committableBatch, st time.Time, err error) {
 	}
 }
 
-func NewSourceWithOpts(transferID string, cfg *YDSSource, logger log.Logger, registry metrics.Registry, optFns ...SourceOpt) (*Source, error) {
+func NewSourceWithOpts(transferID string, cfg *YDSSource, logger log.Logger, registry core_metrics.Registry, optFns ...SourceOpt) (*Source, error) {
 	srcOpts := new(sourceOpts)
 	for _, fn := range optFns {
 		srcOpts = fn(srcOpts)
@@ -385,7 +385,7 @@ func NewSourceWithOpts(transferID string, cfg *YDSSource, logger log.Logger, reg
 		switch wp := parser.(type) {
 		case *parsers.ResourceableParser:
 			switch p := wp.Unwrap().(type) {
-			case *gp.GenericParser:
+			case *generic_parser.GenericParser:
 				p.SetTopic(cfg.Stream)
 			}
 		}
@@ -415,13 +415,13 @@ func NewSourceWithOpts(transferID string, cfg *YDSSource, logger log.Logger, reg
 	return yds, nil
 }
 
-func NewSource(transferID string, cfg *YDSSource, logger log.Logger, registry metrics.Registry) (*Source, error) {
+func NewSource(transferID string, cfg *YDSSource, logger log.Logger, registry core_metrics.Registry) (*Source, error) {
 	if cfg.Credentials == nil {
 		var err error
-		cfg.Credentials, err = ydb.ResolveCredentials(
+		cfg.Credentials, err = provider_ydb.ResolveCredentials(
 			cfg.UserdataAuth,
 			string(cfg.Token),
-			ydb.JWTAuthParams{
+			provider_ydb.JWTAuthParams{
 				KeyContent:      cfg.SAKeyContent,
 				TokenServiceURL: cfg.TokenServiceURL,
 			},
@@ -437,7 +437,7 @@ func NewSource(transferID string, cfg *YDSSource, logger log.Logger, registry me
 }
 
 type sourceOpts struct {
-	creds ydb.TokenCredentials
+	creds provider_ydb.TokenCredentials
 
 	useFullTopicName bool
 	parser           parsers.Parser
@@ -447,7 +447,7 @@ type sourceOpts struct {
 
 type SourceOpt = func(*sourceOpts) *sourceOpts
 
-func WithCreds(creds ydb.TokenCredentials) SourceOpt {
+func WithCreds(creds provider_ydb.TokenCredentials) SourceOpt {
 	return func(o *sourceOpts) *sourceOpts {
 		o.creds = creds
 		return o

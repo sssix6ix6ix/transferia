@@ -3,17 +3,17 @@ package op
 import (
 	"strings"
 
-	"github.com/transferia/transferia/pkg/util/token_regexp/abstract"
+	token_regexp_abstract "github.com/transferia/transferia/pkg/util/token_regexp/abstract"
 )
 
 type MatchOp struct {
-	abstract.Relatives
+	token_regexp_abstract.Relatives
 	v string
 }
 
 func (t *MatchOp) IsOp() {}
 
-func (t *MatchOp) ConsumePrimitive(tokens []*abstract.Token) []int {
+func (t *MatchOp) ConsumePrimitive(tokens []*token_regexp_abstract.Token) []int {
 	if len(tokens) == 0 {
 		return nil
 	}
@@ -25,7 +25,7 @@ func (t *MatchOp) ConsumePrimitive(tokens []*abstract.Token) []int {
 
 func Match(in string) *MatchOp {
 	return &MatchOp{
-		Relatives: abstract.NewRelativesImpl(),
+		Relatives: token_regexp_abstract.NewRelativesImpl(),
 		v:         strings.ToLower(in),
 	}
 }

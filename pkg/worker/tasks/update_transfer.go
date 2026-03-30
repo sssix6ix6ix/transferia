@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/transferia/transferia/internal/logger"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
@@ -16,7 +16,7 @@ import (
 // `control plane` will prepare `UpdateDataObjectsParams` update transfer and start operation
 // `data plane` for all new object we will generate homo-DDL and upload data
 // this operation similar to `AddTables` but without endpoint mutation
-func UpdateTransfer(ctx context.Context, cp coordinator.Coordinator, transfer model.Transfer, task model.TransferOperation, registry metrics.Registry, objects abstract.UpdateTransferParams) error {
+func UpdateTransfer(ctx context.Context, cp coordinator.Coordinator, transfer model.Transfer, task model.TransferOperation, registry core_metrics.Registry, objects abstract.UpdateTransferParams) error {
 	tables, err := objects.AddedTables()
 	if err != nil {
 		return xerrors.Errorf("unable to extract added tables: %w", err)

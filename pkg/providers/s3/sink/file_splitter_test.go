@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	s3_provider "github.com/transferia/transferia/pkg/providers/s3"
+	s3_model "github.com/transferia/transferia/pkg/providers/s3/model"
 )
 
 func TestNewS3ObjectRefFullKey(t *testing.T) {
@@ -17,7 +17,7 @@ func TestNewS3ObjectRefFullKey(t *testing.T) {
 		"part42",
 		"1700000000",
 		model.ParsingFormatJSONLine,
-		s3_provider.GzipEncoding,
+		s3_model.GzipEncoding,
 	)
 
 	got := ref.fullKey(0)
@@ -38,7 +38,7 @@ func TestNewS3ObjectRefFullKeyWithLayout(t *testing.T) {
 		"part42",
 		"1700000000",
 		model.ParsingFormatJSONLine,
-		s3_provider.GzipEncoding,
+		s3_model.GzipEncoding,
 	)
 
 	got := ref.fullKey(0)
@@ -55,7 +55,7 @@ func TestNewS3ObjectRefNoNamespace(t *testing.T) {
 		"",
 		"1700000000",
 		model.ParsingFormatJSON,
-		s3_provider.NoEncoding,
+		s3_model.NoEncoding,
 	)
 
 	got := ref.fullKey(0)
@@ -66,7 +66,7 @@ func TestNewS3ObjectRefNoNamespace(t *testing.T) {
 
 func TestFileSplitterUnlimited(t *testing.T) {
 	splitter := newFileSplitter(0, 0)
-	ref := newS3ObjectRef("", "", "table", "", "1700000000", model.ParsingFormatJSON, s3_provider.NoEncoding)
+	ref := newS3ObjectRef("", "", "table", "", "1700000000", model.ParsingFormatJSON, s3_model.NoEncoding)
 
 	increased := splitter.increaseKey(ref)
 	expectedHash := hashPartID("")
@@ -86,7 +86,7 @@ func TestFileSplitterUnlimited(t *testing.T) {
 
 func TestFileSplitterRotationByRows(t *testing.T) {
 	splitter := newFileSplitter(2, 0)
-	ref := newS3ObjectRef("", "ns", "orders", "", "1700000000", model.ParsingFormatJSON, s3_provider.NoEncoding)
+	ref := newS3ObjectRef("", "ns", "orders", "", "1700000000", model.ParsingFormatJSON, s3_model.NoEncoding)
 
 	first := splitter.increaseKey(ref)
 	expectedHash := hashPartID("")
@@ -125,7 +125,7 @@ func TestFileSplitterRotationByRows(t *testing.T) {
 
 func TestFileSplitterRotationByBytes(t *testing.T) {
 	splitter := newFileSplitter(0, 250)
-	ref := newS3ObjectRef("", "", "data", "", "1700000000", model.ParsingFormatCSV, s3_provider.NoEncoding)
+	ref := newS3ObjectRef("", "", "data", "", "1700000000", model.ParsingFormatCSV, s3_model.NoEncoding)
 
 	splitter.increaseKey(ref)
 
@@ -153,7 +153,7 @@ func TestFileSplitterRotationByBytes(t *testing.T) {
 func TestFileSplitterRotationByBothLimits(t *testing.T) {
 	// Row limit: 3, Byte limit: 250
 	splitter := newFileSplitter(3, 250)
-	ref := newS3ObjectRef("", "", "data", "", "1700000000", model.ParsingFormatCSV, s3_provider.NoEncoding)
+	ref := newS3ObjectRef("", "", "data", "", "1700000000", model.ParsingFormatCSV, s3_model.NoEncoding)
 
 	splitter.increaseKey(ref)
 
@@ -172,7 +172,7 @@ func TestFileSplitterRotationByBothLimits(t *testing.T) {
 
 func TestFileSplitterAddItemsToUnknownRef(t *testing.T) {
 	splitter := newFileSplitter(0, 0)
-	ref := newS3ObjectRef("", "", "orders", "", "1700000000", model.ParsingFormatJSON, s3_provider.NoEncoding)
+	ref := newS3ObjectRef("", "", "orders", "", "1700000000", model.ParsingFormatJSON, s3_model.NoEncoding)
 
 	items := makeTestItems(1, 100)
 	added := splitter.addItems(ref, items)
@@ -181,7 +181,7 @@ func TestFileSplitterAddItemsToUnknownRef(t *testing.T) {
 
 func TestFileSplitterOversizedSingleItem(t *testing.T) {
 	splitter := newFileSplitter(0, 100)
-	ref := newS3ObjectRef("", "", "data", "", "1700000000", model.ParsingFormatCSV, s3_provider.NoEncoding)
+	ref := newS3ObjectRef("", "", "data", "", "1700000000", model.ParsingFormatCSV, s3_model.NoEncoding)
 
 	splitter.increaseKey(ref)
 

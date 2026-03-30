@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/dustin/go-humanize"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/stats"
 	"github.com/transferia/transferia/pkg/util"
@@ -20,7 +20,7 @@ import (
 //   - The middleware is closed.
 //
 // Any config property can be set to its default (zero) value, in which case it does not apply.
-func Bufferer(logger log.Logger, config BuffererConfig, r metrics.Registry) func(abstract.Sinker) abstract.AsyncSink {
+func Bufferer(logger log.Logger, config BuffererConfig, r core_metrics.Registry) func(abstract.Sinker) abstract.AsyncSink {
 	return func(s abstract.Sinker) abstract.AsyncSink {
 		return newBufferer(s, logger, r, config.TriggingCount, config.TriggingSize, config.TriggingInterval)
 	}
@@ -47,7 +47,7 @@ type bufferer struct {
 	logger log.Logger
 }
 
-func newBufferer(sink abstract.Sinker, logger log.Logger, r metrics.Registry, triggingCount int, triggingSize uint64, triggingInterval time.Duration) *bufferer {
+func newBufferer(sink abstract.Sinker, logger log.Logger, r core_metrics.Registry, triggingCount int, triggingSize uint64, triggingInterval time.Duration) *bufferer {
 	result := &bufferer{
 		apiState: newAPIState(),
 

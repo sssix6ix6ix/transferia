@@ -7,16 +7,16 @@ import (
 	"path/filepath"
 	"time"
 
-	"cloud.google.com/go/bigquery"
+	google_bigquery "cloud.google.com/go/bigquery"
 	"github.com/cenkalti/backoff/v4"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/typesystem"
 	"github.com/transferia/transferia/pkg/stats"
 	"github.com/transferia/transferia/pkg/util"
 	"go.ytsaurus.tech/library/go/core/log"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 	"google.golang.org/api/googleapi"
 )
 
@@ -35,7 +35,7 @@ func (s Sinker) Close() error {
 
 func (s Sinker) Push(items []abstract.ChangeItem) error {
 	ctx := context.Background()
-	client, err := bigquery.NewClient(ctx, s.cfg.ProjectID)
+	client, err := google_bigquery.NewClient(ctx, s.cfg.ProjectID)
 	if err != nil {
 		return xerrors.Errorf("bigquery.NewClient: %w", err)
 	}
@@ -65,16 +65,16 @@ func (s Sinker) Push(items []abstract.ChangeItem) error {
 		}
 	}
 	for tid, info := range tbls {
-		var tSchema bigquery.Schema
+		var tSchema google_bigquery.Schema
 		for _, col := range info.Schema.Columns() {
-			tSchema = append(tSchema, &bigquery.FieldSchema{
+			tSchema = append(tSchema, &google_bigquery.FieldSchema{
 				Name:        col.ColumnName,
 				Description: fmt.Sprintf("%s from %s original type %s", col.ColumnName, tid.String(), col.OriginalType),
 				Required:    col.Required,
 				Type:        inferType(col.DataType),
 			})
 		}
-		metaData := &bigquery.TableMetadata{Schema: tSchema}
+		metaData := &google_bigquery.TableMetadata{Schema: tSchema}
 		tableRef := client.Dataset(s.cfg.Dataset).Table(normalizedName(tid))
 		meta, err := tableRef.Metadata(ctx)
 		if err != nil {
@@ -111,7 +111,7 @@ func (s Sinker) Push(items []abstract.ChangeItem) error {
 		return backoff.Retry(func() error {
 			items := batches[i]
 			st := time.Now()
-			var saver []bigquery.ValueSaver
+			var saver []google_bigquery.ValueSaver
 			for _, row := range items {
 				if !row.IsRowEvent() {
 					continue
@@ -138,11 +138,11 @@ func normalizedName(tid abstract.TableID) string {
 	return fmt.Sprintf("%s_%s", tid.Namespace, tid.Name)
 }
 
-func inferType(dataType string) bigquery.FieldType {
-	return bigquery.FieldType(typesystem.RuleFor(ProviderType).Target[schema.Type(dataType)])
+func inferType(dataType string) google_bigquery.FieldType {
+	return google_bigquery.FieldType(typesystem.RuleFor(ProviderType).Target[ytschema.Type(dataType)])
 }
 
-func NewSink(cfg *BigQueryDestination, lgr log.Logger, registry metrics.Registry) (*Sinker, error) {
+func NewSink(cfg *BigQueryDestination, lgr log.Logger, registry core_metrics.Registry) (*Sinker, error) {
 	if err := os.WriteFile("gcpcreds.json", []byte(cfg.Creds), 0o644); err != nil {
 		return nil, xerrors.Errorf("unable to write config to FS: %w", err)
 	}

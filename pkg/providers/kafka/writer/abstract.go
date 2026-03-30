@@ -6,7 +6,7 @@ import (
 	"net"
 
 	"github.com/segmentio/kafka-go"
-	"github.com/segmentio/kafka-go/sasl"
+	segmentio_sasl "github.com/segmentio/kafka-go/sasl"
 	serializer "github.com/transferia/transferia/pkg/serializer/queue"
 	"go.ytsaurus.tech/library/go/core/log"
 )
@@ -20,5 +20,5 @@ type AbstractWriter interface {
 }
 
 type AbstractWriterFactory interface {
-	BuildWriter(brokers []string, compression kafka.Compression, saslMechanism sasl.Mechanism, tlsConfig *tls.Config, topicConfig [][2]string, batchBytes int64, dial func(ctx context.Context, network string, address string) (net.Conn, error)) AbstractWriter
+	BuildWriter(brokers []string, compression kafka.Compression, saslMechanism segmentio_sasl.Mechanism, tlsConfig *tls.Config, topicConfig [][2]string, batchBytes int64, dial func(ctx context.Context, network string, address string) (net.Conn, error)) AbstractWriter
 }

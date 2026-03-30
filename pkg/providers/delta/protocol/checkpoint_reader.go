@@ -7,8 +7,8 @@ import (
 	"github.com/transferia/transferia/pkg/providers/delta/action"
 	"github.com/transferia/transferia/pkg/providers/delta/store"
 	"github.com/transferia/transferia/pkg/util/iter"
-	"github.com/xitongsys/parquet-go-source/buffer"
-	"github.com/xitongsys/parquet-go/reader"
+	parquet_buffer "github.com/xitongsys/parquet-go-source/buffer"
+	parquet_reader "github.com/xitongsys/parquet-go/reader"
 )
 
 type CheckpointReader interface {
@@ -37,8 +37,8 @@ func (l *StoreCheckpointReader) Read(path string) (iter.Iter[action.Container], 
 		}
 		rows = append(rows, row)
 	}
-	pf := buffer.NewBufferFileFromBytes([]byte(strings.Join(rows, "\n")))
-	pr, err := reader.NewParquetReader(pf, nil, 4)
+	pf := parquet_buffer.NewBufferFileFromBytes([]byte(strings.Join(rows, "\n")))
+	pr, err := parquet_reader.NewParquetReader(pf, nil, 4)
 	if err != nil {
 		return nil, xerrors.Errorf("unable to read parquet fail: %w", err)
 	}
@@ -53,7 +53,7 @@ func (l *StoreCheckpointReader) Read(path string) (iter.Iter[action.Container], 
 type localParquetIterater struct {
 	numRows int64
 	cur     int64
-	reader  *reader.ParquetReader
+	reader  *parquet_reader.ParquetReader
 }
 
 func (p *localParquetIterater) Next() bool {

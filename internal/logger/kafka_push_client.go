@@ -8,12 +8,12 @@ import (
 	"os"
 
 	"github.com/segmentio/kafka-go"
-	"github.com/segmentio/kafka-go/sasl/scram"
+	segmentio_scram "github.com/segmentio/kafka-go/sasl/scram"
 	"github.com/transferia/transferia/library/go/core/xerrors"
-	zp "go.uber.org/zap"
+	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"go.ytsaurus.tech/library/go/core/log"
-	"go.ytsaurus.tech/library/go/core/log/zap"
+	ya_zap "go.ytsaurus.tech/library/go/core/log/zap"
 )
 
 type KafkaConfig struct {
@@ -39,8 +39,8 @@ func (p *kafkaPusher) Write(data []byte) (int, error) {
 	return len(data), nil
 }
 
-func NewKafkaLogger(cfg *KafkaConfig) (*zap.Logger, io.Closer, error) {
-	mechanism, err := scram.Mechanism(scram.SHA512, cfg.User, cfg.Password)
+func NewKafkaLogger(cfg *KafkaConfig) (*ya_zap.Logger, io.Closer, error) {
+	mechanism, err := segmentio_scram.Mechanism(segmentio_scram.SHA512, cfg.User, cfg.Password)
 	if err != nil {
 		return nil, nil, xerrors.Errorf("unable to init scram: %w", err)
 	}
@@ -79,11 +79,11 @@ func NewKafkaLogger(cfg *KafkaConfig) (*zap.Logger, io.Closer, error) {
 	}
 	syncLb := zapcore.AddSync(&f)
 	stdOut := zapcore.AddSync(os.Stdout)
-	defaultPriority := zp.LevelEnablerFunc(func(lvl zapcore.Level) bool {
+	defaultPriority := zap.LevelEnablerFunc(func(lvl zapcore.Level) bool {
 		return lvl >= zapcore.InfoLevel
 	})
-	lbEncoder := zapcore.NewJSONEncoder(zap.JSONConfig(log.InfoLevel).EncoderConfig)
-	stdErrCfg := zap.CLIConfig(log.InfoLevel).EncoderConfig
+	lbEncoder := zapcore.NewJSONEncoder(ya_zap.JSONConfig(log.InfoLevel).EncoderConfig)
+	stdErrCfg := ya_zap.CLIConfig(log.InfoLevel).EncoderConfig
 	stdErrCfg.EncodeLevel = zapcore.CapitalColorLevelEncoder
 	stdErrEncoder := zapcore.NewConsoleEncoder(stdErrCfg)
 	lbCore := zapcore.NewTee(
@@ -91,12 +91,12 @@ func NewKafkaLogger(cfg *KafkaConfig) (*zap.Logger, io.Closer, error) {
 		zapcore.NewCore(lbEncoder, zapcore.Lock(syncLb), defaultPriority),
 	)
 	Log.Info("WriterInit Kafka logger", log.Any("topic", cfg.Topic), log.Any("instance", cfg.Broker))
-	return &zap.Logger{
-		L: zp.New(
+	return &ya_zap.Logger{
+		L: zap.New(
 			lbCore,
-			zp.AddCaller(),
-			zp.AddCallerSkip(1),
-			zp.AddStacktrace(zp.WarnLevel),
+			zap.AddCaller(),
+			zap.AddCallerSkip(1),
+			zap.AddStacktrace(zap.WarnLevel),
 		),
 	}, pr, nil
 }

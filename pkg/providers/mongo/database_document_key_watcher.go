@@ -8,8 +8,8 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/util"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	mongo_driver "go.mongodb.org/mongo-driver/mongo"
+	mongo_options "go.mongodb.org/mongo-driver/mongo/options"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
@@ -20,7 +20,7 @@ type databaseDocumentKeyWatcher struct {
 	logger       log.Logger
 	databaseName string
 	client       *MongoClientWrapper
-	changeStream *mongo.ChangeStream
+	changeStream *mongo_driver.ChangeStream
 	config       *MongoSource
 }
 
@@ -110,8 +110,8 @@ func NewDatabaseDocumentKeyWatcher(s *mongoSource, dbPu ParallelizationUnitDatab
 	})
 
 	// Build change stream options for full document mode
-	opts := &options.ChangeStreamOptions{}
-	opts.SetFullDocument(options.Default) // does not create FullDocument field in change stream
+	opts := &mongo_options.ChangeStreamOptions{}
+	opts.SetFullDocument(mongo_options.Default) // does not create FullDocument field in change stream
 
 	ts, err := dbPu.GetClusterTime(s.ctx, s.client)
 	if err != nil {

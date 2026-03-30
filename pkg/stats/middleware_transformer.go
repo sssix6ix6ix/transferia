@@ -3,18 +3,18 @@ package stats
 import (
 	"time"
 
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 )
 
 type MiddlewareTransformerStats struct {
-	registry metrics.Registry
+	registry core_metrics.Registry
 
-	Dropped metrics.Counter
-	Errors  metrics.Counter
-	Elapsed metrics.Timer
+	Dropped core_metrics.Counter
+	Errors  core_metrics.Counter
+	Elapsed core_metrics.Timer
 }
 
-func NewMiddlewareTransformerStats(r metrics.Registry) *MiddlewareTransformerStats {
+func NewMiddlewareTransformerStats(r core_metrics.Registry) *MiddlewareTransformerStats {
 	rWT := r.WithTags(map[string]string{"component": "middleware_transformer"})
 	return &MiddlewareTransformerStats{
 		registry: rWT,
@@ -26,8 +26,8 @@ func NewMiddlewareTransformerStats(r metrics.Registry) *MiddlewareTransformerSta
 }
 
 // MillisecondDurationBuckets returns buckets adapted for durations between 1 millisecond and 1 second
-func MillisecondDurationBuckets() metrics.DurationBuckets {
-	return metrics.NewDurationBuckets(
+func MillisecondDurationBuckets() core_metrics.DurationBuckets {
+	return core_metrics.NewDurationBuckets(
 		500*time.Microsecond,
 		1*time.Millisecond,
 		2*time.Millisecond,

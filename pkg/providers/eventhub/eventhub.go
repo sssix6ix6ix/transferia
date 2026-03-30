@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs/v2"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
@@ -345,7 +345,7 @@ func buildConnectionString(cfg *EventHubSource) string {
 	)
 }
 
-func NewSource(transferID string, cfg *EventHubSource, logger log.Logger, registry metrics.Registry) (abstract.Source, error) {
+func NewSource(transferID string, cfg *EventHubSource, logger log.Logger, registry core_metrics.Registry) (abstract.Source, error) {
 	if cfg.Auth == nil {
 		return nil, xerrors.New("eventhub auth is required")
 	}

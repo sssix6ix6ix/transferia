@@ -7,7 +7,7 @@ import (
 
 	"github.com/jackc/pgtype"
 	"github.com/transferia/transferia/pkg/abstract"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 // This is a copy of the pgx driver internal global map `nameValues`:
@@ -231,48 +231,48 @@ func IsPgTypeTimeWithoutTimeZone(originalType string) bool {
 	return false
 }
 
-func PgTypeToYTType(pgType string) schema.Type {
+func PgTypeToYTType(pgType string) ytschema.Type {
 	pgType = strings.TrimPrefix(pgType, "pg:")
 	if strings.HasSuffix(pgType, "[]") {
-		return schema.TypeAny
+		return ytschema.TypeAny
 	}
 	if strings.HasPrefix(pgType, "character varying") {
-		return schema.TypeString
+		return ytschema.TypeString
 	}
 	if IsPgTypeTimestampWithoutTimeZoneUnprefixed(pgType) {
-		return schema.TypeTimestamp
+		return ytschema.TypeTimestamp
 	}
 	if IsPgTypeTimeWithTimeZoneUnprefixed(pgType) {
-		return schema.TypeString
+		return ytschema.TypeString
 	}
 	if IsPgTypeTimeWithoutTimeZoneUnprefixed(pgType) {
-		return schema.TypeString
+		return ytschema.TypeString
 	}
 	if IsPgTypeTimestampWithTimeZoneUnprefixed(pgType) {
-		return schema.TypeTimestamp
+		return ytschema.TypeTimestamp
 	}
 	if strings.HasPrefix(pgType, "numeric") {
-		return schema.TypeFloat64
+		return ytschema.TypeFloat64
 	}
 	switch pgType {
 	case "date":
-		return schema.TypeDate
+		return ytschema.TypeDate
 	case "data", "uuid", "name", "text", "interval", "char", "abstime", "money":
-		return schema.TypeString
+		return ytschema.TypeString
 	case "boolean":
-		return schema.TypeBoolean
+		return ytschema.TypeBoolean
 	case "bigint":
-		return schema.TypeInt64
+		return ytschema.TypeInt64
 	case "smallint":
-		return schema.TypeInt16
+		return ytschema.TypeInt16
 	case "integer":
-		return schema.TypeInt32
+		return ytschema.TypeInt32
 	case "real", "double precision":
-		return schema.TypeFloat64
+		return ytschema.TypeFloat64
 	case "bytea":
-		return schema.TypeBytes
+		return ytschema.TypeBytes
 	default:
-		return schema.TypeAny
+		return ytschema.TypeAny
 	}
 }
 

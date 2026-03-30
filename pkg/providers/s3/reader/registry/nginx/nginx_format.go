@@ -8,7 +8,7 @@ import (
 
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 var nginxVarRegexp = regexp.MustCompile(`\$([A-Za-z0-9_]+)`)
@@ -81,9 +81,9 @@ func compileFormat(format string) (*compiledNginxFormat, error) {
 
 	schemaCols := make([]abstract.ColSchema, 0, len(fields))
 	for idx, name := range fields {
-		col := abstract.NewColSchema(name, schema.TypeString, false)
+		col := abstract.NewColSchema(name, ytschema.TypeString, false)
 		col.Path = strconv.Itoa(idx)
-		col.OriginalType = fmt.Sprintf("nginx:%s", schema.TypeString)
+		col.OriginalType = fmt.Sprintf("nginx:%s", ytschema.TypeString)
 		schemaCols = append(schemaCols, col)
 	}
 

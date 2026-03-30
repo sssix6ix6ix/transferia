@@ -9,12 +9,12 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
-	"github.com/go-mysql-org/go-mysql/mysql"
+	mysql_driver "github.com/go-mysql-org/go-mysql/mysql"
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/changeitem"
-	"github.com/transferia/transferia/pkg/providers/mysql/unmarshaller/snapshot"
+	mysql_unmarshaller_snapshot "github.com/transferia/transferia/pkg/providers/mysql/unmarshaller/snapshot"
 	"github.com/transferia/transferia/pkg/util"
 	"github.com/transferia/transferia/pkg/util/size"
 	"go.ytsaurus.tech/library/go/core/log"
@@ -174,7 +174,7 @@ func prepareArrayWithTypes(rows sqlRows, colNameToColTypeName map[string]string,
 	}
 	result := make([]interface{}, len(columnTypesFromQuery))
 	for i := range columnTypesFromQuery {
-		result[i] = snapshot.NewValueReceiver(
+		result[i] = mysql_unmarshaller_snapshot.NewValueReceiver(
 			columnTypesFromQuery[i],
 			colNameToColTypeName[columnTypesFromQuery[i].Name()],
 			location)
@@ -244,9 +244,9 @@ func readRowsAndPushByChunks(
 
 		var columnValues []any
 		if isHomo {
-			columnValues, err = snapshot.UnmarshalHomo(values, tableSchema.Columns())
+			columnValues, err = mysql_unmarshaller_snapshot.UnmarshalHomo(values, tableSchema.Columns())
 		} else {
-			columnValues, err = snapshot.UnmarshalHetero(values, tableSchema.Columns())
+			columnValues, err = mysql_unmarshaller_snapshot.UnmarshalHetero(values, tableSchema.Columns())
 		}
 		if err != nil {
 			return xerrors.Errorf("failed to unmarshal a row from MySQL resultset for table %s: %w", table.Fqtn(), err)
@@ -323,7 +323,7 @@ func beginROTransaction(s *Storage) (tx *sql.Tx, closeFunc func(), err error) {
 }
 
 func IsGtidModeEnabled(storage *Storage, flavor string) (bool, error) {
-	if flavor == mysql.MariaDBFlavor {
+	if flavor == mysql_driver.MariaDBFlavor {
 		return true, nil
 	}
 
@@ -335,7 +335,7 @@ func IsGtidModeEnabled(storage *Storage, flavor string) (bool, error) {
 }
 
 func CheckMySQLVersion(storage *Storage) (string, string, error) {
-	flavor := mysql.MySQLFlavor
+	flavor := mysql_driver.MySQLFlavor
 	var version string
 
 	var rows *sql.Rows
@@ -365,7 +365,7 @@ func CheckMySQLVersion(storage *Storage) (string, string, error) {
 			logger.Log.Infof("MySQL version is %v", val)
 			val = strings.ToLower(val)
 			if strings.Contains(strings.ToLower(val), "mariadb") {
-				return mysql.MariaDBFlavor, val, nil
+				return mysql_driver.MariaDBFlavor, val, nil
 			}
 			version = val
 			break

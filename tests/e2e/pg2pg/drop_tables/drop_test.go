@@ -11,7 +11,7 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
 	"github.com/transferia/transferia/pkg/worker/tasks"
 	"github.com/transferia/transferia/tests/helpers"
@@ -91,7 +91,7 @@ func DropAll(t *testing.T) {
 	err = snapshotLoader.CleanupSinker(tables)
 	require.NoError(t, err)
 
-	conn, err := postgres.MakeConnPoolFromDst(&dstAllR, logger.Log)
+	conn, err := provider_postgres.MakeConnPoolFromDst(&dstAllR, logger.Log)
 	require.NoError(t, err)
 	defer conn.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -127,7 +127,7 @@ func DropFilter(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "cannot drop table ids_1 because other objects depend on it")
 
-	conn, err := postgres.MakeConnPoolFromDst(&dstFilterR, logger.Log)
+	conn, err := provider_postgres.MakeConnPoolFromDst(&dstFilterR, logger.Log)
 	require.NoError(t, err)
 	defer conn.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -162,7 +162,7 @@ func DropAllSnapshotOnly(t *testing.T) {
 	err = snapshotLoader.CleanupSinker(tables)
 	require.NoError(t, err)
 
-	conn, err := postgres.MakeConnPoolFromDst(&dstAllSR, logger.Log)
+	conn, err := provider_postgres.MakeConnPoolFromDst(&dstAllSR, logger.Log)
 	require.NoError(t, err)
 	defer conn.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -199,7 +199,7 @@ func DropNoViewAll(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "failed dependent VIEWs check")
 
-	conn, err := postgres.MakeConnPoolFromDst(&dstNoViewAllR, logger.Log)
+	conn, err := provider_postgres.MakeConnPoolFromDst(&dstNoViewAllR, logger.Log)
 	require.NoError(t, err)
 	defer conn.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -236,7 +236,7 @@ func DropNoViewFilter(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "failed dependent VIEWs check")
 
-	conn, err := postgres.MakeConnPoolFromDst(&dstNoViewFilterR, logger.Log)
+	conn, err := provider_postgres.MakeConnPoolFromDst(&dstNoViewFilterR, logger.Log)
 	require.NoError(t, err)
 	defer conn.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -272,7 +272,7 @@ func DropSelective(t *testing.T) {
 	err := snapshotLoader.CleanupSinker(tables)
 	require.NoError(t, err)
 
-	dstStorage, err := postgres.NewStorage(dstSelectiveR.ToStorageParams())
+	dstStorage, err := provider_postgres.NewStorage(dstSelectiveR.ToStorageParams())
 	require.NoError(t, err)
 	defer dstStorage.Close()
 

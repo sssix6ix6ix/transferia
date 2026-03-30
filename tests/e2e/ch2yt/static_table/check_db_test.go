@@ -9,15 +9,15 @@ import (
 	"github.com/transferia/transferia/library/go/core/metrics/solomon"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/model"
-	ytcommon "github.com/transferia/transferia/pkg/providers/yt"
+	clickhouse_model "github.com/transferia/transferia/pkg/providers/clickhouse/model"
+	provider_yt "github.com/transferia/transferia/pkg/providers/yt"
 	"github.com/transferia/transferia/pkg/worker/tasks"
 	"github.com/transferia/transferia/tests/helpers"
 )
 
 func TestClickhouseToYtStatic(t *testing.T) {
-	src := &model.ChSource{
-		ShardsList: []model.ClickHouseShard{
+	src := &clickhouse_model.ChSource{
+		ShardsList: []clickhouse_model.ClickHouseShard{
 			{
 				Name: "_",
 				Hosts: []string{
@@ -33,7 +33,7 @@ func TestClickhouseToYtStatic(t *testing.T) {
 	}
 	src.WithDefaults()
 
-	dstModel := &ytcommon.YtDestination{
+	dstModel := &provider_yt.YtDestination{
 		Path:                     "//home/cdc/tests/e2e/pg2yt/yt_static",
 		Cluster:                  os.Getenv("YT_PROXY"),
 		CellBundle:               "default",
@@ -42,7 +42,7 @@ func TestClickhouseToYtStatic(t *testing.T) {
 		DisableDatetimeHack:      true,
 		UseStaticTableOnSnapshot: false, // this test is not supposed to work for static table
 	}
-	dst := &ytcommon.YtDestinationWrapper{Model: dstModel}
+	dst := &provider_yt.YtDestinationWrapper{Model: dstModel}
 	dst.WithDefaults()
 
 	t.Run("activate", func(t *testing.T) {

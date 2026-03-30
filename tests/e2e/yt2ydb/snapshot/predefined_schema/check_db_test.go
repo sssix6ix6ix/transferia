@@ -11,30 +11,30 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	ydb_provider "github.com/transferia/transferia/pkg/providers/ydb"
+	provider_ydb "github.com/transferia/transferia/pkg/providers/ydb"
 	"github.com/transferia/transferia/pkg/providers/ydb/logadapter"
-	yt_provider "github.com/transferia/transferia/pkg/providers/yt"
+	provider_yt "github.com/transferia/transferia/pkg/providers/yt"
 	"github.com/transferia/transferia/pkg/providers/yt/yt_client"
 	"github.com/transferia/transferia/pkg/xtls"
 	"github.com/transferia/transferia/tests/helpers"
-	"github.com/ydb-platform/ydb-go-sdk/v3"
-	ydbcreds "github.com/ydb-platform/ydb-go-sdk/v3/credentials"
+	ydb_go_sdk "github.com/ydb-platform/ydb-go-sdk/v3"
+	ydb_credentials "github.com/ydb-platform/ydb-go-sdk/v3/credentials"
 	"github.com/ydb-platform/ydb-go-sdk/v3/sugar"
 	"github.com/ydb-platform/ydb-go-sdk/v3/trace"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 	"go.ytsaurus.tech/yt/go/ypath"
 	"go.ytsaurus.tech/yt/go/yt"
 )
 
 var (
 	TransferType = abstract.TransferTypeSnapshotOnly
-	Source       = yt_provider.YtSource{
+	Source       = provider_yt.YtSource{
 		Cluster: os.Getenv("YT_PROXY"),
 		YtProxy: os.Getenv("YT_PROXY"),
 		Paths:   []string{"//home/cdc/junk/test_table"},
 		YtToken: "",
 	}
-	Target = ydb_provider.YdbDestination{
+	Target = provider_ydb.YdbDestination{
 		Database:     os.Getenv("YDB_DATABASE"),
 		Token:        model.SecretString(os.Getenv("YDB_TOKEN")),
 		Instance:     os.Getenv("YDB_ENDPOINT"),
@@ -43,7 +43,7 @@ var (
 	}
 )
 
-func NewYdbDriverFromStorage(t *testing.T, cfg *ydb_provider.YdbStorageParams) *ydb.Driver {
+func NewYdbDriverFromStorage(t *testing.T, cfg *provider_ydb.YdbStorageParams) *ydb_go_sdk.Driver {
 	var err error
 	var tlsConfig *tls.Config
 	if cfg.TLSEnabled {
@@ -53,11 +53,11 @@ func NewYdbDriverFromStorage(t *testing.T, cfg *ydb_provider.YdbStorageParams) *
 	clientCtx, cancel := context.WithTimeout(context.Background(), time.Minute*3)
 	defer cancel()
 
-	var ydbCreds ydbcreds.Credentials
-	ydbCreds, err = ydb_provider.ResolveCredentials(
+	var ydbCreds ydb_credentials.Credentials
+	ydbCreds, err = provider_ydb.ResolveCredentials(
 		cfg.UserdataAuth,
 		string(cfg.Token),
-		ydb_provider.JWTAuthParams{
+		provider_ydb.JWTAuthParams{
 			KeyContent:      cfg.SAKeyContent,
 			TokenServiceURL: cfg.TokenServiceURL,
 		},
@@ -76,10 +76,10 @@ func NewYdbDriverFromStorage(t *testing.T, cfg *ydb_provider.YdbStorageParams) *
 func newYDBDriver(
 	ctx context.Context,
 	database, instance string,
-	credentials ydbcreds.Credentials,
+	credentials ydb_credentials.Credentials,
 	tlsConfig *tls.Config,
 	verboseTraces bool,
-) (*ydb.Driver, error) {
+) (*ydb_go_sdk.Driver, error) {
 	secure := tlsConfig != nil
 
 	traceLevel := trace.DriverEvents
@@ -88,11 +88,11 @@ func newYDBDriver(
 	}
 	// TODO: it would be nice to handle some common errors such as unauthenticated one
 	// but YDB driver error design makes this task extremely painful
-	return ydb.Open(
+	return ydb_go_sdk.Open(
 		ctx,
 		sugar.DSN(instance, database, sugar.WithSecure(secure)),
-		ydb.WithCredentials(credentials),
-		ydb.WithTLSConfig(tlsConfig),
+		ydb_go_sdk.WithCredentials(credentials),
+		ydb_go_sdk.WithTLSConfig(tlsConfig),
 		logadapter.WithTraces(logger.Log, traceLevel),
 	)
 }
@@ -119,10 +119,10 @@ var TestData = []map[string]interface{}{
 	},
 }
 
-var YtColumns = []schema.Column{
-	{Name: "id", ComplexType: schema.TypeInt32},
-	{Name: "value", ComplexType: schema.Optional{Item: schema.TypeString}},
-	{Name: "count", ComplexType: schema.TypeInt32},
+var YtColumns = []ytschema.Column{
+	{Name: "id", ComplexType: ytschema.TypeInt32},
+	{Name: "value", ComplexType: ytschema.Optional{Item: ytschema.TypeString}},
+	{Name: "count", ComplexType: ytschema.TypeInt32},
 }
 
 func prepareTargetTable(t *testing.T) {
@@ -143,7 +143,7 @@ func createTestData(t *testing.T) {
 	ytc, err := yt_client.NewYtClientWrapper(yt_client.HTTP, nil, &yt.Config{Proxy: Source.YtProxy})
 	require.NoError(t, err)
 
-	sch := schema.Schema{
+	sch := ytschema.Schema{
 		Strict:     nil,
 		UniqueKeys: false,
 		Columns:    YtColumns,

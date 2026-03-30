@@ -8,14 +8,14 @@ import (
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/docker/go-connections/nat"
-	"github.com/testcontainers/testcontainers-go"
+	testcontainers_go "github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/tests/tcrecipes"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	mongo_driver "go.mongodb.org/mongo-driver/mongo"
+	mongo_options "go.mongodb.org/mongo-driver/mongo/options"
 )
 
 const defaultUser = "root"
@@ -144,14 +144,14 @@ func GetIntFromEnv(varName string) int {
 
 // PostgresContainer represents the postgres container type used in the module
 type MongoContainer struct {
-	testcontainers.Container
+	testcontainers_go.Container
 	user        string
 	password    string
 	exposedPort nat.Port
 }
 
-func StartMongoContainer(ctx context.Context, opts ...testcontainers.ContainerCustomizer) (*MongoContainer, error) {
-	req := testcontainers.ContainerRequest{
+func StartMongoContainer(ctx context.Context, opts ...testcontainers_go.ContainerCustomizer) (*MongoContainer, error) {
+	req := testcontainers_go.ContainerRequest{
 		Image: defaultImage,
 		Env: map[string]string{
 			"MONGO_INITDB_DATABASE": "db",
@@ -164,7 +164,7 @@ func StartMongoContainer(ctx context.Context, opts ...testcontainers.ContainerCu
 		Cmd: []string{"mongod", "--replSet", defaultRS},
 	}
 
-	genericContainerReq := testcontainers.GenericContainerRequest{
+	genericContainerReq := testcontainers_go.GenericContainerRequest{
 		ContainerRequest: req,
 		Started:          true,
 	}
@@ -176,7 +176,7 @@ func StartMongoContainer(ctx context.Context, opts ...testcontainers.ContainerCu
 		req.Image = ""
 	}
 
-	mongoContainer, err := testcontainers.GenericContainer(ctx, genericContainerReq)
+	mongoContainer, err := testcontainers_go.GenericContainer(ctx, genericContainerReq)
 	if err != nil {
 		return nil, xerrors.Errorf("unable to start container: %w", err)
 	}
@@ -188,7 +188,7 @@ func StartMongoContainer(ctx context.Context, opts ...testcontainers.ContainerCu
 		return nil, xerrors.Errorf("unable to get port: %w", err)
 	}
 	uri := fmt.Sprintf("mongodb://localhost:%s/?directConnection=true", exposedPort.Port())
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(uri))
+	client, err := mongo_driver.Connect(ctx, mongo_options.Client().ApplyURI(uri))
 	if err != nil {
 		return nil, xerrors.Errorf("unable to connect to docker mongo: %w", err)
 	}

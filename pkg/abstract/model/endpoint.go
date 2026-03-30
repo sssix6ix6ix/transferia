@@ -3,7 +3,7 @@ package model
 import (
 	"context"
 
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/pkg/abstract"
 	"go.uber.org/zap/zapcore"
 )
@@ -279,7 +279,7 @@ type SnapshotParallelizationSupport interface {
 
 type ExtraTransformableSource interface {
 	Source
-	ExtraTransformers(ctx context.Context, transfer *Transfer, registry metrics.Registry) ([]abstract.Transformer, error)
+	ExtraTransformers(ctx context.Context, transfer *Transfer, registry core_metrics.Registry) ([]abstract.Transformer, error)
 }
 
 type defaultParallelizationSupport struct{}

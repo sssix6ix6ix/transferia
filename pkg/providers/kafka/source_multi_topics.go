@@ -3,7 +3,7 @@ package kafka
 import (
 	"context"
 
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/util"
@@ -15,7 +15,7 @@ var _ abstract.Fetchable = (*sourceMultiTopics)(nil)
 type sourceMultiTopics struct {
 	src      *KafkaSource
 	logger   log.Logger
-	registry metrics.Registry
+	registry core_metrics.Registry
 	topics   []string
 }
 

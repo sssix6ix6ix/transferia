@@ -1,27 +1,27 @@
 package stats
 
-import "github.com/transferia/transferia/library/go/core/metrics"
+import core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 
 type FallbackStats struct {
-	registry metrics.Registry
+	registry core_metrics.Registry
 
 	// Items counts the number of items to which fallbacks chain was applied
-	Items metrics.Counter
+	Items core_metrics.Counter
 	// Deepness tracks the number of fallbacks applied
-	Deepness metrics.Gauge
+	Deepness core_metrics.Gauge
 	// Errors counts the number of errorneous fallbacks
-	Errors metrics.Counter
+	Errors core_metrics.Counter
 }
 
 // FallbackStatsCombination is an object unifying stats for source and target fallbacks
 type FallbackStatsCombination struct {
-	registry metrics.Registry
+	registry core_metrics.Registry
 
 	Source *FallbackStats
 	Target *FallbackStats
 }
 
-func NewFallbackStatsCombination(registry metrics.Registry) *FallbackStatsCombination {
+func NewFallbackStatsCombination(registry core_metrics.Registry) *FallbackStatsCombination {
 	return &FallbackStatsCombination{
 		registry: registry,
 

@@ -8,7 +8,7 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/connection/clickhouse"
+	conn_clickhouse "github.com/transferia/transferia/pkg/connection/clickhouse"
 	"go.uber.org/zap/zapcore"
 )
 
@@ -178,7 +178,7 @@ func (s *ChSource) IsAbstract2(dst model.Destination) bool {
 
 type ChSourceWrapper struct {
 	Model            *ChSource
-	host             *clickhouse.Host // host is here, bcs it needed only in SinkServer/SinkTable
+	host             *conn_clickhouse.Host // host is here, bcs it needed only in SinkServer/SinkTable
 	connectionParams connectionParams
 }
 
@@ -242,7 +242,7 @@ func (s ChSourceWrapper) Partition() string {
 	return ""
 }
 
-func (s ChSourceWrapper) Host() *clickhouse.Host {
+func (s ChSourceWrapper) Host() *conn_clickhouse.Host {
 	if s.host == nil && len(s.AltHosts()) > 0 {
 		return s.AltHosts()[0]
 	}
@@ -281,7 +281,7 @@ func (s ChSourceWrapper) SystemColumnsFirst() bool {
 	return false
 }
 
-func (s ChSourceWrapper) AltHosts() []*clickhouse.Host {
+func (s ChSourceWrapper) AltHosts() []*conn_clickhouse.Host {
 	return s.connectionParams.Hosts
 }
 
@@ -313,7 +313,7 @@ func (s ChSourceWrapper) Rotation() *model.RotatorConfig {
 	return nil
 }
 
-func (s ChSourceWrapper) Shards() map[string][]*clickhouse.Host {
+func (s ChSourceWrapper) Shards() map[string][]*conn_clickhouse.Host {
 	return s.connectionParams.Shards
 }
 
@@ -332,7 +332,7 @@ func (s ChSourceWrapper) GetConnectionID() string {
 	return s.Model.GetConnectionID()
 }
 
-func (s ChSourceWrapper) MakeChildServerParams(host *clickhouse.Host) ChSinkServerParams {
+func (s ChSourceWrapper) MakeChildServerParams(host *conn_clickhouse.Host) ChSinkServerParams {
 	newChSource := *s.Model
 	newChSourceWrapper := ChSourceWrapper{
 		Model:            &newChSource,
@@ -342,7 +342,7 @@ func (s ChSourceWrapper) MakeChildServerParams(host *clickhouse.Host) ChSinkServ
 	return newChSourceWrapper
 }
 
-func (s ChSourceWrapper) MakeChildShardParams(altHosts []*clickhouse.Host) ChSinkShardParams {
+func (s ChSourceWrapper) MakeChildShardParams(altHosts []*conn_clickhouse.Host) ChSinkShardParams {
 	newChSource := *s.Model
 	newChSourceWrapper := ChSourceWrapper{
 		Model:            &newChSource,
@@ -355,8 +355,8 @@ func (s ChSourceWrapper) MakeChildShardParams(altHosts []*clickhouse.Host) ChSin
 	return newChSourceWrapper
 }
 
-func (s ChSourceWrapper) SetShards(shards map[string][]*clickhouse.Host) {
-	s.connectionParams.Shards = make(map[string][]*clickhouse.Host)
+func (s ChSourceWrapper) SetShards(shards map[string][]*conn_clickhouse.Host) {
+	s.connectionParams.Shards = make(map[string][]*conn_clickhouse.Host)
 	s.connectionParams.SetShards(shards)
 }
 

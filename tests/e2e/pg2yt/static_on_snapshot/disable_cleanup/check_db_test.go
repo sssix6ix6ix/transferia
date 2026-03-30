@@ -10,16 +10,16 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/postgres"
-	ytcommon "github.com/transferia/transferia/pkg/providers/yt"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
+	provider_yt "github.com/transferia/transferia/pkg/providers/yt"
 	"github.com/transferia/transferia/tests/helpers"
-	yt_helpers "github.com/transferia/transferia/tests/helpers/yt"
+	helpers_yt "github.com/transferia/transferia/tests/helpers/yt"
 	"go.ytsaurus.tech/yt/go/ypath"
 	"go.ytsaurus.tech/yt/go/yttest"
 )
 
 var (
-	Source = postgres.PgSource{
+	Source = provider_postgres.PgSource{
 		ClusterID: os.Getenv("PG_CLUSTER_ID"),
 		Hosts:     []string{"localhost"},
 		User:      os.Getenv("PG_LOCAL_USER"),
@@ -28,7 +28,7 @@ var (
 		Port:      helpers.GetIntFromEnv("PG_LOCAL_PORT"),
 		DBTables:  []string{"public.__test1"},
 	}
-	Target = yt_helpers.RecipeYtTarget("//home/cdc/test/pg2yt_e2e").(*ytcommon.YtDestinationWrapper)
+	Target = helpers_yt.RecipeYtTarget("//home/cdc/test/pg2yt_e2e").(*provider_yt.YtDestinationWrapper)
 )
 
 func init() {
@@ -37,7 +37,7 @@ func init() {
 }
 
 func TestMain(m *testing.M) {
-	ytcommon.InitExe()
+	provider_yt.InitExe()
 	os.Exit(m.Run())
 }
 
@@ -71,7 +71,7 @@ func Snapshot(t *testing.T) {
 		helpers.GetSampleableStorageByModel(t, Target.LegacyModel()), 60*time.Second))
 
 	ctx := context.Background()
-	srcConn, err := postgres.MakeConnPoolFromSrc(&Source, logger.Log)
+	srcConn, err := provider_postgres.MakeConnPoolFromSrc(&Source, logger.Log)
 	require.NoError(t, err)
 	_, err = srcConn.Exec(ctx, "INSERT INTO public.__test1 (id, name) VALUES (3, 'test1test1') on conflict do nothing ;")
 	require.NoError(t, err)

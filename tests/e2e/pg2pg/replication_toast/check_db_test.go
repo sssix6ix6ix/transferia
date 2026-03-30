@@ -15,7 +15,7 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	pg_provider "github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
 	"github.com/transferia/transferia/pkg/runtime/local"
 	"github.com/transferia/transferia/tests/helpers"
@@ -62,10 +62,10 @@ func makeTestFunction(usePolling bool) func(t *testing.T) {
 			Dst: &Target,
 		}
 
-		srcConn, err := pg_provider.MakeConnPoolFromSrc(&Source, logger.Log)
+		srcConn, err := provider_postgres.MakeConnPoolFromSrc(&Source, logger.Log)
 		require.NoError(t, err)
 		defer srcConn.Close()
-		dstConn, err := pg_provider.MakeConnPoolFromDst(&Target, logger.Log)
+		dstConn, err := provider_postgres.MakeConnPoolFromDst(&Target, logger.Log)
 		require.NoError(t, err)
 		defer dstConn.Close()
 

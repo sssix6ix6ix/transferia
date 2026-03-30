@@ -9,9 +9,9 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
-	dp_model "github.com/transferia/transferia/pkg/abstract/model"
+	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/chrecipe"
-	pgcommon "github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
 	"github.com/transferia/transferia/tests/e2e/pg2ch"
 	"github.com/transferia/transferia/tests/helpers"
@@ -36,9 +36,9 @@ func TestAlter(t *testing.T) {
 		))
 	}()
 
-	connConfig, err := pgcommon.MakeConnConfigFromSrc(logger.Log, &Source)
+	connConfig, err := provider_postgres.MakeConnConfigFromSrc(logger.Log, &Source)
 	require.NoError(t, err)
-	conn, err := pgcommon.NewPgConnPool(connConfig, logger.Log)
+	conn, err := provider_postgres.NewPgConnPool(connConfig, logger.Log)
 	require.NoError(t, err)
 
 	//------------------------------------------------------------------------------------
@@ -46,7 +46,7 @@ func TestAlter(t *testing.T) {
 
 	Target.ProtocolUnspecified = true
 	transfer := helpers.MakeTransfer(helpers.TransferID, &Source, &Target, TransferType)
-	transfer.DataObjects = &dp_model.DataObjects{IncludeObjects: []string{"public.__test"}}
+	transfer.DataObjects = &model.DataObjects{IncludeObjects: []string{"public.__test"}}
 	var terminateErr error
 	localWorker := helpers.Activate(t, transfer, func(err error) {
 		terminateErr = err

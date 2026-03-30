@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/testcontainers/testcontainers-go"
+	testcontainers_go "github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"go.ytsaurus.tech/yt/go/yt"
@@ -22,7 +22,7 @@ const (
 
 // YTsaurusContainer represents the YTsaurus container type used in the module.
 type YTsaurusContainer struct {
-	testcontainers.Container
+	testcontainers_go.Container
 }
 
 // ConnectionHost returns the host and dynamic port for accessing the YTsaurus container.
@@ -70,8 +70,8 @@ func (y *YTsaurusContainer) NewClient(ctx context.Context) (yt.Client, error) {
 }
 
 // WithAuth enables authentication on http proxies and creates `admin` user with password and token `password`.
-func WithAuth() testcontainers.CustomizeRequestOption {
-	return func(req *testcontainers.GenericContainerRequest) error {
+func WithAuth() testcontainers_go.CustomizeRequestOption {
+	return func(req *testcontainers_go.GenericContainerRequest) error {
 		req.Cmd = append(
 			req.Cmd,
 			"--native-client-supported", // required by yt_python for auth setup
@@ -83,13 +83,13 @@ func WithAuth() testcontainers.CustomizeRequestOption {
 }
 
 // RunContainer creates and starts an instance of the YTsaurus container.
-func RunContainer(ctx context.Context, opts ...testcontainers.ContainerCustomizer) (*YTsaurusContainer, error) {
+func RunContainer(ctx context.Context, opts ...testcontainers_go.ContainerCustomizer) (*YTsaurusContainer, error) {
 	randomPort, err := getFreePort()
 	if err != nil {
 		return nil, fmt.Errorf("get random free port: %w", err)
 	}
 
-	req := testcontainers.ContainerRequest{
+	req := testcontainers_go.ContainerRequest{
 		Image:        defaultImage,
 		ExposedPorts: []string{fmt.Sprintf("%d:%s", randomPort, containerPort)},
 		WaitingFor:   wait.ForLog("Local YT started"),
@@ -103,7 +103,7 @@ func RunContainer(ctx context.Context, opts ...testcontainers.ContainerCustomize
 		},
 	}
 
-	genericContainerReq := testcontainers.GenericContainerRequest{
+	genericContainerReq := testcontainers_go.GenericContainerRequest{
 		ContainerRequest: req,
 		Started:          true,
 	}
@@ -114,7 +114,7 @@ func RunContainer(ctx context.Context, opts ...testcontainers.ContainerCustomize
 		}
 	}
 
-	container, err := testcontainers.GenericContainer(ctx, genericContainerReq)
+	container, err := testcontainers_go.GenericContainer(ctx, genericContainerReq)
 	if err != nil {
 		return nil, xerrors.Errorf("start container: %w", err)
 	}

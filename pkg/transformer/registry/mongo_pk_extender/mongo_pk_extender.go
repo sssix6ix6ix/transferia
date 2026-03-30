@@ -8,7 +8,7 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/transformer"
-	"github.com/transferia/transferia/pkg/transformer/registry/filter"
+	transformer_filter "github.com/transferia/transferia/pkg/transformer/registry/filter"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.ytsaurus.tech/library/go/core/log"
 )
@@ -23,14 +23,14 @@ type SchemaDiscriminator struct {
 }
 
 type Config struct {
-	Tables              filter.Tables `json:"tables"`
+	Tables              transformer_filter.Tables `json:"tables"`
 	Expand              bool
 	DiscriminatorField  string
 	DiscriminatorValues []SchemaDiscriminator
 }
 
 type MongoPKExtenderTransformer struct {
-	tables              filter.Filter
+	tables              transformer_filter.Filter
 	expand              bool
 	discriminatorField  string
 	discriminatorValues map[string]interface{}
@@ -64,7 +64,7 @@ func parseValue(value string) interface{} {
 }
 
 func NewMongoPKExtenderTransformer(config Config, lgr log.Logger) (*MongoPKExtenderTransformer, error) {
-	tables, err := filter.NewFilter(config.Tables.IncludeTables, config.Tables.ExcludeTables)
+	tables, err := transformer_filter.NewFilter(config.Tables.IncludeTables, config.Tables.ExcludeTables)
 	if err != nil {
 		return nil, xerrors.Errorf("Unable to init table filter: %w", err)
 	}

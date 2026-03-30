@@ -10,9 +10,9 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	pg_provider "github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
-	"github.com/transferia/transferia/tests/canon/postgres"
+	postgres_canon "github.com/transferia/transferia/tests/canon/postgres"
 	"github.com/transferia/transferia/tests/helpers"
 )
 
@@ -20,7 +20,7 @@ func TestAllDataTypes(t *testing.T) {
 	Source := pgrecipe.RecipeSource(pgrecipe.WithPrefix(""))
 	Source.WithDefaults()
 	Target := pgrecipe.RecipeTarget(pgrecipe.WithPrefix("DB0_"))
-	conn, err := pg_provider.MakeConnPoolFromDst(Target, logger.Log)
+	conn, err := provider_postgres.MakeConnPoolFromDst(Target, logger.Log)
 	require.NoError(t, err)
 	// TODO: Allow to optionally transit extensions as part of transfer
 	_, err = conn.Exec(context.Background(), `
@@ -35,9 +35,9 @@ create extension if not exists citext;
 	tableCase := func(tableName string) func(t *testing.T) {
 		return func(t *testing.T) {
 			t.Run("initial data", func(t *testing.T) {
-				conn, err := pg_provider.MakeConnPoolFromSrc(Source, logger.Log)
+				conn, err := provider_postgres.MakeConnPoolFromSrc(Source, logger.Log)
 				require.NoError(t, err)
-				_, err = conn.Exec(context.Background(), postgres.TableSQLs[tableName])
+				_, err = conn.Exec(context.Background(), postgres_canon.TableSQLs[tableName])
 				require.NoError(t, err)
 			})
 
@@ -51,13 +51,13 @@ create extension if not exists citext;
 			transfer.DataObjects = &model.DataObjects{IncludeObjects: []string{tableName}}
 			worker := helpers.Activate(t, transfer)
 
-			conn, err := pg_provider.MakeConnPoolFromSrc(Source, logger.Log)
+			conn, err := provider_postgres.MakeConnPoolFromSrc(Source, logger.Log)
 			require.NoError(t, err)
-			_, err = conn.Exec(context.Background(), postgres.TableSQLs[tableName])
+			_, err = conn.Exec(context.Background(), postgres_canon.TableSQLs[tableName])
 			require.NoError(t, err)
-			srcStorage, err := pg_provider.NewStorage(Source.ToStorageParams(nil))
+			srcStorage, err := provider_postgres.NewStorage(Source.ToStorageParams(nil))
 			require.NoError(t, err)
-			dstStorage, err := pg_provider.NewStorage(Target.ToStorageParams())
+			dstStorage, err := provider_postgres.NewStorage(Target.ToStorageParams())
 			require.NoError(t, err)
 			tid, err := abstract.ParseTableIDForProvider(tableName, abstract.ProviderType("pg"))
 			require.NoError(t, err)

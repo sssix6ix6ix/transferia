@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/elastic/go-elasticsearch/v7"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
@@ -257,7 +257,7 @@ func WithOpts(storage *Storage, opts ...StorageOpt) *Storage {
 	return storage
 }
 
-func NewStorage(src *ElasticSearchSource, logger log.Logger, mRegistry metrics.Registry, serverType ServerType, opts ...StorageOpt) (*Storage, error) {
+func NewStorage(src *ElasticSearchSource, logger log.Logger, mRegistry core_metrics.Registry, serverType ServerType, opts ...StorageOpt) (*Storage, error) {
 	config, err := ConfigFromDestination(logger, src.SourceToElasticSearchDestination(), serverType)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to create elastic configuration: %w", err)

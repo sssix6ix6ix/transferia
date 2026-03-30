@@ -13,7 +13,7 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
 	proxy "github.com/transferia/transferia/tests/helpers/proxies/pg_proxy"
 )
@@ -21,7 +21,7 @@ import (
 func TestShardingStorage_ShardTable(t *testing.T) {
 	_ = pgrecipe.RecipeSource(pgrecipe.WithPrefix(""), pgrecipe.WithInitDir("test_scripts"))
 	srcPort, _ := strconv.Atoi(os.Getenv("PG_LOCAL_PORT"))
-	v := &postgres.PgSource{
+	v := &provider_postgres.PgSource{
 		Hosts:    []string{"127.0.0.1"},
 		User:     os.Getenv("PG_LOCAL_USER"),
 		Password: model.SecretString(os.Getenv("PG_LOCAL_PASSWORD")),
@@ -45,7 +45,7 @@ func TestShardingStorage_ShardTable(t *testing.T) {
 	}
 	v.WithDefaults()
 	require.NotEqual(t, 0, v.DesiredTableSize)
-	storage, err := postgres.NewStorage(v.ToStorageParams(nil))
+	storage, err := provider_postgres.NewStorage(v.ToStorageParams(nil))
 	require.NoError(t, err)
 	ctx := context.Background()
 	storage.Config.DesiredTableSize = 1 * 1024 * 1024
@@ -232,15 +232,15 @@ func TestShardingStorage_ShardTable(t *testing.T) {
 }
 
 func TestShardingStorage_CalculatePartsCount(t *testing.T) {
-	partCount := postgres.CalculatePartCount(101, 100, 4)
+	partCount := provider_postgres.CalculatePartCount(101, 100, 4)
 	require.Equal(t, partCount, uint64(2))
 
-	partCount = postgres.CalculatePartCount(101, 100, 1)
+	partCount = provider_postgres.CalculatePartCount(101, 100, 1)
 	require.Equal(t, partCount, uint64(1))
 
-	partCount = postgres.CalculatePartCount(100, 100, 4)
+	partCount = provider_postgres.CalculatePartCount(100, 100, 4)
 	require.Equal(t, partCount, uint64(1))
 
-	partCount = postgres.CalculatePartCount(1001, 100, 4)
+	partCount = provider_postgres.CalculatePartCount(1001, 100, 4)
 	require.Equal(t, partCount, uint64(4))
 }

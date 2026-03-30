@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"testing"
 
-	mysql_client "github.com/go-sql-driver/mysql"
+	mysql_driver2 "github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/providers/mysql/mysqlrecipe"
@@ -32,14 +32,14 @@ func TestSnapshotAndReplicationViewsCompatibility(t *testing.T) {
 		"insert into test2(name, email, age) values ('name2', 'email2', 44);",
 	}
 
-	cfg := mysql_client.NewConfig()
+	cfg := mysql_driver2.NewConfig()
 	cfg.Addr = fmt.Sprintf("%v:%v", source.Host, source.Port)
 	cfg.User = source.User
 	cfg.Passwd = string(source.Password)
 	cfg.DBName = source.Database
 	cfg.Net = "tcp"
 
-	mysqlConnector, err := mysql_client.NewConnector(cfg)
+	mysqlConnector, err := mysql_driver2.NewConnector(cfg)
 	require.NoError(t, err)
 	db := sql.OpenDB(mysqlConnector)
 

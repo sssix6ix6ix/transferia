@@ -8,14 +8,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-sql-driver/mysql"
+	mysql_driver2 "github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/library/go/test/canon"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	mysql_storage "github.com/transferia/transferia/pkg/providers/mysql"
+	provider_mysql "github.com/transferia/transferia/pkg/providers/mysql"
 	"github.com/transferia/transferia/pkg/runtime/local"
 	"github.com/transferia/transferia/tests/helpers"
 )
@@ -50,8 +50,8 @@ func (s *mockSinker) Close() error {
 	return nil
 }
 
-func makeConnConfig() *mysql.Config {
-	cfg := mysql.NewConfig()
+func makeConnConfig() *mysql_driver2.Config {
+	cfg := mysql_driver2.NewConfig()
 	cfg.Addr = fmt.Sprintf("%v:%v", source.Host, source.Port)
 	cfg.User = source.User
 	cfg.Passwd = string(source.Password)
@@ -67,7 +67,7 @@ func TestTimeZoneSnapshotAndReplication(t *testing.T) {
 		))
 	}()
 
-	storage, err := mysql_storage.NewStorage(source.ToStorageParams())
+	storage, err := provider_mysql.NewStorage(source.ToStorageParams())
 	require.NoError(t, err)
 
 	var rowsValuesOnSnapshot []any
@@ -96,7 +96,7 @@ func TestTimeZoneSnapshotAndReplication(t *testing.T) {
 	}
 
 	fakeClient := coordinator.NewStatefulFakeClient()
-	err = mysql_storage.SyncBinlogPosition(source, transfer.ID, fakeClient)
+	err = provider_mysql.SyncBinlogPosition(source, transfer.ID, fakeClient)
 	require.NoError(t, err)
 
 	wrk := local.NewLocalWorker(fakeClient, &transfer, helpers.EmptyRegistry(), logger.Log)
@@ -121,7 +121,7 @@ func TestTimeZoneSnapshotAndReplication(t *testing.T) {
 		errCh <- wrk.Run()
 	}()
 
-	conn, err := mysql.NewConnector(makeConnConfig())
+	conn, err := mysql_driver2.NewConnector(makeConnConfig())
 	require.NoError(t, err)
 	db := sql.OpenDB(conn)
 
@@ -166,9 +166,9 @@ func TestDifferentTimezones(t *testing.T) {
 	}()
 
 	storageCfg := source.ToStorageParams()
-	checkTimezoneVals := func(cfg *mysql_storage.MysqlStorageParams, timezone string, expectedRows []any) {
+	checkTimezoneVals := func(cfg *provider_mysql.MysqlStorageParams, timezone string, expectedRows []any) {
 		cfg.Timezone = timezone
-		storage, err := mysql_storage.NewStorage(cfg)
+		storage, err := provider_mysql.NewStorage(cfg)
 		require.NoError(t, err)
 		defer storage.Close()
 

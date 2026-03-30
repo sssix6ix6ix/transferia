@@ -1,7 +1,7 @@
 package strict
 
 import (
-	"database/sql/driver"
+	sql_driver "database/sql/driver"
 
 	"github.com/transferia/transferia/library/go/core/xerrors"
 )
@@ -22,7 +22,7 @@ func driverValuerGenericCast[ResultT any](value any, concreteCast func(any) (Res
 	}
 
 	switch v := value.(type) {
-	case driver.Valuer:
+	case sql_driver.Valuer:
 		vv, err := v.Value()
 		if err != nil {
 			return nil, xerrors.Errorf("failed to obtain Value: %w", err)

@@ -17,17 +17,17 @@ import (
 	"github.com/transferia/transferia/pkg/abstract/model"
 	_ "github.com/transferia/transferia/pkg/dataplane"
 	"github.com/transferia/transferia/pkg/middlewares"
-	"github.com/transferia/transferia/pkg/providers/clickhouse"
+	provider_clickhouse "github.com/transferia/transferia/pkg/providers/clickhouse"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/chrecipe"
-	"github.com/transferia/transferia/pkg/providers/mysql"
-	"github.com/transferia/transferia/pkg/providers/postgres"
+	provider_mysql "github.com/transferia/transferia/pkg/providers/mysql"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
-	"github.com/transferia/transferia/pkg/providers/ydb"
-	"github.com/transferia/transferia/pkg/providers/yt"
-	"github.com/transferia/transferia/pkg/sink"
+	provider_ydb "github.com/transferia/transferia/pkg/providers/ydb"
+	provider_yt "github.com/transferia/transferia/pkg/providers/yt"
+	"github.com/transferia/transferia/pkg/sink_factory"
 	"github.com/transferia/transferia/tests/helpers"
-	yt_helpers "github.com/transferia/transferia/tests/helpers/yt"
-	"go.ytsaurus.tech/yt/go/schema"
+	helpers_yt "github.com/transferia/transferia/tests/helpers/yt"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 func TestFlag(t *testing.T) {
@@ -56,8 +56,8 @@ func TestAllSinks(t *testing.T) {
 			ColumnNames:  []string{"id", "name"},
 			ColumnValues: []interface{}{1, "John Doe"},
 			TableSchema: changeitem.NewTableSchema([]changeitem.ColSchema{
-				changeitem.NewColSchema("id", schema.TypeInt64, true),
-				changeitem.NewColSchema("name", schema.TypeString, false),
+				changeitem.NewColSchema("id", ytschema.TypeInt64, true),
+				changeitem.NewColSchema("name", ytschema.TypeString, false),
 			}),
 		},
 		{
@@ -67,9 +67,9 @@ func TestAllSinks(t *testing.T) {
 			ColumnNames:  []string{"id", "name", "lastName"},
 			ColumnValues: []interface{}{2, "John", "Doe"},
 			TableSchema: changeitem.NewTableSchema([]changeitem.ColSchema{
-				changeitem.NewColSchema("id", schema.TypeInt64, true),
-				changeitem.NewColSchema("name", schema.TypeString, false),
-				changeitem.NewColSchema("lastName", schema.TypeString, false),
+				changeitem.NewColSchema("id", ytschema.TypeInt64, true),
+				changeitem.NewColSchema("name", ytschema.TypeString, false),
+				changeitem.NewColSchema("lastName", ytschema.TypeString, false),
 			}),
 		},
 	}
@@ -88,7 +88,7 @@ func TestAllSinks(t *testing.T) {
 		time.Sleep(10 * time.Second)
 		t.Run(sinkType, func(t *testing.T) {
 			r := solomon.NewRegistry(solomon.NewRegistryOpts())
-			sink, err := sink.ConstructBaseSink(
+			sink, err := sink_factory.ConstructBaseSink(
 				transfer,
 				&model.TransferOperation{},
 				logger.Log,
@@ -146,22 +146,22 @@ func getAlterableDestination(t *testing.T, sinkType abstract.ProviderType) (mode
 		return nil, nil
 	}
 	switch sinkType {
-	case postgres.ProviderType:
+	case provider_postgres.ProviderType:
 		return pgrecipe.RecipeTarget(), nil
-	case mysql.ProviderType:
+	case provider_mysql.ProviderType:
 		return helpers.RecipeMysqlTarget(), nil
-	case clickhouse.ProviderType:
+	case provider_clickhouse.ProviderType:
 		return chrecipe.MustTarget(chrecipe.WithInitFile("data/ch.sql"), chrecipe.WithDatabase("test"), chrecipe.WithPrefix("DB0_")), nil
-	case ydb.ProviderType:
-		dst := ydb.YdbDestination{
+	case provider_ydb.ProviderType:
+		dst := provider_ydb.YdbDestination{
 			Token:    model.SecretString(os.Getenv("YDB_TOKEN")),
 			Database: helpers.GetEnvOfFail(t, "YDB_DATABASE"),
 			Instance: helpers.GetEnvOfFail(t, "YDB_ENDPOINT"),
 		}
 		dst.WithDefaults()
 		return &dst, nil
-	case yt.ProviderType:
-		target := yt_helpers.RecipeYtTarget("//home/cdc/test/alters")
+	case provider_yt.ProviderType:
+		target := helpers_yt.RecipeYtTarget("//home/cdc/test/alters")
 		return target, nil
 	default:
 		return nil, xerrors.Errorf("Unknown sink type: %s", sinkType)

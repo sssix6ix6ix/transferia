@@ -9,10 +9,10 @@ import (
 	"github.com/mattn/go-isatty"
 	"github.com/transferia/transferia/tests/helpers/testsflag"
 	_ "go.opentelemetry.io/contrib/bridges/otelzap"
-	zp "go.uber.org/zap"
+	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"go.ytsaurus.tech/library/go/core/log"
-	"go.ytsaurus.tech/library/go/core/log/zap"
+	ya_zap "go.ytsaurus.tech/library/go/core/log/zap"
 	"go.ytsaurus.tech/yt/go/mapreduce"
 )
 
@@ -22,7 +22,7 @@ import (
 // В дев тачке будет прекрасный.
 var (
 	Log     log.Logger
-	NullLog *zap.Logger
+	NullLog *ya_zap.Logger
 )
 
 type Factory func(context.Context) log.Logger
@@ -32,8 +32,8 @@ func DummyLoggerFactory(ctx context.Context) log.Logger {
 }
 
 func LoggerWithLevel(lvl zapcore.Level) log.Logger {
-	cfg := zp.Config{
-		Level:            zp.NewAtomicLevelAt(lvl),
+	cfg := zap.Config{
+		Level:            zap.NewAtomicLevelAt(lvl),
 		Encoding:         "console",
 		OutputPaths:      []string{"stdout"},
 		ErrorOutputPaths: []string{"stderr"},
@@ -48,7 +48,7 @@ func LoggerWithLevel(lvl zapcore.Level) log.Logger {
 			EncodeCaller:   AdditionalComponentCallerEncoder,
 		},
 	}
-	return log.With(zap.Must(cfg)).(*zap.Logger)
+	return log.With(ya_zap.Must(cfg)).(*ya_zap.Logger)
 }
 
 func AdditionalComponentCallerEncoder(caller zapcore.EntryCaller, enc zapcore.PrimitiveArrayEncoder) {
@@ -102,14 +102,14 @@ func parseLevel(level string) levels {
 	return levels{zpLvl, lvl}
 }
 
-func DefaultLoggerConfig(level zapcore.Level) zp.Config {
+func DefaultLoggerConfig(level zapcore.Level) zap.Config {
 	encoder := zapcore.CapitalColorLevelEncoder
 	if !isatty.IsTerminal(os.Stdout.Fd()) || !isatty.IsTerminal(os.Stderr.Fd()) {
 		encoder = zapcore.CapitalLevelEncoder
 	}
 
-	return zp.Config{
-		Level:            zp.NewAtomicLevelAt(level),
+	return zap.Config{
+		Level:            zap.NewAtomicLevelAt(level),
 		Encoding:         "console",
 		OutputPaths:      []string{"stdout"},
 		ErrorOutputPaths: []string{"stderr"},
@@ -131,12 +131,12 @@ func init() {
 	cfg := DefaultLoggerConfig(level.Zap)
 
 	if os.Getenv("QLOUD_LOGGER_STDOUT_PARSER") == "json" {
-		cfg = zap.JSONConfig(level.Log)
+		cfg = ya_zap.JSONConfig(level.Log)
 	}
 
 	if testsflag.IsTest() {
-		cfg = zp.Config{
-			Level:            zp.NewAtomicLevelAt(zp.DebugLevel),
+		cfg = zap.Config{
+			Level:            zap.NewAtomicLevelAt(zap.DebugLevel),
 			Encoding:         "console",
 			OutputPaths:      []string{"stdout"},
 			ErrorOutputPaths: []string{"stderr"},
@@ -153,7 +153,7 @@ func init() {
 		}
 	}
 	if mapreduce.InsideJob() {
-		cfg = zp.Config{
+		cfg = zap.Config{
 			Level:            cfg.Level,
 			Encoding:         "console",
 			OutputPaths:      []string{"stderr"},
@@ -173,10 +173,10 @@ func init() {
 
 	ytCfg := cfg
 	ytLogLevel := getEnvYtLogLevel()
-	ytCfg.Level = zp.NewAtomicLevelAt(ytLogLevel.Zap)
+	ytCfg.Level = zap.NewAtomicLevelAt(ytLogLevel.Zap)
 
 	host, _ := os.Hostname()
-	logger := zap.Must(cfg)
-	ytLogger := zap.Must(ytCfg)
+	logger := ya_zap.Must(cfg)
+	ytLogger := ya_zap.Must(ytCfg)
 	Log = log.With(NewYtLogBundle(logger, ytLogger), log.Any("host", host)).(YtLogBundle)
 }

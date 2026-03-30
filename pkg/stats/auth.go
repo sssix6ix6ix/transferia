@@ -3,11 +3,11 @@ package stats
 import (
 	"fmt"
 
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 )
 
 type AuthStats struct {
-	stats map[authMetricKey]metrics.Counter
+	stats map[authMetricKey]core_metrics.Counter
 }
 
 type authMetricKey struct {
@@ -21,8 +21,8 @@ func (s *AuthStats) Add(authSuccess bool) {
 	s.stats[key].Inc()
 }
 
-func NewAuthStats(registry metrics.Registry) *AuthStats {
-	stats := make(map[authMetricKey]metrics.Counter)
+func NewAuthStats(registry core_metrics.Registry) *AuthStats {
+	stats := make(map[authMetricKey]core_metrics.Counter)
 	for _, authSuccess := range []bool{false, true} {
 		subRegistry := registry.WithTags(map[string]string{"success": fmt.Sprintf("%t", authSuccess)})
 		stats[authMetricKey{authSuccess: authSuccess}] = subRegistry.Counter("auth")

@@ -4,10 +4,10 @@ import (
 	"context"
 	"time"
 
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
-	"github.com/transferia/transferia/pkg/providers/s3"
-	"github.com/transferia/transferia/pkg/providers/s3/s3util/list"
+	s3_model "github.com/transferia/transferia/pkg/providers/s3/model"
+	s3util_list "github.com/transferia/transferia/pkg/providers/s3/s3util/list"
 	"github.com/transferia/transferia/pkg/providers/s3/s3util/lr_window/r_window"
 	"go.ytsaurus.tech/library/go/core/log"
 )
@@ -15,12 +15,12 @@ import (
 func BuildShardingContext(
 	ctx context.Context,
 	logger log.Logger,
-	registry metrics.Registry,
-	cfg *s3.S3Source,
+	registry core_metrics.Registry,
+	cfg *s3_model.S3Source,
 ) ([]byte, error) {
 	startTime := time.Now()
 
-	objects, err := list.ListAll(ctx, logger, registry, cfg)
+	objects, err := s3util_list.ListAll(ctx, logger, registry, cfg)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to list all objects, err: %w", err)
 	}

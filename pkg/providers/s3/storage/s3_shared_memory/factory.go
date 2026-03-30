@@ -3,25 +3,25 @@ package s3_shared_memory
 import (
 	"context"
 
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/s3"
+	s3_model "github.com/transferia/transferia/pkg/providers/s3/model"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
 func NewSharedMemory(
 	ctx context.Context,
 	logger log.Logger,
-	registry metrics.Registry,
+	registry core_metrics.Registry,
 	transfer *model.Transfer,
 	workerType abstract.WorkerType,
 	cp coordinator.Coordinator,
 	shardingContext []byte,
 ) (abstract.SharedMemory, error) {
-	srcModel, ok := transfer.Src.(*s3.S3Source)
+	srcModel, ok := transfer.Src.(*s3_model.S3Source)
 	if !ok {
 		return nil, xerrors.Errorf("unexpected source type: %T", transfer.Src)
 	}

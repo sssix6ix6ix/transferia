@@ -11,10 +11,10 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract2"
 	"github.com/transferia/transferia/pkg/abstract2/events"
-	yt2 "github.com/transferia/transferia/pkg/providers/yt"
+	provider_yt "github.com/transferia/transferia/pkg/providers/yt"
 	"github.com/transferia/transferia/pkg/providers/yt/provider/dataobjects"
-	"github.com/transferia/transferia/pkg/providers/yt/provider/schema"
-	"github.com/transferia/transferia/pkg/providers/yt/provider/table"
+	yt_provider_schema "github.com/transferia/transferia/pkg/providers/yt/provider/schema"
+	yt_table "github.com/transferia/transferia/pkg/providers/yt/provider/table"
 	"github.com/transferia/transferia/pkg/stats"
 	"github.com/transferia/transferia/pkg/util"
 	"go.ytsaurus.tech/library/go/core/log"
@@ -34,7 +34,7 @@ const (
 )
 
 type snapshotSource struct {
-	cfg  yt2.YtSourceModel
+	cfg  provider_yt.YtSourceModel
 	yt   yt.Client
 	txID yt.TxID
 	part *dataobjects.Part
@@ -66,12 +66,12 @@ func (s *snapshotSource) Start(ctx context.Context, target abstract2.EventTarget
 	s.isDone = false
 
 	s.lgr.Debug("Starting snapshot source")
-	tbl, err := schema.Load(ctx, s.yt, s.txID, s.part.NodeID(), s.part.Name(), s.part.Columns())
+	tbl, err := yt_provider_schema.Load(ctx, s.yt, s.txID, s.part.NodeID(), s.part.Name(), s.part.Columns())
 	if err != nil {
 		return xerrors.Errorf("error loading table schema: %w", err)
 	}
 	if s.cfg.GetRowIdxColumn() != "" {
-		schema.AddRowIdxColumn(tbl, s.cfg.GetRowIdxColumn())
+		yt_provider_schema.AddRowIdxColumn(tbl, s.cfg.GetRowIdxColumn())
 	}
 
 	s.lowerIdx = s.part.LowerBound()
@@ -222,7 +222,7 @@ func (s *snapshotSource) runReaders(ctx context.Context, batchSize uint64, stopC
 	return errors.Join(util.UniqueErrors(errs)...)
 }
 
-func (s *snapshotSource) pusher(tbl table.YtTable, target abstract2.EventTarget) {
+func (s *snapshotSource) pusher(tbl yt_table.YtTable, target abstract2.EventTarget) {
 	var batch *batch
 	var batchSize int
 
@@ -285,7 +285,7 @@ func (s *snapshotSource) Progress() (abstract2.EventSourceProgress, error) {
 	return abstract2.NewDefaultEventSourceProgress(s.isDone, s.doneCnt, s.totalCnt), nil
 }
 
-func NewSnapshotSource(cfg yt2.YtSourceModel, ytc yt.Client, part *dataobjects.Part,
+func NewSnapshotSource(cfg provider_yt.YtSourceModel, ytc yt.Client, part *dataobjects.Part,
 	lgr log.Logger, metrics *stats.SourceStats) *snapshotSource {
 	return &snapshotSource{
 		cfg:       cfg,

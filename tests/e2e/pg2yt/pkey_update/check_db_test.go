@@ -8,14 +8,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/go-cmp/cmp"
+	google_cmp "github.com/google/go-cmp/cmp"
 	"github.com/jackc/pgx/v4"
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/postgres"
-	yt_provider "github.com/transferia/transferia/pkg/providers/yt"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
+	provider_yt "github.com/transferia/transferia/pkg/providers/yt"
 	"github.com/transferia/transferia/pkg/worker/tasks"
 	"github.com/transferia/transferia/tests/helpers"
 	"go.ytsaurus.tech/yt/go/ypath"
@@ -44,7 +44,7 @@ func init() {
 }
 
 func makeSource() model.Source {
-	src := &postgres.PgSource{
+	src := &provider_postgres.PgSource{
 		Hosts:    []string{"localhost"},
 		User:     os.Getenv("SOURCE_PG_LOCAL_USER"),
 		Password: model.SecretString(os.Getenv("SOURCE_PG_LOCAL_PASSWORD")),
@@ -57,7 +57,7 @@ func makeSource() model.Source {
 }
 
 func makeTarget(useStaticTableOnSnapshot bool) model.Destination {
-	target := yt_provider.NewYtDestinationV1(yt_provider.YtDestination{
+	target := provider_yt.NewYtDestinationV1(provider_yt.YtDestination{
 		Path:                     "//home/cdc/pg2yt_e2e_pkey_change",
 		Cluster:                  os.Getenv("YT_PROXY"),
 		CellBundle:               "default",
@@ -135,7 +135,7 @@ func (f *fixture) update(value string) {
 }
 
 func (f *fixture) checkTableAfterUpdate(value string) {
-	if diff := cmp.Diff(
+	if diff := google_cmp.Diff(
 		f.readAll("//home/cdc/pg2yt_e2e_pkey_change/test"),
 		[]row{
 			{ID: 2, IdxCol: 10, Value: value},
@@ -210,7 +210,7 @@ func (f *fixture) loadAndCheckSnapshot() {
 	err := snapshotLoader.LoadSnapshot(ctx)
 	require.NoError(f.t, err)
 
-	if diff := cmp.Diff(
+	if diff := google_cmp.Diff(
 		f.readAll("//home/cdc/pg2yt_e2e_pkey_change/test"),
 		[]row{{ID: 1, IdxCol: 10, Value: "kek"}},
 	); diff != "" {
@@ -219,8 +219,8 @@ func (f *fixture) loadAndCheckSnapshot() {
 }
 
 func srcAndDstPorts(fxt *fixture) (int, int, error) {
-	sourcePort := fxt.transfer.Src.(*postgres.PgSource).Port
-	ytCluster := fxt.transfer.Dst.(yt_provider.YtDestinationModel).Cluster()
+	sourcePort := fxt.transfer.Src.(*provider_postgres.PgSource).Port
+	ytCluster := fxt.transfer.Dst.(provider_yt.YtDestinationModel).Cluster()
 	targetPort, err := helpers.GetPortFromStr(ytCluster)
 	if err != nil {
 		return 1, 1, err
@@ -270,12 +270,12 @@ func TestPkeyUpdateIndex(t *testing.T) {
 
 	defer fixture.teardown()
 
-	fixture.transfer.Dst.(*yt_provider.YtDestinationWrapper).Model.Index = []string{"idxcol"}
+	fixture.transfer.Dst.(*provider_yt.YtDestinationWrapper).Model.Index = []string{"idxcol"}
 
 	fixture.loadAndCheckSnapshot()
 
 	idxTablePath := "//home/cdc/pg2yt_e2e_pkey_change/test__idx_idxcol"
-	if diff := cmp.Diff([]idxRow{{IdxCol: 10, ID: 1}}, fixture.readAllIndex(idxTablePath)); diff != "" {
+	if diff := google_cmp.Diff([]idxRow{{IdxCol: 10, ID: 1}}, fixture.readAllIndex(idxTablePath)); diff != "" {
 		require.Fail(t, "Tables do not match", "Diff:\n%s", diff)
 	}
 
@@ -286,7 +286,7 @@ func TestPkeyUpdateIndex(t *testing.T) {
 	fixture.waitMarker()
 	fixture.checkTableAfterUpdate("lel")
 
-	if diff := cmp.Diff(
+	if diff := google_cmp.Diff(
 		[]idxRow{{IdxCol: 10, ID: 2}, {IdxCol: markerID * 10, ID: markerID}},
 		fixture.readAllIndex(idxTablePath),
 	); diff != "" {
@@ -312,12 +312,12 @@ func TestPkeyUpdateIndexToast(t *testing.T) {
 
 	defer fixture.teardown()
 
-	fixture.transfer.Dst.(*yt_provider.YtDestinationWrapper).Model.Index = []string{"idxcol"}
+	fixture.transfer.Dst.(*provider_yt.YtDestinationWrapper).Model.Index = []string{"idxcol"}
 
 	fixture.loadAndCheckSnapshot()
 
 	idxTablePath := "//home/cdc/pg2yt_e2e_pkey_change/test__idx_idxcol"
-	if diff := cmp.Diff([]idxRow{{IdxCol: 10, ID: 1}}, fixture.readAllIndex(idxTablePath)); diff != "" {
+	if diff := google_cmp.Diff([]idxRow{{IdxCol: 10, ID: 1}}, fixture.readAllIndex(idxTablePath)); diff != "" {
 		require.Fail(t, "Tables do not match", "Diff:\n%s", diff)
 	}
 
@@ -329,7 +329,7 @@ func TestPkeyUpdateIndexToast(t *testing.T) {
 	fixture.waitMarker()
 	fixture.checkTableAfterUpdate(longString)
 
-	if diff := cmp.Diff(
+	if diff := google_cmp.Diff(
 		[]idxRow{{IdxCol: 10, ID: 2}, {IdxCol: markerID * 10, ID: markerID}},
 		fixture.readAllIndex(idxTablePath),
 	); diff != "" {

@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
 	"github.com/transferia/transferia/pkg/util/set"
 	"github.com/transferia/transferia/tests/helpers"
@@ -21,7 +21,7 @@ var (
 	TransferType   = abstract.TransferTypeSnapshotOnly
 	Source         = *pgrecipe.RecipeSource(pgrecipe.WithInitDir(yatestx.ProjectSource("dump")), pgrecipe.WithPrefix(""))
 	Target         = *pgrecipe.RecipeTarget(pgrecipe.WithPrefix("DB0_"))
-	targetAsSource = postgres.PgSource{
+	targetAsSource = provider_postgres.PgSource{
 		ClusterID:     Target.ClusterID,
 		Hosts:         Target.Hosts,
 		User:          Target.User,
@@ -50,9 +50,9 @@ func TestGroup(t *testing.T) {
 }
 
 func Existence(t *testing.T) {
-	_, err := postgres.NewStorage(Source.ToStorageParams(nil))
+	_, err := provider_postgres.NewStorage(Source.ToStorageParams(nil))
 	require.NoError(t, err)
-	_, err = postgres.NewStorage(Target.ToStorageParams())
+	_, err = provider_postgres.NewStorage(Target.ToStorageParams())
 	require.NoError(t, err)
 }
 
@@ -63,18 +63,18 @@ func Snapshot(t *testing.T) {
 	transfer := helpers.MakeTransfer(helpers.TransferID, &Source, &Target, abstract.TransferTypeSnapshotOnly)
 
 	// extract schema
-	itemsSource, err := postgres.ExtractPgDumpSchema(transfer)
+	itemsSource, err := provider_postgres.ExtractPgDumpSchema(transfer)
 	require.NoError(t, err)
 
 	// apply on target
-	require.NoError(t, postgres.ApplyPgDumpPreSteps(itemsSource, transfer, &model.TransferOperation{}, helpers.EmptyRegistry()))
-	require.NoError(t, postgres.ApplyPgDumpPostSteps(itemsSource, transfer, &model.TransferOperation{}, helpers.EmptyRegistry()))
+	require.NoError(t, provider_postgres.ApplyPgDumpPreSteps(itemsSource, transfer, &model.TransferOperation{}, helpers.EmptyRegistry()))
+	require.NoError(t, provider_postgres.ApplyPgDumpPostSteps(itemsSource, transfer, &model.TransferOperation{}, helpers.EmptyRegistry()))
 
 	// make target a source and extract its schema
 	targetAsSource.PreSteps = Source.PreSteps
 	targetAsSource.PostSteps = Source.PostSteps
 	backwardFakeTransfer := helpers.MakeTransfer(helpers.TransferID, &targetAsSource, &Target, abstract.TransferTypeSnapshotOnly)
-	itemsTarget, err := postgres.ExtractPgDumpSchema(backwardFakeTransfer)
+	itemsTarget, err := provider_postgres.ExtractPgDumpSchema(backwardFakeTransfer)
 	require.NoError(t, err)
 
 	// compare schemas
@@ -182,7 +182,7 @@ func Snapshot(t *testing.T) {
 			src.DBTables = []string{includedTable, includedTable2, notIncludedTable}
 			transfer := helpers.MakeTransfer(helpers.TransferID, &src, &Target, abstract.TransferTypeSnapshotOnly)
 			transfer.DataObjects = &model.DataObjects{IncludeObjects: []string{includedTable, includedTable2}}
-			items, err := postgres.ExtractPgDumpSchema(transfer)
+			items, err := provider_postgres.ExtractPgDumpSchema(transfer)
 			require.NoError(t, err)
 			tableNames := set.New[string]()
 			for _, i := range items {
@@ -203,7 +203,7 @@ func Snapshot(t *testing.T) {
 			src.DBTables = []string{"public.*"}
 			src.ExcludedTables = []string{excludedTable}
 			transfer := helpers.MakeTransfer(helpers.TransferID, &src, &Target, abstract.TransferTypeSnapshotOnly)
-			items, err := postgres.ExtractPgDumpSchema(transfer)
+			items, err := provider_postgres.ExtractPgDumpSchema(transfer)
 			require.NoError(t, err)
 			tableNames := set.New[string]()
 			for _, i := range items {
@@ -223,7 +223,7 @@ func extractPgDumpTypToCnt(t *testing.T, DBTables []string, schemas []string) ma
 	transfer := helpers.MakeTransfer(helpers.TransferID, &Source, &Target, abstract.TransferTypeSnapshotOnly)
 
 	// clear target
-	storage, err := postgres.NewStorage(targetAsSource.ToStorageParams(transfer))
+	storage, err := provider_postgres.NewStorage(targetAsSource.ToStorageParams(transfer))
 	require.NoError(t, err)
 
 	for _, schema := range schemas {
@@ -231,12 +231,12 @@ func extractPgDumpTypToCnt(t *testing.T, DBTables []string, schemas []string) ma
 		require.NoError(t, err)
 	}
 
-	itemsSource, err := postgres.ExtractPgDumpSchema(transfer)
+	itemsSource, err := provider_postgres.ExtractPgDumpSchema(transfer)
 	require.NoError(t, err)
 
 	// apply on target
-	require.NoError(t, postgres.ApplyPgDumpPreSteps(itemsSource, transfer, &model.TransferOperation{}, helpers.EmptyRegistry()))
-	require.NoError(t, postgres.ApplyPgDumpPostSteps(itemsSource, transfer, &model.TransferOperation{}, helpers.EmptyRegistry()))
+	require.NoError(t, provider_postgres.ApplyPgDumpPreSteps(itemsSource, transfer, &model.TransferOperation{}, helpers.EmptyRegistry()))
+	require.NoError(t, provider_postgres.ApplyPgDumpPostSteps(itemsSource, transfer, &model.TransferOperation{}, helpers.EmptyRegistry()))
 
 	// make target a source and extract its schema
 	targetAsSource.DBTables = Source.DBTables
@@ -245,7 +245,7 @@ func extractPgDumpTypToCnt(t *testing.T, DBTables []string, schemas []string) ma
 
 	// compare schemas
 	backwardFakeTransfer := helpers.MakeTransfer(helpers.TransferID, &targetAsSource, &Target, abstract.TransferTypeSnapshotOnly)
-	itemsTarget, err := postgres.ExtractPgDumpSchema(backwardFakeTransfer)
+	itemsTarget, err := provider_postgres.ExtractPgDumpSchema(backwardFakeTransfer)
 	require.NoError(t, err)
 	require.Equal(t, itemsSource, itemsTarget)
 

@@ -6,12 +6,12 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	debeziumparameters "github.com/transferia/transferia/pkg/debezium/parameters"
+	debezium_parameters "github.com/transferia/transferia/pkg/debezium/parameters"
 	debezium_prod_status "github.com/transferia/transferia/pkg/debezium/prodstatus"
-	"github.com/transferia/transferia/pkg/providers/airbyte"
-	clickhouse "github.com/transferia/transferia/pkg/providers/clickhouse/model"
-	"github.com/transferia/transferia/pkg/providers/mysql"
-	"github.com/transferia/transferia/pkg/providers/postgres"
+	provider_airbyte "github.com/transferia/transferia/pkg/providers/airbyte"
+	clickhouse_model "github.com/transferia/transferia/pkg/providers/clickhouse/model"
+	provider_mysql "github.com/transferia/transferia/pkg/providers/mysql"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
@@ -39,10 +39,10 @@ func inferFormatSettings(src model.Source, formatSettings model.SerializationFor
 		}
 
 		switch src.(type) {
-		case *airbyte.AirbyteSource:
+		case *provider_airbyte.AirbyteSource:
 			result.Name = model.SerializationFormatJSON
 			return nil
-		case *clickhouse.ChSource:
+		case *clickhouse_model.ChSource:
 			result.Name = model.SerializationFormatNative
 			return nil
 		default:
@@ -59,13 +59,13 @@ func inferFormatSettings(src model.Source, formatSettings model.SerializationFor
 	}
 	if result.Name == model.SerializationFormatDebezium {
 		switch s := src.(type) {
-		case *postgres.PgSource:
-			if _, ok := result.Settings[debeziumparameters.DatabaseDBName]; !ok {
-				result.Settings[debeziumparameters.DatabaseDBName] = s.Database
+		case *provider_postgres.PgSource:
+			if _, ok := result.Settings[debezium_parameters.DatabaseDBName]; !ok {
+				result.Settings[debezium_parameters.DatabaseDBName] = s.Database
 			}
-			result.Settings[debeziumparameters.SourceType] = "pg"
-		case *mysql.MysqlSource:
-			result.Settings[debeziumparameters.SourceType] = "mysql"
+			result.Settings[debezium_parameters.SourceType] = "pg"
+		case *provider_mysql.MysqlSource:
+			result.Settings[debezium_parameters.SourceType] = "mysql"
 		}
 	}
 
@@ -82,7 +82,7 @@ func SourceCompatible(src model.Source, transferType abstract.TransferType, seri
 		}
 		return xerrors.Errorf("in debezium serializer not supported source type: %s", src.GetProviderType().Name())
 	case model.SerializationFormatJSON:
-		if src.GetProviderType().Name() == airbyte.ProviderType.Name() {
+		if src.GetProviderType().Name() == provider_airbyte.ProviderType.Name() {
 			return nil
 		}
 		if model.IsAppendOnlySource(src) {

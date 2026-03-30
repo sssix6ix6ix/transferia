@@ -10,11 +10,11 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/postgres"
-	yt_provider "github.com/transferia/transferia/pkg/providers/yt"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
+	provider_yt "github.com/transferia/transferia/pkg/providers/yt"
 	"github.com/transferia/transferia/pkg/providers/yt/yt_client"
 	"github.com/transferia/transferia/tests/helpers"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 	"go.ytsaurus.tech/yt/go/ypath"
 	"go.ytsaurus.tech/yt/go/yt"
 )
@@ -28,14 +28,14 @@ const (
 
 var (
 	TransferType = abstract.TransferTypeSnapshotOnly
-	Source       = yt_provider.YtSource{
+	Source       = provider_yt.YtSource{
 		Cluster: os.Getenv("YT_PROXY"),
 		YtProxy: os.Getenv("YT_PROXY"),
 		Paths:   []string{TablePath},
 		YtToken: "",
 	}
 	dstPort, _ = strconv.Atoi(os.Getenv("PG_LOCAL_PORT"))
-	Target     = postgres.PgDestination{
+	Target     = provider_postgres.PgDestination{
 		Hosts:     []string{"localhost"},
 		ClusterID: os.Getenv("TARGET_CLUSTER_ID"),
 		User:      os.Getenv("PG_LOCAL_USER"),
@@ -53,9 +53,9 @@ func init() {
 
 var TestData = map[string]interface{}{IncludedCol: 1, ExcludedCol: 0}
 
-var YtColumns = []schema.Column{
-	{Name: IncludedCol, ComplexType: schema.TypeInt8, SortOrder: schema.SortAscending},
-	{Name: ExcludedCol, ComplexType: schema.TypeInt8},
+var YtColumns = []ytschema.Column{
+	{Name: IncludedCol, ComplexType: ytschema.TypeInt8, SortOrder: ytschema.SortAscending},
+	{Name: ExcludedCol, ComplexType: ytschema.TypeInt8},
 }
 
 func TestSnapshot(t *testing.T) {
@@ -69,7 +69,7 @@ func fillSource(t *testing.T) {
 	ytc, err := yt_client.NewYtClientWrapper(yt_client.HTTP, nil, &yt.Config{Proxy: Source.YtProxy})
 	require.NoError(t, err)
 
-	sch := schema.Schema{
+	sch := ytschema.Schema{
 		Strict:     nil,
 		UniqueKeys: false,
 		Columns:    YtColumns,

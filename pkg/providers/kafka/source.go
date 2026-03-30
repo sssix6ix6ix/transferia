@@ -7,14 +7,14 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/format"
 	"github.com/transferia/transferia/pkg/functions"
 	"github.com/transferia/transferia/pkg/parsequeue"
 	"github.com/transferia/transferia/pkg/parsers"
-	"github.com/transferia/transferia/pkg/providers/kafka/reader"
+	kafka_reader "github.com/transferia/transferia/pkg/providers/kafka/reader"
 	"github.com/transferia/transferia/pkg/stats"
 	"github.com/transferia/transferia/pkg/util"
 	"github.com/transferia/transferia/pkg/util/queues/sequencer"
@@ -133,7 +133,7 @@ func (p *Source) run(parseQ parsequeue.WaitableQueue[[]kgo.Record]) error {
 		m, err := p.reader.FetchMessage(fetchCtx)
 		cancel()
 		if err != nil {
-			if !xerrors.Is(err, reader.ErrNoInput) {
+			if !xerrors.Is(err, kafka_reader.ErrNoInput) {
 				return xerrors.Errorf("unable to fetch message: %w", err)
 			} else if len(buffer) == 0 && len(m.Value) == 0 {
 				nextFetchDuration = backoffTimer.NextBackOff()
@@ -206,7 +206,7 @@ func (p *Source) Fetch() ([]abstract.ChangeItem, error) {
 		if err == nil {
 			buffer = append(buffer, m)
 		}
-		if xerrors.Is(err, reader.ErrNoInput) || len(buffer) > 2 {
+		if xerrors.Is(err, kafka_reader.ErrNoInput) || len(buffer) > 2 {
 			var data []abstract.ChangeItem
 			for _, item := range buffer {
 				data = append(data, p.makeRawChangeItem(item))
@@ -398,7 +398,7 @@ func recordsFromQueueMessages(messages []sequencer.QueueMessage) []kgo.Record {
 }
 
 // newBaseSource creates partially initialized Source without reader
-func newBaseSource(cfg *KafkaSource, inflightThrottler throttler.Throttler, logger log.Logger, registry metrics.Registry) (*Source, error) {
+func newBaseSource(cfg *KafkaSource, inflightThrottler throttler.Throttler, logger log.Logger, registry core_metrics.Registry) (*Source, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	if err := cfg.WithConnectionID(); err != nil {
 		cancel()
@@ -444,7 +444,7 @@ func newBaseSource(cfg *KafkaSource, inflightThrottler throttler.Throttler, logg
 	return source, nil
 }
 
-func NewSource(transferID string, cfg *KafkaSource, logger log.Logger, registry metrics.Registry) (*Source, error) {
+func NewSource(transferID string, cfg *KafkaSource, logger log.Logger, registry core_metrics.Registry) (*Source, error) {
 	opts, err := kafkaClientCommonOptions(cfg)
 	if err != nil {
 		return nil, xerrors.Errorf("unable to build options: %w", err)
@@ -478,7 +478,7 @@ func NewSource(transferID string, cfg *KafkaSource, logger log.Logger, registry 
 		opts = append(opts, kgo.ConsumeResetOffset(kgo.NewOffset().AtEnd()))
 	}
 
-	r, err := reader.NewGroupReader(transferID, topics, opts)
+	r, err := kafka_reader.NewGroupReader(transferID, topics, opts)
 	if err != nil {
 		return nil, xerrors.Errorf("unable to create reader for group: %w", err)
 	}

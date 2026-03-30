@@ -2,12 +2,12 @@ package grpc
 
 import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
-	"google.golang.org/grpc/status"
+	grpc_status "google.golang.org/grpc/status"
 )
 
 type GRPCStatusError interface {
 	error
-	GRPCStatus() *status.Status
+	GRPCStatus() *grpc_status.Status
 }
 
 func UnwrapStatusError(err error) (bool, GRPCStatusError) {

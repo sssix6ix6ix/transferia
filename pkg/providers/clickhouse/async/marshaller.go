@@ -10,8 +10,8 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/errors/coded"
-	"github.com/transferia/transferia/pkg/errors/codes"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/async/model/db"
+	error_codes "github.com/transferia/transferia/pkg/errors/codes"
+	ch_db_model "github.com/transferia/transferia/pkg/providers/clickhouse/async/model/db"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/columntypes"
 )
 
@@ -41,7 +41,7 @@ func colMarshallingError(code coded.Code, name string, val any, text string) *ma
 func genericMarshallingError(err error) *marshallingError {
 	return &marshallingError{
 		err:  err,
-		code: codes.DataValueError,
+		code: error_codes.DataValueError,
 	}
 }
 
@@ -96,11 +96,11 @@ func marshalChangeItem(row abstract.ChangeItem, schema map[string]abstract.ColSc
 				val = decimal.NewFromFloat(v)
 			default:
 				//nolint:descriptiveerrors
-				return nil, colMarshallingError(codes.UnsupportedConversion, col, v, "unknown type for decimal column")
+				return nil, colMarshallingError(error_codes.UnsupportedConversion, col, v, "unknown type for decimal column")
 			}
 			if err != nil {
 				//nolint:descriptiveerrors
-				return nil, colMarshallingError(codes.DataValueError, col, rowVal, fmt.Sprintf("error converting to decimal: %s", err))
+				return nil, colMarshallingError(error_codes.DataValueError, col, rowVal, fmt.Sprintf("error converting to decimal: %s", err))
 			}
 			vals[i] = val
 		} else {
@@ -127,7 +127,7 @@ func marshalChangeItem(row abstract.ChangeItem, schema map[string]abstract.ColSc
 	return vals, err
 }
 
-func NewCHV2Marshaller(schema []abstract.ColSchema, cols columntypes.TypeMapping) db.ChangeItemMarshaller {
+func NewCHV2Marshaller(schema []abstract.ColSchema, cols columntypes.TypeMapping) ch_db_model.ChangeItemMarshaller {
 	sch := make(map[string]abstract.ColSchema)
 	for _, col := range schema {
 		sch[col.ColumnName] = col

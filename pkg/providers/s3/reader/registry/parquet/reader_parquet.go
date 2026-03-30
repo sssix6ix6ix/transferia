@@ -7,35 +7,35 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
+	aws_session "github.com/aws/aws-sdk-go/aws/session"
 	aws_s3 "github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
 	"github.com/parquet-go/parquet-go"
 	"github.com/parquet-go/parquet-go/deprecated"
-	"github.com/parquet-go/parquet-go/format"
+	parquet_format "github.com/parquet-go/parquet-go/format"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	yslices "github.com/transferia/transferia/library/go/slices"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/changeitem"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/s3"
-	chunk_pusher "github.com/transferia/transferia/pkg/providers/s3/pusher"
-	abstract_reader "github.com/transferia/transferia/pkg/providers/s3/reader"
+	s3_model "github.com/transferia/transferia/pkg/providers/s3/model"
+	s3_pusher "github.com/transferia/transferia/pkg/providers/s3/pusher"
+	s3_reader "github.com/transferia/transferia/pkg/providers/s3/reader"
 	"github.com/transferia/transferia/pkg/providers/s3/reader/s3raw"
 	"github.com/transferia/transferia/pkg/providers/s3/s3util"
 	"github.com/transferia/transferia/pkg/stats"
 	"github.com/transferia/transferia/pkg/util"
 	"go.ytsaurus.tech/library/go/core/log"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 var (
-	_ abstract_reader.Reader             = (*ReaderParquet)(nil)
-	_ abstract_reader.RowsCountEstimator = (*ReaderParquet)(nil)
+	_ s3_reader.Reader             = (*ReaderParquet)(nil)
+	_ s3_reader.RowsCountEstimator = (*ReaderParquet)(nil)
 )
 
 func init() {
-	abstract_reader.RegisterReader(model.ParsingFormatPARQUET, NewParquet)
+	s3_reader.RegisterReader(model.ParsingFormatPARQUET, NewParquet)
 }
 
 type ReaderParquet struct {
@@ -77,12 +77,12 @@ func (r *ReaderParquet) EstimateRowsCountAllObjects(ctx context.Context) (uint64
 		res += uint64(meta.NumRows())
 		_ = meta.Close()
 		// once we reach limit of files to estimate - stop and approximate
-		if i > abstract_reader.EstimateFilesLimit {
+		if i > s3_reader.EstimateFilesLimit {
 			break
 		}
 	}
-	if len(files) > abstract_reader.EstimateFilesLimit {
-		multiplier := float64(len(files)) / float64(abstract_reader.EstimateFilesLimit)
+	if len(files) > s3_reader.EstimateFilesLimit {
+		multiplier := float64(len(files)) / float64(s3_reader.EstimateFilesLimit)
 		return uint64(float64(res) * multiplier), nil
 	}
 	return res, nil
@@ -105,8 +105,8 @@ func (r *ReaderParquet) ResolveSchema(ctx context.Context) (*abstract.TableSchem
 	return r.resolveSchema(ctx, *files[0].Key)
 }
 
-func (r *ReaderParquet) ObjectsFilter() abstract_reader.ObjectsFilter {
-	return abstract_reader.IsNotEmpty
+func (r *ReaderParquet) ObjectsFilter() s3_reader.ObjectsFilter {
+	return s3_reader.IsNotEmpty
 }
 
 func (r *ReaderParquet) resolveSchema(ctx context.Context, filePath string) (*abstract.TableSchema, error) {
@@ -120,23 +120,23 @@ func (r *ReaderParquet) resolveSchema(ctx context.Context, filePath string) (*ab
 		if el.Type() == nil {
 			continue
 		}
-		typ := schema.TypeAny
+		typ := ytschema.TypeAny
 		if el.Type().PhysicalType() != nil {
 			switch *el.Type().PhysicalType() {
-			case format.Boolean:
-				typ = schema.TypeBoolean
-			case format.Int32:
-				typ = schema.TypeInt32
-			case format.Int64:
-				typ = schema.TypeInt64
-			case format.Float:
-				typ = schema.TypeFloat32
-			case format.Double:
-				typ = schema.TypeFloat64
-			case format.Int96:
-				typ = schema.TypeString
-			case format.ByteArray, format.FixedLenByteArray:
-				typ = schema.TypeBytes
+			case parquet_format.Boolean:
+				typ = ytschema.TypeBoolean
+			case parquet_format.Int32:
+				typ = ytschema.TypeInt32
+			case parquet_format.Int64:
+				typ = ytschema.TypeInt64
+			case parquet_format.Float:
+				typ = ytschema.TypeFloat32
+			case parquet_format.Double:
+				typ = ytschema.TypeFloat64
+			case parquet_format.Int96:
+				typ = ytschema.TypeString
+			case parquet_format.ByteArray, parquet_format.FixedLenByteArray:
+				typ = ytschema.TypeBytes
 			default:
 			}
 		}
@@ -144,37 +144,37 @@ func (r *ReaderParquet) resolveSchema(ctx context.Context, filePath string) (*ab
 			lt := el.Type().LogicalType()
 			switch {
 			case lt.Date != nil:
-				typ = schema.TypeDate
+				typ = ytschema.TypeDate
 			case lt.UTF8 != nil:
-				typ = schema.TypeString
+				typ = ytschema.TypeString
 			case lt.Integer != nil:
 				if lt.Integer.IsSigned {
-					typ = schema.TypeInt64
+					typ = ytschema.TypeInt64
 				} else {
-					typ = schema.TypeUint64
+					typ = ytschema.TypeUint64
 				}
 			case lt.Decimal != nil:
 				if lt.Decimal.Precision > 8 {
-					typ = schema.TypeString
+					typ = ytschema.TypeString
 				} else {
-					typ = schema.TypeFloat64
+					typ = ytschema.TypeFloat64
 				}
 			case lt.Timestamp != nil:
-				typ = schema.TypeTimestamp
+				typ = ytschema.TypeTimestamp
 			case lt.UUID != nil:
-				typ = schema.TypeString
+				typ = ytschema.TypeString
 			case lt.Enum != nil:
-				typ = schema.TypeString
+				typ = ytschema.TypeString
 			}
 		}
 		if el.Type().ConvertedType() != nil {
 			switch *el.Type().ConvertedType() {
 			case deprecated.UTF8:
-				typ = schema.TypeString
+				typ = ytschema.TypeString
 			case deprecated.Date:
-				typ = schema.TypeDate
+				typ = ytschema.TypeDate
 			case deprecated.Decimal:
-				typ = schema.TypeFloat64
+				typ = ytschema.TypeFloat64
 			}
 		}
 		col := abstract.NewColSchema(el.Name(), typ, false)
@@ -207,7 +207,7 @@ func (r *ReaderParquet) openReader(ctx context.Context, filePath string) (*parqu
 	return parquet.NewReader(sr), nil
 }
 
-func (r *ReaderParquet) Read(ctx context.Context, filePath string, pusher chunk_pusher.Pusher) error {
+func (r *ReaderParquet) Read(ctx context.Context, filePath string, pusher s3_pusher.Pusher) error {
 	pr, err := r.openReader(ctx, filePath)
 	if err != nil {
 		return xerrors.Errorf("unable to open file: %w", err)
@@ -241,14 +241,14 @@ func (r *ReaderParquet) Read(ctx context.Context, filePath string, pusher chunk_
 		currentSize += int64(ci.Size.Values)
 		buff = append(buff, ci)
 		if len(buff) > r.batchSize {
-			if err := abstract_reader.FlushChunk(ctx, filePath, i, currentSize, buff, pusher); err != nil {
+			if err := s3_reader.FlushChunk(ctx, filePath, i, currentSize, buff, pusher); err != nil {
 				return xerrors.Errorf("unable to push parquet batch: %w", err)
 			}
 			currentSize = 0
 			buff = []abstract.ChangeItem{}
 		}
 	}
-	if err := abstract_reader.FlushChunk(ctx, filePath, rowCount, currentSize, buff, pusher); err != nil {
+	if err := s3_reader.FlushChunk(ctx, filePath, rowCount, currentSize, buff, pusher); err != nil {
 		return xerrors.Errorf("unable to push parquet last batch: %w", err)
 	}
 
@@ -260,14 +260,14 @@ func (r *ReaderParquet) constructCI(parquetSchema map[string]parquet.Field, row 
 ) (abstract.ChangeItem, error) {
 	vals := make([]interface{}, len(r.tableSchema.Columns()))
 	for i, col := range r.tableSchema.Columns() {
-		if abstract_reader.SystemColumnNames[col.ColumnName] {
+		if s3_reader.SystemColumnNames[col.ColumnName] {
 			if r.hideSystemCols {
 				continue
 			}
 			switch col.ColumnName {
-			case abstract_reader.FileNameSystemCol:
+			case s3_reader.FileNameSystemCol:
 				vals[i] = fname
-			case abstract_reader.RowIndexSystemCol:
+			case s3_reader.RowIndexSystemCol:
 				vals[i] = idx
 			default:
 				continue
@@ -338,12 +338,12 @@ func (r *ReaderParquet) parseParquetField(field parquet.Field, val interface{}, 
 	return abstract.Restore(col, val)
 }
 
-func (r *ReaderParquet) ParsePassthrough(chunk chunk_pusher.Chunk) []abstract.ChangeItem {
+func (r *ReaderParquet) ParsePassthrough(chunk s3_pusher.Chunk) []abstract.ChangeItem {
 	// the most complex and useful method in the world
 	return chunk.Items
 }
 
-func NewParquet(src *s3.S3Source, lgr log.Logger, sess *session.Session, metrics *stats.SourceStats) (abstract_reader.Reader, error) {
+func NewParquet(src *s3_model.S3Source, lgr log.Logger, sess *aws_session.Session, metrics *stats.SourceStats) (s3_reader.Reader, error) {
 	if src == nil {
 		return nil, xerrors.New("uninitialized settings for parquet reader")
 	}
@@ -377,7 +377,7 @@ func NewParquet(src *s3.S3Source, lgr log.Logger, sess *session.Session, metrics
 	if !reader.hideSystemCols {
 		cols := reader.tableSchema.Columns()
 		userDefinedSchemaHasPkey := reader.tableSchema.Columns().HasPrimaryKey()
-		reader.tableSchema = abstract_reader.AppendSystemColsTableSchema(cols, !userDefinedSchemaHasPkey)
+		reader.tableSchema = s3_reader.AppendSystemColsTableSchema(cols, !userDefinedSchemaHasPkey)
 	}
 
 	reader.colNames = yslices.Map(reader.tableSchema.Columns(), func(t abstract.ColSchema) string { return t.ColumnName })

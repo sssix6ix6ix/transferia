@@ -6,13 +6,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ClickHouse/clickhouse-go/v2"
+	clickhouse_go "github.com/ClickHouse/clickhouse-go/v2"
 	"github.com/blang/semver/v4"
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	chConn "github.com/transferia/transferia/pkg/connection/clickhouse"
+	conn_clickhouse "github.com/transferia/transferia/pkg/connection/clickhouse"
 	"github.com/transferia/transferia/pkg/middlewares/synchronizer/bufferer"
 	"go.uber.org/zap/zapcore"
 )
@@ -118,8 +118,8 @@ func (p InsertParams) AsQueryPart() string {
 	return ""
 }
 
-func (p InsertParams) ToQueryOption(version semver.Version) clickhouse.QueryOption {
-	settings := make(clickhouse.Settings)
+func (p InsertParams) ToQueryOption(version semver.Version) clickhouse_go.QueryOption {
+	settings := make(clickhouse_go.Settings)
 	if p.MaterializedViewsIgnoreErrors {
 		settings["materialized_views_ignore_errors"] = "1"
 	}
@@ -127,7 +127,7 @@ func (p InsertParams) ToQueryOption(version semver.Version) clickhouse.QueryOpti
 	if version.GTE(InsertNullAsDefaultExistedVersion) {
 		settings["insert_null_as_default"] = "1"
 	}
-	return clickhouse.WithSettings(settings)
+	return clickhouse_go.WithSettings(settings)
 }
 
 func (d *ChDestination) MarshalLogObject(enc zapcore.ObjectEncoder) error {
@@ -261,9 +261,9 @@ func (d *ChDestination) FillDependentFields(transfer *model.Transfer) {
 // ChDestinationWrapper implements ChSinkParams
 type ChDestinationWrapper struct {
 	Model            *ChDestination
-	host             *chConn.Host // host is here, bcs it needed only in SinkServer/SinkTable
+	host             *conn_clickhouse.Host // host is here, bcs it needed only in SinkServer/SinkTable
 	connectionParams connectionParams
-	hosts            []*chConn.Host
+	hosts            []*conn_clickhouse.Host
 	useJSON          bool // useJSON is calculated in runtime, not by the model
 }
 
@@ -275,7 +275,7 @@ func (d ChDestinationWrapper) InsertSettings() InsertParams {
 func newChDestinationWrapper(model ChDestination) *ChDestinationWrapper {
 	return &ChDestinationWrapper{
 		Model: &model,
-		host: &chConn.Host{
+		host: &conn_clickhouse.Host{
 			Name:       "",
 			HTTPPort:   model.HTTPPort,
 			NativePort: model.NativePort,
@@ -285,13 +285,13 @@ func newChDestinationWrapper(model ChDestination) *ChDestinationWrapper {
 			User:           model.User,
 			Password:       string(model.Password),
 			Database:       model.Database,
-			Hosts:          make([]*chConn.Host, 0),
-			Shards:         make(map[string][]*chConn.Host),
+			Hosts:          make([]*conn_clickhouse.Host, 0),
+			Shards:         make(map[string][]*conn_clickhouse.Host),
 			Secure:         model.SSLEnabled || model.MdbClusterID != "",
 			PemFileContent: model.PemFileContent,
 			ClusterID:      model.MdbClusterID,
 		},
-		hosts:   make([]*chConn.Host, 0),
+		hosts:   make([]*conn_clickhouse.Host, 0),
 		useJSON: false,
 	}
 }
@@ -342,7 +342,7 @@ func (d ChDestinationWrapper) Partition() string {
 	return d.Model.Partition
 }
 
-func (d ChDestinationWrapper) Host() *chConn.Host {
+func (d ChDestinationWrapper) Host() *conn_clickhouse.Host {
 	return d.host
 }
 
@@ -382,7 +382,7 @@ func (d ChDestinationWrapper) SystemColumnsFirst() bool {
 	return d.Model.SystemColumnsFirst
 }
 
-func (d ChDestinationWrapper) AltHosts() []*chConn.Host {
+func (d ChDestinationWrapper) AltHosts() []*conn_clickhouse.Host {
 	return d.connectionParams.Hosts
 }
 
@@ -418,7 +418,7 @@ func (d ChDestinationWrapper) Rotation() *model.RotatorConfig {
 	return d.Model.Rotation
 }
 
-func (d ChDestinationWrapper) Shards() map[string][]*chConn.Host {
+func (d ChDestinationWrapper) Shards() map[string][]*conn_clickhouse.Host {
 	return d.connectionParams.Shards
 }
 
@@ -434,7 +434,7 @@ func (d ChDestinationWrapper) PemFileContent() string {
 	return d.connectionParams.PemFileContent
 }
 
-func (d ChDestinationWrapper) MakeChildServerParams(host *chConn.Host) ChSinkServerParams {
+func (d ChDestinationWrapper) MakeChildServerParams(host *conn_clickhouse.Host) ChSinkServerParams {
 	newChDestination := *d.Model
 	newChDestinationWrapper := ChDestinationWrapper{
 		Model:            &newChDestination,
@@ -446,11 +446,11 @@ func (d ChDestinationWrapper) MakeChildServerParams(host *chConn.Host) ChSinkSer
 	return newChDestinationWrapper
 }
 
-func (d ChDestinationWrapper) MakeChildShardParams(altHosts []*chConn.Host) ChSinkShardParams {
+func (d ChDestinationWrapper) MakeChildShardParams(altHosts []*conn_clickhouse.Host) ChSinkShardParams {
 	newChDestination := *d.Model
 	newChDestinationWrapper := ChDestinationWrapper{
 		Model:            &newChDestination,
-		host:             new(chConn.Host),
+		host:             new(conn_clickhouse.Host),
 		connectionParams: d.connectionParams,
 		hosts:            altHosts,
 		useJSON:          d.useJSON,
@@ -462,8 +462,8 @@ func (d ChDestinationWrapper) MakeChildShardParams(altHosts []*chConn.Host) ChSi
 
 // SetShards
 // we can set model variables, bcs we make copy of ChDestination in NewChDestinationV1
-func (d ChDestinationWrapper) SetShards(shards map[string][]*chConn.Host) {
-	d.connectionParams.Shards = make(map[string][]*chConn.Host)
+func (d ChDestinationWrapper) SetShards(shards map[string][]*conn_clickhouse.Host) {
+	d.connectionParams.Shards = make(map[string][]*conn_clickhouse.Host)
 	d.connectionParams.SetShards(shards)
 }
 

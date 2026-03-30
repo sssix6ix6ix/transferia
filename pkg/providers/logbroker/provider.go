@@ -5,11 +5,11 @@ import (
 	"os"
 	"strings"
 
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/metrics/solomon"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	cpclient "github.com/transferia/transferia/pkg/abstract/coordinator"
+	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/middlewares"
 	"github.com/transferia/transferia/pkg/providers"
@@ -53,8 +53,8 @@ var (
 
 type Provider struct {
 	logger   log.Logger
-	registry metrics.Registry
-	cp       cpclient.Coordinator
+	registry core_metrics.Registry
+	cp       coordinator.Coordinator
 	transfer *model.Transfer
 	provider abstract.ProviderType
 }
@@ -152,8 +152,8 @@ func (p *Provider) Verify(ctx context.Context) error {
 	return nil
 }
 
-func New(provider abstract.ProviderType) func(lgr log.Logger, registry metrics.Registry, cp cpclient.Coordinator, transfer *model.Transfer, _ *model.TransferOperation) providers.Provider {
-	return func(lgr log.Logger, registry metrics.Registry, cp cpclient.Coordinator, transfer *model.Transfer, _ *model.TransferOperation) providers.Provider {
+func New(provider abstract.ProviderType) func(lgr log.Logger, registry core_metrics.Registry, cp coordinator.Coordinator, transfer *model.Transfer, _ *model.TransferOperation) providers.Provider {
+	return func(lgr log.Logger, registry core_metrics.Registry, cp coordinator.Coordinator, transfer *model.Transfer, _ *model.TransferOperation) providers.Provider {
 		return &Provider{
 			logger:   lgr,
 			registry: registry,

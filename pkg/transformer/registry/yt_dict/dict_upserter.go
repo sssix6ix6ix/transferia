@@ -5,27 +5,27 @@ import (
 	"time"
 
 	"github.com/transferia/transferia/library/go/core/xerrors"
-	"github.com/transferia/transferia/pkg/providers/yt/provider/types"
-	"go.ytsaurus.tech/yt/go/schema"
+	yt_provider_types "github.com/transferia/transferia/pkg/providers/yt/provider/types"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
-func upsertToDict(dict, key, val any, keyComplexType schema.ComplexType) (any, error) {
+func upsertToDict(dict, key, val any, keyComplexType ytschema.ComplexType) (any, error) {
 	switch keySchema := keyComplexType.(type) {
-	case schema.Type:
-		key, err := types.CastPrimitiveToOldValue(key, keySchema)
+	case ytschema.Type:
+		key, err := yt_provider_types.CastPrimitiveToOldValue(key, keySchema)
 		if err != nil {
 			return nil, xerrors.Errorf("unable to cast primitive key of type '%T': %w", key, err)
 		}
 		return upsertPrimitiveToDict(dict, key, val, keySchema)
 
-	case schema.Tagged:
+	case ytschema.Tagged:
 		res, err := upsertToDict(dict, key, val, keySchema.Item)
 		if err != nil {
 			return nil, xerrors.Errorf("unable to process key schema.Tagged('%s'): %w", keySchema.Tag, err)
 		}
 		return res, nil
 
-	case schema.Decimal:
+	case ytschema.Decimal:
 		return nil, xerrors.New("for now, Decimal is not supported by Data Transfer")
 
 	default: // schema.Optional, schema.List, schema.Struct, schema.Tuple, schema.Dict, schema.Variant:
@@ -50,35 +50,35 @@ func upsertPrimitive[T comparable](dict, key, val any) (map[T]any, error) {
 }
 
 //nolint:descriptiveerrors
-func upsertPrimitiveToDict(dict, key, val any, keySchema schema.Type) (any, error) {
+func upsertPrimitiveToDict(dict, key, val any, keySchema ytschema.Type) (any, error) {
 	switch keySchema {
-	case schema.TypeInt64:
+	case ytschema.TypeInt64:
 		return upsertPrimitive[int64](dict, key, val)
-	case schema.TypeInt32:
+	case ytschema.TypeInt32:
 		return upsertPrimitive[int32](dict, key, val)
-	case schema.TypeInt16:
+	case ytschema.TypeInt16:
 		return upsertPrimitive[int16](dict, key, val)
-	case schema.TypeInt8:
+	case ytschema.TypeInt8:
 		return upsertPrimitive[int8](dict, key, val)
-	case schema.TypeUint64:
+	case ytschema.TypeUint64:
 		return upsertPrimitive[uint64](dict, key, val)
-	case schema.TypeUint32:
+	case ytschema.TypeUint32:
 		return upsertPrimitive[uint32](dict, key, val)
-	case schema.TypeUint16:
+	case ytschema.TypeUint16:
 		return upsertPrimitive[uint16](dict, key, val)
-	case schema.TypeUint8:
+	case ytschema.TypeUint8:
 		return upsertPrimitive[uint8](dict, key, val)
-	case schema.TypeFloat32:
+	case ytschema.TypeFloat32:
 		return upsertPrimitive[float32](dict, key, val)
-	case schema.TypeFloat64:
+	case ytschema.TypeFloat64:
 		return upsertPrimitive[json.Number](dict, key, val)
-	case schema.TypeString:
+	case ytschema.TypeString:
 		return upsertPrimitive[string](dict, key, val)
-	case schema.TypeBoolean:
+	case ytschema.TypeBoolean:
 		return upsertPrimitive[bool](dict, key, val)
-	case schema.TypeDate, schema.TypeDatetime, schema.TypeTimestamp:
+	case ytschema.TypeDate, ytschema.TypeDatetime, ytschema.TypeTimestamp:
 		return upsertPrimitive[time.Time](dict, key, val)
-	case schema.TypeInterval:
+	case ytschema.TypeInterval:
 		return upsertPrimitive[time.Duration](dict, key, val)
 	default: // schema.TypeAny, schema.TypeBytes:
 		return nil, xerrors.Errorf("'%s' is not allowed as dict key", keySchema.String())

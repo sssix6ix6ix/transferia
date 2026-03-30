@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
 	"github.com/transferia/transferia/tests/helpers"
 	mocksink "github.com/transferia/transferia/tests/helpers/mock_sink"
@@ -70,7 +70,7 @@ func TestConnLimitPg2MockSnapOnly(t *testing.T) {
 		func(params testCaseParams) {
 			t.Run(params.testCaseName, func(t *testing.T) {
 				tableRowCounts := make(map[string]int)
-				source := postgres.PgSource{
+				source := provider_postgres.PgSource{
 					Hosts:    []string{"localhost"},
 					User:     params.user,
 					Password: "aA_12345",

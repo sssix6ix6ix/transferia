@@ -11,16 +11,16 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/tests/helpers"
-	yt_helpers "github.com/transferia/transferia/tests/helpers/yt"
+	helpers_yt "github.com/transferia/transferia/tests/helpers/yt"
 	"go.ytsaurus.tech/yt/go/ypath"
-	yt_main "go.ytsaurus.tech/yt/go/yt"
+	"go.ytsaurus.tech/yt/go/yt"
 	"go.ytsaurus.tech/yt/go/yttest"
 )
 
 var (
-	Source = postgres.PgSource{
+	Source = provider_postgres.PgSource{
 		ClusterID: os.Getenv("PG_CLUSTER_ID"),
 		Hosts:     []string{"localhost"},
 		User:      os.Getenv("PG_LOCAL_USER"),
@@ -30,7 +30,7 @@ var (
 		DBTables:  []string{"public.__test"},
 		SlotID:    "test_slot_id",
 	}
-	Target = yt_helpers.RecipeYtTarget("//home/cdc/test/pg2yt_e2e_pkey_jsonb")
+	Target = helpers_yt.RecipeYtTarget("//home/cdc/test/pg2yt_e2e_pkey_jsonb")
 )
 
 func init() {
@@ -59,9 +59,9 @@ func TestGroup(t *testing.T) {
 	ytEnv, cancel := yttest.NewEnv(t)
 	defer cancel()
 
-	_, err = ytEnv.YT.CreateNode(ctx, ypath.Path("//home/cdc/test/pg2yt_e2e_pkey_jsonb"), yt_main.NodeMap, &yt_main.CreateNodeOptions{Recursive: true})
+	_, err = ytEnv.YT.CreateNode(ctx, ypath.Path("//home/cdc/test/pg2yt_e2e_pkey_jsonb"), yt.NodeMap, &yt.CreateNodeOptions{Recursive: true})
 	defer func() {
-		err := ytEnv.YT.RemoveNode(ctx, ypath.Path("//home/cdc/test/pg2yt_e2e_pkey_jsonb"), &yt_main.RemoveNodeOptions{Recursive: true})
+		err := ytEnv.YT.RemoveNode(ctx, ypath.Path("//home/cdc/test/pg2yt_e2e_pkey_jsonb"), &yt.RemoveNodeOptions{Recursive: true})
 		require.NoError(t, err)
 	}()
 	require.NoError(t, err)
@@ -77,7 +77,7 @@ func getTableName(t abstract.TableDescription) string {
 	return t.Schema + "_" + t.Name
 }
 
-func closeReader(reader yt_main.TableReader) {
+func closeReader(reader yt.TableReader) {
 	err := reader.Close()
 	if err != nil {
 		logger.Log.Warn("Could not close table reader")
@@ -88,7 +88,7 @@ func checkContent(t *testing.T, tablePath ypath.Path) bool {
 	ytEnv, cancel := yttest.NewEnv(t)
 	defer cancel()
 
-	changesReader, err := ytEnv.YT.SelectRows(context.Background(), fmt.Sprintf("* FROM [%s]", tablePath), &yt_main.SelectRowsOptions{})
+	changesReader, err := ytEnv.YT.SelectRows(context.Background(), fmt.Sprintf("* FROM [%s]", tablePath), &yt.SelectRowsOptions{})
 	require.NoError(t, err)
 	defer closeReader(changesReader)
 
@@ -118,10 +118,10 @@ func checkContent(t *testing.T, tablePath ypath.Path) bool {
 func Load(t *testing.T) {
 	transfer := helpers.MakeTransfer(helpers.TransferID, &Source, Target, abstract.TransferTypeSnapshotAndIncrement)
 
-	srcConnConfig, err := postgres.MakeConnConfigFromSrc(logger.Log, &Source)
+	srcConnConfig, err := provider_postgres.MakeConnConfigFromSrc(logger.Log, &Source)
 	require.NoError(t, err)
 	srcConnConfig.PreferSimpleProtocol = true
-	srcConn, err := postgres.NewPgConnPool(srcConnConfig, nil)
+	srcConn, err := provider_postgres.NewPgConnPool(srcConnConfig, nil)
 	require.NoError(t, err)
 
 	worker := helpers.Activate(t, transfer)

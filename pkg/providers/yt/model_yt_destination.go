@@ -7,15 +7,15 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	dp_model "github.com/transferia/transferia/pkg/abstract/model"
+	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/config/env"
 	"github.com/transferia/transferia/pkg/middlewares/synchronizer/bufferer"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/model"
+	clickhouse_model "github.com/transferia/transferia/pkg/providers/clickhouse/model"
 	"github.com/transferia/transferia/pkg/providers/yt/yt_client"
 	"go.uber.org/zap/zapcore"
 	"go.ytsaurus.tech/yt/go/yson"
 	"go.ytsaurus.tech/yt/go/yt"
-	"golang.org/x/exp/maps"
+	xmaps "golang.org/x/exp/maps"
 )
 
 const (
@@ -25,7 +25,7 @@ const (
 )
 
 type YtDestinationModel interface {
-	dp_model.TmpPolicyProvider
+	model.TmpPolicyProvider
 	yt_client.ConnParams
 	bufferer.Bufferable
 
@@ -47,7 +47,7 @@ type YtDestinationModel interface {
 	Pool() string
 	Atomicity() yt.Atomicity
 	DiscardBigValues() bool
-	Rotation() *dp_model.RotatorConfig
+	Rotation() *model.RotatorConfig
 	VersionColumn() string
 	Ordered() bool
 	UseStaticTableOnSnapshot() bool
@@ -59,7 +59,7 @@ type YtDestinationModel interface {
 	ChunkSize() uint32
 	BufferTriggingSize() uint64
 	BufferTriggingInterval() time.Duration
-	CleanupMode() dp_model.CleanupType
+	CleanupMode() model.CleanupType
 	WithDefaults()
 	IsDestination()
 	GetProviderType() abstract.ProviderType
@@ -106,12 +106,12 @@ type YtDestination struct {
 	Atomicity                 yt.Atomicity `log:"true"` // Atomicity for the dynamic tables being created in YT. See https://yt.yandex-team.ru/docs/description/dynamic_tables/sorted_dynamic_tables#atomarnost
 
 	DiscardBigValues         bool                      `log:"true"`
-	Rotation                 *dp_model.RotatorConfig   `log:"true"`
+	Rotation                 *model.RotatorConfig      `log:"true"`
 	VersionColumn            string                    `log:"true"`
 	Ordered                  bool                      `log:"true"`
 	UseStaticTableOnSnapshot bool                      `log:"true"` // optional.Optional[bool] breaks compatibility
 	AltNames                 map[string]string         `log:"true"`
-	Cleanup                  dp_model.CleanupType      `log:"true"`
+	Cleanup                  model.CleanupType         `log:"true"`
 	Spec                     YTSpec                    `log:"true"`
 	TolerateKeyChanges       bool                      `log:"true"`
 	InitialTabletCount       uint32                    `log:"true"`
@@ -146,8 +146,8 @@ type YtDestinationWrapper struct {
 }
 
 var (
-	_ dp_model.Destination          = (*YtDestinationWrapper)(nil)
-	_ dp_model.AlterableDestination = (*YtDestinationWrapper)(nil)
+	_ model.Destination          = (*YtDestinationWrapper)(nil)
+	_ model.AlterableDestination = (*YtDestinationWrapper)(nil)
 )
 
 func (d *YtDestinationWrapper) MarshalLogObject(enc zapcore.ObjectEncoder) error {
@@ -287,7 +287,7 @@ func (d *YtDestinationWrapper) DiscardBigValues() bool {
 	return d.Model.DiscardBigValues
 }
 
-func (d *YtDestinationWrapper) Rotation() *dp_model.RotatorConfig {
+func (d *YtDestinationWrapper) Rotation() *model.RotatorConfig {
 	return d.Model.Rotation
 }
 
@@ -361,7 +361,7 @@ func (d *YtDestinationWrapper) BufferTriggingInterval() time.Duration {
 	return d.Model.BufferTriggingInterval
 }
 
-func (d *YtDestinationWrapper) CleanupMode() dp_model.CleanupType {
+func (d *YtDestinationWrapper) CleanupMode() model.CleanupType {
 	return d.Model.Cleanup
 }
 
@@ -379,8 +379,8 @@ func (d *YtDestinationWrapper) CustomAttributes() map[string]any {
 
 func (d *YtDestinationWrapper) MergeAttributes(tableSettings map[string]any) map[string]any {
 	res := make(map[string]any)
-	maps.Copy(res, d.CustomAttributes())
-	maps.Copy(res, tableSettings)
+	xmaps.Copy(res, d.CustomAttributes())
+	xmaps.Copy(res, tableSettings)
 	return res
 }
 
@@ -398,7 +398,7 @@ func (d *YtDestinationWrapper) WithDefaults() {
 		d.Model.Pool = poolDefault
 	}
 	if d.Model.Cleanup == "" {
-		d.Model.Cleanup = dp_model.Drop
+		d.Model.Cleanup = model.Drop
 	}
 	if d.Model.WriteTimeoutSec == 0 {
 		d.Model.WriteTimeoutSec = 60
@@ -410,7 +410,7 @@ func (d *YtDestinationWrapper) WithDefaults() {
 		d.Model.StaticChunkSize = staticDefaultChunkSize
 	}
 	if d.Model.BufferTriggingSize == 0 {
-		d.Model.BufferTriggingSize = model.BufferTriggingSizeDefault
+		d.Model.BufferTriggingSize = clickhouse_model.BufferTriggingSizeDefault
 	}
 	if d.Model.Spec.config == nil {
 		d.Model.Spec.config = make(map[string]interface{})

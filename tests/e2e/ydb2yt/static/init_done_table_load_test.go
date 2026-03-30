@@ -10,17 +10,17 @@ import (
 	"github.com/transferia/transferia/library/go/core/metrics/solomon"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/ydb"
-	yt_provider "github.com/transferia/transferia/pkg/providers/yt"
+	provider_ydb "github.com/transferia/transferia/pkg/providers/ydb"
+	provider_yt "github.com/transferia/transferia/pkg/providers/yt"
 	"github.com/transferia/transferia/pkg/providers/yt/yt_client"
 	"github.com/transferia/transferia/tests/helpers"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 	"go.ytsaurus.tech/yt/go/ypath"
 	"go.ytsaurus.tech/yt/go/yt"
 )
 
 func TestGroup(t *testing.T) {
-	src := &ydb.YdbSource{
+	src := &provider_ydb.YdbSource{
 		Token:              model.SecretString(os.Getenv("YDB_TOKEN")),
 		Database:           helpers.GetEnvOfFail(t, "YDB_DATABASE"),
 		Instance:           helpers.GetEnvOfFail(t, "YDB_ENDPOINT"),
@@ -30,7 +30,7 @@ func TestGroup(t *testing.T) {
 		Underlay:           false,
 		ServiceAccountID:   "",
 	}
-	dst := yt_provider.NewYtDestinationV1(yt_provider.YtDestination{
+	dst := provider_yt.NewYtDestinationV1(provider_yt.YtDestination{
 		Path:          "//home/cdc/test/pg2yt_e2e_static_snapshot",
 		Cluster:       os.Getenv("YT_PROXY"),
 		CellBundle:    "default",
@@ -52,17 +52,17 @@ func TestGroup(t *testing.T) {
 	helpers.InitSrcDst(helpers.TransferID, src, dst, abstract.TransferTypeSnapshotOnly)
 
 	// init data
-	Target := &ydb.YdbDestination{
+	Target := &provider_ydb.YdbDestination{
 		Database: src.Database,
 		Token:    src.Token,
 		Instance: src.Instance,
 	}
 	Target.WithDefaults()
-	sinker, err := ydb.NewSinker(logger.Log, Target, solomon.NewRegistry(solomon.NewRegistryOpts()))
+	sinker, err := provider_ydb.NewSinker(logger.Log, Target, solomon.NewRegistry(solomon.NewRegistryOpts()))
 	require.NoError(t, err)
 	testSchema := abstract.NewTableSchema([]abstract.ColSchema{
-		{ColumnName: "id", DataType: string(schema.TypeInt32), PrimaryKey: true},
-		{ColumnName: "val", DataType: string(schema.TypeAny), OriginalType: "ydb:Yson"},
+		{ColumnName: "id", DataType: string(ytschema.TypeInt32), PrimaryKey: true},
+		{ColumnName: "val", DataType: string(ytschema.TypeAny), OriginalType: "ydb:Yson"},
 	})
 	require.NoError(t, sinker.Push([]abstract.ChangeItem{{
 		Kind:         abstract.InsertKind,

@@ -9,8 +9,8 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/connection"
-	"github.com/transferia/transferia/pkg/providers/mysql"
-	"github.com/transferia/transferia/pkg/providers/postgres"
+	provider_mysql "github.com/transferia/transferia/pkg/providers/mysql"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
 	"github.com/transferia/transferia/tests/helpers"
 )
@@ -49,9 +49,9 @@ func TestGroup(t *testing.T) {
 }
 
 func Existence(t *testing.T) {
-	_, err := mysql.NewStorage(Source.ToStorageParams())
+	_, err := provider_mysql.NewStorage(Source.ToStorageParams())
 	require.NoError(t, err)
-	_, err = postgres.NewStorage(Target.ToStorageParams())
+	_, err = provider_postgres.NewStorage(Target.ToStorageParams())
 	require.NoError(t, err)
 }
 
@@ -63,9 +63,9 @@ func Snapshot(t *testing.T) {
 }
 
 func Replication(t *testing.T) {
-	cparams, err := mysql.NewConnectionParams(Source.ToStorageParams())
+	cparams, err := provider_mysql.NewConnectionParams(Source.ToStorageParams())
 	require.NoError(t, err)
-	db, err := mysql.Connect(cparams, nil)
+	db, err := provider_mysql.Connect(cparams, nil)
 	require.NoError(t, err)
 	execCheck(t, db, "INSERT INTO test (id, val) VALUES (3, 'baz')")
 	execCheck(t, db, "UPDATE test SET val = 'test' WHERE id = 1")

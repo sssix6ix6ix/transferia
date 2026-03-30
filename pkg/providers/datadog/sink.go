@@ -4,14 +4,14 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"text/template"
+	text_template "text/template"
 	"time"
 
-	"github.com/DataDog/datadog-api-client-go/v2/api/datadog"
+	vanilla_datadog "github.com/DataDog/datadog-api-client-go/v2/api/datadog"
 	"github.com/DataDog/datadog-api-client-go/v2/api/datadogV2"
 	"github.com/cenkalti/backoff/v4"
 	"github.com/spf13/cast"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	yslices "github.com/transferia/transferia/library/go/slices"
 	"github.com/transferia/transferia/pkg/abstract"
@@ -23,12 +23,12 @@ import (
 type Sink struct {
 	cfg      *DatadogDestination
 	logger   log.Logger
-	registry metrics.Registry
+	registry core_metrics.Registry
 	api      *datadogV2.LogsApi
 	cancel   context.CancelFunc
 	ctx      context.Context
 	metrics  *stats.SinkerStats
-	tmpl     *template.Template
+	tmpl     *text_template.Template
 }
 
 var (
@@ -65,7 +65,7 @@ func (s *Sink) Push(items []abstract.ChangeItem) error {
 				chunk := batch[i:end]
 				_, _, err := s.api.SubmitLog(cctx, s.mapChanges(table, chunk))
 				if err != nil {
-					if dgerr, ok := err.(datadog.GenericOpenAPIError); ok && FatalErrors.Contains(dgerr.ErrorMessage) {
+					if dgerr, ok := err.(vanilla_datadog.GenericOpenAPIError); ok && FatalErrors.Contains(dgerr.ErrorMessage) {
 						return backoff.Permanent(
 							abstract.NewFatalError(
 								xerrors.Errorf("fatal error: %s\ndetails: %s", dgerr.ErrorMessage, string(dgerr.ErrorBody)),
@@ -107,15 +107,15 @@ func (s *Sink) mapChanges(table abstract.TableID, chunk []abstract.ChangeItem) [
 		var service *string
 		var host *string
 		if v, ok := tmap[s.cfg.HostColumn]; ok {
-			host = datadog.PtrString(cast.ToString(v))
+			host = vanilla_datadog.PtrString(cast.ToString(v))
 		}
 		if v, ok := tmap[s.cfg.ServiceColumn]; ok {
-			service = datadog.PtrString(cast.ToString(v))
+			service = vanilla_datadog.PtrString(cast.ToString(v))
 		}
 
 		return datadogV2.HTTPLogItem{
-			Ddsource:             datadog.PtrString(table.Fqtn()),
-			Ddtags:               datadog.PtrString(strings.Join(tagVals, ",")),
+			Ddsource:             vanilla_datadog.PtrString(table.Fqtn()),
+			Ddtags:               vanilla_datadog.PtrString(strings.Join(tagVals, ",")),
 			Hostname:             host,
 			Message:              messageBldr.String(),
 			Service:              service,
@@ -125,16 +125,16 @@ func (s *Sink) mapChanges(table abstract.TableID, chunk []abstract.ChangeItem) [
 	})
 }
 
-func newConfiguration(cfg *DatadogDestination) *datadog.Configuration {
-	configuration := datadog.NewConfiguration()
+func newConfiguration(cfg *DatadogDestination) *vanilla_datadog.Configuration {
+	configuration := vanilla_datadog.NewConfiguration()
 	allowedHosts := set.New(configuration.OperationServers["v2.LogsApi.SubmitLog"][0].Variables["site"].EnumValues...)
 	if !allowedHosts.Contains(cfg.DatadogHost) {
 		// default configuration for logs must be adjusted to allow current datadog host
 		// driver inside itself make a check that provided datadog host contains in allowed enum-values
-		configuration.OperationServers["v2.LogsApi.SubmitLog"][0] = datadog.ServerConfiguration{
+		configuration.OperationServers["v2.LogsApi.SubmitLog"][0] = vanilla_datadog.ServerConfiguration{
 			URL:         "https://{site}",
 			Description: "No description provided",
-			Variables: map[string]datadog.ServerVariable{
+			Variables: map[string]vanilla_datadog.ServerVariable{
 				"site": {DefaultValue: cfg.DatadogHost, EnumValues: []string{cfg.DatadogHost}},
 			},
 		}
@@ -143,22 +143,22 @@ func newConfiguration(cfg *DatadogDestination) *datadog.Configuration {
 	return configuration
 }
 
-func NewSink(cfg *DatadogDestination, logger log.Logger, registry metrics.Registry) (abstract.Sinker, error) {
-	tmpl, err := template.New("log").Parse(cfg.MessageTemplate)
+func NewSink(cfg *DatadogDestination, logger log.Logger, registry core_metrics.Registry) (abstract.Sinker, error) {
+	tmpl, err := text_template.New("log").Parse(cfg.MessageTemplate)
 	if err != nil {
 		return nil, xerrors.Errorf("unable to compile log template: %w", err)
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	ctx = context.WithValue(
 		ctx,
-		datadog.ContextAPIKeys,
-		map[string]datadog.APIKey{
+		vanilla_datadog.ContextAPIKeys,
+		map[string]vanilla_datadog.APIKey{
 			"apiKeyAuth": {Key: string(cfg.ClientAPIKey)},
 		},
 	)
 	ctx = context.WithValue(
 		ctx,
-		datadog.ContextServerVariables,
+		vanilla_datadog.ContextServerVariables,
 		map[string]string{
 			"site": cfg.DatadogHost,
 		},
@@ -167,7 +167,7 @@ func NewSink(cfg *DatadogDestination, logger log.Logger, registry metrics.Regist
 		cfg:      cfg,
 		logger:   logger,
 		registry: registry,
-		api:      datadogV2.NewLogsApi(datadog.NewAPIClient(newConfiguration(cfg))),
+		api:      datadogV2.NewLogsApi(vanilla_datadog.NewAPIClient(newConfiguration(cfg))),
 		ctx:      ctx,
 		cancel:   cancel,
 		tmpl:     tmpl,

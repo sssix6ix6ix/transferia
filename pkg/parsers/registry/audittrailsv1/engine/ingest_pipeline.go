@@ -11,7 +11,7 @@ import (
 	"github.com/ohler55/ojg/jp"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/stringutil"
-	"golang.org/x/exp/maps"
+	xmaps "golang.org/x/exp/maps"
 )
 
 type ingestPipelineCommandArgs struct {
@@ -158,8 +158,8 @@ func exec(in string, inProgram *ingestPipelineProgram) (string, error) {
 		return "", xerrors.Errorf("unable to unmarshal json with input data. input data: %s", stringutil.TruncateUTF8(in, 1024))
 	}
 	for _, currMap := range inProgram.Processors {
-		processor := maps.Keys(currMap)[0]
-		args := maps.Values(currMap)[0]
+		processor := xmaps.Keys(currMap)[0]
+		args := xmaps.Values(currMap)[0]
 		switch processor {
 		case "rename":
 			// doc: If the field doesn’t exist or the new name is already used, an exception will be thrown.

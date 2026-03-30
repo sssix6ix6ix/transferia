@@ -25,16 +25,16 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
-	cpclient "github.com/transferia/transferia/pkg/abstract/coordinator"
+	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	mongostorage "github.com/transferia/transferia/pkg/providers/mongo"
+	provider_mongo "github.com/transferia/transferia/pkg/providers/mongo"
 	"github.com/transferia/transferia/pkg/runtime/local"
 	"github.com/transferia/transferia/pkg/worker/tasks"
 	"github.com/transferia/transferia/tests/e2e/mongo2mongo/rps"
 	"github.com/transferia/transferia/tests/helpers"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	mongo_driver "go.mongodb.org/mongo-driver/mongo"
+	mongo_options "go.mongodb.org/mongo-driver/mongo/options"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
@@ -65,17 +65,17 @@ const (
 
 var (
 	TransferType = abstract.TransferTypeSnapshotAndIncrement
-	Source       = &mongostorage.MongoSource{
+	Source       = &provider_mongo.MongoSource{
 		Hosts:    []string{"localhost"},
 		Port:     helpers.GetIntFromEnv("MONGO_LOCAL_PORT"),
 		User:     os.Getenv("MONGO_LOCAL_USER"),
 		Password: model.SecretString(os.Getenv("MONGO_LOCAL_PASSWORD")),
-		Collections: []mongostorage.MongoCollection{
+		Collections: []provider_mongo.MongoCollection{
 			{DatabaseName: DB, CollectionName: Collection},
 		},
 		SlotID: slotIDAkaTransferID,
 	}
-	Target = mongostorage.MongoDestination{
+	Target = provider_mongo.MongoDestination{
 		Hosts:    []string{"localhost"},
 		Port:     helpers.GetIntFromEnv("DB0_MONGO_LOCAL_PORT"),
 		User:     os.Getenv("DB0_MONGO_LOCAL_USER"),
@@ -87,28 +87,28 @@ var (
 //---------------------------------------------------------------------------------------------------------------------
 // utils
 
-func LogMongoSource(s *mongostorage.MongoSource) {
+func LogMongoSource(s *provider_mongo.MongoSource) {
 	fmt.Printf("Source.Hosts: %v\n", s.Hosts)
 	fmt.Printf("Source.Port: %v\n", s.Port)
 	fmt.Printf("Source.User: %v\n", s.User)
 	fmt.Printf("Source.Password: %v\n", s.Password)
 }
 
-func LogMongoDestination(s *mongostorage.MongoDestination) {
+func LogMongoDestination(s *provider_mongo.MongoDestination) {
 	fmt.Printf("Target.Hosts: %v\n", s.Hosts)
 	fmt.Printf("Target.Port: %v\n", s.Port)
 	fmt.Printf("Target.User: %v\n", s.User)
 	fmt.Printf("Target.Password: %v\n", s.Password)
 }
 
-func MakeDstClient(t *mongostorage.MongoDestination) (*mongostorage.MongoClientWrapper, error) {
-	return mongostorage.Connect(context.Background(), t.ConnectionOptions([]string{}), nil)
+func MakeDstClient(t *provider_mongo.MongoDestination) (*provider_mongo.MongoClientWrapper, error) {
+	return provider_mongo.Connect(context.Background(), t.ConnectionOptions([]string{}), nil)
 }
 
 func Ping(t *testing.T) {
 	// ping src
 	LogMongoSource(Source)
-	client, err := mongostorage.Connect(context.Background(), Source.ConnectionOptions([]string{}), nil)
+	client, err := provider_mongo.Connect(context.Background(), Source.ConnectionOptions([]string{}), nil)
 	defer func() { _ = client.Close(context.Background()) }()
 	require.NoError(t, err)
 	err = client.Ping(context.TODO(), nil)
@@ -123,7 +123,7 @@ func Ping(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func clearSrc(t *testing.T, client *mongostorage.MongoClientWrapper) {
+func clearSrc(t *testing.T, client *provider_mongo.MongoClientWrapper) {
 	t.Helper()
 	var err error
 
@@ -134,31 +134,31 @@ func clearSrc(t *testing.T, client *mongostorage.MongoClientWrapper) {
 }
 
 type RpsTestParameters struct {
-	SrcParamGen func() *mongostorage.MongoSource
+	SrcParamGen func() *provider_mongo.MongoSource
 }
 
 func RpsTest(t *testing.T) {
 	Source.WithDefaults()
 
 	for testName, testParam := range map[string]RpsTestParameters{
-		"PerDatabase": {SrcParamGen: func() *mongostorage.MongoSource {
+		"PerDatabase": {SrcParamGen: func() *provider_mongo.MongoSource {
 			src := *Source
-			src.ReplicationSource = mongostorage.MongoReplicationSourcePerDatabase
+			src.ReplicationSource = provider_mongo.MongoReplicationSourcePerDatabase
 			return &src
 		}},
-		"PerDatabaseFullDocument": {SrcParamGen: func() *mongostorage.MongoSource {
+		"PerDatabaseFullDocument": {SrcParamGen: func() *provider_mongo.MongoSource {
 			src := *Source
-			src.ReplicationSource = mongostorage.MongoReplicationSourcePerDatabaseFullDocument
+			src.ReplicationSource = provider_mongo.MongoReplicationSourcePerDatabaseFullDocument
 			return &src
 		}},
-		"PerDatabaseUpdateDocument": {SrcParamGen: func() *mongostorage.MongoSource {
+		"PerDatabaseUpdateDocument": {SrcParamGen: func() *provider_mongo.MongoSource {
 			src := *Source
-			src.ReplicationSource = mongostorage.MongoReplicationSourcePerDatabaseUpdateDocument
+			src.ReplicationSource = provider_mongo.MongoReplicationSourcePerDatabaseUpdateDocument
 			return &src
 		}},
-		"Oplog": {SrcParamGen: func() *mongostorage.MongoSource {
+		"Oplog": {SrcParamGen: func() *provider_mongo.MongoSource {
 			src := *Source
-			src.ReplicationSource = mongostorage.MongoReplicationSourceOplog
+			src.ReplicationSource = provider_mongo.MongoReplicationSourceOplog
 			return &src
 		}},
 	} {
@@ -170,7 +170,7 @@ func RpsTestFactory(testParameters RpsTestParameters) func(t *testing.T) {
 	return func(t *testing.T) {
 		ctx := context.Background()
 
-		clientSource, err := mongostorage.Connect(ctx, Source.ConnectionOptions([]string{}), nil)
+		clientSource, err := provider_mongo.Connect(ctx, Source.ConnectionOptions([]string{}), nil)
 		require.NoError(t, err)
 		defer func() { _ = clientSource.Close(context.Background()) }()
 
@@ -183,17 +183,17 @@ func RpsTestFactory(testParameters RpsTestParameters) func(t *testing.T) {
 		transfer := helpers.MakeTransfer(helpers.TransferID, mongoSource, &Target, TransferType)
 
 		// activate transfer
-		err = tasks.ActivateDelivery(ctx, nil, cpclient.NewFakeClient(), *transfer, helpers.EmptyRegistry())
+		err = tasks.ActivateDelivery(ctx, nil, coordinator.NewFakeClient(), *transfer, helpers.EmptyRegistry())
 		require.NoError(t, err)
 
 		// start local worker for activation
-		localWorker := local.NewLocalWorker(cpclient.NewFakeClient(), transfer, helpers.EmptyRegistry(), logger.Log)
+		localWorker := local.NewLocalWorker(coordinator.NewFakeClient(), transfer, helpers.EmptyRegistry(), logger.Log)
 		errChan := make(chan error, 1)
 		go func() {
 			errChan <- localWorker.Run() // like .Start(), but we in control for processing error in test
 		}()
 
-		dstStorage, err := mongostorage.NewStorage(Target.ToStorageParams())
+		dstStorage, err := provider_mongo.NewStorage(Target.ToStorageParams())
 		require.NoError(t, err)
 
 		// configure desired RPS
@@ -209,7 +209,7 @@ func RpsTestFactory(testParameters RpsTestParameters) func(t *testing.T) {
 				require.NoError(t, err)
 			},
 			OnUpdate: func(ctx context.Context, previous rps.KV, actual rps.KV) {
-				opts := options.Update()
+				opts := mongo_options.Update()
 				filter := bson.D{{Key: "_id", Value: previous.Key}}
 				update := bson.D{{Key: "$set", Value: bson.D{{Key: "document", Value: actual.Document}}}}
 				result, err := collectionSource.UpdateOne(ctx, filter, update, opts)
@@ -217,7 +217,7 @@ func RpsTestFactory(testParameters RpsTestParameters) func(t *testing.T) {
 				require.Equal(t, int64(1), result.ModifiedCount)
 			},
 			OnReplace: func(ctx context.Context, previous rps.KV, actual rps.KV) {
-				opts := options.Replace()
+				opts := mongo_options.Replace()
 				filter := bson.D{{Key: "_id", Value: previous.Key}}
 				result, err := collectionSource.ReplaceOne(ctx, filter, actual, opts)
 				require.NoError(t, err)
@@ -344,7 +344,7 @@ func RpsTestFactory(testParameters RpsTestParameters) func(t *testing.T) {
 		}
 
 		// wait a little bit (push batch delay is recomended)
-		time.Sleep(3 * mongostorage.DefaultBatchFlushInterval)
+		time.Sleep(3 * provider_mongo.DefaultBatchFlushInterval)
 
 		// stop worker
 		logger.Log.Info("Stop local worker")
@@ -360,7 +360,7 @@ func RpsTestFactory(testParameters RpsTestParameters) func(t *testing.T) {
 		}
 
 		// make connection to the target
-		clientTarget, err := mongostorage.Connect(ctx, Target.ConnectionOptions([]string{}), nil)
+		clientTarget, err := provider_mongo.Connect(ctx, Target.ConnectionOptions([]string{}), nil)
 		require.NoError(t, err)
 		dbTarget := clientTarget.Database(DB)
 		collectionTarget := dbTarget.Collection(Collection)
@@ -368,7 +368,7 @@ func RpsTestFactory(testParameters RpsTestParameters) func(t *testing.T) {
 		// check that 'persistent' is present in source and target, and they values are equal
 		// and check that 'not persistent' neither on source nor target
 		logger.Log.Info("Validation of source and target databases")
-		for fromWhere, coll := range map[string]*mongo.Collection{"source": collectionSource, "target": collectionTarget} {
+		for fromWhere, coll := range map[string]*mongo_driver.Collection{"source": collectionSource, "target": collectionTarget} {
 			rpsModel.CheckValid(t, ctx, fromWhere, coll)
 		}
 

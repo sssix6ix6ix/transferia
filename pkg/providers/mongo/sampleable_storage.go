@@ -10,8 +10,8 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/util"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	mongo_driver "go.mongodb.org/mongo-driver/mongo"
+	mongo_options "go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func castTableSizeFloatNumberToUnt64(x float64) (uint64, error) {
@@ -106,7 +106,7 @@ func (s *Storage) LoadTopBottomSample(table abstract.TableDescription, pusher ab
 
 		// no cursor timeout is unavailable for lower price tiers in atlas
 		// https://www.mongodb.com/docs/atlas/reference/free-shared-limitations/
-		findOptions := options.Find().SetMaxTime(606461538 * time.Millisecond)
+		findOptions := mongo_options.Find().SetMaxTime(606461538 * time.Millisecond)
 
 		optionsObj := findOptions.SetSort(bson.D{{Key: "_id", Value: v}}).SetLimit(1000)
 		cursor, err := coll.Find(ctx, emptyFilter, optionsObj)
@@ -141,8 +141,8 @@ func (s *Storage) LoadRandomSample(table abstract.TableDescription, pusher abstr
 	coll := s.Client.Database(table.Schema).Collection(table.Name)
 
 	group := bson.D{{Key: "$sample", Value: bson.D{{Key: "size", Value: 2000}}}}
-	optionsObj := options.Aggregate()
-	cursor, err := coll.Aggregate(ctx, mongo.Pipeline{group}, optionsObj)
+	optionsObj := mongo_options.Aggregate()
+	cursor, err := coll.Aggregate(ctx, mongo_driver.Pipeline{group}, optionsObj)
 	if err != nil {
 		return err
 	}
@@ -191,7 +191,7 @@ func (s *Storage) TableAccessible(table abstract.TableDescription) bool {
 	ctx := context.TODO()
 	sr := coll.FindOne(ctx, emptyFilter)
 
-	if err := sr.Err(); err != nil && err != mongo.ErrNoDocuments {
+	if err := sr.Err(); err != nil && err != mongo_driver.ErrNoDocuments {
 		logger.Log.Warnf("Inaccessible table %v: %v", table.Fqtn(), err)
 		return false
 	}

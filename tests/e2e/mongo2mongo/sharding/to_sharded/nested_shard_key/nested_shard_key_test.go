@@ -10,15 +10,15 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
-	cpclient "github.com/transferia/transferia/pkg/abstract/coordinator"
+	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	mongodataagent "github.com/transferia/transferia/pkg/providers/mongo"
+	provider_mongo "github.com/transferia/transferia/pkg/providers/mongo"
 	"github.com/transferia/transferia/pkg/runtime/local"
 	"github.com/transferia/transferia/pkg/worker/tasks"
 	"github.com/transferia/transferia/recipe/mongo/pkg/mongo_sharded_cluster"
 	"github.com/transferia/transferia/tests/helpers"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
+	mongo_driver "go.mongodb.org/mongo-driver/mongo"
 )
 
 func init() {
@@ -49,20 +49,20 @@ const (
 
 var (
 	TransferType = abstract.TransferTypeSnapshotAndIncrement
-	Source       = &mongodataagent.MongoSource{
+	Source       = &provider_mongo.MongoSource{
 		Hosts:      []string{os.Getenv("DB1_" + mongo_sharded_cluster.EnvMongoShardedClusterHost)},
 		Port:       helpers.GetIntFromEnv("DB1_" + mongo_sharded_cluster.EnvMongoShardedClusterPort),
 		User:       os.Getenv("DB1_" + mongo_sharded_cluster.EnvMongoShardedClusterUsername),
 		Password:   model.SecretString(os.Getenv("DB1_" + mongo_sharded_cluster.EnvMongoShardedClusterPassword)),
 		AuthSource: os.Getenv("DB1_" + mongo_sharded_cluster.EnvMongoShardedClusterAuthSource),
-		Collections: []mongodataagent.MongoCollection{
+		Collections: []provider_mongo.MongoCollection{
 			{DatabaseName: DB, CollectionName: Collection1},
 			{DatabaseName: DB, CollectionName: Collection2},
 			{DatabaseName: DB, CollectionName: Collection3},
 		},
 		SlotID: slotIDAkaTransferID,
 	}
-	Target = mongodataagent.MongoDestination{
+	Target = provider_mongo.MongoDestination{
 		Hosts:      []string{os.Getenv("DB2_" + mongo_sharded_cluster.EnvMongoShardedClusterHost)},
 		Port:       helpers.GetIntFromEnv("DB2_" + mongo_sharded_cluster.EnvMongoShardedClusterPort),
 		User:       os.Getenv("DB2_" + mongo_sharded_cluster.EnvMongoShardedClusterUsername),
@@ -79,21 +79,21 @@ func init() {
 //---------------------------------------------------------------------------------------------------------------------
 // utils
 
-func LogMongoSource(s *mongodataagent.MongoSource) {
+func LogMongoSource(s *provider_mongo.MongoSource) {
 	fmt.Printf("Source.Hosts: %v\n", s.Hosts)
 	fmt.Printf("Source.Port: %v\n", s.Port)
 	fmt.Printf("Source.User: %v\n", s.User)
 	fmt.Printf("Source.Password: %v\n", s.Password)
 }
 
-func LogMongoDestination(s *mongodataagent.MongoDestination) {
+func LogMongoDestination(s *provider_mongo.MongoDestination) {
 	fmt.Printf("Target.Hosts: %v\n", s.Hosts)
 	fmt.Printf("Target.Port: %v\n", s.Port)
 	fmt.Printf("Target.User: %v\n", s.User)
 	fmt.Printf("Target.Password: %v\n", s.Password)
 }
 
-func ShardTargetCollections(t *testing.T, client *mongodataagent.MongoClientWrapper) {
+func ShardTargetCollections(t *testing.T, client *provider_mongo.MongoClientWrapper) {
 	adminDB := client.Database("admin")
 
 	res := adminDB.RunCommand(context.TODO(),
@@ -139,7 +139,7 @@ func ShardTargetCollections(t *testing.T, client *mongodataagent.MongoClientWrap
 func Ping(t *testing.T) {
 	// ping src
 	LogMongoSource(Source)
-	client, err := mongodataagent.Connect(context.Background(), Source.ConnectionOptions([]string{}), nil)
+	client, err := provider_mongo.Connect(context.Background(), Source.ConnectionOptions([]string{}), nil)
 	defer func() { _ = client.Close(context.Background()) }()
 	require.NoError(t, err)
 	err = client.Ping(context.TODO(), nil)
@@ -147,25 +147,25 @@ func Ping(t *testing.T) {
 
 	// ping dst
 	LogMongoDestination(&Target)
-	client2, err := mongodataagent.Connect(context.Background(), Target.ConnectionOptions([]string{}), nil)
+	client2, err := provider_mongo.Connect(context.Background(), Target.ConnectionOptions([]string{}), nil)
 	defer func() { _ = client2.Close(context.Background()) }()
 	require.NoError(t, err)
 	err = client2.Ping(context.TODO(), nil)
 	require.NoError(t, err)
 }
 
-func insertOne(t *testing.T, coll *mongo.Collection, row any) {
+func insertOne(t *testing.T, coll *mongo_driver.Collection, row any) {
 	_, err := coll.InsertOne(context.Background(), row)
 	require.NoError(t, err)
 }
 
-func updateOne(t *testing.T, coll *mongo.Collection, filter, update bson.D) {
+func updateOne(t *testing.T, coll *mongo_driver.Collection, filter, update bson.D) {
 	_, err := coll.UpdateOne(context.Background(), filter, update)
 	require.NoError(t, err)
 }
 
 func Load(t *testing.T) {
-	client, err := mongodataagent.Connect(context.Background(), Source.ConnectionOptions([]string{}), nil)
+	client, err := provider_mongo.Connect(context.Background(), Source.ConnectionOptions([]string{}), nil)
 	require.NoError(t, err)
 
 	//------------------------------------------------------------------------------------
@@ -209,7 +209,7 @@ func Load(t *testing.T) {
 	//------------------------------------------------------------------------------------
 	// shard target collections
 
-	targetClient, err := mongodataagent.Connect(context.Background(), Target.ConnectionOptions([]string{}), nil)
+	targetClient, err := provider_mongo.Connect(context.Background(), Target.ConnectionOptions([]string{}), nil)
 	require.NoError(t, err)
 
 	targetDB := targetClient.Database(DB)
@@ -227,10 +227,10 @@ func Load(t *testing.T) {
 
 	transfer := helpers.MakeTransfer(helpers.TransferID, Source, &Target, abstract.TransferTypeSnapshotAndIncrement)
 
-	err = tasks.ActivateDelivery(context.TODO(), nil, cpclient.NewFakeClient(), *transfer, helpers.EmptyRegistry())
+	err = tasks.ActivateDelivery(context.TODO(), nil, coordinator.NewFakeClient(), *transfer, helpers.EmptyRegistry())
 	require.NoError(t, err)
 
-	localWorker := local.NewLocalWorker(cpclient.NewFakeClient(), transfer, helpers.EmptyRegistry(), logger.Log)
+	localWorker := local.NewLocalWorker(coordinator.NewFakeClient(), transfer, helpers.EmptyRegistry(), logger.Log)
 	localWorker.Start()
 	defer localWorker.Stop() //nolint
 

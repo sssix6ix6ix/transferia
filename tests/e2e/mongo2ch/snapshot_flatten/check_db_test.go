@@ -9,15 +9,15 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/library/go/test/canon"
 	"github.com/transferia/transferia/pkg/abstract"
-	dp_model "github.com/transferia/transferia/pkg/abstract/model"
+	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/chrecipe"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/model"
-	mongocommon "github.com/transferia/transferia/pkg/providers/mongo"
+	clickhouse_model "github.com/transferia/transferia/pkg/providers/clickhouse/model"
+	provider_mongo "github.com/transferia/transferia/pkg/providers/mongo"
 	"github.com/transferia/transferia/pkg/transformer"
-	"github.com/transferia/transferia/pkg/transformer/registry/clickhouse"
-	"github.com/transferia/transferia/pkg/transformer/registry/filter"
-	"github.com/transferia/transferia/tests/canon/mongo"
-	"github.com/transferia/transferia/tests/canon/reference"
+	transformer_clickhouse "github.com/transferia/transferia/pkg/transformer/registry/clickhouse"
+	transformer_filter "github.com/transferia/transferia/pkg/transformer/registry/filter"
+	canon_mongo "github.com/transferia/transferia/tests/canon/mongo"
+	canon_reference "github.com/transferia/transferia/tests/canon/reference"
 	"github.com/transferia/transferia/tests/helpers"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -25,7 +25,7 @@ import (
 const databaseName string = "db"
 
 var (
-	Source = mongocommon.RecipeSource()
+	Source = provider_mongo.RecipeSource()
 	Target = chrecipe.MustTarget(chrecipe.WithInitFile("dump.sql"), chrecipe.WithDatabase(databaseName))
 )
 
@@ -49,14 +49,14 @@ func TestGroup(t *testing.T) {
 }
 
 func Ping(t *testing.T) {
-	client, err := mongocommon.Connect(context.Background(), Source.ConnectionOptions([]string{}), nil)
+	client, err := provider_mongo.Connect(context.Background(), Source.ConnectionOptions([]string{}), nil)
 	require.NoError(t, err)
 	err = client.Ping(context.TODO(), nil)
 	require.NoError(t, err)
 }
 
 func Snapshot(t *testing.T) {
-	Source.Collections = []mongocommon.MongoCollection{
+	Source.Collections = []provider_mongo.MongoCollection{
 		{DatabaseName: databaseName, CollectionName: "test_data"},
 	}
 	Target.ChClusterName = ""
@@ -84,15 +84,15 @@ func Snapshot(t *testing.T) {
 	var masterDoc bson.D
 	require.NoError(t, bson.UnmarshalExtJSON([]byte(doc), false, &masterDoc))
 
-	require.NoError(t, mongo.InsertDocs(context.Background(), Source, databaseName, "test_data", masterDoc))
+	require.NoError(t, canon_mongo.InsertDocs(context.Background(), Source, databaseName, "test_data", masterDoc))
 
 	transfer := helpers.MakeTransfer(helpers.TransferID, Source, Target, abstract.TransferTypeSnapshotAndIncrement)
 	transfer.TypeSystemVersion = 7
-	transfer.Transformation = &dp_model.Transformation{Transformers: &transformer.Transformers{
+	transfer.Transformation = &model.Transformation{Transformers: &transformer.Transformers{
 		DebugMode: false,
 		Transformers: []transformer.Transformer{{
-			clickhouse.Type: clickhouse.Config{
-				Tables: filter.Tables{
+			transformer_clickhouse.Type: transformer_clickhouse.Config{
+				Tables: transformer_filter.Tables{
 					IncludeTables: []string{fmt.Sprintf("%s.%s", databaseName, "test_data")},
 				},
 				Query: `
@@ -112,9 +112,9 @@ SETTINGS
 	}}
 	helpers.Activate(t, transfer)
 
-	canon.SaveJSON(t, reference.FromClickhouse(t, &model.ChSource{
+	canon.SaveJSON(t, canon_reference.FromClickhouse(t, &clickhouse_model.ChSource{
 		Database:   databaseName,
-		ShardsList: []model.ClickHouseShard{{Name: "_", Hosts: []string{"localhost"}}},
+		ShardsList: []clickhouse_model.ClickHouseShard{{Name: "_", Hosts: []string{"localhost"}}},
 		NativePort: Target.NativePort,
 		HTTPPort:   Target.HTTPPort,
 		User:       Target.User,

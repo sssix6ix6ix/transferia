@@ -10,17 +10,17 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
-	pgcommon "github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
 	"github.com/transferia/transferia/tests/helpers"
-	yt_helpers "github.com/transferia/transferia/tests/helpers/yt"
+	helpers_yt "github.com/transferia/transferia/tests/helpers/yt"
 )
 
 var (
 	ytPath       = "//home/cdc/test/pg2yt_e2e"
 	TransferType = abstract.TransferTypeSnapshotAndIncrement
 	Source       = *pgrecipe.RecipeSource(pgrecipe.WithPrefix(""), pgrecipe.WithInitDir("dump"))
-	Target       = yt_helpers.RecipeYtTarget(ytPath)
+	Target       = helpers_yt.RecipeYtTarget(ytPath)
 )
 
 func init() {
@@ -38,9 +38,9 @@ func TestSnapshotAndIncrement(t *testing.T) {
 		))
 	}()
 
-	connConfig, err := pgcommon.MakeConnConfigFromSrc(logger.Log, &Source)
+	connConfig, err := provider_postgres.MakeConnConfigFromSrc(logger.Log, &Source)
 	require.NoError(t, err)
-	conn, err := pgcommon.NewPgConnPool(connConfig, logger.Log)
+	conn, err := provider_postgres.NewPgConnPool(connConfig, logger.Log)
 	require.NoError(t, err)
 
 	//------------------------------------------------------------------------------------

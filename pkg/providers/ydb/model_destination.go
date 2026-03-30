@@ -7,7 +7,7 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/middlewares/synchronizer/bufferer"
-	v3credential "github.com/ydb-platform/ydb-go-sdk/v3/credentials"
+	ydb_credentials "github.com/ydb-platform/ydb-go-sdk/v3/credentials"
 	"go.uber.org/zap/zapcore"
 )
 
@@ -44,7 +44,7 @@ type YdbDestination struct {
 	RootCAFiles     []string
 	TokenServiceURL string `log:"true"`
 	UserdataAuth    bool   `log:"true"` // allow fallback to Instance metadata Auth
-	OAuth2Config    *v3credential.OAuth2Config
+	OAuth2Config    *ydb_credentials.OAuth2Config
 }
 
 var (

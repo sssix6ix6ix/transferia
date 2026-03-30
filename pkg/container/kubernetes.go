@@ -6,12 +6,12 @@ import (
 	"io"
 	"time"
 
-	"github.com/docker/docker/api/types"
+	docker_types "github.com/docker/docker/api/types"
 	"github.com/transferia/transferia/library/go/core/xerrors"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8s_api "k8s.io/api/core/v1"
+	k8s_api_meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
+	k8s_rest "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
@@ -20,7 +20,7 @@ type K8sWrapper struct {
 }
 
 func NewK8sWrapper() (*K8sWrapper, error) {
-	config, err := rest.InClusterConfig()
+	config, err := k8s_rest.InClusterConfig()
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load in-cluster config: %w", err)
 	}
@@ -38,18 +38,18 @@ func (w *K8sWrapper) Run(ctx context.Context, opts ContainerOpts) (io.Reader, io
 	return b, nil, err
 }
 
-func (w *K8sWrapper) Pull(_ context.Context, _ string, _ types.ImagePullOptions) error {
+func (w *K8sWrapper) Pull(_ context.Context, _ string, _ docker_types.ImagePullOptions) error {
 	// No need to pull images in k8s
 	return nil
 }
 
 func (w *K8sWrapper) RunPod(ctx context.Context, opts K8sOpts) (*bytes.Buffer, error) {
-	pod := &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
+	pod := &k8s_api.Pod{
+		ObjectMeta: k8s_api_meta.ObjectMeta{
 			Name: opts.PodName,
 		},
-		Spec: corev1.PodSpec{
-			Containers: []corev1.Container{
+		Spec: k8s_api.PodSpec{
+			Containers: []k8s_api.Container{
 				{
 					Name:         opts.PodName,
 					Image:        opts.Image,
@@ -64,7 +64,7 @@ func (w *K8sWrapper) RunPod(ctx context.Context, opts K8sOpts) (*bytes.Buffer, e
 		},
 	}
 
-	_, err := w.client.CoreV1().Pods(opts.Namespace).Create(ctx, pod, metav1.CreateOptions{})
+	_, err := w.client.CoreV1().Pods(opts.Namespace).Create(ctx, pod, k8s_api_meta.CreateOptions{})
 	if err != nil {
 		return nil, xerrors.Errorf("failed to create pod: %w", err)
 	}
@@ -78,21 +78,21 @@ waitLoop:
 		select {
 		case <-timeout:
 			// If timed out, clean up.
-			_ = w.client.CoreV1().Pods(opts.Namespace).Delete(ctx, opts.PodName, metav1.DeleteOptions{})
+			_ = w.client.CoreV1().Pods(opts.Namespace).Delete(ctx, opts.PodName, k8s_api_meta.DeleteOptions{})
 			return nil, xerrors.Errorf("timeout waiting for pod %s to complete", opts.PodName)
 		case <-tick.C:
-			p, err := w.client.CoreV1().Pods(opts.Namespace).Get(ctx, opts.PodName, metav1.GetOptions{})
+			p, err := w.client.CoreV1().Pods(opts.Namespace).Get(ctx, opts.PodName, k8s_api_meta.GetOptions{})
 			if err != nil {
 				return nil, xerrors.Errorf("failed to get pod info: %w", err)
 			}
 			phase := p.Status.Phase
-			if phase == corev1.PodSucceeded || phase == corev1.PodFailed {
+			if phase == k8s_api.PodSucceeded || phase == k8s_api.PodFailed {
 				break waitLoop
 			}
 		}
 	}
 
-	logOpts := &corev1.PodLogOptions{
+	logOpts := &k8s_api.PodLogOptions{
 		Container: opts.PodName,
 	}
 	rc := w.client.CoreV1().Pods(opts.Namespace).GetLogs(opts.PodName, logOpts)
@@ -109,7 +109,7 @@ waitLoop:
 		return stdout, xerrors.Errorf("failed copying pod logs: %w", err)
 	}
 
-	_ = w.client.CoreV1().Pods(opts.Namespace).Delete(ctx, opts.PodName, metav1.DeleteOptions{})
+	_ = w.client.CoreV1().Pods(opts.Namespace).Delete(ctx, opts.PodName, k8s_api_meta.DeleteOptions{})
 	return stdout, nil
 }
 

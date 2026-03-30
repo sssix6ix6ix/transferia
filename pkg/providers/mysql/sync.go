@@ -6,20 +6,20 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/go-mysql-org/go-mysql/mysql"
-	"github.com/go-mysql-org/go-mysql/replication"
-	"github.com/go-mysql-org/go-mysql/schema"
-	"github.com/gofrs/uuid"
+	mysql_driver "github.com/go-mysql-org/go-mysql/mysql"
+	mysql_replication "github.com/go-mysql-org/go-mysql/replication"
+	mysql_schema "github.com/go-mysql-org/go-mysql/schema"
+	gofrs_uuid "github.com/gofrs/uuid"
 	"github.com/pingcap/parser/ast"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/errors/coded"
-	"github.com/transferia/transferia/pkg/errors/codes"
+	error_codes "github.com/transferia/transferia/pkg/errors/codes"
 	"github.com/transferia/transferia/pkg/util"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
-func (c *Canal) startSyncer() (*replication.BinlogStreamer, error) {
+func (c *Canal) startSyncer() (*mysql_replication.BinlogStreamer, error) {
 	gset := c.master.GTIDSet()
 	if gset == nil || gset.String() == "" {
 		pos := c.master.Position()
@@ -65,19 +65,19 @@ func (c *Canal) runSyncBinlog() error {
 	for {
 		ev, err := s.GetEvent(c.ctx)
 		cErr := util.Unwrap(err)
-		var mErr *mysql.MyError
+		var mErr *mysql_driver.MyError
 		if err != nil {
 			msg := strings.ToLower(err.Error())
-			if xerrors.As(cErr, &mErr) && mErr.Code == mysql.ER_MASTER_FATAL_ERROR_READING_BINLOG {
+			if xerrors.As(cErr, &mErr) && mErr.Code == mysql_driver.ER_MASTER_FATAL_ERROR_READING_BINLOG {
 				c.logger.Error("failed to get canal event (fatal)", log.Error(mErr))
 				if util.ContainsAnySubstrings(msg, "more than 4gb", "exceeds 4gb") {
-					err = coded.Errorf(codes.MySQLBinlogTransactionTooLarge, "mysql binlog transaction too large: %w", abstract.NewFatalError(err))
+					err = coded.Errorf(error_codes.MySQLBinlogTransactionTooLarge, "mysql binlog transaction too large: %w", abstract.NewFatalError(err))
 				}
 				// Otherwise return as-is (no classification)
 				return xerrors.Errorf("failed to get canal event (fatal): %w", err)
 			}
 			if strings.Contains(msg, "could not find first log file") {
-				return coded.Errorf(codes.MySQLBinlogFirstFileMissing, "failed to get canal event (fatal): %w", abstract.NewFatalError(err))
+				return coded.Errorf(error_codes.MySQLBinlogFirstFileMissing, "failed to get canal event (fatal): %w", abstract.NewFatalError(err))
 			}
 			return xerrors.Errorf("failed to get canal event: %w", err)
 		}
@@ -91,10 +91,10 @@ func (c *Canal) runSyncBinlog() error {
 		// and https://github.com/mysql/mysql-server/blob/8cc757da3d87bf4a1f07dcfb2d3c96fed3806870/sql/rpl_binlog_sender.cc#L899
 		if ev.Header.LogPos == 0 {
 			switch e := ev.Event.(type) {
-			case *replication.RotateEvent:
+			case *mysql_replication.RotateEvent:
 				fakeRotateLogName = string(e.NextLogName)
 				c.logger.Infof("received fake rotate event, next log name is %s", e.NextLogName)
-			case *replication.RowsEvent:
+			case *mysql_replication.RowsEvent:
 				// Maybe there is a problem with a new format for MariaDB 11.4+, check docs
 				return xerrors.Errorf("received RowsEvent without log position, event exact type: %s", ev.Header.EventType.String())
 			}
@@ -120,7 +120,7 @@ func (c *Canal) runSyncBinlog() error {
 		// which tells the whole transaction is over.
 		// TODO: If we meet any DDL query, we must save too.
 		switch event := ev.Event.(type) {
-		case *replication.RotateEvent:
+		case *mysql_replication.RotateEvent:
 			pos.Name = string(event.NextLogName)
 			pos.Pos = uint32(event.Position)
 			c.logger.Infof("rotate binlog to %s", pos)
@@ -129,22 +129,22 @@ func (c *Canal) runSyncBinlog() error {
 			if err = c.eventHandler.OnRotate(event); err != nil {
 				return xerrors.Errorf("rotation handler failed: %w", err)
 			}
-		case *replication.RowsQueryEvent:
+		case *mysql_replication.RowsQueryEvent:
 			// A RowsQueryEvent will always precede the corresponding RowsEvent
 			rowsQuery = string(event.Query)
 			continue
-		case *replication.RowsEvent:
+		case *mysql_replication.RowsEvent:
 			// we only focus row based event
 			err = c.handleRowsEvent(ev, rowsQuery)
 			if err != nil {
-				isFailure := !(xerrors.Is(err, ErrExcludedTable) || xerrors.Is(err, schema.ErrTableNotExist) || xerrors.Is(err, schema.ErrMissingTableMeta))
+				isFailure := !(xerrors.Is(err, ErrExcludedTable) || xerrors.Is(err, mysql_schema.ErrTableNotExist) || xerrors.Is(err, mysql_schema.ErrMissingTableMeta))
 				if isFailure {
 					c.logger.Errorf("handle rows event at (%s, %d) error %v", pos.Name, curPos, err)
 					return xerrors.Errorf("failed to handle row event: %w", err)
 				}
 			}
 			continue
-		case *replication.XIDEvent:
+		case *mysql_replication.XIDEvent:
 			rowsQuery = ""
 			savePos = true
 			// try to save the position later
@@ -154,27 +154,27 @@ func (c *Canal) runSyncBinlog() error {
 			if event.GSet != nil {
 				c.master.UpdateGTIDSet(event.GSet)
 			}
-		case *replication.MariadbGTIDEvent:
+		case *mysql_replication.MariadbGTIDEvent:
 			rowsQuery = ""
 			// try to save the GTID later
-			gtid, err := mysql.ParseMariadbGTIDSet(event.GTID.String())
+			gtid, err := mysql_driver.ParseMariadbGTIDSet(event.GTID.String())
 			if err != nil {
 				return xerrors.Errorf("MariaDB GTID set parsing failed: %w", err)
 			}
 			if err := c.eventHandler.OnGTID(gtid); err != nil {
 				return xerrors.Errorf("OnGTID MariaDB handler failed: %w", err)
 			}
-		case *replication.GTIDEvent:
+		case *mysql_replication.GTIDEvent:
 			rowsQuery = ""
-			u, _ := uuid.FromBytes(event.SID)
-			gtid, err := mysql.ParseMysqlGTIDSet(fmt.Sprintf("%s:%d", u.String(), event.GNO))
+			u, _ := gofrs_uuid.FromBytes(event.SID)
+			gtid, err := mysql_driver.ParseMysqlGTIDSet(fmt.Sprintf("%s:%d", u.String(), event.GNO))
 			if err != nil {
 				return xerrors.Errorf("MySQL GTID set parsing failed: %w", err)
 			}
 			if err := c.eventHandler.OnGTID(gtid); err != nil {
 				return xerrors.Errorf("OnGTID MySQL handler failed: %w", err)
 			}
-		case *replication.QueryEvent:
+		case *mysql_replication.QueryEvent:
 			stmts, _, err := c.parser.Parse(string(event.Query), "", "")
 			if err != nil {
 				c.logger.Errorf("parse query(%s) err %v, will skip this event", event.Query, err)
@@ -270,13 +270,13 @@ func parseStmt(stmt ast.StmtNode) (ns []*node) {
 func (c *Canal) updateTable(db, table string) (err error) {
 	c.ClearTableCache([]byte(db), []byte(table))
 	c.logger.Infof("table structure changed, clear table cache: %s.%s\n", db, table)
-	if err = c.eventHandler.OnTableChanged(db, table); err != nil && !xerrors.Is(err, schema.ErrTableNotExist) {
+	if err = c.eventHandler.OnTableChanged(db, table); err != nil && !xerrors.Is(err, mysql_schema.ErrTableNotExist) {
 		return xerrors.Errorf("OnTableChanged handler failed: %w", err)
 	}
 	return err
 }
 
-func (c *Canal) updateReplicationDelay(ev *replication.BinlogEvent) {
+func (c *Canal) updateReplicationDelay(ev *mysql_replication.BinlogEvent) {
 	var newDelay uint32
 	now := uint32(time.Now().Unix())
 	if now >= ev.Header.Timestamp {
@@ -285,8 +285,8 @@ func (c *Canal) updateReplicationDelay(ev *replication.BinlogEvent) {
 	atomic.StoreUint32(c.delay, newDelay)
 }
 
-func (c *Canal) handleRowsEvent(e *replication.BinlogEvent, rowsQuery string) error {
-	rowsEvent := e.Event.(*replication.RowsEvent)
+func (c *Canal) handleRowsEvent(e *mysql_replication.BinlogEvent, rowsQuery string) error {
+	rowsEvent := e.Event.(*mysql_replication.RowsEvent)
 
 	// Caveat: table may be altered at runtime.
 	schemaName := string(rowsEvent.Table.Schema)
@@ -298,11 +298,11 @@ func (c *Canal) handleRowsEvent(e *replication.BinlogEvent, rowsQuery string) er
 	c.logger.Debugf("event %v.%v %v %v", schemaName, tableName, e.Header.EventType, err)
 	var action string
 	switch e.Header.EventType {
-	case replication.WRITE_ROWS_EVENTv1, replication.WRITE_ROWS_EVENTv2:
+	case mysql_replication.WRITE_ROWS_EVENTv1, mysql_replication.WRITE_ROWS_EVENTv2:
 		action = InsertAction
-	case replication.DELETE_ROWS_EVENTv1, replication.DELETE_ROWS_EVENTv2:
+	case mysql_replication.DELETE_ROWS_EVENTv1, mysql_replication.DELETE_ROWS_EVENTv2:
 		action = DeleteAction
-	case replication.UPDATE_ROWS_EVENTv1, replication.UPDATE_ROWS_EVENTv2:
+	case mysql_replication.UPDATE_ROWS_EVENTv1, mysql_replication.UPDATE_ROWS_EVENTv2:
 		action = UpdateAction
 	default:
 		return xerrors.Errorf("%q is not supported now", e.Header.EventType)
@@ -325,7 +325,7 @@ func (c *Canal) FlushBinlog() error {
 	return nil
 }
 
-func (c *Canal) WaitUntilPos(pos mysql.Position, timeout time.Duration) error {
+func (c *Canal) WaitUntilPos(pos mysql_driver.Position, timeout time.Duration) error {
 	timer := time.NewTimer(timeout)
 	for {
 		select {
@@ -347,22 +347,22 @@ func (c *Canal) WaitUntilPos(pos mysql.Position, timeout time.Duration) error {
 	}
 }
 
-func (c *Canal) GetMasterPos() (mysql.Position, error) {
+func (c *Canal) GetMasterPos() (mysql_driver.Position, error) {
 	rr, err := c.Execute("SHOW MASTER STATUS")
 	if err != nil {
-		return mysql.Position{}, xerrors.Errorf("failed to execute SQL \"SHOW MASTER STATUS\": %w", err)
+		return mysql_driver.Position{}, xerrors.Errorf("failed to execute SQL \"SHOW MASTER STATUS\": %w", err)
 	}
 
 	name, _ := rr.GetString(0, 0)
 	pos, _ := rr.GetInt(0, 1)
 
-	return mysql.Position{Name: name, Pos: uint32(pos)}, nil
+	return mysql_driver.Position{Name: name, Pos: uint32(pos)}, nil
 }
 
-func (c *Canal) GetMasterGTIDSet() (mysql.GTIDSet, error) {
+func (c *Canal) GetMasterGTIDSet() (mysql_driver.GTIDSet, error) {
 	query := ""
 	switch c.cfg.Flavor {
-	case mysql.MariaDBFlavor:
+	case mysql_driver.MariaDBFlavor:
 		query = "SELECT @@GLOBAL.gtid_current_pos"
 	default:
 		query = "SELECT @@GLOBAL.GTID_EXECUTED"
@@ -375,7 +375,7 @@ func (c *Canal) GetMasterGTIDSet() (mysql.GTIDSet, error) {
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get GTID string from resultset: %w", err)
 	}
-	gset, err := mysql.ParseGTIDSet(c.cfg.Flavor, gx)
+	gset, err := mysql_driver.ParseGTIDSet(c.cfg.Flavor, gx)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to parse GTID set: %w", err)
 	}

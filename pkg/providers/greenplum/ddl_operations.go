@@ -9,7 +9,7 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	pgsink "github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/util"
 	"go.ytsaurus.tech/library/go/core/log"
 )
@@ -32,7 +32,7 @@ func (s *Sink) processInitTableLoad(ctx context.Context, ci *abstract.ChangeItem
 	}
 	rollbacks.Add(loggingRollbackTxFunc(ctx, tx))
 
-	if csq := pgsink.CreateSchemaQueryOptional(ci.PgName()); len(csq) > 0 {
+	if csq := provider_postgres.CreateSchemaQueryOptional(ci.PgName()); len(csq) > 0 {
 		if _, err := tx.Exec(ctx, csq); err != nil {
 			logger.Log.Warn("Failed to execute CREATE SCHEMA IF NOT EXISTS query at table load initialization.", log.Error(err))
 		}
@@ -79,7 +79,7 @@ func CreateRandDistTableQuery(fullTableName string, schema []abstract.ColSchema)
 		schemaWithoutPKs[i] = schema[i]
 		schemaWithoutPKs[i].PrimaryKey = false
 	}
-	q, err := pgsink.CreateTableQuery(fullTableName, schemaWithoutPKs)
+	q, err := provider_postgres.CreateTableQuery(fullTableName, schemaWithoutPKs)
 	if err != nil {
 		return "", xerrors.Errorf("failed to build a CREATE TABLE SQL query: %w", err)
 	}

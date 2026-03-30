@@ -9,7 +9,7 @@ import (
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	"github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
@@ -52,11 +52,11 @@ func Segment(index int) GPSegPointer {
 
 // openPGStorage is a specification of a constructor of PostgreSQL storage for Greenplum.
 // May modify the passed storage parameters
-func openPGStorage(config *postgres.PgStorageParams) (*postgres.Storage, error) {
+func openPGStorage(config *provider_postgres.PgStorageParams) (*provider_postgres.Storage, error) {
 	// this creates a TCP connection to the segment!
 	var errs []error
 
-	if result, err := postgres.NewStorage(config); err != nil {
+	if result, err := provider_postgres.NewStorage(config); err != nil {
 		errs = append(errs, err)
 	} else {
 		return result, nil
@@ -69,7 +69,7 @@ func openPGStorage(config *postgres.PgStorageParams) (*postgres.Storage, error) 
 		config.TLSFile = ""
 		config.TryHostCACertificates = false
 		logger.Log.Info("Trying to connect to a PostgreSQL instance using unencrypted connection.")
-		if result, err := postgres.NewStorage(config); err != nil {
+		if result, err := provider_postgres.NewStorage(config); err != nil {
 			errs = append(errs, xerrors.Errorf("fallback to unencrypted connection failed: %w", err))
 		} else {
 			return result, nil
@@ -79,15 +79,15 @@ func openPGStorage(config *postgres.PgStorageParams) (*postgres.Storage, error) 
 	return nil, xerrors.Errorf("failed to create a PostgreSQL storage: %w", errors.Join(errs...))
 }
 
-func (s *Storage) configurePGStorageForGreenplum(storage *postgres.Storage) {
+func (s *Storage) configurePGStorageForGreenplum(storage *provider_postgres.Storage) {
 	storage.ForbiddenSchemas = append(storage.ForbiddenSchemas, "gp_toolkit", "mdb_toolkit")
 	storage.Flavour = s.newFlavor(s)
 	storage.DisableCheckReplIdentity = s.postgresesCfg.DisableCheckReplIdentity
 	storage.DisableViewsExtraction = s.postgresesCfg.DisableViewsExtraction
 }
 
-func (s *Storage) getPgStorageParams(role GPRole) *postgres.PgStorageParams {
-	pgs := new(postgres.PgSource)
+func (s *Storage) getPgStorageParams(role GPRole) *provider_postgres.PgStorageParams {
+	pgs := new(provider_postgres.PgSource)
 	pgs.WithDefaults()
 
 	pgs.Database = s.config.Connection.Database
@@ -114,7 +114,7 @@ func (s *Storage) getPgStorageParams(role GPRole) *postgres.PgStorageParams {
 }
 
 // openPGStorageForAnyInPair connects to the current primary of the given high-availability pair AND checks it can execute SQL
-func (s *Storage) openPGStorageForAnyInPair(ctx context.Context, sp GPSegPointer) (*postgres.Storage, error) {
+func (s *Storage) openPGStorageForAnyInPair(ctx context.Context, sp GPSegPointer) (*provider_postgres.Storage, error) {
 	cfg := s.getPgStorageParams(sp.role)
 	hap := s.config.Connection.OnPremises.SegByID(sp.seg)
 
@@ -151,7 +151,7 @@ func (s *Storage) openPGStorageForAnyInPair(ctx context.Context, sp GPSegPointer
 }
 
 // checkConnection checks whether the connection in `pgs` is valid (working)
-func checkConnection(ctx context.Context, pgs *postgres.Storage, expectedSP GPSegPointer) error {
+func checkConnection(ctx context.Context, pgs *provider_postgres.Storage, expectedSP GPSegPointer) error {
 	conn, err := pgs.Conn.Acquire(ctx)
 	if err != nil {
 		return xerrors.Errorf("failed to acquire a connection from the pool: %w", err)
@@ -176,7 +176,7 @@ func validateGpRole(expected GPSegPointer, actual GPRole) error {
 	return nil
 }
 
-func segmentsFromGP(ctx context.Context, cpgs *postgres.Storage) ([]*GpHAP, error) {
+func segmentsFromGP(ctx context.Context, cpgs *provider_postgres.Storage) ([]*GpHAP, error) {
 	conn, err := cpgs.Conn.Acquire(ctx)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to acquire a connection from the pool: %w", err)

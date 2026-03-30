@@ -8,12 +8,12 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
-	cpclient "github.com/transferia/transferia/pkg/abstract/coordinator"
+	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/chrecipe"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/model"
-	"github.com/transferia/transferia/pkg/providers/kinesis"
+	clickhouse_model "github.com/transferia/transferia/pkg/providers/clickhouse/model"
+	provider_kinesis "github.com/transferia/transferia/pkg/providers/kinesis"
 	"github.com/transferia/transferia/pkg/runtime/local"
-	"github.com/transferia/transferia/tests/canon/reference"
+	canon_reference "github.com/transferia/transferia/tests/canon/reference"
 	"github.com/transferia/transferia/tests/helpers"
 	"github.com/transferia/transferia/tests/tcrecipes"
 )
@@ -30,7 +30,7 @@ func TestReplication(t *testing.T) {
 	var (
 		databaseName = "public"
 		transferType = abstract.TransferTypeIncrementOnly
-		source       = kinesis.MustSource()
+		source       = provider_kinesis.MustSource()
 		target       = chrecipe.MustTarget(
 			chrecipe.WithInitDir("dump/ch"),
 			chrecipe.WithDatabase(databaseName))
@@ -62,7 +62,7 @@ func TestReplication(t *testing.T) {
 		transferType,
 	)
 
-	c := cpclient.NewStatefulFakeClient()
+	c := coordinator.NewStatefulFakeClient()
 	localWorker := local.NewLocalWorker(
 		c,
 		transfer,
@@ -72,17 +72,17 @@ func TestReplication(t *testing.T) {
 	localWorker.Start()
 	defer localWorker.Stop()
 
-	require.NoError(t, kinesis.PutRecord(
+	require.NoError(t, provider_kinesis.PutRecord(
 		source,
 		[]byte("Hello World!"),
 		"test",
 	))
-	require.NoError(t, kinesis.PutRecord(
+	require.NoError(t, provider_kinesis.PutRecord(
 		source,
 		[]byte("This is a Test"),
 		"test",
 	))
-	require.NoError(t, kinesis.PutRecord(
+	require.NoError(t, provider_kinesis.PutRecord(
 		source,
 		[]byte("testing the test!"),
 		"test",
@@ -95,9 +95,9 @@ func TestReplication(t *testing.T) {
 		60*time.Second,
 		3,
 	))
-	reference.Dump(t, &model.ChSource{
+	canon_reference.Dump(t, &clickhouse_model.ChSource{
 		Database: "public",
-		ShardsList: []model.ClickHouseShard{
+		ShardsList: []clickhouse_model.ClickHouseShard{
 			{
 				Name:  "_",
 				Hosts: []string{"localhost"},

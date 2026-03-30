@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/transferia/transferia/pkg/abstract/model"
-	s3_provider "github.com/transferia/transferia/pkg/providers/s3"
+	s3_model "github.com/transferia/transferia/pkg/providers/s3/model"
 )
 
 const partIDHashLen = 8
@@ -23,7 +23,7 @@ type s3ObjectRef struct {
 	partIDHash   string
 	timestamp    string
 	outputFormat model.ParsingFormat
-	encoding     s3_provider.Encoding
+	encoding     s3_model.Encoding
 }
 
 func newS3ObjectRef(
@@ -33,7 +33,7 @@ func newS3ObjectRef(
 	partID string,
 	timestamp string,
 	outputFormat model.ParsingFormat,
-	encoding s3_provider.Encoding,
+	encoding s3_model.Encoding,
 ) s3ObjectRef {
 	return s3ObjectRef{
 		layout:       layout,
@@ -68,7 +68,7 @@ func (b *s3ObjectRef) fullKey(counter int) string {
 	if b.layout != "" {
 		size += len(b.layout) + len("/")
 	}
-	if b.encoding == s3_provider.GzipEncoding {
+	if b.encoding == s3_model.GzipEncoding {
 		size += len(".gz")
 	}
 	builder.Grow(size)
@@ -86,7 +86,7 @@ func (b *s3ObjectRef) fullKey(counter int) string {
 	builder.WriteString(counterStr)
 	builder.WriteByte('.')
 	builder.WriteString(ext)
-	if b.encoding == s3_provider.GzipEncoding {
+	if b.encoding == s3_model.GzipEncoding {
 		builder.WriteString(".gz")
 	}
 	return builder.String()

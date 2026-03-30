@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
+	aws_session "github.com/aws/aws-sdk-go/aws/session"
 	aws_s3 "github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
@@ -14,9 +14,9 @@ import (
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/parsers"
 	"github.com/transferia/transferia/pkg/parsers/registry/protobuf/protoparser"
-	"github.com/transferia/transferia/pkg/providers/s3"
-	chunk_pusher "github.com/transferia/transferia/pkg/providers/s3/pusher"
-	abstract_reader "github.com/transferia/transferia/pkg/providers/s3/reader"
+	s3_model "github.com/transferia/transferia/pkg/providers/s3/model"
+	s3_pusher "github.com/transferia/transferia/pkg/providers/s3/pusher"
+	s3_reader "github.com/transferia/transferia/pkg/providers/s3/reader"
 	"github.com/transferia/transferia/pkg/providers/s3/reader/s3raw"
 	"github.com/transferia/transferia/pkg/providers/s3/s3util"
 	"github.com/transferia/transferia/pkg/stats"
@@ -24,7 +24,7 @@ import (
 )
 
 func init() {
-	abstract_reader.RegisterReader(model.ParsingFormatPROTO, NewProtoReader)
+	s3_reader.RegisterReader(model.ParsingFormatPROTO, NewProtoReader)
 }
 
 const (
@@ -32,8 +32,8 @@ const (
 )
 
 var (
-	_ abstract_reader.Reader             = (*ProtoReader)(nil)
-	_ abstract_reader.RowsCountEstimator = (*ProtoReader)(nil)
+	_ s3_reader.Reader             = (*ProtoReader)(nil)
+	_ s3_reader.RowsCountEstimator = (*ProtoReader)(nil)
 )
 
 type ProtoReader struct {
@@ -48,10 +48,10 @@ type ProtoReader struct {
 	pathPattern    string
 	metrics        *stats.SourceStats
 	parserBuilder  parsers.ParserBuilder
-	unparsedPolicy s3.UnparsedPolicy
+	unparsedPolicy s3_model.UnparsedPolicy
 }
 
-func NewProtoReader(src *s3.S3Source, lgr log.Logger, sess *session.Session, metrics *stats.SourceStats) (abstract_reader.Reader, error) {
+func NewProtoReader(src *s3_model.S3Source, lgr log.Logger, sess *aws_session.Session, metrics *stats.SourceStats) (s3_reader.Reader, error) {
 	if len(src.Format.ProtoParser.DescFile) == 0 {
 		return nil, xerrors.New("desc file required")
 	}
@@ -109,11 +109,11 @@ func (r *ProtoReader) EstimateRowsCountAllObjects(ctx context.Context) (uint64, 
 	return res, nil
 }
 
-func (r *ProtoReader) Read(ctx context.Context, filePath string, pusher chunk_pusher.Pusher) error {
+func (r *ProtoReader) Read(ctx context.Context, filePath string, pusher s3_pusher.Pusher) error {
 	return readFileAndParse(ctx, r, filePath, pusher)
 }
 
-func (r *ProtoReader) ParsePassthrough(chunk chunk_pusher.Chunk) []abstract.ChangeItem {
+func (r *ProtoReader) ParsePassthrough(chunk s3_pusher.Chunk) []abstract.ChangeItem {
 	// the most complex and useful method in the world
 	return chunk.Items
 }
@@ -135,11 +135,11 @@ func (r *ProtoReader) ResolveSchema(ctx context.Context) (*abstract.TableSchema,
 	return resolveSchema(ctx, r, *files[0].Key)
 }
 
-func (r *ProtoReader) ObjectsFilter() abstract_reader.ObjectsFilter {
-	return abstract_reader.IsNotEmpty
+func (r *ProtoReader) ObjectsFilter() s3_reader.ObjectsFilter {
+	return s3_reader.IsNotEmpty
 }
 
-func newReaderImpl(src *s3.S3Source, lgr log.Logger, sess *session.Session, metrics *stats.SourceStats, parserBuilder parsers.ParserBuilder) (*ProtoReader, error) {
+func newReaderImpl(src *s3_model.S3Source, lgr log.Logger, sess *aws_session.Session, metrics *stats.SourceStats, parserBuilder parsers.ParserBuilder) (*ProtoReader, error) {
 	reader := &ProtoReader{
 		table: abstract.TableID{
 			Namespace: src.TableNamespace,

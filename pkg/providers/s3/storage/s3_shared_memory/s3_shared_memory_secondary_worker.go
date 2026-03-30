@@ -5,12 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/logging/batching_logger"
-	"github.com/transferia/transferia/pkg/providers/s3"
+	s3_model "github.com/transferia/transferia/pkg/providers/s3/model"
 	"github.com/transferia/transferia/pkg/providers/s3/s3util/coordinator_utils"
 	"github.com/transferia/transferia/pkg/providers/s3/s3util/effective_worker_num"
 	"github.com/transferia/transferia/pkg/providers/s3/s3util/file"
@@ -21,7 +21,7 @@ import (
 )
 
 type S3SharedMemorySecondaryWorker struct {
-	cfg                *s3.S3Source
+	cfg                *s3_model.S3Source
 	transferID         string
 	effectiveWorkerNum *effective_worker_num.EffectiveWorkerNum
 	cp                 coordinator.Coordinator
@@ -112,8 +112,8 @@ func (m *S3SharedMemorySecondaryWorker) SetOperationState(operationID string, ne
 func NewS3SharedMemorySecondaryWorker(
 	ctx context.Context,
 	logger log.Logger,
-	registry metrics.Registry,
-	cfg *s3.S3Source,
+	registry core_metrics.Registry,
+	cfg *s3_model.S3Source,
 	transferID string,
 	runtime abstract.Runtime,
 	cp coordinator.Coordinator,

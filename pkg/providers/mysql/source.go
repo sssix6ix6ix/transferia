@@ -9,19 +9,19 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
-	"github.com/go-mysql-org/go-mysql/mysql"
-	"github.com/go-mysql-org/go-mysql/replication"
-	default_mysql "github.com/go-sql-driver/mysql"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	mysql_driver "github.com/go-mysql-org/go-mysql/mysql"
+	mysql_replication "github.com/go-mysql-org/go-mysql/replication"
+	mysql_driver2 "github.com/go-sql-driver/mysql"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/changeitem"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/errors/coded"
-	"github.com/transferia/transferia/pkg/errors/codes"
+	error_codes "github.com/transferia/transferia/pkg/errors/codes"
 	"github.com/transferia/transferia/pkg/format"
-	unmarshaller "github.com/transferia/transferia/pkg/providers/mysql/unmarshaller/replication"
+	mysql_unmarshaller_replication "github.com/transferia/transferia/pkg/providers/mysql/unmarshaller/replication"
 	"github.com/transferia/transferia/pkg/stats"
 	"github.com/transferia/transferia/pkg/util"
 	"go.ytsaurus.tech/library/go/core/log"
@@ -44,7 +44,7 @@ type binlogHandler struct {
 	connectionParams *ConnectionParams
 	tracker          *Tracker
 	hasSystemDDL     bool
-	nextPos          mysql.Position
+	nextPos          mysql_driver.Position
 	expressions      map[string]string
 	requiredCols     map[string]map[string]bool
 	canal            *Canal
@@ -56,7 +56,7 @@ func (h *binlogHandler) Close() error {
 	return h.tracker.Close()
 }
 
-func (h *binlogHandler) OnRotate(rotateEvent *replication.RotateEvent) error {
+func (h *binlogHandler) OnRotate(rotateEvent *mysql_replication.RotateEvent) error {
 	h.logger.Info("rotate", log.Any("event", rotateEvent))
 	return nil
 }
@@ -66,17 +66,17 @@ func (h *binlogHandler) OnTableChanged(schema string, table string) error {
 	return nil
 }
 
-func (h *binlogHandler) OnGTID(gtid mysql.GTIDSet) error {
+func (h *binlogHandler) OnGTID(gtid mysql_driver.GTIDSet) error {
 	return nil
 }
 
-func (h *binlogHandler) OnPosSynced(pos mysql.Position, set mysql.GTIDSet, force bool) error {
+func (h *binlogHandler) OnPosSynced(pos mysql_driver.Position, set mysql_driver.GTIDSet, force bool) error {
 	h.logger.Debug("OnPosSynced", log.Any("event", set), log.Any("position", pos), log.Any("force", force))
 	h.nextPos = pos
 	return nil
 }
 
-func (h *binlogHandler) OnDDL(nextPos mysql.Position, queryEvent *replication.QueryEvent) error {
+func (h *binlogHandler) OnDDL(nextPos mysql_driver.Position, queryEvent *mysql_replication.QueryEvent) error {
 	if strings.Contains(string(queryEvent.Query), "create table if not exists __tm_keeper (") ||
 		strings.Contains(string(queryEvent.Query), "create table if not exists __tm_gtid_keeper (") {
 
@@ -121,7 +121,7 @@ func (h *binlogHandler) OnDDL(nextPos mysql.Position, queryEvent *replication.Qu
 		h.metrics.Error.Inc()
 		// Error code under 1000 is global error (usually network errors), above 2000 - client error codes;
 		// Error code [1000, 2000) - these are server error codes, that can be skipped;
-		var mySQLErr *default_mysql.MySQLError
+		var mySQLErr *mysql_driver2.MySQLError
 		if xerrors.As(err, &mySQLErr) && mySQLErr.Number >= 1000 && mySQLErr.Number < 2000 {
 			h.metrics.DDLError.Inc()
 			h.logger.Warn("Unable to apply ddl", log.Error(err), log.Any("ddl", string(queryEvent.Query)))
@@ -132,7 +132,7 @@ func (h *binlogHandler) OnDDL(nextPos mysql.Position, queryEvent *replication.Qu
 	return nil
 }
 
-func (h *binlogHandler) OnXID(nextPos mysql.Position) error {
+func (h *binlogHandler) OnXID(nextPos mysql_driver.Position) error {
 	h.logger.Debug("OnXID", log.Any("position", nextPos))
 	h.nextPos = nextPos
 	return nil
@@ -173,11 +173,11 @@ func (h *binlogHandler) OnRow(event *RowsEvent) error {
 	start := time.Now()
 
 	if !h.config.IsHomo {
-		if err := CastRowsToDT(event, h.connectionParams.Location, unmarshaller.UnmarshalHetero); err != nil {
+		if err := CastRowsToDT(event, h.connectionParams.Location, mysql_unmarshaller_replication.UnmarshalHetero); err != nil {
 			return xerrors.Errorf("failed to cast mysql binlog event to YT rows: %w", err)
 		}
 	} else {
-		if err := CastRowsToDT(event, h.connectionParams.Location, unmarshaller.UnmarshalHomo); err != nil {
+		if err := CastRowsToDT(event, h.connectionParams.Location, mysql_unmarshaller_replication.UnmarshalHomo); err != nil {
 			return xerrors.Errorf("failed to cast mysql binlog event to Mysql rows: %w", err)
 		}
 	}
@@ -394,7 +394,7 @@ func (h *binlogHandler) getRequiredCols(schema, table string) (map[string]bool, 
 
 type publisher struct {
 	logger          log.Logger
-	metrics         metrics.Registry
+	metrics         core_metrics.Registry
 	stopCh          chan bool
 	stopped         bool
 	once            sync.Once
@@ -446,11 +446,11 @@ func (p *publisher) Run(sink abstract.AsyncSink) error {
 		p.logger.Infof("Init reader from gtidset: %v", gtid)
 		if err := p.canal.StartFromGTID(gtid); err != nil {
 			cErr := util.Unwrap(err)
-			var mErr *mysql.MyError
+			var mErr *mysql_driver.MyError
 			if xerrors.As(cErr, &mErr) {
-				if mErr.Code == mysql.ER_MASTER_FATAL_ERROR_READING_BINLOG {
+				if mErr.Code == mysql_driver.ER_MASTER_FATAL_ERROR_READING_BINLOG {
 					p.logger.Error("fatal canal error", log.Error(mErr))
-					return coded.Errorf(codes.MySQLBinlogFirstFileMissing, "fatal canal error (binlog): %w", abstract.NewFatalError(err))
+					return coded.Errorf(error_codes.MySQLBinlogFirstFileMissing, "fatal canal error (binlog): %w", abstract.NewFatalError(err))
 				}
 			}
 			p.logger.Error("canal run failed", log.Error(err))
@@ -467,16 +467,16 @@ func (p *publisher) Run(sink abstract.AsyncSink) error {
 		}
 
 		p.logger.Infof("Init reader from filename %v:%v", name, pos)
-		if err := p.canal.RunFrom(mysql.Position{
+		if err := p.canal.RunFrom(mysql_driver.Position{
 			Name: name,
 			Pos:  pos,
 		}); err != nil {
 			cErr := util.Unwrap(err)
-			var mErr *mysql.MyError
+			var mErr *mysql_driver.MyError
 			if xerrors.As(cErr, &mErr) {
-				if mErr.Code == mysql.ER_MASTER_FATAL_ERROR_READING_BINLOG {
+				if mErr.Code == mysql_driver.ER_MASTER_FATAL_ERROR_READING_BINLOG {
 					p.logger.Error("fatal canal error", log.Error(mErr))
-					return coded.Errorf(codes.MySQLBinlogFirstFileMissing, "fatal canal error (binlog): %w", abstract.NewFatalError(err))
+					return coded.Errorf(error_codes.MySQLBinlogFirstFileMissing, "fatal canal error (binlog): %w", abstract.NewFatalError(err))
 				}
 			}
 			if p.stopped {
@@ -606,7 +606,7 @@ func (p *publisher) flusher() {
 	}
 }
 
-func NewSource(src *MysqlSource, transferID string, objects *model.DataObjects, logger log.Logger, registry metrics.Registry, cp coordinator.Coordinator, failOnDecimal bool) (abstract.Source, error) {
+func NewSource(src *MysqlSource, transferID string, objects *model.DataObjects, logger log.Logger, registry core_metrics.Registry, cp coordinator.Coordinator, failOnDecimal bool) (abstract.Source, error) {
 	var rollbacks util.Rollbacks
 	defer rollbacks.Do()
 
@@ -696,7 +696,7 @@ func NewSource(src *MysqlSource, transferID string, objects *model.DataObjects, 
 		connectionParams: connectionParams,
 		tracker:          tr,
 		hasSystemDDL:     false,
-		nextPos:          mysql.Position{},
+		nextPos:          mysql_driver.Position{},
 		expressions:      nil,
 		requiredCols:     map[string]map[string]bool{},
 		canal:            canal,

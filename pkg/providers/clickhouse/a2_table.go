@@ -5,7 +5,7 @@ import (
 
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract2"
-	"github.com/transferia/transferia/pkg/connection/clickhouse"
+	conn_clickhouse "github.com/transferia/transferia/pkg/connection/clickhouse"
 )
 
 type Table struct {
@@ -13,7 +13,7 @@ type Table struct {
 	iter       int
 	parts      []TablePart
 	partFilter map[string]bool
-	shards     map[string][]*clickhouse.Host
+	shards     map[string][]*conn_clickhouse.Host
 	shardNum   map[string]int
 	rowFilter  abstract.WhereStatement
 }
@@ -65,7 +65,7 @@ func (s *Table) ToOldTableID() (*abstract.TableID, error) {
 	return &s.tableID, nil
 }
 
-func NewTable(tableID abstract.TableID, parts []TablePart, shards map[string][]*clickhouse.Host, rowFilter abstract.WhereStatement) *Table {
+func NewTable(tableID abstract.TableID, parts []TablePart, shards map[string][]*conn_clickhouse.Host, rowFilter abstract.WhereStatement) *Table {
 	partFilter := map[string]bool{}
 	for _, part := range parts {
 		partFilter[part.Key()] = true

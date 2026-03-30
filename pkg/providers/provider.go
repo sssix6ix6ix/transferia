@@ -2,7 +2,7 @@ package providers
 
 import (
 	"github.com/transferia/transferia/internal/logger"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
@@ -80,7 +80,7 @@ type Checksumable interface {
 	DestinationChecksumableStorage() (abstract.ChecksumableStorage, error)
 }
 
-type ProviderFactory func(lgr log.Logger, registry metrics.Registry, cp coordinator.Coordinator, transfer *model.Transfer, operation *model.TransferOperation) Provider
+type ProviderFactory func(lgr log.Logger, registry core_metrics.Registry, cp coordinator.Coordinator, transfer *model.Transfer, operation *model.TransferOperation) Provider
 
 var knownProviders = map[abstract.ProviderType]ProviderFactory{}
 
@@ -90,7 +90,7 @@ func Register(providerType abstract.ProviderType, fac ProviderFactory) {
 }
 
 // Source resolve a specific provider interface from registry by `transfer.SrcType()` provider type.
-func Source[T Provider](lgr log.Logger, registry metrics.Registry, cp coordinator.Coordinator, transfer *model.Transfer) (T, bool) {
+func Source[T Provider](lgr log.Logger, registry core_metrics.Registry, cp coordinator.Coordinator, transfer *model.Transfer) (T, bool) {
 	var defRes T
 	f, ok := knownProviders[transfer.SrcType()]
 	if !ok {
@@ -143,7 +143,7 @@ func ProviderAs[T Provider](provider abstract.ProviderType) (T, bool) {
 }
 
 // Destination resolve a specific provider interface from registry by `transfer.DstType()` provider type.
-func Destination[T Provider](lgr log.Logger, registry metrics.Registry, cp coordinator.Coordinator, transfer *model.Transfer, operation *model.TransferOperation) (T, bool) {
+func Destination[T Provider](lgr log.Logger, registry core_metrics.Registry, cp coordinator.Coordinator, transfer *model.Transfer, operation *model.TransferOperation) (T, bool) {
 	var defRes T
 	f, ok := knownProviders[transfer.DstType()]
 	if !ok {

@@ -1,7 +1,7 @@
 package postgres
 
 import (
-	"database/sql/driver"
+	sql_driver "database/sql/driver"
 	"errors"
 
 	"github.com/jackc/pgtype"
@@ -36,7 +36,7 @@ func (t *Date) DecodeText(ci *pgtype.ConnInfo, src []byte) error {
 	return nil
 }
 
-func (t *Date) Value() (driver.Value, error) {
+func (t *Date) Value() (sql_driver.Value, error) {
 	return t.Date.Value()
 }
 

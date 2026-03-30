@@ -5,18 +5,18 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/logging/batching_logger"
-	"github.com/transferia/transferia/pkg/providers/s3"
+	s3_model "github.com/transferia/transferia/pkg/providers/s3/model"
 	"github.com/transferia/transferia/pkg/providers/s3/s3util/file"
-	"github.com/transferia/transferia/pkg/providers/s3/s3util/list"
+	s3util_list "github.com/transferia/transferia/pkg/providers/s3/s3util/list"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
 type S3SharedMemorySingleWorker struct {
-	cfg *s3.S3Source
+	cfg *s3_model.S3Source
 
 	objects []file.File
 }
@@ -79,12 +79,12 @@ func (m *S3SharedMemorySingleWorker) SetOperationState(operationID string, newSt
 func NewS3SharedMemorySingleWorker(
 	ctx context.Context,
 	logger log.Logger,
-	registry metrics.Registry,
-	cfg *s3.S3Source,
+	registry core_metrics.Registry,
+	cfg *s3_model.S3Source,
 ) (*S3SharedMemorySingleWorker, error) {
 	logger.Info("list all files in s3 - started")
 
-	files, err := list.ListAll(ctx, logger, registry, cfg)
+	files, err := s3util_list.ListAll(ctx, logger, registry, cfg)
 	if err != nil {
 		return nil, xerrors.Errorf("unable to list all, err: %w", err)
 	}

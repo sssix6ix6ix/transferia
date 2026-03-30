@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ClickHouse/clickhouse-go/v2"
+	clickhouse_go "github.com/ClickHouse/clickhouse-go/v2"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 )
 
@@ -20,7 +20,7 @@ const (
 var ForbiddenDistributedDDLError = xerrors.New("detected Clickhouse cluster with multiple nodes and without distributed DDL support")
 
 func IsDistributedDDLError(err error) bool {
-	chError := new(clickhouse.Exception)
+	chError := new(clickhouse_go.Exception)
 	if !xerrors.As(err, &chError) {
 		return false
 	}
@@ -48,7 +48,7 @@ var distrTaskRe = regexp.MustCompile(`(/clickhouse/task_queue/ddl/[\w-]+)`)
 
 // AsDistributedDDLTimeout checks whether err is clickhouse DDL timeout error and finds DDL task path
 func AsDistributedDDLTimeout(err error) *ErrDistributedDDLTimeout {
-	chError := new(clickhouse.Exception)
+	chError := new(clickhouse_go.Exception)
 	// Distributed DDL Timeout has code 159 (TIMEOUT_EXCEEDED) and
 	// message containing DDL task path in ZK and mentioning distributed_ddl_task_timeout setting value
 	// Ex.: `failed to execute DDL "<ddl code>": code: 159, message: Watching task /clickhouse/task_queue/ddl/query-0000000015 is executing longer than distributed_ddl_task_timeout (=10) seconds. ...`

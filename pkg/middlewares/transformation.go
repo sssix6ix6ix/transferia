@@ -1,7 +1,7 @@
 package middlewares
 
 import (
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
@@ -9,7 +9,7 @@ import (
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
-func Transformation(transfer *model.Transfer, logger log.Logger, metrics metrics.Registry) (func(abstract.Sinker) abstract.Sinker, error) {
+func Transformation(transfer *model.Transfer, logger log.Logger, metrics core_metrics.Registry) (func(abstract.Sinker) abstract.Sinker, error) {
 	if transfer.HasTransformation() {
 		var transformChain []abstract.Transformer
 		for _, cfg := range transfer.TransformationConfigs() {

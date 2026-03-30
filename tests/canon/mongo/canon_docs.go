@@ -5,10 +5,10 @@ import (
 	"math"
 	"time"
 
-	mongocommon "github.com/transferia/transferia/pkg/providers/mongo"
+	provider_mongo "github.com/transferia/transferia/pkg/providers/mongo"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	mongo_options "go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func oid(hex string) primitive.ObjectID {
@@ -92,8 +92,8 @@ var (
 	}
 )
 
-func DropCollection(ctx context.Context, Source *mongocommon.MongoSource, databaseName string, collectionName string) error {
-	client, err := mongocommon.Connect(ctx, Source.ConnectionOptions([]string{}), nil)
+func DropCollection(ctx context.Context, Source *provider_mongo.MongoSource, databaseName string, collectionName string) error {
+	client, err := provider_mongo.Connect(ctx, Source.ConnectionOptions([]string{}), nil)
 	if err != nil {
 		return err
 	}
@@ -105,28 +105,28 @@ func DropCollection(ctx context.Context, Source *mongocommon.MongoSource, databa
 	return nil
 }
 
-func InsertDocs(ctx context.Context, Source *mongocommon.MongoSource, databaseName string, collectionName string, docs ...any) error {
-	client, err := mongocommon.Connect(ctx, Source.ConnectionOptions([]string{}), nil)
+func InsertDocs(ctx context.Context, Source *provider_mongo.MongoSource, databaseName string, collectionName string, docs ...any) error {
+	client, err := provider_mongo.Connect(ctx, Source.ConnectionOptions([]string{}), nil)
 	if err != nil {
 		return err
 	}
 	defer client.Close(ctx)
 	collection := client.Database(databaseName).Collection(collectionName)
-	insertManyOpts := new(options.InsertManyOptions).
+	insertManyOpts := new(mongo_options.InsertManyOptions).
 		SetBypassDocumentValidation(true)
 
 	_, err = collection.InsertMany(ctx, docs, insertManyOpts)
 	return err
 }
 
-func UpdateDocs(ctx context.Context, Source *mongocommon.MongoSource, databaseName string, collectionName string, docs ...IncrementUpdate) error {
-	client, err := mongocommon.Connect(ctx, Source.ConnectionOptions([]string{}), nil)
+func UpdateDocs(ctx context.Context, Source *provider_mongo.MongoSource, databaseName string, collectionName string, docs ...IncrementUpdate) error {
+	client, err := provider_mongo.Connect(ctx, Source.ConnectionOptions([]string{}), nil)
 	if err != nil {
 		return err
 	}
 	defer client.Close(ctx)
 	collection := client.Database(databaseName).Collection(collectionName)
-	updateManyOpts := new(options.UpdateOptions).
+	updateManyOpts := new(mongo_options.UpdateOptions).
 		SetBypassDocumentValidation(true)
 	for _, updDescr := range docs {
 		_, err = collection.UpdateMany(ctx, updDescr.Filter, updDescr.Update, updateManyOpts)

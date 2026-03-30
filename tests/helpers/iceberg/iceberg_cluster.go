@@ -7,12 +7,12 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3"
+	aws_credentials "github.com/aws/aws-sdk-go/aws/credentials"
+	aws_session "github.com/aws/aws-sdk-go/aws/session"
+	aws_s3 "github.com/aws/aws-sdk-go/service/s3"
 	"github.com/docker/go-connections/nat"
 	"github.com/stretchr/testify/require"
-	tc "github.com/testcontainers/testcontainers-go"
+	testcontainers_go "github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
@@ -33,8 +33,8 @@ const (
 // IcebergCluster encapsulates all containers required for Iceberg integration testing:
 // MinIO (S3-compatible storage) and Iceberg REST Catalog.
 type IcebergCluster struct {
-	minioCont tc.Container
-	restCont  tc.Container
+	minioCont testcontainers_go.Container
+	restCont  testcontainers_go.Container
 }
 
 // RunCluster creates and starts all containers that form the Iceberg test environment.
@@ -49,9 +49,9 @@ func RunCluster(ctx context.Context) (_ *IcebergCluster, err error) {
 	}()
 
 	// --- MinIO ---
-	cluster.minioCont, err = tc.GenericContainer(ctx, tc.GenericContainerRequest{
-		ProviderType: tc.ProviderPodman,
-		ContainerRequest: tc.ContainerRequest{
+	cluster.minioCont, err = testcontainers_go.GenericContainer(ctx, testcontainers_go.GenericContainerRequest{
+		ProviderType: testcontainers_go.ProviderPodman,
+		ContainerRequest: testcontainers_go.ContainerRequest{
 			Image:        minioImage,
 			ExposedPorts: []string{minioPort, minioConsolePort},
 			Env: map[string]string{
@@ -82,9 +82,9 @@ func RunCluster(ctx context.Context) (_ *IcebergCluster, err error) {
 	}
 
 	// --- Iceberg REST Catalog ---
-	cluster.restCont, err = tc.GenericContainer(ctx, tc.GenericContainerRequest{
-		ProviderType: tc.ProviderPodman,
-		ContainerRequest: tc.ContainerRequest{
+	cluster.restCont, err = testcontainers_go.GenericContainer(ctx, testcontainers_go.GenericContainerRequest{
+		ProviderType: testcontainers_go.ProviderPodman,
+		ContainerRequest: testcontainers_go.ContainerRequest{
 			Image:        restImage,
 			ExposedPorts: []string{restPort},
 			ExtraHosts: []string{
@@ -161,7 +161,7 @@ func (c *IcebergCluster) MinioConsoleURL(ctx context.Context) (string, error) {
 // It collects all errors and returns them joined.
 func (c *IcebergCluster) Close(ctx context.Context) error {
 	var errs []error
-	for _, cont := range []tc.Container{c.restCont, c.minioCont} {
+	for _, cont := range []testcontainers_go.Container{c.restCont, c.minioCont} {
 		if cont != nil {
 			if err := cont.Terminate(ctx); err != nil {
 				errs = append(errs, err)
@@ -174,7 +174,7 @@ func (c *IcebergCluster) Close(ctx context.Context) error {
 	return nil
 }
 
-func containerURL(ctx context.Context, cont tc.Container, port string) (string, error) {
+func containerURL(ctx context.Context, cont testcontainers_go.Container, port string) (string, error) {
 	host, err := cont.Host(ctx)
 	if err != nil {
 		return "", fmt.Errorf("get host: %w", err)
@@ -187,19 +187,19 @@ func containerURL(ctx context.Context, cont tc.Container, port string) (string, 
 }
 
 func createBucket(ctx context.Context, endpoint, accessKey, secretKey, region, bucket string) error {
-	sess, err := session.NewSession(&aws.Config{
+	sess, err := aws_session.NewSession(&aws.Config{
 		Endpoint:         aws.String(endpoint),
 		Region:           aws.String(region),
-		Credentials:      credentials.NewStaticCredentials(accessKey, secretKey, ""),
+		Credentials:      aws_credentials.NewStaticCredentials(accessKey, secretKey, ""),
 		S3ForcePathStyle: aws.Bool(true),
 	})
 	if err != nil {
 		return fmt.Errorf("create aws session: %w", err)
 	}
 
-	client := s3.New(sess)
+	client := aws_s3.New(sess)
 
-	if _, err := client.CreateBucketWithContext(ctx, &s3.CreateBucketInput{
+	if _, err := client.CreateBucketWithContext(ctx, &aws_s3.CreateBucketInput{
 		Bucket: aws.String(bucket),
 	}); err != nil {
 		return fmt.Errorf("create bucket %q: %w", bucket, err)
@@ -209,7 +209,7 @@ func createBucket(ctx context.Context, endpoint, accessKey, secretKey, region, b
 		`{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":"*","Action":["s3:GetObject","s3:PutObject","s3:DeleteObject","s3:ListBucket"],"Resource":["arn:aws:s3:::%s","arn:aws:s3:::%s/*"]}]}`,
 		bucket, bucket,
 	)
-	if _, err := client.PutBucketPolicyWithContext(ctx, &s3.PutBucketPolicyInput{
+	if _, err := client.PutBucketPolicyWithContext(ctx, &aws_s3.PutBucketPolicyInput{
 		Bucket: aws.String(bucket),
 		Policy: aws.String(policy),
 	}); err != nil {

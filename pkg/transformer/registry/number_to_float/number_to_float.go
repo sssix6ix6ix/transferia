@@ -7,10 +7,10 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/transformer"
-	"github.com/transferia/transferia/pkg/transformer/registry/filter"
+	transformer_filter "github.com/transferia/transferia/pkg/transformer/registry/filter"
 	"github.com/transferia/transferia/pkg/util/set"
 	"go.ytsaurus.tech/library/go/core/log"
-	yts "go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 )
 
 const (
@@ -31,16 +31,16 @@ func init() {
 }
 
 type Config struct {
-	Tables filter.Tables `json:"tables"`
+	Tables transformer_filter.Tables `json:"tables"`
 }
 
 type NumberToFloatTransformer struct {
-	Tables filter.Filter
+	Tables transformer_filter.Filter
 	Logger log.Logger
 }
 
 func NewNumberToFloatTransformer(cfg Config, lgr log.Logger) (*NumberToFloatTransformer, error) {
-	tables, err := filter.NewFilter(cfg.Tables.IncludeTables, cfg.Tables.ExcludeTables)
+	tables, err := transformer_filter.NewFilter(cfg.Tables.IncludeTables, cfg.Tables.ExcludeTables)
 	if err != nil {
 		return nil, xerrors.Errorf("Unable to init table filter: %w", err)
 	}
@@ -55,7 +55,7 @@ func (t *NumberToFloatTransformer) Apply(input []abstract.ChangeItem) abstract.T
 	transformed := make([]abstract.ChangeItem, 0)
 	errors := make([]abstract.TransformerError, 0)
 	for _, item := range input {
-		isNameMatching := filter.MatchAnyTableNameVariant(t.Tables, item.TableID())
+		isNameMatching := transformer_filter.MatchAnyTableNameVariant(t.Tables, item.TableID())
 		if !isNameMatching || abstract.IsSystemTable(item.TableID().Name) || !supportedKinds.Contains(item.Kind) {
 			transformed = append(transformed, item)
 			continue
@@ -70,7 +70,7 @@ func (t *NumberToFloatTransformer) processItem(item abstract.ChangeItem) abstrac
 	schemaColumns := item.TableSchema.Columns()
 	schemaMapping := abstract.MakeMapColNameToIndex(schemaColumns)
 	for i, columnName := range item.ColumnNames {
-		if schemaColumns[schemaMapping[columnName]].DataType == yts.TypeAny.String() {
+		if schemaColumns[schemaMapping[columnName]].DataType == ytschema.TypeAny.String() {
 			item.ColumnValues[i] = t.processColumnValue(item.ColumnValues[i])
 		}
 	}
@@ -125,7 +125,7 @@ func (t *NumberToFloatTransformer) replaceNumbers(queue *list.List, val interfac
 }
 
 func (t *NumberToFloatTransformer) Suitable(table abstract.TableID, schema *abstract.TableSchema) bool {
-	return filter.MatchAnyTableNameVariant(t.Tables, table)
+	return transformer_filter.MatchAnyTableNameVariant(t.Tables, table)
 }
 
 func (t *NumberToFloatTransformer) ResultSchema(original *abstract.TableSchema) (*abstract.TableSchema, error) {

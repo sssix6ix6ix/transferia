@@ -5,14 +5,14 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
+	grpc_codes "google.golang.org/grpc/codes"
 )
 
 type ServerMethodStat struct {
 	methods  map[string]*MethodStat
-	registry metrics.Registry
+	registry core_metrics.Registry
 }
 
 type requestResult string
@@ -32,48 +32,48 @@ var (
 )
 
 type MethodStat struct {
-	counters         map[requestResult]metrics.Counter
+	counters         map[requestResult]core_metrics.Counter
 	minDuration      atomic.Int64
 	maxDuration      atomic.Int64
-	minDurationGauge metrics.FuncGauge
-	maxDurationGauge metrics.FuncGauge
-	duration         metrics.Timer
+	minDurationGauge core_metrics.FuncGauge
+	maxDurationGauge core_metrics.FuncGauge
+	duration         core_metrics.Timer
 }
 
-func getRequestResultForCode(grpcCode codes.Code) requestResult {
+func getRequestResultForCode(grpcCode grpc_codes.Code) requestResult {
 	switch grpcCode {
 	case
-		codes.OK:
+		grpc_codes.OK:
 
 		return requestResultOK
 	case
-		codes.Canceled,
-		codes.InvalidArgument,
-		codes.NotFound,
-		codes.AlreadyExists,
-		codes.PermissionDenied,
-		codes.Unauthenticated,
-		codes.ResourceExhausted,
-		codes.FailedPrecondition,
-		codes.Aborted,
-		codes.OutOfRange:
+		grpc_codes.Canceled,
+		grpc_codes.InvalidArgument,
+		grpc_codes.NotFound,
+		grpc_codes.AlreadyExists,
+		grpc_codes.PermissionDenied,
+		grpc_codes.Unauthenticated,
+		grpc_codes.ResourceExhausted,
+		grpc_codes.FailedPrecondition,
+		grpc_codes.Aborted,
+		grpc_codes.OutOfRange:
 
 		return requestResultClientError
 
 	case
-		codes.Unknown,
-		codes.DeadlineExceeded,
-		codes.Unimplemented,
-		codes.Internal,
-		codes.Unavailable,
-		codes.DataLoss:
+		grpc_codes.Unknown,
+		grpc_codes.DeadlineExceeded,
+		grpc_codes.Unimplemented,
+		grpc_codes.Internal,
+		grpc_codes.Unavailable,
+		grpc_codes.DataLoss:
 
 		return requestResultServerError
 	}
 	return requestResultServerError
 }
 
-func (m *MethodStat) Code(code codes.Code, duration time.Duration) {
+func (m *MethodStat) Code(code grpc_codes.Code, duration time.Duration) {
 	result := getRequestResultForCode(code)
 	m.counters[result].Inc()
 
@@ -109,9 +109,9 @@ func methodDurations() []time.Duration {
 	}
 }
 
-func NewMethodStat(registry metrics.Registry, service string, info grpc.MethodInfo) *MethodStat {
+func NewMethodStat(registry core_metrics.Registry, service string, info grpc.MethodInfo) *MethodStat {
 	methodRegistry := registry.WithTags(map[string]string{"grpc_service": service, "method": info.Name})
-	counters := map[requestResult]metrics.Counter{}
+	counters := map[requestResult]core_metrics.Counter{}
 	for _, result := range allRequestResults {
 		requestResultRegistry := methodRegistry.WithTags(map[string]string{"result": string(result)})
 		counter := requestResultRegistry.Counter("request.count")
@@ -123,7 +123,7 @@ func NewMethodStat(registry metrics.Registry, service string, info grpc.MethodIn
 		maxDuration:      atomic.Int64{},
 		minDurationGauge: nil,
 		maxDurationGauge: nil,
-		duration:         methodRegistry.DurationHistogram("request.duration", metrics.NewDurationBuckets(methodDurations()...)),
+		duration:         methodRegistry.DurationHistogram("request.duration", core_metrics.NewDurationBuckets(methodDurations()...)),
 	}
 	methodStat.maxDurationGauge = methodRegistry.FuncGauge("request.max_duration", func() float64 {
 		return (float64)(methodStat.maxDuration.Swap(0)) / float64(time.Second)
@@ -134,7 +134,7 @@ func NewMethodStat(registry metrics.Registry, service string, info grpc.MethodIn
 	return methodStat
 }
 
-func NewServerMethods(registry metrics.Registry) *ServerMethodStat {
+func NewServerMethods(registry core_metrics.Registry) *ServerMethodStat {
 	return &ServerMethodStat{
 		methods:  map[string]*MethodStat{},
 		registry: registry,

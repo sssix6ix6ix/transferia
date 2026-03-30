@@ -1,7 +1,7 @@
 package data
 
 import (
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
@@ -14,7 +14,7 @@ var (
 	TryLegacySourceError = xerrors.New("Not found in new sources, try legacy source")
 )
 
-func NewDataProvider(lgr log.Logger, registry metrics.Registry, transfer *model.Transfer, cp coordinator.Coordinator) (p abstract2.DataProvider, err error) {
+func NewDataProvider(lgr log.Logger, registry core_metrics.Registry, transfer *model.Transfer, cp coordinator.Coordinator) (p abstract2.DataProvider, err error) {
 	dataer, ok := providers.Source[providers.Abstract2Provider](lgr, registry, cp, transfer)
 	if !ok {
 		return nil, TryLegacySourceError
@@ -29,7 +29,7 @@ func NewDataProvider(lgr log.Logger, registry metrics.Registry, transfer *model.
 	return res, nil
 }
 
-func NewSnapshotProvider(lgr log.Logger, registry metrics.Registry, transfer *model.Transfer, cp coordinator.Coordinator) (abstract2.SnapshotProvider, error) {
+func NewSnapshotProvider(lgr log.Logger, registry core_metrics.Registry, transfer *model.Transfer, cp coordinator.Coordinator) (abstract2.SnapshotProvider, error) {
 	p, err := NewDataProvider(lgr, registry, transfer, cp)
 	if err != nil {
 		return nil, xerrors.Errorf("unable to get data provider: %w", err)

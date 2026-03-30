@@ -11,9 +11,9 @@ import (
 	"github.com/transferia/transferia/pkg/errors"
 	"github.com/transferia/transferia/pkg/errors/categories"
 	"github.com/transferia/transferia/pkg/middlewares"
-	"github.com/transferia/transferia/pkg/providers/postgres"
-	"github.com/transferia/transferia/pkg/sink"
-	"github.com/transferia/transferia/pkg/worker/tasks/cleanup"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
+	"github.com/transferia/transferia/pkg/sink_factory"
+	cleanup_task "github.com/transferia/transferia/pkg/worker/tasks/cleanup"
 )
 
 // CleanupSinker cleans up the sinker when non-incremental transfer is
@@ -51,7 +51,7 @@ func (l *SnapshotLoader) CleanupSinker(tables abstract.TableMap) error {
 	mode := l.transfer.Dst.CleanupMode()
 
 	logger.Log.Infof("need to cleanup (%v) tables", string(mode))
-	sink, err := sink.MakeAsyncSink(l.transfer, l.operation, logger.Log, l.registry, l.cp, middlewares.MakeConfig(middlewares.WithNoData))
+	sink, err := sink_factory.MakeAsyncSink(l.transfer, l.operation, logger.Log, l.registry, l.cp, middlewares.MakeConfig(middlewares.WithNoData))
 	if err != nil {
 		return errors.CategorizedErrorf(categories.Target, "failed to connect to the target database: %w", err)
 	}
@@ -89,17 +89,17 @@ func (l *SnapshotLoader) CleanupSinker(tables abstract.TableMap) error {
 		}
 	}
 
-	if err := cleanup.CleanupTables(sink, toCleanupTables, mode); err != nil {
+	if err := cleanup_task.CleanupTables(sink, toCleanupTables, mode); err != nil {
 		return errors.CategorizedErrorf(categories.Target, "cleanup (%s) in the target database failed: %w", mode, err)
 	}
 	return nil
 }
 
 func isPostgresHomoTransfer(transfer *model.Transfer) bool {
-	if _, ok := transfer.Src.(*postgres.PgSource); !ok {
+	if _, ok := transfer.Src.(*provider_postgres.PgSource); !ok {
 		return false
 	}
-	if _, ok := transfer.Dst.(*postgres.PgDestination); !ok {
+	if _, ok := transfer.Dst.(*provider_postgres.PgDestination); !ok {
 		return false
 	}
 	return true
@@ -125,7 +125,7 @@ func checkDependentViewsPostgresHomo(transfer *model.Transfer, viewsOnSrc, views
 
 func extractExcluded(transfer *model.Transfer, dependentViews map[abstract.TableID][]abstract.TableID) map[abstract.TableID][]abstract.TableID {
 	excluded := make(map[abstract.TableID][]abstract.TableID)
-	src := transfer.Src.(*postgres.PgSource)
+	src := transfer.Src.(*provider_postgres.PgSource)
 	for table, views := range dependentViews {
 		excludedViews := make([]abstract.TableID, 0)
 		for _, view := range views {
@@ -155,8 +155,8 @@ func sprintfDependentViews(views map[abstract.TableID][]abstract.TableID) string
 }
 
 func getSourceDependentViews(transfer *model.Transfer, tables abstract.TableMap) (map[abstract.TableID][]abstract.TableID, error) {
-	src := transfer.Src.(*postgres.PgSource)
-	srcStorage, err := postgres.NewStorage(src.ToStorageParams(transfer))
+	src := transfer.Src.(*provider_postgres.PgSource)
+	srcStorage, err := provider_postgres.NewStorage(src.ToStorageParams(transfer))
 	if err != nil {
 		return nil, xerrors.Errorf("failed to connect to the source database: %w", err)
 	}
@@ -166,8 +166,8 @@ func getSourceDependentViews(transfer *model.Transfer, tables abstract.TableMap)
 }
 
 func getDestinationDependentViews(transfer *model.Transfer, tables abstract.TableMap) (map[abstract.TableID][]abstract.TableID, error) {
-	dst := transfer.Dst.(*postgres.PgDestination)
-	dstStorage, err := postgres.NewStorage(dst.ToStorageParams())
+	dst := transfer.Dst.(*provider_postgres.PgDestination)
+	dstStorage, err := provider_postgres.NewStorage(dst.ToStorageParams())
 	if err != nil {
 		return nil, xerrors.Errorf("failed to connect to the destination database: %w", err)
 	}
@@ -176,14 +176,14 @@ func getDestinationDependentViews(transfer *model.Transfer, tables abstract.Tabl
 	return getDependentViews(dstStorage, tables)
 }
 
-func getDependentViews(storage *postgres.Storage, tables abstract.TableMap) (map[abstract.TableID][]abstract.TableID, error) {
+func getDependentViews(storage *provider_postgres.Storage, tables abstract.TableMap) (map[abstract.TableID][]abstract.TableID, error) {
 	ctx := context.Background()
 	conn, err := storage.Conn.Acquire(ctx)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to acquire a connection to storage: %w", err)
 	}
 	defer conn.Release()
-	pgSchemaExtractor := postgres.NewSchemaExtractor()
+	pgSchemaExtractor := provider_postgres.NewSchemaExtractor()
 
 	return pgSchemaExtractor.FindDependentViews(ctx, conn.Conn(), tables)
 }

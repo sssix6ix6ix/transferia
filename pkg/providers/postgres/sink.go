@@ -10,12 +10,12 @@ import (
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	_ "github.com/jackc/pgx/v4/stdlib"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/errors/coded"
-	"github.com/transferia/transferia/pkg/errors/codes"
+	error_codes "github.com/transferia/transferia/pkg/errors/codes"
 	"github.com/transferia/transferia/pkg/stats"
 	"github.com/transferia/transferia/pkg/util"
 	"go.ytsaurus.tech/library/go/core/log"
@@ -531,7 +531,7 @@ func (s *sink) batchInsert(input []abstract.ChangeItem) error {
 						return err
 					}
 				} else if IsPgError(err, ErrcDropTableWithDependencies) {
-					return coded.Errorf(codes.PostgresDropTableWithDependencies, "failed to drop table %v: %w", item.PgName(), err)
+					return coded.Errorf(error_codes.PostgresDropTableWithDependencies, "failed to drop table %v: %w", item.PgName(), err)
 				} else {
 					//nolint:descriptiveerrors
 					return err
@@ -1053,7 +1053,7 @@ func (s *sink) executeQueries(ctx context.Context, conn *pgx.Conn, queries []str
 
 	s.logger.Warn("failed to execute queries at sink", log.String("query", util.DefaultSample(combinedQuery)), log.Error(err), log.Int("len", len(queries)))
 	if IsPgError(err, ErrcGeneratedColumnWriteAttempt) {
-		return coded.Errorf(codes.PostgresGeneratedColumnWriteAttempt, "failed to execute %d queries at sink: %w", len(queries), err)
+		return coded.Errorf(error_codes.PostgresGeneratedColumnWriteAttempt, "failed to execute %d queries at sink: %w", len(queries), err)
 	}
 	return xerrors.Errorf("failed to execute %d queries at sink: %w", len(queries), err)
 }
@@ -1166,7 +1166,7 @@ func (s *sink) insert(ctx context.Context, table string, schema []abstract.ColSc
 
 		err := s.executeQueries(ctx, conn.Conn(), queries[processedQueries:batchFinishI])
 		if IsPgError(err, ErrcUniqueViolation) && !s.config.IgnoreUniqueConstraint() {
-			return coded.Errorf(codes.PostgresDuplicateKeyViolation, "failed to process a single item at sink: %w", err)
+			return coded.Errorf(error_codes.PostgresDuplicateKeyViolation, "failed to process a single item at sink: %w", err)
 		}
 		if IsPgError(err, ErrcUniqueViolation) && s.config.IgnoreUniqueConstraint() {
 			// This may happen when the state of the target database is newer than the WAL entries
@@ -1255,7 +1255,7 @@ func getLsnTrack(ctx context.Context, conn *pgxpool.Pool, transferID string) (ma
 	return res, nil
 }
 
-func NewSink(lgr log.Logger, transferID string, config PgSinkParams, mtrcs metrics.Registry) (abstract.Sinker, error) {
+func NewSink(lgr log.Logger, transferID string, config PgSinkParams, mtrcs core_metrics.Registry) (abstract.Sinker, error) {
 	r := util.Rollbacks{}
 	defer r.Do()
 
@@ -1287,7 +1287,7 @@ func NewSink(lgr log.Logger, transferID string, config PgSinkParams, mtrcs metri
 	return result, nil
 }
 
-func NewSinkWithPool(ctx context.Context, lgr log.Logger, transferID string, config PgSinkParams, mtrcs metrics.Registry, pool *pgxpool.Pool) (abstract.Sinker, error) {
+func NewSinkWithPool(ctx context.Context, lgr log.Logger, transferID string, config PgSinkParams, mtrcs core_metrics.Registry, pool *pgxpool.Pool) (abstract.Sinker, error) {
 	keys, err := getUniqueIndexKeys(ctx, pool)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get UNIQUE INDEX keys: %w", err)

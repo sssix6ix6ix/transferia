@@ -10,13 +10,13 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/ydb"
+	provider_ydb "github.com/transferia/transferia/pkg/providers/ydb"
 	"github.com/transferia/transferia/tests/helpers"
 	ydbrecipe "github.com/transferia/transferia/tests/helpers/ydb_recipe"
-	ydbtable "github.com/transferia/transferia/tests/helpers/ydb_recipe/table"
-	"github.com/ydb-platform/ydb-go-sdk/v3/table"
-	"github.com/ydb-platform/ydb-go-sdk/v3/table/options"
-	"github.com/ydb-platform/ydb-go-sdk/v3/table/types"
+	ydb_recipe_table "github.com/transferia/transferia/tests/helpers/ydb_recipe/table"
+	ydb_table "github.com/ydb-platform/ydb-go-sdk/v3/table"
+	ydb_options "github.com/ydb-platform/ydb-go-sdk/v3/table/options"
+	ydb_table_types "github.com/ydb-platform/ydb-go-sdk/v3/table/types"
 )
 
 var pathIn = "dectest/test_snapshot_sharded"
@@ -49,7 +49,7 @@ func anyTablesUdf(table abstract.TableID, schema abstract.TableColumns) bool {
 //---------------------------------------------------------------------------------------------------------------------
 
 func TestGroup(t *testing.T) {
-	src := &ydb.YdbSource{
+	src := &provider_ydb.YdbSource{
 		Token:              model.SecretString(os.Getenv("YDB_TOKEN")),
 		Database:           helpers.GetEnvOfFail(t, "YDB_DATABASE"),
 		Instance:           helpers.GetEnvOfFail(t, "YDB_ENDPOINT"),
@@ -65,19 +65,19 @@ func TestGroup(t *testing.T) {
 		ydbConn := ydbrecipe.Driver(t)
 
 		err := ydbConn.Table().Do(context.Background(),
-			func(ctx context.Context, s table.Session) (err error) {
+			func(ctx context.Context, s ydb_table.Session) (err error) {
 				// create table with four partitions
 				tablePath := path.Join(ydbConn.Name(), pathIn)
 				err = s.CreateTable(ctx, tablePath,
-					options.WithColumn("c_custkey", types.Optional(types.TypeUint64)),
-					options.WithColumn("random_val", types.Optional(types.TypeUint64)),
-					options.WithPrimaryKeyColumn("c_custkey"),
-					options.WithPartitions(options.WithUniformPartitions(uint64(partsCountExpected))),
+					ydb_options.WithColumn("c_custkey", ydb_table_types.Optional(ydb_table_types.TypeUint64)),
+					ydb_options.WithColumn("random_val", ydb_table_types.Optional(ydb_table_types.TypeUint64)),
+					ydb_options.WithPrimaryKeyColumn("c_custkey"),
+					ydb_options.WithPartitions(ydb_options.WithUniformPartitions(uint64(partsCountExpected))),
 				)
 				if err != nil {
 					return err
 				}
-				tableDescription, err := s.DescribeTable(ctx, tablePath, options.WithShardKeyBounds())
+				tableDescription, err := s.DescribeTable(ctx, tablePath, ydb_options.WithShardKeyBounds())
 				if err != nil {
 					return err
 				}
@@ -90,7 +90,7 @@ func TestGroup(t *testing.T) {
 					}
 					q := fmt.Sprintf("--!syntax_v1\nUPSERT INTO `%s` (c_custkey, random_val) VALUES  (%s, %d);", tablePath, leftBorder, i)
 					fmt.Printf("query to execute ydb:%s\n", q)
-					ydbtable.ExecQuery(t, ydbConn, q)
+					ydb_recipe_table.ExecQuery(t, ydbConn, q)
 				}
 				return nil
 			},
@@ -98,7 +98,7 @@ func TestGroup(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	dst := &ydb.YdbDestination{
+	dst := &provider_ydb.YdbDestination{
 		Token:    model.SecretString(os.Getenv("YDB_TOKEN")),
 		Database: helpers.GetEnvOfFail(t, "YDB_DATABASE"),
 		Instance: helpers.GetEnvOfFail(t, "YDB_ENDPOINT"),

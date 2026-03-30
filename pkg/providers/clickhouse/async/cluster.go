@@ -10,53 +10,53 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ClickHouse/clickhouse-go/v2"
+	clickhouse_go "github.com/ClickHouse/clickhouse-go/v2"
 	"github.com/cenkalti/backoff/v4"
 	"github.com/jmoiron/sqlx"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/library/go/core/xerrors/multierr"
 	"github.com/transferia/transferia/library/go/ptr"
 	"github.com/transferia/transferia/pkg/abstract"
-	chconn "github.com/transferia/transferia/pkg/connection/clickhouse"
-	db_model "github.com/transferia/transferia/pkg/providers/clickhouse/async/model/db"
+	conn_clickhouse "github.com/transferia/transferia/pkg/connection/clickhouse"
+	ch_db_model "github.com/transferia/transferia/pkg/providers/clickhouse/async/model/db"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/conn"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/errors"
+	clickhouse_errors "github.com/transferia/transferia/pkg/providers/clickhouse/errors"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/sharding"
-	topology2 "github.com/transferia/transferia/pkg/providers/clickhouse/topology"
+	"github.com/transferia/transferia/pkg/providers/clickhouse/topology"
 	"github.com/transferia/transferia/pkg/terryid"
 	"go.ytsaurus.tech/library/go/core/log"
-	"golang.org/x/exp/maps"
+	xmaps "golang.org/x/exp/maps"
 )
 
 // TODO: refactor and decouple client and implementation
 
 type DDLStreamingClient interface {
-	db_model.Client
-	db_model.DDLExecutor
-	db_model.StreamInserter
+	ch_db_model.Client
+	ch_db_model.DDLExecutor
+	ch_db_model.StreamInserter
 	io.Closer
 }
 
 type ShardClient interface {
-	db_model.Client
-	db_model.DDLExecutor
+	ch_db_model.Client
+	ch_db_model.DDLExecutor
 	AliveHost() (DDLStreamingClient, error)
 	io.Closer
 }
 
 type ClusterClient interface {
-	db_model.Client
-	db_model.DDLExecutor
+	ch_db_model.Client
+	ch_db_model.DDLExecutor
 	sharding.Shards[ShardClient]
 	io.Closer
 }
 
 type shardClient struct {
 	db                    *sql.DB
-	opts                  *clickhouse.Options
+	opts                  *clickhouse_go.Options
 	distributedDDLEnabled *bool
 	lgr                   log.Logger
-	topology              *topology2.Topology
+	topology              *topology.Topology
 	hostIterator          int
 }
 
@@ -80,21 +80,21 @@ func (s *shardClient) execDistributedDDL(ctx context.Context, ddl string) error 
 	timeout, err := s.queryDistributedDDLTimeout(ctx)
 	if err != nil {
 		s.lgr.Warn("Error reading DDL timeout, using default value", log.Error(err))
-		timeout = errors.ClickhouseDDLTimeout
+		timeout = clickhouse_errors.ClickhouseDDLTimeout
 	}
 	s.lgr.Infof("Using DDL Timeout %d seconds", timeout)
 
 	err = backoff.Retry(func() error {
-		ctx, cancel := context.WithTimeout(ctx, time.Duration(timeout+errors.DDLTimeoutCorrection)*time.Second)
+		ctx, cancel := context.WithTimeout(ctx, time.Duration(timeout+clickhouse_errors.DDLTimeoutCorrection)*time.Second)
 		defer cancel()
 		_, err := s.db.ExecContext(ctx, ddl)
 		if err != nil {
-			if errors.IsFatalClickhouseError(err) {
+			if clickhouse_errors.IsFatalClickhouseError(err) {
 				//nolint:descriptiveerrors
 				return backoff.Permanent(abstract.NewFatalError(err))
 			}
 			s.lgr.Warnf("failed to execute DDL %q: %v", ddl, err)
-			if ddlErr := errors.AsDistributedDDLTimeout(err); ddlErr != nil {
+			if ddlErr := clickhouse_errors.AsDistributedDDLTimeout(err); ddlErr != nil {
 				s.lgr.Warn("Got distributed DDL timeout, skipping retries")
 				//nolint:descriptiveerrors
 				return backoff.Permanent(ddlErr)
@@ -108,7 +108,7 @@ func (s *shardClient) execDistributedDDL(ctx context.Context, ddl string) error 
 		return nil
 	}
 
-	if e, ok := err.(*errors.ErrDistributedDDLTimeout); ok {
+	if e, ok := err.(*clickhouse_errors.ErrDistributedDDLTimeout); ok {
 		taskPath := e.ZKTaskPath
 		err = s.checkDDLTask(taskPath)
 	}
@@ -118,7 +118,7 @@ func (s *shardClient) execDistributedDDL(ctx context.Context, ddl string) error 
 
 func (s *shardClient) checkDDLTask(taskPath string) error {
 	s.lgr.Warnf("Checking DDL task %s", taskPath)
-	ctx, cancel := context.WithTimeout(context.Background(), errors.ClickhouseReadTimeout*2)
+	ctx, cancel := context.WithTimeout(context.Background(), clickhouse_errors.ClickhouseReadTimeout*2)
 	defer cancel()
 	hostRows, err := s.db.QueryContext(ctx, `SELECT name FROM system.zookeeper WHERE path = ?`, taskPath+"/finished")
 	if err != nil {
@@ -160,7 +160,7 @@ func (s *shardClient) checkDDLTask(taskPath string) error {
 
 	s.lgr.Infof("DDL task %s is executed on %d shards of %d", taskPath, execShards, totalShards)
 	if (totalShards != execShards) || (totalShards == 0) {
-		return errors.MakeDDLTaskError(execShards, totalShards)
+		return clickhouse_errors.MakeDDLTaskError(execShards, totalShards)
 	}
 	return nil
 }
@@ -171,10 +171,10 @@ func (s *shardClient) queryDistributedDDLTimeout(ctx context.Context) (int, erro
 	return result, err
 }
 
-func (s *shardClient) ExecDDL(fn db_model.DDLFactory) error {
+func (s *shardClient) ExecDDL(fn ch_db_model.DDLFactory) error {
 	queryID := newQueryID("shard-ddl")
 	// TODO: probably shard client should not support cluster ddl or should not be ddl client at all.
-	ctx := clickhouse.Context(context.TODO(), clickhouse.WithQueryID(queryID))
+	ctx := clickhouse_go.Context(context.TODO(), clickhouse_go.WithQueryID(queryID))
 	if s.distributedDDLEnabled != nil {
 		q, err := fn(*s.distributedDDLEnabled, s.topology.ClusterName())
 		if err != nil {
@@ -200,7 +200,7 @@ func (s *shardClient) ExecDDL(fn db_model.DDLFactory) error {
 		s.distributedDDLEnabled = ptr.Bool(true)
 		return nil
 	}
-	if !errors.IsDistributedDDLError(err) {
+	if !clickhouse_errors.IsDistributedDDLError(err) {
 		return xerrors.Errorf("error executing distributed DDL: %w", err)
 	}
 
@@ -235,13 +235,13 @@ func (s *shardClient) nextHostAddr() string {
 	return s.opts.Addr[s.hostIterator]
 }
 
-func NewShardClient(hosts []*chconn.Host, cp conn.ConnParams, topology *topology2.Topology, lgr log.Logger) (ShardClient, error) {
+func NewShardClient(hosts []*conn_clickhouse.Host, cp conn.ConnParams, topology *topology.Topology, lgr log.Logger) (ShardClient, error) {
 	opts, err := conn.GetClickhouseOptions(cp, hosts)
 	if err != nil {
 		return nil, err
 	}
 
-	shardDB := clickhouse.OpenDB(opts)
+	shardDB := clickhouse_go.OpenDB(opts)
 	var distrDDL *bool
 	if topology.SingleNode() && topology.ClusterName() == "" {
 		distrDDL = ptr.Bool(false)
@@ -274,7 +274,7 @@ func (c *clusterClient) ExecContext(ctx context.Context, query string, args ...a
 	return c.randomShard().ExecContext(ctx, query, args...)
 }
 
-func (c *clusterClient) ExecDDL(fn db_model.DDLFactory) error {
+func (c *clusterClient) ExecDDL(fn ch_db_model.DDLFactory) error {
 	return c.randomShard().ExecDDL(fn)
 }
 
@@ -289,11 +289,11 @@ func (c *clusterClient) Close() error {
 
 func (c *clusterClient) randomShard() ShardClient {
 	idx := rand.Intn(len(c.ShardMap))
-	k := maps.Keys(c.ShardMap)[idx]
+	k := xmaps.Keys(c.ShardMap)[idx]
 	return c.Shard(k)
 }
 
-func NewClusterClient(conn conn.ConnParams, topology *topology2.Topology, shards sharding.ShardMap[[]*chconn.Host], lgr log.Logger) (ClusterClient, error) {
+func NewClusterClient(conn conn.ConnParams, topology *topology.Topology, shards sharding.ShardMap[[]*conn_clickhouse.Host], lgr log.Logger) (ClusterClient, error) {
 	clients := make(sharding.ShardMap[ShardClient])
 	for shard, hosts := range shards {
 		cl, err := NewShardClient(hosts, conn, topology, log.With(lgr, log.String("shardID", fmt.Sprint(shard))))
@@ -307,11 +307,11 @@ func NewClusterClient(conn conn.ConnParams, topology *topology2.Topology, shards
 
 type hostClient struct {
 	db   *sql.DB
-	opts *clickhouse.Options
+	opts *clickhouse_go.Options
 	lgr  log.Logger
 }
 
-func (h *hostClient) StreamInsert(query string, marshaller db_model.ChangeItemMarshaller) (db_model.Streamer, error) {
+func (h *hostClient) StreamInsert(query string, marshaller ch_db_model.ChangeItemMarshaller) (ch_db_model.Streamer, error) {
 	return newCHV2Streamer(h.opts, query, marshaller, h.lgr)
 }
 
@@ -327,13 +327,13 @@ func (h *hostClient) ExecContext(ctx context.Context, query string, args ...any)
 	return h.db.ExecContext(ctx, query, args...)
 }
 
-func (h *hostClient) ExecDDL(fn db_model.DDLFactory) error {
+func (h *hostClient) ExecDDL(fn ch_db_model.DDLFactory) error {
 	q, err := fn(false, "")
 	if err != nil {
 		return xerrors.Errorf("error getting DDL query: %w", err)
 	}
 	queryID := newQueryID("host-ddl")
-	ctx := clickhouse.Context(context.Background(), clickhouse.WithQueryID(queryID))
+	ctx := clickhouse_go.Context(context.Background(), clickhouse_go.WithQueryID(queryID))
 	if _, err = h.db.ExecContext(ctx, q); err != nil {
 		return xerrors.Errorf("error executing host DDL (query_id=%s): %w", queryID, err)
 	}
@@ -344,8 +344,8 @@ func (h *hostClient) Close() error {
 	return h.db.Close()
 }
 
-func NewHostClient(opts *clickhouse.Options, lgr log.Logger) (DDLStreamingClient, error) {
-	hostDB := clickhouse.OpenDB(opts)
+func NewHostClient(opts *clickhouse_go.Options, lgr log.Logger) (DDLStreamingClient, error) {
+	hostDB := clickhouse_go.OpenDB(opts)
 	if err := hostDB.Ping(); err != nil {
 		_ = hostDB.Close()
 		return nil, xerrors.Errorf("host %s seems to be dead, ping failed: %w", opts.Addr[0], err)

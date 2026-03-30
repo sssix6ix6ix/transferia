@@ -7,13 +7,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/stats"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
+	mongo_driver "go.mongodb.org/mongo-driver/mongo"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
@@ -315,7 +315,7 @@ func (s *sinker) renameCollection(ctx context.Context, item *abstract.ChangeItem
 	result := db.RunCommand(ctx,
 		bson.D{{Key: "renameCollection", Value: fromNamespaceName}, {Key: "to", Value: toNamespaceName}})
 	err = result.Err()
-	if err != nil && err != mongo.ErrNoDocuments {
+	if err != nil && err != mongo_driver.ErrNoDocuments {
 		return xerrors.Errorf("unable to rename collection: %w", err)
 	}
 	s.logger.Infof("Rename collection '%v' to '%v'", fromNamespaceName, toNamespaceName)
@@ -331,7 +331,7 @@ func (s *sinker) Close() error {
 	return s.client.Close(context.Background())
 }
 
-func NewSinker(lgr log.Logger, dst *MongoDestination, mtrcs metrics.Registry) (abstract.Sinker, error) {
+func NewSinker(lgr log.Logger, dst *MongoDestination, mtrcs core_metrics.Registry) (abstract.Sinker, error) {
 	opts := dst.ConnectionOptions(dst.RootCAFiles)
 	ctx := context.Background()
 	client, err := Connect(ctx, opts, lgr)

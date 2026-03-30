@@ -2,7 +2,7 @@ package sharding
 
 import (
 	"github.com/transferia/transferia/pkg/abstract"
-	"golang.org/x/exp/maps"
+	xmaps "golang.org/x/exp/maps"
 )
 
 type ShardID int
@@ -21,5 +21,5 @@ func (s ShardMap[T]) Shard(id ShardID) T {
 }
 
 func (s ShardMap[T]) Shards() []ShardID {
-	return maps.Keys(s)
+	return xmaps.Keys(s)
 }

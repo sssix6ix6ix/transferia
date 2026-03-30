@@ -9,13 +9,13 @@ import (
 	"github.com/cenkalti/backoff/v4"
 	"github.com/elastic/go-elasticsearch/v7"
 	"github.com/transferia/transferia/internal/logger"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/middlewares"
-	sink_factory "github.com/transferia/transferia/pkg/sink"
+	"github.com/transferia/transferia/pkg/sink_factory"
 	"github.com/transferia/transferia/pkg/util/set"
 	"go.ytsaurus.tech/library/go/core/log"
 )
@@ -38,7 +38,7 @@ func srcDstHomoElasticSearch(transfer *model.Transfer) (*ElasticSearchSource, Se
 	return nil, 0
 }
 
-func DumpIndexInfo(transfer *model.Transfer, logger log.Logger, mRegistry metrics.Registry) error {
+func DumpIndexInfo(transfer *model.Transfer, logger log.Logger, mRegistry core_metrics.Registry) error {
 	src, serverType := srcDstHomoElasticSearch(transfer)
 	if src == nil {
 		return nil
@@ -84,7 +84,7 @@ func WaitForIndexToExist(client *elasticsearch.Client, indexName string, timeout
 	)
 }
 
-func applyDump(indexName string, indexParams []byte, transfer *model.Transfer, registry metrics.Registry) error {
+func applyDump(indexName string, indexParams []byte, transfer *model.Transfer, registry core_metrics.Registry) error {
 	sink, err := sink_factory.MakeAsyncSink(transfer, new(model.TransferOperation), logger.Log, registry, coordinator.NewFakeClient(), middlewares.MakeConfig(middlewares.WithNoData))
 	if err != nil {
 		return err

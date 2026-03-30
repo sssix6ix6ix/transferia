@@ -6,7 +6,7 @@ import (
 	aws_s3 "github.com/aws/aws-sdk-go/service/s3"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	chunk_pusher "github.com/transferia/transferia/pkg/providers/s3/pusher"
+	s3_pusher "github.com/transferia/transferia/pkg/providers/s3/pusher"
 )
 
 // ReaderContractor - guarantees contract:
@@ -17,12 +17,12 @@ type ReaderContractor struct {
 	impl Reader
 }
 
-func (c *ReaderContractor) Read(ctx context.Context, filePath string, pusher chunk_pusher.Pusher) error {
+func (c *ReaderContractor) Read(ctx context.Context, filePath string, pusher s3_pusher.Pusher) error {
 	err := c.impl.Read(ctx, filePath, pusher)
 	if err != nil {
 		return xerrors.Errorf("c.impl.Read returned error, err: %w", err)
 	}
-	chunk := chunk_pusher.Chunk{
+	chunk := s3_pusher.Chunk{
 		FilePath:  filePath,
 		Completed: true,
 		Offset:    -1,
@@ -36,7 +36,7 @@ func (c *ReaderContractor) Read(ctx context.Context, filePath string, pusher chu
 	return nil
 }
 
-func (c *ReaderContractor) ParsePassthrough(chunk chunk_pusher.Chunk) []abstract.ChangeItem {
+func (c *ReaderContractor) ParsePassthrough(chunk s3_pusher.Chunk) []abstract.ChangeItem {
 	return c.impl.ParsePassthrough(chunk)
 }
 

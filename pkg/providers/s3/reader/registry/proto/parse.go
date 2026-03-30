@@ -7,22 +7,22 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/parsers"
-	"github.com/transferia/transferia/pkg/providers/s3"
-	chunk_pusher "github.com/transferia/transferia/pkg/providers/s3/pusher"
-	abstract_reader "github.com/transferia/transferia/pkg/providers/s3/reader"
+	s3_model "github.com/transferia/transferia/pkg/providers/s3/model"
+	s3_pusher "github.com/transferia/transferia/pkg/providers/s3/pusher"
+	s3_reader "github.com/transferia/transferia/pkg/providers/s3/reader"
 	"github.com/transferia/transferia/pkg/providers/s3/reader/s3raw"
 )
 
 const perPushBatchSize = 15 * humanize.MiByte
 
-func readFileAndParse(ctx context.Context, r *ProtoReader, filePath string, pusher chunk_pusher.Pusher) error {
+func readFileAndParse(ctx context.Context, r *ProtoReader, filePath string, pusher s3_pusher.Pusher) error {
 	s3RawReader, err := r.newS3RawReader(ctx, filePath)
 	if err != nil {
 		return xerrors.Errorf("unable to open reader: %w", err)
 	}
 
 	if s3RawReader.Size() > perPushBatchSize {
-		chunkReader := abstract_reader.NewChunkReader(s3RawReader, perPushBatchSize, r.logger)
+		chunkReader := s3_reader.NewChunkReader(s3RawReader, perPushBatchSize, r.logger)
 		defer chunkReader.Close()
 		return streamParseFile(ctx, r, filePath, chunkReader, pusher, s3RawReader.LastModified())
 	}
@@ -41,7 +41,7 @@ func readFileAndParse(ctx context.Context, r *ProtoReader, filePath string, push
 	buffSize := int64(0)
 
 	for item := parser.Next(); item != nil; item = parser.Next() {
-		if r.unparsedPolicy == s3.UnparsedPolicyFail {
+		if r.unparsedPolicy == s3_model.UnparsedPolicyFail {
 			if err := parsers.VerifyUnparsed(*item); err != nil {
 				return abstract.NewFatalError(xerrors.Errorf("unable to parse: %w", err))
 			}
@@ -53,7 +53,7 @@ func readFileAndParse(ctx context.Context, r *ProtoReader, filePath string, push
 			buffSize += 64 * humanize.KiByte
 		}
 		if buffSize > perPushBatchSize {
-			if err := abstract_reader.FlushChunk(ctx, filePath, 0, buffSize, buff, pusher); err != nil {
+			if err := s3_reader.FlushChunk(ctx, filePath, 0, buffSize, buff, pusher); err != nil {
 				return xerrors.Errorf("unable to push batch: %w", err)
 			}
 			buff = nil
@@ -62,7 +62,7 @@ func readFileAndParse(ctx context.Context, r *ProtoReader, filePath string, push
 	}
 
 	if len(buff) > 0 {
-		if err := abstract_reader.FlushChunk(ctx, filePath, 0, buffSize, buff, pusher); err != nil {
+		if err := s3_reader.FlushChunk(ctx, filePath, 0, buffSize, buff, pusher); err != nil {
 			return xerrors.Errorf("unable to push last batch: %w", err)
 		}
 	}

@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/internal/logger"
 	"github.com/transferia/transferia/pkg/abstract"
-	server "github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/postgres"
+	"github.com/transferia/transferia/pkg/abstract/model"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
 	"github.com/transferia/transferia/pkg/worker/tasks"
 	"github.com/transferia/transferia/tests/helpers"
@@ -19,20 +19,20 @@ import (
 var (
 	TransferType = abstract.TransferTypeSnapshotAndIncrement
 
-	TruncateSource = *pgrecipe.RecipeSource(pgrecipe.WithPrefix(""), pgrecipe.WithInitDir(yatestx.ProjectSource("dump")), pgrecipe.WithEdit(func(pg *postgres.PgSource) {
+	TruncateSource = *pgrecipe.RecipeSource(pgrecipe.WithPrefix(""), pgrecipe.WithInitDir(yatestx.ProjectSource("dump")), pgrecipe.WithEdit(func(pg *provider_postgres.PgSource) {
 		pg.UseFakePrimaryKey = true
 	}))
 	TruncateTarget = *pgrecipe.RecipeTarget(pgrecipe.WithPrefix("DB0_"))
 
-	DropSource = *pgrecipe.RecipeSource(pgrecipe.WithPrefix(""), pgrecipe.WithInitDir(yatestx.ProjectSource("dump")), pgrecipe.WithEdit(func(pg *postgres.PgSource) {
+	DropSource = *pgrecipe.RecipeSource(pgrecipe.WithPrefix(""), pgrecipe.WithInitDir(yatestx.ProjectSource("dump")), pgrecipe.WithEdit(func(pg *provider_postgres.PgSource) {
 		pg.UseFakePrimaryKey = true
 	}))
 	DropTarget = *pgrecipe.RecipeTarget(pgrecipe.WithPrefix("DB0_"))
 )
 
 func init() {
-	TruncateTarget.Cleanup = server.Truncate
-	DropTarget.Cleanup = server.Drop
+	TruncateTarget.Cleanup = model.Truncate
+	DropTarget.Cleanup = model.Drop
 	helpers.InitSrcDst(helpers.TransferID, &TruncateSource, &TruncateTarget, TransferType) // to WithDefaults() & FillDependentFields(): IsHomo, transferID
 	helpers.InitSrcDst(helpers.TransferID, &DropSource, &DropTarget, TransferType)         // to WithDefaults() & FillDependentFields(): IsHomo, transferID
 }
@@ -53,14 +53,14 @@ func TestGroup(t *testing.T) {
 }
 
 func Existence(t *testing.T) {
-	_, err := postgres.NewStorage(TruncateSource.ToStorageParams(nil))
+	_, err := provider_postgres.NewStorage(TruncateSource.ToStorageParams(nil))
 	require.NoError(t, err)
-	_, err = postgres.NewStorage(TruncateTarget.ToStorageParams())
+	_, err = provider_postgres.NewStorage(TruncateTarget.ToStorageParams())
 	require.NoError(t, err)
 }
 
 func Verify(t *testing.T) {
-	var transfer server.Transfer
+	var transfer model.Transfer
 	transfer.Src = &DropSource
 	transfer.Dst = &DropTarget
 	transfer.Type = "SNAPSOT_AND_INCREMENT"
@@ -68,7 +68,7 @@ func Verify(t *testing.T) {
 	err := tasks.VerifyDelivery(transfer, logger.Log, helpers.EmptyRegistry())
 	require.NoError(t, err)
 
-	dstStorage, err := postgres.NewStorage(DropTarget.ToStorageParams())
+	dstStorage, err := provider_postgres.NewStorage(DropTarget.ToStorageParams())
 	require.NoError(t, err)
 
 	var result bool
@@ -93,13 +93,13 @@ func Load(t *testing.T) {
 	load(t, truncateTransfer, false)
 }
 
-func load(t *testing.T, transfer *server.Transfer, updateSource bool) {
+func load(t *testing.T, transfer *model.Transfer, updateSource bool) {
 	worker := helpers.Activate(t, transfer)
 	defer worker.Close(t)
 
 	if updateSource {
-		pgSource := transfer.Src.(*postgres.PgSource)
-		srcStorage, err := postgres.NewStorage(pgSource.ToStorageParams(nil))
+		pgSource := transfer.Src.(*provider_postgres.PgSource)
+		srcStorage, err := provider_postgres.NewStorage(pgSource.ToStorageParams(nil))
 		require.NoError(t, err)
 		pushDataToStorage(t, srcStorage)
 	}
@@ -165,7 +165,7 @@ func load(t *testing.T, transfer *server.Transfer, updateSource bool) {
 	require.NoError(t, helpers.CompareStorages(t, transfer.Src, transfer.Dst, compareParams))
 }
 
-func pushDataToStorage(t *testing.T, storage *postgres.Storage) {
+func pushDataToStorage(t *testing.T, storage *provider_postgres.Storage) {
 	//-----------------------------------------------------------------------------------------------------------------
 	// update partitioned table created using inheritance directly
 	_, err := storage.Conn.Exec(context.Background(), `

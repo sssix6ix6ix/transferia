@@ -3,7 +3,7 @@ package helpers
 import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	"github.com/transferia/transferia/pkg/providers/postgres"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 )
 
 func PgDebeziumIgnoreTemporalAccuracyForArraysComparator(lVal interface{}, lSchema abstract.ColSchema, rVal interface{}, rSchema abstract.ColSchema, intoArray bool) (comparable bool, result bool, err error) {
@@ -15,22 +15,22 @@ func PgDebeziumIgnoreTemporalAccuracyForArraysComparator(lVal interface{}, lSche
 	rS, rSOk := rVal.(string)
 	castsToString := lSOk && rSOk
 
-	if postgres.IsPgTypeTimeWithTimeZone(lSchema.OriginalType) && postgres.IsPgTypeTimeWithTimeZone(rSchema.OriginalType) {
+	if provider_postgres.IsPgTypeTimeWithTimeZone(lSchema.OriginalType) && provider_postgres.IsPgTypeTimeWithTimeZone(rSchema.OriginalType) {
 		if !castsToString {
 			return false, false, nil
 		}
-		lT, err := postgres.TimeWithTimeZoneToTime(lS)
+		lT, err := provider_postgres.TimeWithTimeZoneToTime(lS)
 		if err != nil {
 			return false, false, xerrors.Errorf("failed to represent %q as time.Time: %w", lS, err)
 		}
-		rT, err := postgres.TimeWithTimeZoneToTime(rS)
+		rT, err := provider_postgres.TimeWithTimeZoneToTime(rS)
 		if err != nil {
 			return false, false, xerrors.Errorf("failed to represent %q as time.Time: %w", rS, err)
 		}
 		return true, lT.UTC().Format("15:04:05") == rT.UTC().Format("15:04:05"), nil
 	}
 
-	if postgres.IsPgTypeTimeWithoutTimeZone(lSchema.OriginalType) && postgres.IsPgTypeTimeWithoutTimeZone(rSchema.OriginalType) {
+	if provider_postgres.IsPgTypeTimeWithoutTimeZone(lSchema.OriginalType) && provider_postgres.IsPgTypeTimeWithoutTimeZone(rSchema.OriginalType) {
 		if !castsToString {
 			return false, false, nil
 		}

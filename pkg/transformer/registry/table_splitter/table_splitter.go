@@ -6,10 +6,10 @@ import (
 
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	"github.com/transferia/transferia/pkg/parsers/generic"
+	generic_parser "github.com/transferia/transferia/pkg/parsers/generic"
 	"github.com/transferia/transferia/pkg/transformer"
-	"github.com/transferia/transferia/pkg/transformer/registry/filter"
-	tostring "github.com/transferia/transferia/pkg/transformer/registry/to_string"
+	transformer_filter "github.com/transferia/transferia/pkg/transformer/registry/filter"
+	transformer_to_string "github.com/transferia/transferia/pkg/transformer/registry/to_string"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
@@ -20,7 +20,7 @@ const (
 
 func init() {
 	transformer.Register[Config](Type, func(cfg Config, lgr log.Logger, runtime abstract.TransformationRuntimeOpts) (abstract.Transformer, error) {
-		tbls, err := filter.NewFilter(cfg.Tables.IncludeTables, cfg.Tables.ExcludeTables)
+		tbls, err := transformer_filter.NewFilter(cfg.Tables.IncludeTables, cfg.Tables.ExcludeTables)
 		if err != nil {
 			return nil, xerrors.Errorf("unable to create tables filter: %w", err)
 		}
@@ -51,7 +51,7 @@ func GenerateTableName(originalTableName string, columns []string, splitter stri
 	for _, col := range columns {
 		val := item[col]
 		if sch, ok := fastSchema[abstract.ColumnName(col)]; ok {
-			valAsString := tostring.SerializeToString(val, sch.DataType)
+			valAsString := transformer_to_string.SerializeToString(val, sch.DataType)
 			nameComponents = append(nameComponents, valAsString)
 		}
 	}
@@ -59,14 +59,14 @@ func GenerateTableName(originalTableName string, columns []string, splitter stri
 }
 
 type Config struct {
-	Tables      filter.Tables `json:"tables,omitempty"`
-	Columns     []string      `json:"columns,omitempty"`
-	Splitter    string        `json:"splitter,omitempty"`
-	UseLegacyLF bool          `json:"useLegacyLf,omitempty"`
+	Tables      transformer_filter.Tables `json:"tables,omitempty"`
+	Columns     []string                  `json:"columns,omitempty"`
+	Splitter    string                    `json:"splitter,omitempty"`
+	UseLegacyLF bool                      `json:"useLegacyLf,omitempty"`
 }
 
 type TableSplitterTransformer struct {
-	Tables      filter.Filter
+	Tables      transformer_filter.Filter
 	Columns     []string
 	Splitter    string
 	UseLegacyLF bool
@@ -81,7 +81,7 @@ func (f *TableSplitterTransformer) Apply(input []abstract.ChangeItem) abstract.T
 	transformed := make([]abstract.ChangeItem, 0, len(input))
 	for _, item := range input {
 		if f.UseLegacyLF {
-			item.Table = generic.TableSplitter(item.Table, f.Columns, item.AsMap(), []interface{}{}, map[string]int{})
+			item.Table = generic_parser.TableSplitter(item.Table, f.Columns, item.AsMap(), []interface{}{}, map[string]int{})
 		} else {
 			item.Table = GenerateTableName(item.Table, f.Columns, f.Splitter, &item)
 		}
@@ -94,7 +94,7 @@ func (f *TableSplitterTransformer) Apply(input []abstract.ChangeItem) abstract.T
 }
 
 func (f *TableSplitterTransformer) Suitable(table abstract.TableID, schema *abstract.TableSchema) bool {
-	return filter.MatchAnyTableNameVariant(f.Tables, table)
+	return transformer_filter.MatchAnyTableNameVariant(f.Tables, table)
 }
 
 func (f *TableSplitterTransformer) ResultSchema(original *abstract.TableSchema) (*abstract.TableSchema, error) {

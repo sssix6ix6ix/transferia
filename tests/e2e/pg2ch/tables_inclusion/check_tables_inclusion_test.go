@@ -6,10 +6,10 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/pkg/abstract"
-	dp_model "github.com/transferia/transferia/pkg/abstract/model"
+	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/chrecipe"
-	"github.com/transferia/transferia/pkg/providers/clickhouse/model"
-	"github.com/transferia/transferia/pkg/providers/postgres"
+	clickhouse_model "github.com/transferia/transferia/pkg/providers/clickhouse/model"
+	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	"github.com/transferia/transferia/pkg/providers/postgres/pgrecipe"
 	"github.com/transferia/transferia/tests/helpers"
 )
@@ -26,7 +26,7 @@ func init() {
 	helpers.InitSrcDst(helpers.TransferID, Source, &Target, TransferType) // to WithDefaults() & FillDependentFields(): IsHomo, helpers.TransferID, IsUpdateable
 }
 
-func testSnapshot(t *testing.T, source *postgres.PgSource, target model.ChDestination) {
+func testSnapshot(t *testing.T, source *provider_postgres.PgSource, target clickhouse_model.ChDestination) {
 	defer func() {
 		require.NoError(t, helpers.CheckConnections(
 			helpers.LabeledPort{Label: "PG source", Port: source.Port},
@@ -36,7 +36,7 @@ func testSnapshot(t *testing.T, source *postgres.PgSource, target model.ChDestin
 	}()
 	source.DBTables = []string{"public.__test_1", "public.__test_2", "public.__test_3"}
 	transfer := helpers.MakeTransfer(helpers.TransferID, source, &target, TransferType)
-	transfer.DataObjects = &dp_model.DataObjects{IncludeObjects: []string{"public.__test_1", "public.__test_2"}}
+	transfer.DataObjects = &model.DataObjects{IncludeObjects: []string{"public.__test_1", "public.__test_2"}}
 
 	worker := helpers.Activate(t, transfer)
 	defer worker.Close(t)

@@ -2,11 +2,11 @@ package logbroker
 
 import (
 	"github.com/transferia/transferia/pkg/abstract/model"
-	ydssource "github.com/transferia/transferia/pkg/providers/yds/source"
+	yds_source "github.com/transferia/transferia/pkg/providers/yds/source"
 )
 
-func ydsSourceConfig(allowTTLRewind, isLBSink bool, parseQueueParallelism int) *ydssource.YDSSource {
-	return &ydssource.YDSSource{
+func ydsSourceConfig(allowTTLRewind, isLBSink bool, parseQueueParallelism int) *yds_source.YDSSource {
+	return &yds_source.YDSSource{
 		AllowTTLRewind:        allowTTLRewind,
 		IsLbSink:              isLBSink,
 		ParseQueueParallelism: parseQueueParallelism,

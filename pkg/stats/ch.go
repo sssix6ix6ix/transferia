@@ -4,15 +4,15 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 )
 
 type ChStats struct {
-	Len        metrics.Counter
-	Count      metrics.Counter
-	Size       metrics.Counter
-	registry   metrics.Registry
-	hostGauges map[string]metrics.Gauge
+	Len        core_metrics.Counter
+	Count      core_metrics.Counter
+	Size       core_metrics.Counter
+	registry   core_metrics.Registry
+	hostGauges map[string]core_metrics.Gauge
 	rw         sync.Mutex
 }
 
@@ -24,7 +24,7 @@ type ChStats struct {
 // - table
 // TODO - do something with it! it's wrong!
 
-func (s *ChStats) HostGauge(host string, metric string) metrics.Gauge {
+func (s *ChStats) HostGauge(host string, metric string) core_metrics.Gauge {
 	s.rw.Lock()
 	defer s.rw.Unlock()
 	p := fmt.Sprintf("task.replication.%v.%v", metric, host)
@@ -34,10 +34,10 @@ func (s *ChStats) HostGauge(host string, metric string) metrics.Gauge {
 	return s.hostGauges[p]
 }
 
-func NewChStats(registry metrics.Registry) *ChStats {
+func NewChStats(registry core_metrics.Registry) *ChStats {
 	return &ChStats{
 		registry:   registry,
-		hostGauges: map[string]metrics.Gauge{},
+		hostGauges: map[string]core_metrics.Gauge{},
 		rw:         sync.Mutex{},
 		Len:        registry.Counter("task.replication.upload.rows"),
 		Count:      registry.Counter("task.replication.upload.transactions"),

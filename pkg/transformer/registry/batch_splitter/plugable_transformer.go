@@ -2,7 +2,7 @@ package batchsplitter
 
 import (
 	"github.com/transferia/transferia/internal/logger"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
@@ -11,7 +11,7 @@ import (
 	"github.com/transferia/transferia/pkg/util"
 )
 
-func PluggableBatchSplitterTransformer(transfer *model.Transfer, _ metrics.Registry, _ coordinator.Coordinator) func(abstract.Sinker) abstract.Sinker {
+func PluggableBatchSplitterTransformer(transfer *model.Transfer, _ core_metrics.Registry, _ coordinator.Coordinator) func(abstract.Sinker) abstract.Sinker {
 	if transfer.Transformation == nil || transfer.Transformation.Transformers == nil {
 		return IdentityMiddleware
 	}

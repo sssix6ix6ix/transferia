@@ -4,14 +4,14 @@ import (
 	"context"
 	"time"
 
-	"github.com/gofrs/uuid"
-	"github.com/transferia/transferia/library/go/core/metrics"
+	gofrs_uuid "github.com/gofrs/uuid"
+	core_metrics "github.com/transferia/transferia/library/go/core/metrics"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract2"
-	yt2 "github.com/transferia/transferia/pkg/providers/yt"
+	provider_yt "github.com/transferia/transferia/pkg/providers/yt"
 	"github.com/transferia/transferia/pkg/providers/yt/provider/dataobjects"
-	"github.com/transferia/transferia/pkg/providers/yt/provider/schema"
+	yt_provider_schema "github.com/transferia/transferia/pkg/providers/yt/provider/schema"
 	"github.com/transferia/transferia/pkg/providers/yt/tablemeta"
 	"github.com/transferia/transferia/pkg/providers/yt/yt_client"
 	"github.com/transferia/transferia/pkg/stats"
@@ -21,7 +21,7 @@ import (
 )
 
 type source struct {
-	cfg     yt2.YtSourceModel
+	cfg     provider_yt.YtSourceModel
 	yt      yt.Client
 	tx      yt.Tx
 	txID    yt.TxID
@@ -37,7 +37,7 @@ var (
 	mainTxTimeout = yson.Duration(10 * time.Minute)
 )
 
-func NewSource(logger log.Logger, registry metrics.Registry, cfg yt2.YtSourceModel) (*source, error) {
+func NewSource(logger log.Logger, registry core_metrics.Registry, cfg provider_yt.YtSourceModel) (*source, error) {
 	ytc, err := yt_client.FromConnParams(cfg, logger)
 	if err != nil {
 		return nil, xerrors.Errorf("unable to create yt client: %w", err)
@@ -46,7 +46,7 @@ func NewSource(logger log.Logger, registry metrics.Registry, cfg yt2.YtSourceMod
 		cfg:     cfg,
 		yt:      ytc,
 		tx:      nil,
-		txID:    yt.TxID(uuid.Nil),
+		txID:    yt.TxID(gofrs_uuid.Nil),
 		logger:  logger,
 		tables:  nil,
 		metrics: stats.NewSourceStats(registry),
@@ -88,7 +88,7 @@ func (s *source) TableSchema(part abstract2.DataObjectPart) (*abstract.TableSche
 	if !ok {
 		return nil, xerrors.Errorf("part %T is not yt dataobject part: %s", part, part.FullName())
 	}
-	yttable, err := schema.Load(context.Background(), s.yt, s.tx.ID(), p.NodeID(), p.Name(), p.Columns())
+	yttable, err := yt_provider_schema.Load(context.Background(), s.yt, s.tx.ID(), p.NodeID(), p.Name(), p.Columns())
 	if err != nil {
 		return nil, xerrors.Errorf("unable to load yt schema: %w", err)
 	}

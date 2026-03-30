@@ -3,7 +3,7 @@ package engine
 import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/parsers"
-	"github.com/transferia/transferia/pkg/parsers/generic"
+	generic_parser "github.com/transferia/transferia/pkg/parsers/generic"
 	"github.com/transferia/transferia/pkg/stats"
 	"go.ytsaurus.tech/library/go/core/log"
 )
@@ -65,11 +65,11 @@ func getFields() []abstract.ColSchema {
 func NewCloudLoggingImpl(sniff bool, logger log.Logger, registry *stats.SourceStats) *CloudLoggingImpl {
 	fields := getFields()
 
-	config := &generic.GenericParserConfig{
+	config := &generic_parser.GenericParserConfig{
 		Format:             "json",
 		SchemaResourceName: "",
 		Fields:             fields,
-		AuxOpts: generic.AuxParserOpts{
+		AuxOpts: generic_parser.AuxParserOpts{
 			Topic:                  "",
 			AddDedupeKeys:          false,
 			MarkDedupeKeysAsSystem: false,
@@ -91,7 +91,7 @@ func NewCloudLoggingImpl(sniff bool, logger log.Logger, registry *stats.SourceSt
 		},
 	}
 
-	parserImpl := generic.NewGenericParser(config, fields, logger, registry)
+	parserImpl := generic_parser.NewGenericParser(config, fields, logger, registry)
 
 	return &CloudLoggingImpl{
 		parser: parserImpl,

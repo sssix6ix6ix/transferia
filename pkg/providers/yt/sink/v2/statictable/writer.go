@@ -6,7 +6,7 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/changeitem"
-	"github.com/transferia/transferia/pkg/providers/yt/sink"
+	yt_sink "github.com/transferia/transferia/pkg/providers/yt/sink"
 	"github.com/transferia/transferia/pkg/stats"
 	"go.ytsaurus.tech/library/go/core/log"
 	"go.ytsaurus.tech/yt/go/ypath"
@@ -51,7 +51,7 @@ func (w *Writer) Write(items []changeitem.ChangeItem) error {
 				return abstract.NewFatalError(xerrors.Errorf("unknown column name: %s", col))
 			}
 			var err error
-			row[col], err = sink.RestoreWithLengthLimitCheck(colScheme, item.ColumnValues[idx], w.discardBigValues, w.stringLimit)
+			row[col], err = yt_sink.RestoreWithLengthLimitCheck(colScheme, item.ColumnValues[idx], w.discardBigValues, w.stringLimit)
 			if err != nil {
 				return xerrors.Errorf("cannot restore value for column '%s': %w", col, err)
 			}

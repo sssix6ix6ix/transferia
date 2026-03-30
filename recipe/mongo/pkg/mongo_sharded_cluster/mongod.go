@@ -16,8 +16,8 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/util"
 	"github.com/transferia/transferia/recipe/mongo/pkg/mongo_sharded_config"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	mongo_driver "go.mongodb.org/mongo-driver/mongo"
+	mongo_options "go.mongodb.org/mongo-driver/mongo/options"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
@@ -260,10 +260,10 @@ func startMongoD(binInfo EnvironmentInfo, configPath string) error {
 	return nil
 }
 
-func (d MongoD) WithRootConnection(ctxFunc func(client *mongo.Client) error) (errResult error) {
+func (d MongoD) WithRootConnection(ctxFunc func(client *mongo_driver.Client) error) (errResult error) {
 	hostSpec := d.Fqdn()
-	client, err := mongo.NewClient(
-		new(options.ClientOptions).SetHosts([]string{hostSpec}).
+	client, err := mongo_driver.NewClient(
+		new(mongo_options.ClientOptions).SetHosts([]string{hostSpec}).
 			SetDirect(true),
 	)
 	if err != nil {

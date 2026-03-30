@@ -10,8 +10,8 @@ import (
 	"github.com/transferia/transferia/pkg/util/set"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	mongo_driver "go.mongodb.org/mongo-driver/mongo"
+	mongo_options "go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type TimeCollectionScheme struct {
@@ -38,7 +38,7 @@ func GetLocalOplogInterval(ctx context.Context, client *MongoClientWrapper) (fro
 	localDB := client.Database("local")
 	ol := localDB.Collection("oplog.rs")
 
-	findFromOptions, findToOptions := options.FindOne(), options.FindOne()
+	findFromOptions, findToOptions := mongo_options.FindOne(), mongo_options.FindOne()
 	findFromOptions.SetSort(bson.D{{Key: "$natural", Value: 1}})
 	findToOptions.SetSort(bson.D{{Key: "$natural", Value: -1}})
 	if err := ol.FindOne(ctx, bson.D{}, findFromOptions).Decode(&fromTimestampHolder); err != nil {
@@ -176,11 +176,11 @@ func setClusterTimeForOplog(ctx context.Context, client *MongoClientWrapper, opl
 
 func setClusterTimeForDatabase(ctx context.Context, client *MongoClientWrapper, dbPu ParallelizationUnitDatabase) error {
 	dbName := dbPu.metadataStorageDB()
-	changeStream, err := client.Database(dbName).Watch(ctx, mongo.Pipeline{})
+	changeStream, err := client.Database(dbName).Watch(ctx, mongo_driver.Pipeline{})
 	if err != nil {
 		return xerrors.Errorf("Cannot watch %s database: %v", dbName, err)
 	}
-	defer func(changeStream *mongo.ChangeStream, ctx context.Context) {
+	defer func(changeStream *mongo_driver.ChangeStream, ctx context.Context) {
 		_ = changeStream.Close(ctx)
 	}(changeStream, ctx)
 

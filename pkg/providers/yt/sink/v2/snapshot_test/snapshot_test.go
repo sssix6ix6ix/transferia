@@ -12,28 +12,28 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/yt"
-	"github.com/transferia/transferia/pkg/providers/yt/recipe"
-	staticsink "github.com/transferia/transferia/pkg/providers/yt/sink/v2"
+	provider_yt "github.com/transferia/transferia/pkg/providers/yt"
+	yt_recipe "github.com/transferia/transferia/pkg/providers/yt/recipe"
+	yt_sink_v2 "github.com/transferia/transferia/pkg/providers/yt/sink/v2"
 	"github.com/transferia/transferia/pkg/providers/yt/yt_client"
 	"github.com/transferia/transferia/tests/helpers"
-	"go.ytsaurus.tech/yt/go/schema"
+	ytschema "go.ytsaurus.tech/yt/go/schema"
 	"go.ytsaurus.tech/yt/go/ypath"
 )
 
 var (
 	testDstSchema = abstract.NewTableSchema(abstract.TableColumns{
-		abstract.ColSchema{ColumnName: "author_id", DataType: schema.TypeString.String()},
-		abstract.ColSchema{ColumnName: "id", DataType: schema.TypeInt32.String(), PrimaryKey: true},
-		abstract.ColSchema{ColumnName: "is_deleted", DataType: schema.TypeBoolean.String()},
+		abstract.ColSchema{ColumnName: "author_id", DataType: ytschema.TypeString.String()},
+		abstract.ColSchema{ColumnName: "id", DataType: ytschema.TypeInt32.String(), PrimaryKey: true},
+		abstract.ColSchema{ColumnName: "is_deleted", DataType: ytschema.TypeBoolean.String()},
 	})
 
 	reducedDstSchema = abstract.NewTableSchema(abstract.TableColumns{
-		abstract.ColSchema{ColumnName: "author_id", DataType: schema.TypeString.String()},
-		abstract.ColSchema{ColumnName: "id", DataType: schema.TypeInt32.String(), PrimaryKey: true},
+		abstract.ColSchema{ColumnName: "author_id", DataType: ytschema.TypeString.String()},
+		abstract.ColSchema{ColumnName: "id", DataType: ytschema.TypeInt32.String(), PrimaryKey: true},
 	})
 
-	dstSample = yt.YtDestination{
+	dstSample = provider_yt.YtDestination{
 		Path:          "//home/cdc/test/mock2yt",
 		Cluster:       os.Getenv("YT_PROXY"),
 		CellBundle:    "default",
@@ -68,7 +68,7 @@ func TestYTStaticTableSink(t *testing.T) {
 }
 
 func singleSnapshotOneTable(t *testing.T) {
-	ytEnv, cancel := recipe.NewEnv(t)
+	ytEnv, cancel := yt_recipe.NewEnv(t)
 	defer cancel()
 
 	cp := coordinator.NewStatefulFakeClient()
@@ -139,7 +139,7 @@ func singleSnapshotOneTable(t *testing.T) {
 
 	// push unsorted table to existent sorted
 	dst = newYTDstModel(dstSample, false)
-	sink, err := staticsink.NewStaticSink(dst, cp, helpers.TransferID, helpers.EmptyRegistry(), logger.Log)
+	sink, err := yt_sink_v2.NewStaticSink(dst, cp, helpers.TransferID, helpers.EmptyRegistry(), logger.Log)
 	require.NoError(t, err)
 
 	require.NoError(t, sink.Push(itemsBuilder.InitShardedTableLoad()))
@@ -165,14 +165,14 @@ func shardedSnapshotManyTables(t *testing.T) {
 	secondItemsBuilder := helpers.NewChangeItemsBuilder("public", secondTableName, reducedDstSchema)
 
 	// push InitShTableLoad items
-	primarySink, err := staticsink.NewStaticSink(dst, cp, helpers.TransferID, helpers.EmptyRegistry(), logger.Log)
+	primarySink, err := yt_sink_v2.NewStaticSink(dst, cp, helpers.TransferID, helpers.EmptyRegistry(), logger.Log)
 	require.NoError(t, err)
 
 	require.NoError(t, primarySink.Push(firstItemsBuilder.InitShardedTableLoad()))
 	require.NoError(t, primarySink.Push(secondItemsBuilder.InitShardedTableLoad()))
 
 	// push Inserts to sinks on secondary workers
-	secondarySink, err := staticsink.NewStaticSink(dst, cp, helpers.TransferID, helpers.EmptyRegistry(), logger.Log)
+	secondarySink, err := yt_sink_v2.NewStaticSink(dst, cp, helpers.TransferID, helpers.EmptyRegistry(), logger.Log)
 	require.NoError(t, err)
 
 	require.NoError(t, secondarySink.Push(firstItemsBuilder.InitTableLoad()))
@@ -180,7 +180,7 @@ func shardedSnapshotManyTables(t *testing.T) {
 	require.NoError(t, secondarySink.Push(firstItemsBuilder.Inserts(t, []map[string]interface{}{{"id": 1, "author_id": "111", "is_deleted": false}})))
 	require.NoError(t, secondarySink.Push(firstItemsBuilder.DoneTableLoad()))
 
-	secondarySink, err = staticsink.NewStaticSink(dst, cp, helpers.TransferID, helpers.EmptyRegistry(), logger.Log)
+	secondarySink, err = yt_sink_v2.NewStaticSink(dst, cp, helpers.TransferID, helpers.EmptyRegistry(), logger.Log)
 	require.NoError(t, err)
 
 	require.NoError(t, secondarySink.Push(secondItemsBuilder.InitTableLoad()))
@@ -189,7 +189,7 @@ func shardedSnapshotManyTables(t *testing.T) {
 	require.NoError(t, secondarySink.Push(secondItemsBuilder.DoneTableLoad()))
 
 	// push DoneShTableLoad items and complete snapshot
-	primarySink, err = staticsink.NewStaticSink(dst, cp, helpers.TransferID, helpers.EmptyRegistry(), logger.Log)
+	primarySink, err = yt_sink_v2.NewStaticSink(dst, cp, helpers.TransferID, helpers.EmptyRegistry(), logger.Log)
 	require.NoError(t, err)
 
 	require.NoError(t, primarySink.Push(firstItemsBuilder.DoneShardedTableLoad()))
@@ -212,7 +212,7 @@ func shardedSnapshotManyTables(t *testing.T) {
 }
 
 func retryingParts(t *testing.T) {
-	ytEnv, cancel := recipe.NewEnv(t)
+	ytEnv, cancel := yt_recipe.NewEnv(t)
 	defer cancel()
 
 	cp := coordinator.NewStatefulFakeClient()
@@ -226,23 +226,23 @@ func retryingParts(t *testing.T) {
 
 	itemsBuilder := helpers.NewChangeItemsBuilder("public", tableName, testDstSchema)
 
-	currentSink, err := staticsink.NewStaticSink(dst, cp, helpers.TransferID, helpers.EmptyRegistry(), logger.Log)
+	currentSink, err := yt_sink_v2.NewStaticSink(dst, cp, helpers.TransferID, helpers.EmptyRegistry(), logger.Log)
 	require.NoError(t, err)
 	require.NoError(t, currentSink.Push(itemsBuilder.InitShardedTableLoad()))
 
-	currentSink, err = staticsink.NewStaticSink(dst, cp, helpers.TransferID, helpers.EmptyRegistry(), logger.Log)
+	currentSink, err = yt_sink_v2.NewStaticSink(dst, cp, helpers.TransferID, helpers.EmptyRegistry(), logger.Log)
 	require.NoError(t, err)
 	require.NoError(t, currentSink.Push(itemsBuilder.InitTableLoad()))
 	require.Error(t, currentSink.Push(itemsBuilder.Inserts(t, []map[string]interface{}{{"author_id": 123, "is_deleted": 15}})))
 	require.NoError(t, currentSink.Push(itemsBuilder.DoneTableLoad()))
 
-	currentSink, err = staticsink.NewStaticSink(dst, cp, helpers.TransferID, helpers.EmptyRegistry(), logger.Log)
+	currentSink, err = yt_sink_v2.NewStaticSink(dst, cp, helpers.TransferID, helpers.EmptyRegistry(), logger.Log)
 	require.NoError(t, err)
 	require.NoError(t, currentSink.Push(itemsBuilder.InitTableLoad()))
 	require.NoError(t, currentSink.Push(itemsBuilder.Inserts(t, []map[string]interface{}{{"id": 0, "author_id": "a", "is_deleted": true}})))
 	require.NoError(t, currentSink.Push(itemsBuilder.DoneTableLoad()))
 
-	currentSink, err = staticsink.NewStaticSink(dst, cp, helpers.TransferID, helpers.EmptyRegistry(), logger.Log)
+	currentSink, err = yt_sink_v2.NewStaticSink(dst, cp, helpers.TransferID, helpers.EmptyRegistry(), logger.Log)
 	require.NoError(t, err)
 	require.NoError(t, currentSink.Push(itemsBuilder.DoneShardedTableLoad()))
 
@@ -256,7 +256,7 @@ func retryingParts(t *testing.T) {
 }
 
 func twoTablesInOne(t *testing.T) {
-	ytEnv, cancel := recipe.NewEnv(t)
+	ytEnv, cancel := yt_recipe.NewEnv(t)
 	defer cancel()
 
 	cp := coordinator.NewStatefulFakeClient()
@@ -311,7 +311,7 @@ func twoTablesInOne(t *testing.T) {
 }
 
 func withShuffledColumns(t *testing.T) {
-	ytEnv, cancel := recipe.NewEnv(t)
+	ytEnv, cancel := yt_recipe.NewEnv(t)
 	defer cancel()
 
 	cp := coordinator.NewStatefulFakeClient()
@@ -352,8 +352,8 @@ func withShuffledColumns(t *testing.T) {
 	}, false)
 }
 
-func pushItemsWithoutCommit(t *testing.T, cp coordinator.Coordinator, transferID string, dst yt.YtDestinationModel, input [][]abstract.ChangeItem) {
-	currentSink, err := staticsink.NewStaticSink(dst, cp, transferID, helpers.EmptyRegistry(), logger.Log)
+func pushItemsWithoutCommit(t *testing.T, cp coordinator.Coordinator, transferID string, dst provider_yt.YtDestinationModel, input [][]abstract.ChangeItem) {
+	currentSink, err := yt_sink_v2.NewStaticSink(dst, cp, transferID, helpers.EmptyRegistry(), logger.Log)
 	require.NoError(t, err)
 
 	for _, items := range input {
@@ -361,8 +361,8 @@ func pushItemsWithoutCommit(t *testing.T, cp coordinator.Coordinator, transferID
 	}
 }
 
-func commit(t *testing.T, cp coordinator.Coordinator, transferID string, dst yt.YtDestinationModel) {
-	currentSink, err := staticsink.NewStaticSink(dst, cp, transferID, helpers.EmptyRegistry(), logger.Log)
+func commit(t *testing.T, cp coordinator.Coordinator, transferID string, dst provider_yt.YtDestinationModel) {
+	currentSink, err := yt_sink_v2.NewStaticSink(dst, cp, transferID, helpers.EmptyRegistry(), logger.Log)
 	require.NoError(t, err)
 
 	completable, ok := currentSink.(abstract.Committable)
@@ -370,8 +370,8 @@ func commit(t *testing.T, cp coordinator.Coordinator, transferID string, dst yt.
 	require.NoError(t, completable.Commit())
 }
 
-func pushItems(t *testing.T, cp coordinator.Coordinator, dst yt.YtDestinationModel, input [][]abstract.ChangeItem) {
-	currentSink, err := staticsink.NewStaticSink(dst, cp, helpers.TransferID, helpers.EmptyRegistry(), logger.Log)
+func pushItems(t *testing.T, cp coordinator.Coordinator, dst provider_yt.YtDestinationModel, input [][]abstract.ChangeItem) {
+	currentSink, err := yt_sink_v2.NewStaticSink(dst, cp, helpers.TransferID, helpers.EmptyRegistry(), logger.Log)
 	require.NoError(t, err)
 
 	for _, items := range input {
@@ -383,7 +383,7 @@ func pushItems(t *testing.T, cp coordinator.Coordinator, dst yt.YtDestinationMod
 	require.NoError(t, completable.Commit())
 }
 
-func checkData(t *testing.T, dst yt.YtDestinationModel, tableName string, expected []row, needSortRes bool) {
+func checkData(t *testing.T, dst provider_yt.YtDestinationModel, tableName string, expected []row, needSortRes bool) {
 	ytClient, err := yt_client.FromConnParams(dst, logger.Log)
 	require.NoError(t, err)
 	rows, err := ytClient.ReadTable(context.Background(), ypath.Path(dst.Path()+"/"+tableName), nil)
@@ -405,9 +405,9 @@ func checkData(t *testing.T, dst yt.YtDestinationModel, tableName string, expect
 	require.Equal(t, res, expected)
 }
 
-func newYTDstModel(cfg yt.YtDestination, allowSorting bool) yt.YtDestinationModel {
+func newYTDstModel(cfg provider_yt.YtDestination, allowSorting bool) provider_yt.YtDestinationModel {
 	cfg.SortedStatic = allowSorting
-	dst := yt.NewYtDestinationV1(cfg)
+	dst := provider_yt.NewYtDestinationV1(cfg)
 	dst.WithDefaults()
 
 	return dst

@@ -9,20 +9,20 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/chrecipe"
-	mongocommon "github.com/transferia/transferia/pkg/providers/mongo"
-	"github.com/transferia/transferia/tests/canon/mongo"
+	provider_mongo "github.com/transferia/transferia/pkg/providers/mongo"
+	canon_mongo "github.com/transferia/transferia/tests/canon/mongo"
 	"github.com/transferia/transferia/tests/helpers"
 )
 
 const databaseName string = "db"
 
 var (
-	Source = mongocommon.RecipeSource()
+	Source = provider_mongo.RecipeSource()
 	Target = chrecipe.MustTarget(chrecipe.WithInitFile("dump.sql"), chrecipe.WithDatabase(databaseName))
 )
 
-func MakeDstClient(t *mongocommon.MongoDestination) (*mongocommon.MongoClientWrapper, error) {
-	return mongocommon.Connect(context.Background(), t.ConnectionOptions([]string{}), nil)
+func MakeDstClient(t *provider_mongo.MongoDestination) (*provider_mongo.MongoClientWrapper, error) {
+	return provider_mongo.Connect(context.Background(), t.ConnectionOptions([]string{}), nil)
 }
 
 func TestGroup(t *testing.T) {
@@ -41,18 +41,18 @@ func TestGroup(t *testing.T) {
 }
 
 func Ping(t *testing.T) {
-	client, err := mongocommon.Connect(context.Background(), Source.ConnectionOptions([]string{}), nil)
+	client, err := provider_mongo.Connect(context.Background(), Source.ConnectionOptions([]string{}), nil)
 	require.NoError(t, err)
 	err = client.Ping(context.TODO(), nil)
 	require.NoError(t, err)
 }
 
 func Snapshot(t *testing.T) {
-	Source.Collections = []mongocommon.MongoCollection{
+	Source.Collections = []provider_mongo.MongoCollection{
 		{DatabaseName: databaseName, CollectionName: "test_data"},
 	}
 
-	require.NoError(t, mongo.InsertDocs(context.Background(), Source, databaseName, "test_data", mongo.SnapshotDocuments...))
+	require.NoError(t, canon_mongo.InsertDocs(context.Background(), Source, databaseName, "test_data", canon_mongo.SnapshotDocuments...))
 
 	transfer := helpers.MakeTransfer(helpers.TransferID, Source, Target, abstract.TransferTypeSnapshotOnly)
 	transfer.TypeSystemVersion = 7

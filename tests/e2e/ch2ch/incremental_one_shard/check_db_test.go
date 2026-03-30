@@ -13,7 +13,7 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/providers/clickhouse"
+	provider_clickhouse "github.com/transferia/transferia/pkg/providers/clickhouse"
 	"github.com/transferia/transferia/pkg/providers/clickhouse/chrecipe"
 	"github.com/transferia/transferia/tests/helpers"
 )
@@ -54,7 +54,7 @@ func TestIncrementalSnapshot(t *testing.T) {
 	storageParams, err := Source.ToStorageParams()
 	require.NoError(t, err)
 
-	conn, err := clickhouse.MakeConnection(storageParams)
+	conn, err := provider_clickhouse.MakeConnection(storageParams)
 	require.NoError(t, err)
 
 	addData(t, conn)

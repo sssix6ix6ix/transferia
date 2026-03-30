@@ -10,7 +10,7 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	mongo_options "go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readconcern"
 	"go.ytsaurus.tech/library/go/core/log"
 )
@@ -48,7 +48,7 @@ func MakeDefaultFullDocumentExtractor(client *MongoClientWrapper) FullDocumentEx
 		filter := bson.D{{Key: "_id", Value: bson.D{{Key: "$in", Value: keyList}}}}
 
 		// get cursor
-		var collectionOptions options.CollectionOptions
+		var collectionOptions mongo_options.CollectionOptions
 		collectionOptions.SetReadConcern(readconcern.Local())
 		cs, err := client.Database(ns.Database).Collection(ns.Collection, &collectionOptions).Find(ctx, filter)
 		if err != nil {

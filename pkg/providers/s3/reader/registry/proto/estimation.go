@@ -8,7 +8,7 @@ import (
 	aws_s3 "github.com/aws/aws-sdk-go/service/s3"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
-	chunk_pusher "github.com/transferia/transferia/pkg/providers/s3/pusher"
+	s3_pusher "github.com/transferia/transferia/pkg/providers/s3/pusher"
 	"github.com/transferia/transferia/pkg/providers/s3/reader/s3raw"
 	"golang.org/x/sync/errgroup"
 )
@@ -74,7 +74,7 @@ func countLines(ctx context.Context, r *ProtoReader, key string) (int, error) {
 		return nil
 	}
 
-	if err := r.Read(ctx, key, chunk_pusher.NewSynchronousPusher(counter)); err != nil {
+	if err := r.Read(ctx, key, s3_pusher.NewSynchronousPusher(counter)); err != nil {
 		return 0, xerrors.Errorf("unable to read file '%s': %w", key, err)
 	}
 
