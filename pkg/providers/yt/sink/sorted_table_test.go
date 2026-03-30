@@ -15,6 +15,7 @@ import (
 	"github.com/transferia/transferia/pkg/providers/yt/recipe"
 	"github.com/transferia/transferia/pkg/stats"
 	"go.ytsaurus.tech/library/go/core/log"
+	"go.ytsaurus.tech/yt/go/migrate"
 	"go.ytsaurus.tech/yt/go/schema"
 	"go.ytsaurus.tech/yt/go/ypath"
 	"go.ytsaurus.tech/yt/go/yt"
@@ -61,6 +62,70 @@ func TestInsertWithFloat(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unable to write %v", err)
 	}
+}
+
+func TestReplicatedTable(t *testing.T) {
+	path := ypath.Path("//home/cdc/test/generic/replicated")
+	env, cancel := recipe.NewEnv(t)
+	defer cancel()
+	defer teardown(env.YT, path)
+
+	// Create replicated table
+	ytSchema := schema.Schema{Columns: []schema.Column{
+		schema.Column{
+			Name:     "test",
+			Type:     schema.TypeFloat64,
+			Required: true,
+		},
+		schema.Column{
+			Name:     "test2",
+			Type:     schema.TypeFloat64,
+			Required: false,
+		},
+	}}
+
+	_, err := env.YT.CreateNode(context.Background(), path, yt.NodeReplicatedTable, &yt.CreateNodeOptions{
+		Recursive: true,
+		Attributes: map[string]any{
+			"dynamic": true,
+			"schema":  ytSchema,
+		},
+	})
+	require.NoError(t, err)
+	require.NoError(t, migrate.MountAndWait(context.Background(), env.YT, path))
+
+	// Create sink and check
+	schema_ := abstract.NewTableSchema([]abstract.ColSchema{
+		{
+			DataType:   "double",
+			ColumnName: "test",
+			PrimaryKey: true,
+		},
+		{
+			DataType:   "double",
+			ColumnName: "test2",
+			PrimaryKey: false,
+		},
+	})
+
+	cfg := yt2.NewYtDestinationV1(yt2.YtDestination{
+		CellBundle:    "default",
+		PrimaryMedium: "default",
+		Atomicity:     yt.AtomicityFull,
+	})
+	cfg.WithDefaults()
+
+	table, err := NewSortedTable(env.YT, path, schema_.Columns(), cfg, stats.NewSinkerStats(metrics.NewRegistry()), logger.Log)
+	require.NoError(t, err)
+
+	require.NoError(t, table.Write([]abstract.ChangeItem{
+		{
+			TableSchema:  schema_,
+			Kind:         abstract.InsertKind,
+			ColumnNames:  []string{"test", "test2"},
+			ColumnValues: []interface{}{3.99, 3.99},
+		},
+	}))
 }
 
 func TestInsertWithFirstColumnFallbackForSharding(t *testing.T) {

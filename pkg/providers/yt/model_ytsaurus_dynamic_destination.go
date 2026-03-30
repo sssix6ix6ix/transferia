@@ -33,7 +33,8 @@ type YTSaurusDynamicDestination struct {
 }
 
 var (
-	_ model.Destination = (*YTSaurusDynamicDestination)(nil)
+	_ model.Destination  = (*YTSaurusDynamicDestination)(nil)
+	_ YtDestinationModel = (*YTSaurusDynamicDestination)(nil)
 )
 
 func (d *YTSaurusDynamicDestination) MarshalLogObject(enc zapcore.ObjectEncoder) error {

@@ -17,7 +17,6 @@ import (
 	ytschema "go.ytsaurus.tech/yt/go/schema"
 	"go.ytsaurus.tech/yt/go/ypath"
 	"go.ytsaurus.tech/yt/go/yt"
-	"golang.org/x/sync/semaphore"
 )
 
 type SortedTable struct {
@@ -29,12 +28,30 @@ type SortedTable struct {
 	archivePath    ypath.Path
 	archiveSpawned bool
 	config         provider_yt.YtDestinationModel
-	sem            *semaphore.Weighted
 	tableSchema    *changeitem.TableSchema
 }
 
 func (t *SortedTable) Init() error {
 	var err error
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	ok, err := t.ytClient.NodeExists(ctx, t.path, nil)
+	if err != nil {
+		return xerrors.Errorf("Cannot check table %s existence: %w", t.path.String(), err)
+	}
+
+	if ok {
+		var tableType string
+		if err := t.ytClient.GetNode(ctx, t.path.Attr("type"), &tableType, nil); err != nil {
+			return xerrors.Errorf("Cannot check table %s type: %w", t.path.String(), err)
+		}
+		if tableType == "chaos_replicated_table" || tableType == "replicated_table" {
+			logger.Log.Warn("existing table is replicated, correct work is not guaranteed", log.Any("path", t.path))
+			return nil
+		}
+	}
+
 	tableSchema := NewSchema(t.columns.columns, t.config, t.path)
 	ddlCommand := tableSchema.IndexTables()
 	ddlCommand[t.path], err = tableSchema.Table()
@@ -44,37 +61,11 @@ func (t *SortedTable) Init() error {
 
 	logger.Log.Info("prepared ddlCommand for migrate", log.Any("path", t.path), log.Any("attrs", ddlCommand[t.path].Attributes), log.Any("schema", ddlCommand[t.path].Schema))
 
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
-	defer cancel()
 	if err := migrate.EnsureTables(ctx, t.ytClient, ddlCommand, onConflictTryAlterWithoutNarrowing(ctx, t.ytClient)); err != nil {
 		t.logger.Error("Init table error", log.Error(err))
-		return err
+		return xerrors.Errorf("Cannot init table %s: %w", t.path.String(), err)
 	}
 
-	return nil
-}
-
-func (t *SortedTable) Insert(insertRows []interface{}) error {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(t.config.WriteTimeoutSec())*time.Second)
-	defer cancel()
-
-	tx, rollbacks, err := beginTabletTransaction(ctx, t.ytClient, t.config.Atomicity() == yt.AtomicityFull, t.logger)
-	if err != nil {
-		return xerrors.Errorf("Unable to beginTabletTransaction: %w", err)
-	}
-	defer rollbacks.Do()
-
-	if err := tx.InsertRows(ctx, t.path, insertRows, nil); err != nil {
-		//nolint:descriptiveerrors
-		return err
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		//nolint:descriptiveerrors
-		return err
-	}
-	rollbacks.Cancel()
 	return nil
 }
 
@@ -232,12 +223,6 @@ func indexRowDeleter(ctx context.Context, tx yt.TabletTx, tablePath ypath.Path, 
 // Write accept input which will be collapsed as very first step
 func (t *SortedTable) Write(input []abstract.ChangeItem) error {
 	input = abstract.Collapse(input)
-	if len(t.config.Index()) > 0 {
-		// TODO: this was added for TM-702, but it doesn't look helpful for that issue.
-		// We should probably get rid of the semaphore entirely, or at least remove the condition above.
-		_ = t.sem.Acquire(context.TODO(), 1)
-		defer t.sem.Release(1)
-	}
 	if t == nil {
 		return nil
 	}
@@ -456,7 +441,6 @@ func NewSortedTable(
 		archivePath:    ypath.Path(fmt.Sprintf("%v_archive", string(path))),
 		archiveSpawned: false,
 		config:         cfg,
-		sem:            semaphore.NewWeighted(10),
 		tableSchema:    changeitem.NewTableSchema(schema),
 	}
 
