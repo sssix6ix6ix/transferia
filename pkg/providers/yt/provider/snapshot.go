@@ -16,7 +16,6 @@ import (
 	yt_provider_schema "github.com/transferia/transferia/pkg/providers/yt/provider/schema"
 	yt_table "github.com/transferia/transferia/pkg/providers/yt/provider/table"
 	"github.com/transferia/transferia/pkg/stats"
-	"github.com/transferia/transferia/pkg/util"
 	"go.ytsaurus.tech/library/go/core/log"
 	"go.ytsaurus.tech/yt/go/yt"
 )
@@ -133,24 +132,19 @@ func (s *snapshotSource) getTableStats(ctx context.Context) (rowCount, uncomprSi
 }
 
 func (s *snapshotSource) consumePushResults() error {
-	hasErr := false
-	var errs []error
+	var res error
 	for push := range s.pushQ {
 		err := <-push.res
 		if err != nil {
-			if !hasErr {
+			if res == nil {
 				s.stopFn()
-				hasErr = true
+				res = err
 			}
-			errs = append(errs, err)
 		} else {
 			s.doneCnt += uint64(push.rows)
 		}
 	}
-	if len(errs) == 0 {
-		return nil
-	}
-	return errors.Join(util.UniqueErrors(errs)...)
+	return res
 }
 
 func (s *snapshotSource) startReading(ctx context.Context, batchSize uint64) chan error {
@@ -216,10 +210,7 @@ func (s *snapshotSource) runReaders(ctx context.Context, batchSize uint64, stopC
 		}
 	}
 	close(s.readQ)
-	if len(errs) == 0 {
-		return nil
-	}
-	return errors.Join(util.UniqueErrors(errs)...)
+	return errors.Join(errs...)
 }
 
 func (s *snapshotSource) pusher(tbl yt_table.YtTable, target abstract2.EventTarget) {

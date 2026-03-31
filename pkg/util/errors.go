@@ -33,21 +33,6 @@ func PrefixErrors(errs []error, pfx string) []error {
 	return nerr
 }
 
-// UniqueErrors returns the unique errors from the supplied []error slice. []error
-// are considered equal if they have equal stringified values.
-func UniqueErrors(errs []error) []error {
-	u := map[string]error{}
-	for _, err := range errs {
-		u[err.Error()] = err
-	}
-
-	var ne []error
-	for _, err := range u {
-		ne = append(ne, err)
-	}
-	return ne
-}
-
 // MapErr is for applying mapping function to slice which may return error.
 // All errors that occur during processing are stored in multi error object.
 func MapErr[S ~[]T, T, M any](s S, fn func(T) (M, error)) ([]M, error) {
