@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"sort"
+	"strings"
 	"testing"
 	"time"
 
@@ -13,6 +14,8 @@ import (
 	"github.com/transferia/transferia/internal/metrics"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
+	"github.com/transferia/transferia/pkg/errors/coded"
+	"github.com/transferia/transferia/pkg/errors/codes"
 	yt2 "github.com/transferia/transferia/pkg/providers/yt"
 	"github.com/transferia/transferia/pkg/providers/yt/recipe"
 	"go.ytsaurus.tech/library/go/core/log"
@@ -376,6 +379,140 @@ func includeTimeoutAttributeStaticTable(t *testing.T) {
 	var expTime string
 	require.NoError(t, env.YT.GetNode(env.Ctx, ypath.Path("//home/cdc/test/TM-8315/TimeoutAttributeStaticTable/ns_weird_table_2").Attr("expiration_time"), &expTime, nil))
 	require.Equal(t, "2200-01-12T03:32:51.298047Z", expTime)
+}
+
+func TestCompressionErasureCodecsV2StaticSink(t *testing.T) {
+	t.Setenv("YA_TEST_RUNNER", "1")
+	env, cancel := recipe.NewEnv(t)
+	defer cancel()
+
+	dirPath := ypath.Path("//home/cdc/test/v2_static/compression_erasure_codec")
+	defer teardown(env, dirPath)
+
+	compressionCodec := "zstd_5"
+	erasureCodec := "isa_reed_solomon_6_3"
+	dest := yt2.YtDestination{
+		Path:                  dirPath.String(),
+		Cluster:               os.Getenv("YT_PROXY"),
+		PrimaryMedium:         "default",
+		CellBundle:            "default",
+		Static:                true,
+		Spec:                  *yt2.NewYTSpec(map[string]interface{}{"max_row_weight": 128 * 1024 * 1024}),
+		TableCompressionCodec: compressionCodec,
+		TableErasureCodec:     erasureCodec,
+	}
+	if recipe.TestContainerEnabled() {
+		dest.Token = recipe.DefaultToken
+	}
+	cfg := yt2.NewYtDestinationV1(dest)
+	cfg.WithDefaults()
+
+	cp := coordinator.NewFakeClient()
+	statTable, err := NewStaticSink(cfg, cp, "test_v2_codec", metrics.NewRegistry(), logger.Log)
+	require.NoError(t, err)
+	defer func() { _ = statTable.Close() }()
+
+	minimalSchema := abstract.NewTableSchema([]abstract.ColSchema{
+		{ColumnName: "id", DataType: string(schema.TypeInt64), PrimaryKey: true},
+	})
+	tableID := abstract.TableID{Namespace: "ns", Name: "codec_probe"}
+
+	require.NoError(t, statTable.Push([]abstract.ChangeItem{{
+		TableSchema: minimalSchema,
+		Kind:        abstract.InitShardedTableLoad,
+		Schema:      tableID.Namespace,
+		Table:       tableID.Name,
+	}}))
+	require.NoError(t, statTable.Push([]abstract.ChangeItem{{
+		TableSchema: minimalSchema,
+		Kind:        abstract.InitTableLoad,
+		Schema:      tableID.Namespace,
+		Table:       tableID.Name,
+	}}))
+	require.NoError(t, statTable.Push([]abstract.ChangeItem{{
+		TableSchema:  minimalSchema,
+		Kind:         abstract.InsertKind,
+		Schema:       tableID.Namespace,
+		Table:        tableID.Name,
+		ColumnNames:  []string{"id"},
+		ColumnValues: []any{int64(1)},
+	}}))
+	require.NoError(t, statTable.Push([]abstract.ChangeItem{{
+		TableSchema: minimalSchema,
+		Kind:        abstract.DoneTableLoad,
+		Schema:      tableID.Namespace,
+		Table:       tableID.Name,
+	}}))
+	require.NoError(t, statTable.Push([]abstract.ChangeItem{{
+		TableSchema: minimalSchema,
+		Kind:        abstract.DoneShardedTableLoad,
+		Schema:      tableID.Namespace,
+		Table:       tableID.Name,
+	}}))
+
+	completable, ok := statTable.(abstract.Committable)
+	require.True(t, ok)
+	require.NoError(t, completable.Commit())
+
+	tablePath := dirPath.Child("ns_codec_probe")
+	var actualCompressionCodec string
+	require.NoError(t, env.YT.GetNode(env.Ctx, tablePath.Attr("compression_codec"), &actualCompressionCodec, nil))
+	require.Equal(t, compressionCodec, actualCompressionCodec)
+	var actualErasureCodec string
+	require.NoError(t, env.YT.GetNode(env.Ctx, tablePath.Attr("erasure_codec"), &actualErasureCodec, nil))
+	require.Equal(t, erasureCodec, actualErasureCodec)
+}
+
+func TestInvalidTableCodecsRejectedV2StaticSink(t *testing.T) {
+	t.Setenv("YA_TEST_RUNNER", "1")
+	env, cancel := recipe.NewEnv(t)
+	defer cancel()
+
+	tryReject := func(t *testing.T, compression, erasure string, wantCode coded.Code) {
+		t.Helper()
+		safeID := strings.ReplaceAll(strings.ReplaceAll(t.Name(), "/", "__"), " ", "_")
+		dirPath := ypath.Path("//home/cdc/test/v2_static/invalid_codec/" + safeID)
+		defer teardown(env, dirPath)
+
+		dest := yt2.YtDestination{
+			Path:                  dirPath.String(),
+			Cluster:               os.Getenv("YT_PROXY"),
+			PrimaryMedium:         "default",
+			CellBundle:            "default",
+			Static:                true,
+			TableCompressionCodec: compression,
+			TableErasureCodec:     erasure,
+		}
+		if recipe.TestContainerEnabled() {
+			dest.Token = recipe.DefaultToken
+		}
+		cfg := yt2.NewYtDestinationV1(dest)
+		cfg.WithDefaults()
+
+		statTable, err := NewStaticSink(cfg, coordinator.NewFakeClient(), "test_v2_invalid", metrics.NewRegistry(), logger.Log)
+		require.NoError(t, err)
+		defer func() { _ = statTable.Close() }()
+
+		minimalSchema := abstract.NewTableSchema([]abstract.ColSchema{
+			{ColumnName: "id", DataType: string(schema.TypeInt64), PrimaryKey: true},
+		})
+		tableID := abstract.TableID{Namespace: "ns", Name: "bad_codec"}
+
+		err = statTable.Push([]abstract.ChangeItem{{
+			TableSchema: minimalSchema,
+			Kind:        abstract.InitShardedTableLoad,
+			Schema:      tableID.Namespace,
+			Table:       tableID.Name,
+		}})
+		require.Error(t, err)
+	}
+
+	t.Run("invalid_compression_codec", func(t *testing.T) {
+		tryReject(t, "invalid", "", codes.YTInvalidTableCompressionCodec)
+	})
+	t.Run("invalid_erasure_codec", func(t *testing.T) {
+		tryReject(t, "lz4", "invalid", codes.YTInvalidTableErasureCodec)
+	})
 }
 
 func initYt(t *testing.T, path string) (testEnv *yttest.Env, testCfg yt2.YtDestinationModel, testTeardown func()) {
