@@ -103,7 +103,10 @@ func (e *event) NewValue(i int) (abstract2.Value, error) {
 	}
 	raw, ok := e.row[col.Name()]
 	if !ok {
-		return nil, xerrors.Errorf("expected column %s to be present in row from YT", col.Name())
+		if !col.Nullable() {
+			return nil, xerrors.Errorf("expected column %s to be present in row from YT", col.Name())
+		}
+		return yt_provider_types.Cast(nil, col)
 	}
 	val, err := yt_provider_types.Cast(raw, col)
 	if err != nil {
