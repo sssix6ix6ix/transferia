@@ -23,6 +23,7 @@ import (
 	error_codes "github.com/transferia/transferia/pkg/errors/codes"
 	"github.com/transferia/transferia/pkg/format"
 	"github.com/transferia/transferia/pkg/parsequeue"
+	"github.com/transferia/transferia/pkg/providers/postgres/pgerrors"
 	postgres_sequencer "github.com/transferia/transferia/pkg/providers/postgres/sequencer"
 	"github.com/transferia/transferia/pkg/stats"
 	"github.com/transferia/transferia/pkg/util"
@@ -63,9 +64,9 @@ type replication struct {
 }
 
 var pgFatalCode = map[string]bool{
-	"XX000": true, // TM-1332
-	"58P01": true, // TM-2082
-	"55000": true, // TRANSFER-145 Object_not_in_prerequisite_state
+	string(pgerrors.ErrcInternalError): true, // TM-1332
+	string(pgerrors.ErrcUndefinedFile): true, // TM-2082
+	// ErrcObjectNotInPrerequisiteState (55000) is handled separately with PostgresReplicationSlotInvalidated coded error
 }
 
 const BufferLimit = 16 * humanize.MiByte
@@ -317,13 +318,19 @@ func (p *replication) receiver(slotTroubleCh <-chan error) {
 				return
 			}
 			var pgErr *pgconn.PgError
+			if xerrors.As(err, &pgErr) && pgErr.Code == string(pgerrors.ErrcObjectNotInPrerequisiteState) {
+				p.logger.Error("Replication slot invalidated", log.Error(err))
+				p.metrics.Fatal.Inc()
+				p.sendError(abstract.NewFatalError(coded.Errorf(error_codes.PostgresReplicationSlotInvalidated, "replication slot invalidated: %w", err)))
+				return
+			}
 			if xerrors.As(err, &pgErr) && pgFatalCode[pgErr.Code] {
 				p.logger.Error("Pg fatal error", log.Error(err))
 				p.metrics.Fatal.Inc()
 				p.sendError(abstract.NewFatalError(err))
 				return
 			}
-			if IsPgError(err, ErrcAdminShutdown) {
+			if pgerrors.IsPgError(err, pgerrors.ErrcAdminShutdown) {
 				err = coded.Errorf(error_codes.PostgresSessionDurationTimeout, "Replication stopped due to session timeout/admin shutdown: %w", err)
 			}
 			p.logger.Warn("Connection dropped", log.Error(err))
@@ -581,13 +588,13 @@ func startReplication(
 		rConn, err := newReplicationConnection(rConnConfig)
 		if err != nil {
 			// Protocol violation, means that database do not accept replication protocol. Do not retry this case.
-			if strings.Contains(err.Error(), "08P01") {
+			if strings.Contains(err.Error(), string(pgerrors.ErrcProtocolViolation)) {
 				//nolint:descriptiveerrors
 				return nil, backoff.Permanent(err)
 			}
 			// Too many connections (SQLSTATE 53300)
 			var pgErr *pgconn.PgError
-			if xerrors.As(err, &pgErr) && pgErr.Code == string(ErrcTooManyConnections) {
+			if xerrors.As(err, &pgErr) && pgErr.Code == string(pgerrors.ErrcTooManyConnections) {
 				return nil, coded.Errorf(error_codes.PostgresTooManyConnections, "error establishing replication connection: %w", err)
 			}
 			// SSL handshake failures often come wrapped without PgError during replication handshake
@@ -616,11 +623,11 @@ func startReplication(
 		})
 		if err != nil {
 			defer lgr.Warn("Cannot start replication via replication connection", log.Error(err))
-			// usually that means slot has been invalidated by some condition (e.g. max_wal_slot_keep_size setting or smth)
+			// usually that means slot has been invalidated by some condition (e.g. max_slot_wal_keep_size setting or smth)
 			if strings.Contains(err.Error(), "SQLSTATE 55000") {
 				//nolint:descriptiveerrors
 				return nil, backoff.Permanent(abstract.NewFatalError(
-					xerrors.Errorf("Cannot start replication via replication connection: %w", err)))
+					coded.Errorf(error_codes.PostgresReplicationSlotInvalidated, "cannot start replication via replication connection: %w", err)))
 			}
 			// object_in_use code means some other process is reading the slot
 			// nobody is expected to read transfer slot so most common case of this error is stale transfer process

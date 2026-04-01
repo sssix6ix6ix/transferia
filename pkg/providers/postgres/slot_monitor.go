@@ -19,6 +19,7 @@ import (
 	"github.com/transferia/transferia/pkg/errors/coded"
 	error_codes "github.com/transferia/transferia/pkg/errors/codes"
 	"github.com/transferia/transferia/pkg/format"
+	"github.com/transferia/transferia/pkg/providers/postgres/pgerrors"
 	"github.com/transferia/transferia/pkg/stats"
 	"github.com/transferia/transferia/pkg/util"
 	"go.ytsaurus.tech/library/go/core/log"
@@ -110,6 +111,9 @@ func (m *SlotMonitor) StartSlotMonitoring(maxSlotByteLag int64) <-chan error {
 func (m *SlotMonitor) checkSlot(version PgVersion, maxSlotByteLag int64) error {
 	slotExists, err := m.slotExists(context.TODO())
 	if err != nil {
+		if pgerrors.IsPgError(err, pgerrors.ErrcObjectNotInPrerequisiteState) {
+			return abstract.NewFatalError(coded.Errorf(error_codes.PostgresReplicationSlotInvalidated, "replication slot %q invalidated: %w", m.slotName, err))
+		}
 		return xerrors.Errorf("unable to check existence of the slot %q: %w", m.slotName, err)
 	}
 	if !slotExists {
@@ -123,6 +127,9 @@ func (m *SlotMonitor) checkSlot(version PgVersion, maxSlotByteLag int64) error {
 		slotByteLag, slotByteLagErr = m.getLag(slotByteLagQuery)
 	}
 	if slotByteLagErr != nil {
+		if pgerrors.IsPgError(slotByteLagErr, pgerrors.ErrcObjectNotInPrerequisiteState) {
+			return abstract.NewFatalError(coded.Errorf(error_codes.PostgresReplicationSlotInvalidated, "replication slot %q invalidated: %w", m.slotName, slotByteLagErr))
+		}
 		return xerrors.Errorf("failed to check replication slot lag: %w", m.describeError(slotByteLagErr))
 	}
 	m.logger.Infof("replication slot %q WAL lag %s / %s", m.slotName, bytesToString(slotByteLag), format.SizeUInt64(uint64(maxSlotByteLag)))
@@ -163,6 +170,9 @@ func (m *SlotMonitor) validateSlot(ctx context.Context) error {
 		if err := rows.Err(); err != nil {
 			if pgErr, ok := err.(*pgconn.PgError); ok && pgFatalCode[pgErr.Code] && strings.Contains(err.Error(), "has already been removed") {
 				return abstract.NewFatalError(coded.Errorf(error_codes.PostgresWalSegmentRemoved, "requested WAL segment has already been removed: %w", err))
+			}
+			if pgerrors.IsPgError(err, pgerrors.ErrcObjectNotInPrerequisiteState) {
+				return abstract.NewFatalError(coded.Errorf(error_codes.PostgresReplicationSlotInvalidated, "replication slot %q invalidated: %w", m.slotName, err))
 			}
 		}
 		rows.Close()

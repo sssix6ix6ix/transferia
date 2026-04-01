@@ -10,6 +10,7 @@ import (
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/errors/coded"
 	error_codes "github.com/transferia/transferia/pkg/errors/codes"
+	"github.com/transferia/transferia/pkg/providers/postgres/pgerrors"
 	"github.com/transferia/transferia/pkg/util"
 	"go.ytsaurus.tech/library/go/core/log"
 )
@@ -80,7 +81,7 @@ func BeginTxWithSnapshot(ctx context.Context, conn *pgx.Conn, options pgx.TxOpti
 	qry := fmt.Sprintf("SET TRANSACTION SNAPSHOT '%s'", snapshot)
 	if _, err := tx.Exec(ctx, qry); err != nil {
 		rollbacks.Do()
-		if IsPgError(err, ErrcInvalidSnapshotIdentifier) {
+		if pgerrors.IsPgError(err, pgerrors.ErrcInvalidSnapshotIdentifier) {
 			return nil, nil, coded.Errorf(error_codes.PostgresInvalidSnapshot, "failed to execute %s: %w", qry, err)
 		}
 		return nil, nil, xerrors.Errorf("failed to execute %s: %w", qry, err)

@@ -16,6 +16,7 @@ import (
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/errors/coded"
 	error_codes "github.com/transferia/transferia/pkg/errors/codes"
+	"github.com/transferia/transferia/pkg/providers/postgres/pgerrors"
 	"github.com/transferia/transferia/pkg/stats"
 	"github.com/transferia/transferia/pkg/util"
 	"go.ytsaurus.tech/library/go/core/log"
@@ -524,13 +525,13 @@ func (s *sink) batchInsert(input []abstract.ChangeItem) error {
 				continue
 			}
 			if _, err := s.conn.Exec(context.TODO(), fmt.Sprintf("drop table if exists %v;", item.PgName())); err != nil {
-				if IsPgError(err, ErrcWrongObjectType) {
+				if pgerrors.IsPgError(err, pgerrors.ErrcWrongObjectType) {
 					s.logger.Infof("drop table %v returns: %v, so try drop as view", item.PgName(), err.Error())
 					if _, err := s.conn.Exec(context.TODO(), fmt.Sprintf("drop view if exists %v;", item.PgName())); err != nil {
 						//nolint:descriptiveerrors
 						return err
 					}
-				} else if IsPgError(err, ErrcDropTableWithDependencies) {
+				} else if pgerrors.IsPgError(err, pgerrors.ErrcDropTableWithDependencies) {
 					return coded.Errorf(error_codes.PostgresDropTableWithDependencies, "failed to drop table %v: %w", item.PgName(), err)
 				} else {
 					//nolint:descriptiveerrors
@@ -543,13 +544,13 @@ func (s *sink) batchInsert(input []abstract.ChangeItem) error {
 				continue
 			}
 			if _, err := s.conn.Exec(context.TODO(), fmt.Sprintf("truncate table %v;", item.PgName())); err != nil {
-				if IsPgError(err, ErrcWrongObjectType) {
+				if pgerrors.IsPgError(err, pgerrors.ErrcWrongObjectType) {
 					s.logger.Infof("truncate table %v returns: %v, so this is view, no need to truncate", item.PgName(), err.Error())
 					continue
-				} else if IsPgError(err, ErrcRelationDoesNotExists) {
+				} else if pgerrors.IsPgError(err, pgerrors.ErrcRelationDoesNotExists) {
 					s.logger.Infof("truncate table %v skip: table not exists", item.PgName())
 					continue
-				} else if IsPgError(err, ErrcSchemaDoesNotExists) {
+				} else if pgerrors.IsPgError(err, pgerrors.ErrcSchemaDoesNotExists) {
 					s.logger.Infof("truncate table %v skip: schema %v not exists", item.PgName(), item.Schema)
 					continue
 				} else {
@@ -1052,7 +1053,7 @@ func (s *sink) executeQueries(ctx context.Context, conn *pgx.Conn, queries []str
 	}
 
 	s.logger.Warn("failed to execute queries at sink", log.String("query", util.DefaultSample(combinedQuery)), log.Error(err), log.Int("len", len(queries)))
-	if IsPgError(err, ErrcGeneratedColumnWriteAttempt) {
+	if pgerrors.IsPgError(err, pgerrors.ErrcGeneratedColumnWriteAttempt) {
 		return coded.Errorf(error_codes.PostgresGeneratedColumnWriteAttempt, "failed to execute %d queries at sink: %w", len(queries), err)
 	}
 	return xerrors.Errorf("failed to execute %d queries at sink: %w", len(queries), err)
@@ -1165,10 +1166,10 @@ func (s *sink) insert(ctx context.Context, table string, schema []abstract.ColSc
 		}
 
 		err := s.executeQueries(ctx, conn.Conn(), queries[processedQueries:batchFinishI])
-		if IsPgError(err, ErrcUniqueViolation) && !s.config.IgnoreUniqueConstraint() {
+		if pgerrors.IsPgError(err, pgerrors.ErrcUniqueViolation) && !s.config.IgnoreUniqueConstraint() {
 			return coded.Errorf(error_codes.PostgresDuplicateKeyViolation, "failed to process a single item at sink: %w", err)
 		}
-		if IsPgError(err, ErrcUniqueViolation) && s.config.IgnoreUniqueConstraint() {
+		if pgerrors.IsPgError(err, pgerrors.ErrcUniqueViolation) && s.config.IgnoreUniqueConstraint() {
 			// This may happen when the state of the target database is newer than the WAL entries
 			// we are currently reading. We can safely ignore such errors (I hope) because, assuming
 			// the source DB has the same unique constraints, eventually we will read the log up until
@@ -1180,7 +1181,7 @@ func (s *sink) insert(ctx context.Context, table string, schema []abstract.ColSc
 				if err == nil {
 					continue
 				}
-				if IsPgError(err, ErrcUniqueViolation) {
+				if pgerrors.IsPgError(err, pgerrors.ErrcUniqueViolation) {
 					if !items[i].KeysChanged() {
 						s.logger.Warn("ignoring UNIQUE constraint violation and skipping an item", log.String("table", table), log.String("query", util.DefaultSample(queries[i])), log.Error(err))
 						s.metrics.Table(table, "ignored_error", 1)

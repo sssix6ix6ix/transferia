@@ -14,6 +14,8 @@ import (
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/errors"
 	"github.com/transferia/transferia/pkg/errors/categories"
+	"github.com/transferia/transferia/pkg/errors/coded"
+	error_codes "github.com/transferia/transferia/pkg/errors/codes"
 	"github.com/transferia/transferia/pkg/middlewares"
 	"github.com/transferia/transferia/pkg/providers"
 	postgres_dblog "github.com/transferia/transferia/pkg/providers/postgres/dblog"
@@ -138,7 +140,7 @@ func (p *Provider) Activate(ctx context.Context, task *model.TransferOperation, 
 		return xerrors.Errorf("error getting src params from transfer: %w", err)
 	}
 	if err := VerifyPostgresTables(src, p.transfer, p.logger); err != nil {
-		if IsPKeyCheckError(err) {
+		if isPKeyCheckError(err) {
 			if !p.transfer.SnapshotOnly() {
 				return xerrors.Errorf("some tables have no PRIMARY KEY. This is allowed for Snapshot-only transfers. Error: %w", err)
 			}
@@ -220,7 +222,7 @@ func (p *Provider) Verify(ctx context.Context) error {
 		return xerrors.New("unable to verify derived network")
 	}
 	if err := VerifyPostgresTables(src, p.transfer, p.logger); err != nil {
-		if IsPKeyCheckError(err) && p.transfer.SnapshotOnly() {
+		if isPKeyCheckError(err) && p.transfer.SnapshotOnly() {
 			logger.Log.Warnf("Some tables dont have primary key but it is still allowed for snapshot only transfers: %v", err)
 		} else {
 			return xerrors.Errorf("unable to verify postgres tables: %w", err)
@@ -237,6 +239,14 @@ func (p *Provider) Verify(ctx context.Context) error {
 		}
 	}
 	return nil
+}
+
+func isPKeyCheckError(err error) bool {
+	var codederr coded.CodedError
+	if xerrors.As(err, &codederr) {
+		return codederr.Code() == error_codes.PostgresNoPrimaryKeyCode
+	}
+	return false
 }
 
 func (p *Provider) dstParamsFromTransfer() (*PgDestination, error) {

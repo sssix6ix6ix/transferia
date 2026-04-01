@@ -17,6 +17,9 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
+	"github.com/transferia/transferia/pkg/errors/coded"
+	error_codes "github.com/transferia/transferia/pkg/errors/codes"
+	"github.com/transferia/transferia/pkg/providers/postgres/pgerrors"
 	"github.com/transferia/transferia/pkg/stats"
 	"github.com/transferia/transferia/pkg/util"
 	"go.ytsaurus.tech/library/go/core/log"
@@ -195,9 +198,9 @@ func (p *poller) slotInvalidation(err error) error {
 	if err == nil {
 		return nil
 	}
-	if IsPgError(err, ErrcObjectNotInPrerequisiteState) {
+	if pgerrors.IsPgError(err, pgerrors.ErrcObjectNotInPrerequisiteState) {
 		p.metrics.Fatal.Inc()
-		return abstract.NewFatalError(err)
+		return abstract.NewFatalError(coded.Errorf(error_codes.PostgresReplicationSlotInvalidated, "replication slot invalidated: %w", err))
 	}
 	return err
 }
@@ -207,15 +210,15 @@ func (p *poller) CheckSlot() error {
 		var e *pgconn.PgError
 		switch {
 		case xerrors.As(err, &e):
-			if e.Code == "XX000" {
+			if e.Code == string(pgerrors.ErrcInternalError) {
 				p.metrics.Fatal.Inc()
 				p.logger.Error("Fatal WAL inconsistency", log.Error(e))
 				return abstract.NewFatalError(err)
 			}
-			if e.Code == string(ErrcObjectNotInPrerequisiteState) {
+			if e.Code == string(pgerrors.ErrcObjectNotInPrerequisiteState) {
 				p.metrics.Fatal.Inc()
 				p.logger.Error("Replication slot invalidated", log.Error(e))
-				return abstract.NewFatalError(err)
+				return abstract.NewFatalError(coded.Errorf(error_codes.PostgresReplicationSlotInvalidated, "replication slot invalidated: %w", err))
 			}
 			p.metrics.Error.Inc()
 			p.logger.Error("General WAL Error", log.Error(err))

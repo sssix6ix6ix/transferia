@@ -50,6 +50,7 @@ var (
 	PostgresNoPrimaryKeyCode                = coded.Register("postgres", "no_primary_key")
 	PostgresObjectInUse                     = coded.Register("postgres", "object_in_use")
 	PostgresReplicationConnectionNotAllowed = coded.Register("postgres", "replication_connection_not_allowed")
+	PostgresReplicationSlotInvalidated      = coded.Register("postgres", "replication_slot_invalidated")
 	PostgresReplicationSlotsInUse           = coded.Register("postgres", "replication_slots_in_use")
 	PostgresSchemaDoesNotExist              = coded.Register("postgres", "schema_does_not_exist")
 	PostgresSessionDurationTimeout          = coded.Register("postgres", "session_duration_timeout")

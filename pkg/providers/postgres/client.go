@@ -20,6 +20,7 @@ import (
 	"github.com/transferia/transferia/pkg/errors/coded"
 	error_codes "github.com/transferia/transferia/pkg/errors/codes"
 	"github.com/transferia/transferia/pkg/pgha"
+	"github.com/transferia/transferia/pkg/providers/postgres/pgerrors"
 	"github.com/transferia/transferia/pkg/util"
 	"go.ytsaurus.tech/library/go/core/log"
 )
@@ -527,7 +528,7 @@ func NewPgConnPoolConfig(ctx context.Context, poolConfig *pgxpool.Config) (*pgxp
 	defer cancel()
 	pgxConn, err := pgx.ConnectConfig(basicCtx, poolConfig.ConnConfig)
 	if err != nil {
-		if IsPgError(err, ErrcInvalidPassword) || IsPgError(err, ErrcInvalidAuthSpec) {
+		if pgerrors.IsPgError(err, pgerrors.ErrcInvalidPassword) || pgerrors.IsPgError(err, pgerrors.ErrcInvalidAuthSpec) {
 			return nil, coded.Errorf(error_codes.InvalidCredential, "failed to connect to a PostgreSQL instance: %w", err)
 		}
 		var dnsErr *net.DNSError
@@ -563,7 +564,7 @@ func NewPgConnPoolConfig(ctx context.Context, poolConfig *pgxpool.Config) (*pgxp
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if xerrors.As(err, &pgErr) {
-			if pgErr.Code == string(ErrcTooManyConnections) {
+			if pgErr.Code == string(pgerrors.ErrcTooManyConnections) {
 				return nil, coded.Errorf(error_codes.PostgresTooManyConnections, "failed to connect: too many connections: %w", err)
 			}
 		}

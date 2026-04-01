@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
+	"github.com/jackc/pgconn"
 	"github.com/jackc/pgtype/pgxtype"
 	"github.com/jackc/pgx/v4"
 	"github.com/transferia/transferia/internal/logger"
@@ -25,6 +26,7 @@ import (
 	"github.com/transferia/transferia/pkg/errors/coded"
 	error_codes "github.com/transferia/transferia/pkg/errors/codes"
 	"github.com/transferia/transferia/pkg/middlewares"
+	"github.com/transferia/transferia/pkg/providers/postgres/pgerrors"
 	"github.com/transferia/transferia/pkg/sink_factory"
 	"github.com/transferia/transferia/pkg/util"
 	"github.com/transferia/transferia/pkg/util/set"
@@ -118,13 +120,13 @@ func ApplyCommands(commands []*pgDumpItem, transfer model.Transfer, task *model.
 				log.Error(err),
 			)
 			// If destination has functions from extensions in user schema missing, pg returns 42883
-			if IsPgError(err, ErrcUndefinedFunction) {
+			if pgerrors.IsPgError(err, pgerrors.ErrcUndefinedFunction) {
 				return coded.Errorf(error_codes.PostgresUndefinedFunction,
 					"Unable to apply DDL of type '%v', name '%v'.'%v', error: %w",
 					command.Typ, command.Schema, command.Name, err)
 			}
 			// If schema is missing, map 3F000
-			if IsPgError(err, ErrcSchemaDoesNotExists) {
+			if pgerrors.IsPgError(err, pgerrors.ErrcSchemaDoesNotExists) {
 				return coded.Errorf(error_codes.PostgresSchemaDoesNotExist,
 					"Unable to apply DDL of type '%v', name '%v'.'%v', error: %w",
 					command.Typ, command.Schema, command.Name, err)
@@ -138,6 +140,13 @@ func ApplyCommands(commands []*pgDumpItem, transfer model.Transfer, task *model.
 }
 
 func isAlreadyExistsError(err error) bool {
+	var pgErr *pgconn.PgError
+	if xerrors.As(err, &pgErr) {
+		switch pgErr.Code {
+		case string(pgerrors.ErrcDuplicateObject), string(pgerrors.ErrcDuplicateTable), string(pgerrors.ErrcDuplicateFunction), string(pgerrors.ErrcDuplicateSchema):
+			return true
+		}
+	}
 	msg := err.Error()
 	return strings.Contains(msg, "already exists") || strings.Contains(msg, "is already a partition")
 }
