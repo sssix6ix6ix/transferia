@@ -83,6 +83,15 @@ func Send[T any](ctx context.Context, workCh chan<- T, val T) bool {
 	}
 }
 
+func TrySend[T any](workCh chan<- T, val T) bool {
+	select {
+	case workCh <- val:
+		return true
+	default:
+		return false
+	}
+}
+
 func Receive[T any](ctx context.Context, workCh <-chan T) (T, bool) {
 	select {
 	case <-ctx.Done():

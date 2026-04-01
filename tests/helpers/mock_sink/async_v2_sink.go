@@ -15,6 +15,10 @@ type MockQueueToS3Sink struct {
 }
 
 func (s *MockQueueToS3Sink) AsyncV2Push(_ context.Context, errCh chan<- abstract.AsyncPushResult, items []abstract.ChangeItem) {
+	if s.pushF == nil {
+		return
+	}
+
 	if err := s.pushF(items); err != nil {
 		errCh <- &abstract.QueueSourceAsyncPushResult{
 			Result: abstract.QueueResult{},

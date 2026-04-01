@@ -9,14 +9,7 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/coordinator"
 	"github.com/transferia/transferia/pkg/abstract/model"
-	"github.com/transferia/transferia/pkg/abstract2"
-	"github.com/transferia/transferia/pkg/data"
-	"github.com/transferia/transferia/pkg/errors"
-	"github.com/transferia/transferia/pkg/errors/categories"
-	"github.com/transferia/transferia/pkg/middlewares"
-	"github.com/transferia/transferia/pkg/sink_factory"
-	"github.com/transferia/transferia/pkg/source_factory"
-	"github.com/transferia/transferia/pkg/source_factory/eventsource"
+	"github.com/transferia/transferia/pkg/runtime/local/replicationstrategy"
 	"github.com/transferia/transferia/pkg/util"
 	"github.com/transferia/transferia/pkg/worker/tasks"
 	"go.ytsaurus.tech/library/go/core/log"
@@ -25,22 +18,21 @@ import (
 var _ abstract.Transfer = (*LocalWorker)(nil)
 
 type LocalWorker struct {
-	transfer            *model.Transfer
-	registry            core_metrics.Registry
-	logger              log.Logger
-	sink                abstract.AsyncSink
-	asyncsink           abstract.QueueToS3Sink
-	legacySource        abstract.Source
-	asyncsource         abstract.QueueToS3Source
-	replicationProvider abstract2.ReplicationProvider
-	replicationSource   abstract2.EventSource
-	wg                  sync.WaitGroup
-	stopCh              chan struct{}
-	mutex               sync.Mutex
-	initialized         bool
-	cp                  coordinator.Coordinator
-	ctx                 context.Context
-	cancel              context.CancelFunc
+	transfer *model.Transfer
+	cp       coordinator.Coordinator
+
+	registry core_metrics.Registry
+	logger   log.Logger
+
+	strategy replicationstrategy.Strategy
+
+	wg     sync.WaitGroup
+	stopCh chan struct{}
+	mutex  sync.Mutex
+	ctx    context.Context
+	cancel context.CancelFunc
+
+	initialized bool
 }
 
 func (w *LocalWorker) Error() error {
@@ -68,19 +60,6 @@ func (w *LocalWorker) Start() {
 	}()
 }
 
-func (w *LocalWorker) StopReplicationSource() {
-	if w.replicationSource != nil {
-		if err := w.replicationSource.Stop(); err != nil {
-			w.logger.Error("Error on stop replication source", log.Error(err))
-		}
-	}
-	if w.replicationProvider != nil {
-		if err := w.replicationProvider.Close(); err != nil {
-			w.logger.Error("Error on close replication provider", log.Error(err))
-		}
-	}
-}
-
 func (w *LocalWorker) Detach() {
 	if util.IsOpen(w.stopCh) {
 		w.logger.Infof("Detach: stop monitoring and keeping alive transfer %s", w.transfer.ID)
@@ -101,27 +80,10 @@ func (w *LocalWorker) Stop() error {
 		return nil
 	}
 
-	switch {
-	case w.asyncsource != nil:
-		w.asyncsource.Stop()
-	case w.legacySource != nil:
-		w.legacySource.Stop()
-	default:
-		w.StopReplicationSource()
+	if err := w.strategy.Stop(); err != nil {
+		return xerrors.Errorf("failed to stop replication strategy: %w", err)
 	}
 
-	w.wg.Wait()
-
-	switch {
-	case w.sink != nil:
-		if err := w.sink.Close(); err != nil {
-			return xerrors.Errorf("failed to close sink: %w", err)
-		}
-	case w.asyncsink != nil:
-		if err := w.asyncsink.Close(); err != nil {
-			return xerrors.Errorf("failed to close async sink: %w", err)
-		}
-	}
 	return nil
 }
 
@@ -129,7 +91,15 @@ func (w *LocalWorker) Runtime() abstract.Runtime {
 	return new(abstract.LocalRuntime)
 }
 
-func (w *LocalWorker) initialize() (err error) {
+func (w *LocalWorker) Run() error {
+	if err := w.initialize(); err != nil {
+		return xerrors.Errorf("failed to initialize LocalWorker: %w", err)
+	}
+
+	return w.strategy.Run()
+}
+
+func (w *LocalWorker) initialize() error {
 	if !util.IsOpen(w.stopCh) {
 		return xerrors.New("Stopped before initialization completion")
 	}
@@ -137,118 +107,49 @@ func (w *LocalWorker) initialize() (err error) {
 	w.mutex.Lock()
 	defer w.mutex.Unlock()
 
-	var rollbacks util.Rollbacks
-	defer rollbacks.Do()
-
 	if err := tasks.AddExtraTransformers(w.ctx, w.transfer, w.registry); err != nil {
 		return xerrors.Errorf("failed to set extra runtime transformations: %w", err)
 	}
 
-	switch {
-	case w.transfer.IsQueueToS3Replication():
-		w.asyncsink, err = sink_factory.MakeAsyncReplicationSink(w.transfer, new(model.TransferOperation), w.logger, w.registry, w.cp, middlewares.MakeConfig(middlewares.AtReplicationStage))
-		if err != nil {
-			return errors.CategorizedErrorf(categories.Target, "failed to create async v2 sink: %w", err)
-		}
-		rollbacks.Add(func() {
-			if err := w.asyncsink.Close(); err != nil {
-				w.logger.Error("Failed to close async v2 sink", log.Error(err))
-			}
-		})
-		w.asyncsource, err = source_factory.NewAsyncSource(w.transfer, w.logger, w.registry, w.cp)
-		if err != nil {
-			return errors.CategorizedErrorf(categories.Source, "failed to create async source: %w", err)
+	var err error
+	if needPartitionedStrategy(w.transfer) {
+		if w.transfer.RuntimeForReplication().Type() == abstract.MultiYtRuntimeType {
+			return abstract.NewFatalError(xerrors.New("partitioned replication is not compatible with MultiYTRuntime"))
 		}
 
-	default:
-		w.sink, err = sink_factory.MakeAsyncSink(w.transfer, new(model.TransferOperation), w.logger, w.registry, w.cp, middlewares.MakeConfig(middlewares.AtReplicationStage))
+		w.strategy, err = replicationstrategy.NewPartitionedStrategy(w.transfer, w.cp, w.registry, w.logger)
 		if err != nil {
-			return errors.CategorizedErrorf(categories.Target, "failed to create sink: %w", err)
+			return xerrors.Errorf("failed to initialize partitioned replication strategy: %w", err)
 		}
-		rollbacks.Add(func() {
-			if err := w.sink.Close(); err != nil {
-				w.logger.Error("Failed to close sink", log.Error(err))
-			}
-		})
-
-		dataProvider, err := data.NewDataProvider(
-			w.logger,
-			w.registry,
-			w.transfer,
-			w.cp,
-		)
+	} else {
+		w.strategy, err = replicationstrategy.NewBasicStrategy(w.transfer, w.cp, w.registry, w.logger)
 		if err != nil {
-			if xerrors.Is(err, data.TryLegacySourceError) {
-				w.legacySource, err = source_factory.NewSource(w.transfer, w.logger, w.registry, w.cp)
-			}
-			if err != nil {
-				return errors.CategorizedErrorf(categories.Source, "failed to create source: %w", err)
-			}
-		} else {
-			if replicationProvider, ok := dataProvider.(abstract2.ReplicationProvider); ok {
-				w.replicationProvider = replicationProvider
-				if err := w.replicationProvider.Init(); err != nil {
-					return errors.CategorizedErrorf(categories.Source, "failed to initialize replication provider: %w", err)
-				}
-				w.replicationSource, err = replicationProvider.CreateReplicationSource()
-				if err != nil {
-					return errors.CategorizedErrorf(categories.Source, "failed to create replication source: %w", err)
-				}
-			} else {
-				if err := dataProvider.Close(); err != nil {
-					w.logger.Warn("unable to close data provider", log.Error(err))
-				}
-				return xerrors.New("Data provider must be ReplicationProvider")
-			}
+			return xerrors.Errorf("failed to initialize basic replication strategy: %w", err)
 		}
 	}
 
-	rollbacks.Cancel()
 	w.initialized = true
+
 	return nil
 }
 
-func (w *LocalWorker) Run() error {
-	if err := w.initialize(); err != nil {
-		return xerrors.Errorf("failed to initialize LocalWorker: %w", err)
-	}
-
-	switch {
-	case w.asyncsource != nil:
-		if err := w.asyncsource.Run(w.asyncsink); err != nil {
-			return errors.CategorizedErrorf(categories.Source, "failed to run (async source): %w", err)
-		}
-	case w.legacySource != nil:
-		if err := w.legacySource.Run(w.sink); err != nil {
-			return errors.CategorizedErrorf(categories.Source, "failed to run (abstract1 source): %w", err)
-		}
-		return nil
-	default:
-		if err := eventsource.NewSource(w.logger, w.replicationSource, w.transfer.Dst.CleanupMode(), w.transfer.TmpPolicy).Run(w.sink); err != nil {
-			return errors.CategorizedErrorf(categories.Source, "failed to run (abstract2 source): %w", err)
-		}
-	}
-	return nil
+func needPartitionedStrategy(transfer *model.Transfer) bool {
+	return transfer.IsQueueToS3Replication()
 }
 
 func NewLocalWorker(cp coordinator.Coordinator, transfer *model.Transfer, registry core_metrics.Registry, lgr log.Logger) *LocalWorker {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &LocalWorker{
-		transfer:            transfer,
-		registry:            registry,
-		logger:              lgr,
-		stopCh:              make(chan struct{}),
-		cp:                  cp,
-		sink:                nil,
-		asyncsink:           nil,
-		legacySource:        nil,
-		asyncsource:         nil,
-		replicationProvider: nil,
-		replicationSource:   nil,
-		wg:                  sync.WaitGroup{},
-		mutex:               sync.Mutex{},
-		initialized:         false,
-		ctx:                 ctx,
-		cancel:              cancel,
+		transfer:    transfer,
+		cp:          cp,
+		registry:    registry,
+		logger:      lgr,
+		strategy:    nil,
+		stopCh:      make(chan struct{}),
+		wg:          sync.WaitGroup{},
+		mutex:       sync.Mutex{},
+		ctx:         ctx,
+		cancel:      cancel,
+		initialized: false,
 	}
 }

@@ -8,3 +8,7 @@ type Source interface {
 type Fetchable interface {
 	Fetch() ([]ChangeItem, error)
 }
+
+type PartitionListable interface {
+	ListPartitions() ([]Partition, error)
+}
