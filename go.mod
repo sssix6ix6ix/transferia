@@ -1,6 +1,6 @@
 module github.com/transferia/transferia
 
-go 1.25
+go 1.25.0
 
 require (
 	cloud.google.com/go v0.123.0
@@ -69,7 +69,7 @@ require (
 	github.com/valyala/fastjson v1.6.4
 	github.com/xitongsys/parquet-go v1.6.2
 	github.com/xitongsys/parquet-go-source v0.0.0-20220315005136-aec0fe3e777c
-	github.com/ydb-platform/ydb-go-sdk/v3 v3.127.3
+	github.com/ydb-platform/ydb-go-sdk/v3 v3.128.4
 	go.mongodb.org/mongo-driver v1.17.3
 	go.opentelemetry.io/contrib/bridges/otelzap v0.12.0
 	go.opentelemetry.io/otel v1.39.0
@@ -79,12 +79,12 @@ require (
 	go.uber.org/zap v1.27.1
 	go.ytsaurus.tech/library/go/core/log v0.0.4
 	go.ytsaurus.tech/yt/go v0.0.32
-	golang.org/x/crypto v0.47.0
+	golang.org/x/crypto v0.48.0
 	golang.org/x/exp v0.0.0-20251113190631-e25ba8c21ef6
-	golang.org/x/mod v0.31.0
+	golang.org/x/mod v0.32.0
 	golang.org/x/net v0.49.0
 	golang.org/x/sync v0.19.0
-	golang.org/x/text v0.33.0
+	golang.org/x/text v0.34.0
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da
 	golang.yandex/hasql v1.1.1
 	google.golang.org/api v0.265.0
@@ -231,7 +231,7 @@ require (
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/segmentio/asm v1.2.0 // indirect
 	github.com/sergi/go-diff v1.4.0 // indirect
-	github.com/shoenig/go-m1cpu v0.1.6 // indirect
+	github.com/shoenig/go-m1cpu v0.2.1 // indirect
 	github.com/siddontang/go v0.0.0-20180604090527-bdc77568d726 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/skeema/knownhosts v1.3.1 // indirect
@@ -268,11 +268,11 @@ require (
 	go.ytsaurus.tech/library/go/x/xreflect v0.0.3 // indirect
 	go.ytsaurus.tech/library/go/x/xruntime v0.0.4 // indirect
 	golang.org/x/oauth2 v0.35.0 // indirect
-	golang.org/x/sys v0.40.0 // indirect
-	golang.org/x/telemetry v0.0.0-20251203150158-8fff8a5912fc // indirect
-	golang.org/x/term v0.39.0 // indirect
+	golang.org/x/sys v0.41.0 // indirect
+	golang.org/x/telemetry v0.0.0-20260109210033-bd525da824e2 // indirect
+	golang.org/x/term v0.40.0 // indirect
 	golang.org/x/time v0.14.0 // indirect
-	golang.org/x/tools v0.40.0 // indirect
+	golang.org/x/tools v0.41.0 // indirect
 	gonum.org/v1/gonum v0.17.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
