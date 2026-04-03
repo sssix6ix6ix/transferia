@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgtype"
 	"github.com/transferia/transferia/internal/logger"
@@ -77,7 +78,9 @@ func (s *Storage) shardBySequenceColumn(ctx context.Context, table abstract.Tabl
 }
 
 func (s *Storage) getBoundsBySequenceColumn(ctx context.Context, table abstract.TableDescription, idCol abstract.ColSchema, partCount uint64) ([]int64, error) {
-	bounds, err := s.getBoundsByPercentileDisc(ctx, table, idCol, partCount)
+	percentileContext, percentileCancel := context.WithTimeout(ctx, 10*time.Minute)
+	defer percentileCancel()
+	bounds, err := s.getBoundsByPercentileDisc(percentileContext, table, idCol, partCount)
 	if err == nil {
 		return bounds, nil
 	}
