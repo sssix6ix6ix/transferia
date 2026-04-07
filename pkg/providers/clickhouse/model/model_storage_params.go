@@ -138,7 +138,7 @@ func resolveShardsAndHosts(shardList []ClickHouseShard, nativePort, httpPort int
 }
 
 func resolveConnection(connectionID string) (*conn_clickhouse.Connection, error) {
-	connCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	connCtx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 	//DP agent token here
 	conn, err := connection.Resolver().ResolveConnection(connCtx, connectionID, "ch")

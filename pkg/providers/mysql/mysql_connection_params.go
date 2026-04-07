@@ -138,7 +138,7 @@ func (params *ConnectionParams) ResolveLocation(locationStr string) error {
 }
 
 func resolveConnection(connectionID string, database string) (*connection.ConnectionMySQL, error) {
-	connCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	connCtx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 	//DP agent token here
 	conn, err := connection.Resolver().ResolveConnection(connCtx, connectionID, ProviderType)

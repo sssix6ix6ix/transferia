@@ -152,7 +152,7 @@ func ResolveKafkaAuth(auth *KafkaAuth, kafkaConnection *conn_kafka.Connection) *
 }
 
 func resolveConnection(connectionID string) (*conn_kafka.Connection, error) {
-	connCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	connCtx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 	//DP agent token here
 	conn, err := connection.Resolver().ResolveConnection(connCtx, connectionID, ProviderType)

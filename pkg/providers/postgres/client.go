@@ -670,7 +670,7 @@ func makeConnectionFromSink(dst PgSinkParams) *connection.ConnectionPG {
 }
 
 func resolveConnection(connectionID string, database string) (*connection.ConnectionPG, error) {
-	connCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	connCtx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 	//DP agent token here
 	conn, err := connection.Resolver().ResolveConnection(connCtx, connectionID, ProviderType)
