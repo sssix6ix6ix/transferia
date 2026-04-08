@@ -19,9 +19,10 @@ type SnapshotWriter struct {
 	key        string
 	serializer serializer.BatchSerializer
 	writer     io.WriteCloser
-	uploadDone chan error
 
+	uploadDone chan struct{}
 	uploadOnce sync.Once
+	uploadErr  error
 }
 
 // Close finalizes the snapshot by closing the serializer and writer,
@@ -46,9 +47,9 @@ func (s *SnapshotWriter) Close() error {
 	}
 
 	// Wait for upload to complete - blocking read until finishUpload() closes the channel
-	uploadErr := <-s.uploadDone
-	if uploadErr != nil {
-		return xerrors.Errorf("error during upload: %w", uploadErr)
+	<-s.uploadDone
+	if s.uploadErr != nil {
+		return xerrors.Errorf("error during upload: %w", s.uploadErr)
 	}
 	return nil
 }
@@ -68,7 +69,7 @@ func (s *SnapshotWriter) Write(items []*abstract.ChangeItem) (int, error) {
 // and cancels the context. This method is called by the upload goroutine.
 func (s *SnapshotWriter) FinishUpload(err error) {
 	s.uploadOnce.Do(func() {
-		s.uploadDone <- err
+		s.uploadErr = err
 		close(s.uploadDone)
 	})
 	s.cancel()
@@ -90,9 +91,11 @@ func NewsnapshotWriter(
 		cancel:     cancel,
 		key:        key,
 		serializer: serializer,
-		uploadOnce: sync.Once{},
-		uploadDone: make(chan error),
 		writer:     writer,
+
+		uploadDone: make(chan struct{}),
+		uploadOnce: sync.Once{},
+		uploadErr:  nil,
 	}
 
 	return holder, nil

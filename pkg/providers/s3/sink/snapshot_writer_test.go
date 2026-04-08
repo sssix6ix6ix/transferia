@@ -284,10 +284,9 @@ func TestSnapshotWriter_FinishUpload(t *testing.T) {
 	}()
 
 	// Wait for upload to finish
-	receivedErr := <-writer.uploadDone
-
-	require.Error(t, receivedErr)
-	require.Equal(t, uploadErr, receivedErr)
+	<-writer.uploadDone
+	require.Error(t, writer.uploadErr)
+	require.Equal(t, uploadErr, writer.uploadErr)
 }
 
 // TestSnapshotWriter_FinishUploadMultipleCalls tests that finishUpload is idempotent
@@ -303,15 +302,14 @@ func TestSnapshotWriter_FinishUploadMultipleCalls(t *testing.T) {
 	secondErr := xerrors.New("second error")
 
 	// Call finishUpload multiple times
-	go writer.FinishUpload(firstErr)
-	receivedErr := <-writer.uploadDone
-	require.Equal(t, firstErr, receivedErr)
+	writer.FinishUpload(firstErr)
+	<-writer.uploadDone
+	require.Equal(t, firstErr, writer.uploadErr)
 
-	go writer.FinishUpload(secondErr) // Should be ignored due to sync.Once
-	time.Sleep(time.Second)           // wait for goroutine to finish
-	someErr, ok := <-writer.uploadDone
-	require.False(t, ok)
-	require.NoError(t, someErr)
+	writer.FinishUpload(secondErr) // Should be ignored due to sync.Once
+	time.Sleep(time.Second)        // wait for goroutine to finish
+	<-writer.uploadDone
+	require.Equal(t, firstErr, writer.uploadErr)
 }
 
 // TestSnapshotWriter_ContextCancellation tests context cancellation
@@ -344,8 +342,9 @@ func TestSnapshotWriter_FinishUploadCancelsContext(t *testing.T) {
 	writer, err := NewsnapshotWriter(ctx, mockSer, mockWriter, "test-key")
 	require.NoError(t, err)
 
-	go writer.FinishUpload(nil)
-	require.NoError(t, <-writer.uploadDone)
+	writer.FinishUpload(nil) // FinishUpload is non-blocking.
+	<-writer.uploadDone      // Check that FinishUpload closed uploadDone chan.
+	require.NoError(t, writer.uploadErr)
 
 	// Context should be cancelled after finishUpload
 	select {
