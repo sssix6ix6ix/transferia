@@ -194,7 +194,7 @@ func (s *SnapshotSink) processSnapshot(insertItems []*abstract.ChangeItem) error
 
 			written, err := s.writeChunkAndRotate(ref, table, remainingItems)
 			if err != nil {
-				return xerrors.Errorf("unable to write chunk and rotate: %w", err)
+				return abstract.NewTableUploadError(xerrors.Errorf("unable to write chunk and rotate: %w", err))
 			}
 			remainingItems = remainingItems[written:]
 		}

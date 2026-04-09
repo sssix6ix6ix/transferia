@@ -18,6 +18,8 @@ type HTTPProxy struct {
 	pathToKey  string
 	isHTTPS    bool
 	WithLogger bool
+	// ResponsePolicy allows overriding proxy response for selected requests
+	ResponsePolicy func(req *http.Request, reqBody []byte) (override bool, code int, header http.Header, body []byte)
 
 	Err         error
 	mutex       sync.Mutex
@@ -46,6 +48,18 @@ func (p *HTTPProxy) handleHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	if p.ResponsePolicy != nil {
+		if ok, code, hdr, body := p.ResponsePolicy(req, reqBody); ok {
+			p.saveSniffed(req, reqBody, hdr, body)
+			if hdr != nil {
+				copyHeader(w.Header(), hdr)
+			}
+			w.WriteHeader(code)
+			_, _ = w.Write(body)
+			return
+		}
+	}
+
 	// build 'reqNew'
 	targetURL := makePrefix(p.isHTTPS) + path.Join(p.targetAddr, req.URL.String())
 	reqNew, err := http.NewRequest(req.Method, targetURL, bytes.NewBuffer(reqBody))
@@ -65,6 +79,7 @@ func (p *HTTPProxy) handleHTTP(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, err.Error(), http.StatusServiceUnavailable)
 		return
 	}
+	defer resp.Body.Close()
 
 	// save 'resp'
 	respBody, err := io.ReadAll(resp.Body)
@@ -73,26 +88,30 @@ func (p *HTTPProxy) handleHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// save results
+	p.saveSniffed(req, reqBody, resp.Header, respBody)
+
+	// handle result
+	copyHeader(w.Header(), resp.Header)
+	w.WriteHeader(resp.StatusCode)
+	_, _ = w.Write(respBody)
+}
+
+func (p *HTTPProxy) saveSniffed(req *http.Request, reqBody []byte, respHeader http.Header, respBody []byte) {
 	p.mutex.Lock()
+	defer p.mutex.Unlock()
+
 	requestResponse := NewRequestResponse(
 		req.Method,
 		req.URL.String(),
 		req.Header,
 		reqBody,
-		resp.Header,
+		respHeader,
 		respBody,
 	)
 	p.sniffedData = append(p.sniffedData, *requestResponse)
 	if p.WithLogger {
 		requestResponse.Print()
 	}
-	p.mutex.Unlock()
-
-	// handle result
-	copyHeader(w.Header(), resp.Header)
-	w.WriteHeader(resp.StatusCode)
-	_, _ = w.Write(respBody)
 }
 
 func (p *HTTPProxy) RunAsync() *Worker {
