@@ -113,7 +113,7 @@ func (w *LocalWorker) initialize() error {
 
 	var err error
 	if needPartitionedStrategy(w.transfer) {
-		if w.transfer.RuntimeForReplication().Type() == abstract.MultiYtRuntimeType {
+		if !w.transfer.RuntimeForReplication().IsSupportedPartitionedStrategy() {
 			return abstract.NewFatalError(xerrors.New("partitioned replication is not compatible with MultiYTRuntime"))
 		}
 

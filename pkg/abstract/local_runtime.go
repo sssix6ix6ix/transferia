@@ -6,6 +6,8 @@ type LocalRuntime struct {
 	ShardingUpload ShardUploadParams
 }
 
+var _ Runtime = (*LocalRuntime)(nil)
+
 func (*LocalRuntime) Type() RuntimeType {
 	return LocalRuntimeType
 }
@@ -33,3 +35,4 @@ func (l *LocalRuntime) SnapshotIsMain() bool             { return l.CurrentJob =
 func (l *LocalRuntime) SetVersion(runtimeSpecificVersion string, versionProperties *string) error {
 	return nil
 }
+func (l *LocalRuntime) IsSupportedPartitionedStrategy() bool { return true }

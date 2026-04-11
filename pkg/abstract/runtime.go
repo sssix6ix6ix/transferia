@@ -28,6 +28,8 @@ type Runtime interface {
 	Validate() error
 	Type() RuntimeType
 	SetVersion(runtimeSpecificVersion string, versionProperties *string) error
+
+	IsSupportedPartitionedStrategy() bool
 }
 
 func GetRuntimeType(r Runtime, defaultRuntime RuntimeType) RuntimeType {
@@ -57,10 +59,6 @@ func RuntimesEqual(runtime, anotherRuntime Runtime) bool {
 	}
 
 	return runtimeStr == anotherRuntimeStr
-}
-
-func RuntimesParamsEqual(runtime, anotherRuntime Runtime) bool {
-	return RuntimesEqual(RuntimeCopyWithDefaults(runtime), RuntimeCopyWithDefaults(anotherRuntime))
 }
 
 func NewRuntime(runtime RuntimeType, runtimeSpec string) (Runtime, error) {

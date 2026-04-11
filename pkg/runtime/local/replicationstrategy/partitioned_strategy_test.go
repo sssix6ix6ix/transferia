@@ -395,6 +395,10 @@ func (r fakeRuntime) SetVersion(_ string, _ *string) error {
 	return nil
 }
 
+func (r fakeRuntime) IsSupportedPartitionedStrategy() bool {
+	return true
+}
+
 func (r fakeRuntime) CurrentJobIndex() int {
 	return r.workerIdx
 }
