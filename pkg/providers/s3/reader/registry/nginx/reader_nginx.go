@@ -41,20 +41,21 @@ func init() {
 }
 
 type NginxReader struct {
-	table          abstract.TableID
-	bucket         string
-	client         s3iface.S3API
-	logger         log.Logger
-	metrics        *stats.SourceStats
-	tableSchema    *abstract.TableSchema
-	fastCols       abstract.FastTableSchema
-	colNames       []string
-	hideSystemCols bool
-	batchSize      int
-	blockSize      int64
-	pathPrefix     string
-	pathPattern    string
-	unparsedPolicy s3_model.UnparsedPolicy
+	table                   abstract.TableID
+	bucket                  string
+	client                  s3iface.S3API
+	logger                  log.Logger
+	metrics                 *stats.SourceStats
+	tableSchema             *abstract.TableSchema
+	fastCols                abstract.FastTableSchema
+	colNames                []string
+	hideSystemCols          bool
+	batchSize               int
+	blockSize               int64
+	pathPrefix              string
+	pathPattern             string
+	unparsedPolicy          s3_model.UnparsedPolicy
+	unexpectedFieldBehavior s3_model.NginxUnexpectedFieldBehavior
 
 	compiledFormat *compiledNginxFormat
 }
@@ -102,28 +103,33 @@ func (r *NginxReader) Read(ctx context.Context, filePath string, pusher s3_pushe
 		}
 
 		data := string(chunkReader.Data())
-		pos := 0
 		var buff []abstract.ChangeItem
 		var currentSize int64
 
-		for pos < len(data) {
-			// Skip whitespace between entries.
-			entryStart := pos
-			for pos < len(data) && isWhitespace(data[pos]) {
-				pos++
+		// Find the last newline to determine the boundary of complete lines.
+		lastNewlinePos := strings.LastIndexByte(data, '\n')
+		var processable string
+		if lastNewlinePos >= 0 {
+			processable = data[:lastNewlinePos+1]
+		} else if lastRound {
+			processable = data
+		} else {
+			// No complete line in this chunk, save everything for the next chunk.
+			chunkReader.FillBuffer([]byte(data))
+			if err := s3_reader.FlushChunk(ctx, filePath, lineCounter, currentSize, buff, pusher); err != nil {
+				return xerrors.Errorf("unable to push nginx last batch: %w", err)
 			}
-			if pos >= len(data) {
-				break
+			continue
+		}
+
+		for line := range strings.SplitSeq(processable, "\n") {
+			line = strings.TrimRight(line, "\r")
+			if strings.TrimSpace(line) == "" {
+				continue
 			}
 
-			fieldValues, consumed, err := r.compiledFormat.parseEntry(data[pos:])
+			fieldValues, consumed, err := r.compiledFormat.parseEntry(line)
 			if err != nil {
-				if !lastRound {
-					// Might be an incomplete entry at chunk boundary — save remainder for next chunk.
-					pos = entryStart
-					break
-				}
-				// Last chunk: handle as unparsed.
 				unparsedCI, handleErr := s3_reader.HandleParseError(
 					r.table, r.unparsedPolicy, filePath, int(lineCounter), err,
 				)
@@ -132,18 +138,20 @@ func (r *NginxReader) Read(ctx context.Context, filePath string, pusher s3_pushe
 				}
 				buff = append(buff, *unparsedCI)
 				lineCounter++
-				// Skip to the next newline to try parsing further entries.
-				end := strings.IndexByte(data[pos:], '\n')
-				if end < 0 {
-					pos = len(data)
-				} else {
-					pos += end + 1
-				}
 				continue
 			}
 
-			pos += consumed
-			currentSize += int64(consumed)
+			if err := checkUnexpectedFields(line, consumed, r.unexpectedFieldBehavior); err != nil {
+				ci, handleErr := s3_reader.HandleParseError(r.table, r.unparsedPolicy, filePath, int(lineCounter), err)
+				if handleErr != nil {
+					return xerrors.Errorf("failed to parse nginx log entry %d: %w", lineCounter, handleErr)
+				}
+				buff = append(buff, *ci)
+				lineCounter++
+				continue
+			}
+
+			currentSize += int64(len(line))
 
 			ci, err := r.buildCI(fieldValues, filePath, s3RawReader.LastModified(), lineCounter)
 			if err != nil {
@@ -170,7 +178,12 @@ func (r *NginxReader) Read(ctx context.Context, filePath string, pusher s3_pushe
 			}
 		}
 
-		chunkReader.FillBuffer([]byte(data[pos:]))
+		// Save incomplete trailing line (after last \n) for the next chunk.
+		if lastNewlinePos >= 0 && lastNewlinePos+1 < len(data) {
+			chunkReader.FillBuffer([]byte(data[lastNewlinePos+1:]))
+		} else {
+			chunkReader.FillBuffer(nil)
+		}
 
 		if err := s3_reader.FlushChunk(ctx, filePath, lineCounter, currentSize, buff, pusher); err != nil {
 			return xerrors.Errorf("unable to push nginx last batch: %w", err)
@@ -250,6 +263,18 @@ func (r *NginxReader) constructCI(fieldValues []string, fname string, lModified 
 	}, nil
 }
 
+// checkUnexpectedFields returns an error if the line has unconsumed non-whitespace content
+// and the behavior is set to Error. Returns nil for Ignore/Unspecified or when there are no extra fields.
+func checkUnexpectedFields(line string, consumed int, behavior s3_model.NginxUnexpectedFieldBehavior) error {
+	switch behavior {
+	case s3_model.NginxUnexpectedFieldBehaviorError:
+		if consumed < len(line) && strings.TrimSpace(line[consumed:]) != "" {
+			return xerrors.Errorf("unexpected extra fields after parsed entry: %q", strings.TrimSpace(line[consumed:]))
+		}
+	}
+	return nil
+}
+
 // convertNginxValue converts a string value to the appropriate Go type based on the column schema.
 // Datetime fields (time_local) require explicit parsing; other types are handled by strictify.
 // A bare "-" is treated as a missing value and returns nil (ClickHouse will apply its column
@@ -307,19 +332,14 @@ func (r *NginxReader) estimateRows(ctx context.Context, files []*aws_s3.Object) 
 		if len(chunkReader.Data()) > 0 {
 			data := string(chunkReader.Data())
 			entries := 0
-			pos := 0
-			for pos < len(data) {
-				for pos < len(data) && isWhitespace(data[pos]) {
-					pos++
+			for line := range strings.SplitSeq(data, "\n") {
+				line = strings.TrimRight(line, "\r")
+				if strings.TrimSpace(line) == "" {
+					continue
 				}
-				if pos >= len(data) {
+				if _, _, err := r.compiledFormat.parseEntry(line); err != nil {
 					break
 				}
-				_, consumed, err := r.compiledFormat.parseEntry(data[pos:])
-				if err != nil {
-					break
-				}
-				pos += consumed
 				entries++
 			}
 			if entries > 0 {
@@ -351,20 +371,21 @@ func NewNginxReader(src *s3_model.S3Source, lgr log.Logger, sess *aws_session.Se
 			Namespace: src.TableNamespace,
 			Name:      src.TableName,
 		},
-		bucket:         src.Bucket,
-		client:         aws_s3.New(sess),
-		logger:         lgr,
-		metrics:        metrics,
-		tableSchema:    abstract.NewTableSchema(src.OutputSchema),
-		fastCols:       abstract.NewTableSchema(src.OutputSchema).FastColumns(),
-		colNames:       nil,
-		hideSystemCols: src.HideSystemCols,
-		batchSize:      src.ReadBatchSize,
-		blockSize:      src.Format.NginxSetting.BlockSize,
-		pathPrefix:     src.PathPrefix,
-		pathPattern:    src.PathPattern,
-		unparsedPolicy: src.UnparsedPolicy,
-		compiledFormat: compiled,
+		bucket:                  src.Bucket,
+		client:                  aws_s3.New(sess),
+		logger:                  lgr,
+		metrics:                 metrics,
+		tableSchema:             abstract.NewTableSchema(src.OutputSchema),
+		fastCols:                abstract.NewTableSchema(src.OutputSchema).FastColumns(),
+		colNames:                nil,
+		hideSystemCols:          src.HideSystemCols,
+		batchSize:               src.ReadBatchSize,
+		blockSize:               src.Format.NginxSetting.BlockSize,
+		pathPrefix:              src.PathPrefix,
+		pathPattern:             src.PathPattern,
+		unparsedPolicy:          src.UnparsedPolicy,
+		unexpectedFieldBehavior: src.Format.NginxSetting.UnexpectedFieldBehavior,
+		compiledFormat:          compiled,
 	}
 
 	if len(reader.tableSchema.Columns()) == 0 {

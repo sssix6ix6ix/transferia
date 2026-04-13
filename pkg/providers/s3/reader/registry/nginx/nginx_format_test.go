@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/transferia/transferia/pkg/abstract"
+	s3_model "github.com/transferia/transferia/pkg/providers/s3/model"
 	"go.ytsaurus.tech/yt/go/schema"
 )
 
@@ -121,7 +122,7 @@ func TestParseEntryFullCDNFormat(t *testing.T) {
 	require.Equal(t, "MO", values[46])                                // geoip2_region (last field)
 }
 
-func TestParseEntryMultiline(t *testing.T) {
+func TestParseEntryMultilineFormat(t *testing.T) {
 	format := `"$remote_addr" "$status"
 "$host"`
 
@@ -133,19 +134,13 @@ func TestParseEntryMultiline(t *testing.T) {
 	values, _, err := compiled.parseEntry(`"1.2.3.4" "200" "example.com"`)
 	require.NoError(t, err)
 	require.Equal(t, []string{"1.2.3.4", "200", "example.com"}, values)
-
-	// Normal multi-line input.
-	values, _, err = compiled.parseEntry(`"1.2.3.4" "200"` + "\n" + `"example.com"`)
-	require.NoError(t, err)
-	require.Equal(t, []string{"1.2.3.4", "200", "example.com"}, values)
 }
 
 func TestParseEntryConsumedBytes(t *testing.T) {
 	compiled, err := compileFormat(`"$addr" "$status"`)
 	require.NoError(t, err)
 
-	input := `"1.2.3.4" "200"` + "\n" + `"5.6.7.8" "404"`
-	values, consumed, err := compiled.parseEntry(input)
+	values, consumed, err := compiled.parseEntry(`"1.2.3.4" "200"`)
 	require.NoError(t, err)
 	require.Equal(t, []string{"1.2.3.4", "200"}, values)
 	require.Equal(t, len(`"1.2.3.4" "200"`), consumed)
@@ -195,17 +190,12 @@ func TestConvertNginxValueDatetime(t *testing.T) {
 func TestParseMultipleEntriesSequentially(t *testing.T) {
 	compiled, err := compileFormat(`"$addr" "$status"`)
 	require.NoError(t, err)
-	input := `"1.2.3.4" "200"` + "\n" + `"5.6.7.8" "404"` + "\n" + `"9.0.0.1" "500"`
-	pos := 0
+	lines := []string{`"1.2.3.4" "200"`, `"5.6.7.8" "404"`, `"9.0.0.1" "500"`}
 	var allValues [][]string
-	for pos < len(input) {
-		values, consumed, err := compiled.parseEntry(input[pos:])
+	for _, line := range lines {
+		values, _, err := compiled.parseEntry(line)
 		require.NoError(t, err)
 		allValues = append(allValues, values)
-		pos += consumed
-		for pos < len(input) && isWhitespace(input[pos]) {
-			pos++
-		}
 	}
 	require.Len(t, allValues, 3)
 	require.Equal(t, []string{"1.2.3.4", "200"}, allValues[0])
@@ -268,13 +258,6 @@ func TestParseEntryLastVariableNoDelimiter(t *testing.T) {
 	require.Equal(t, "1.2.3.4", values[0])
 	require.Equal(t, "200", values[1])
 	require.Equal(t, 11, consumed)
-
-	values, consumed, err = compiled.parseEntry("1.2.3.4 200\n5.6.7.8 404")
-	require.NoError(t, err)
-	require.Len(t, values, 2)
-	require.Equal(t, "1.2.3.4", values[0])
-	require.Equal(t, "200", values[1])
-	require.Equal(t, 11, consumed)
 }
 
 func TestParseEntryChunkSeparated(t *testing.T) {
@@ -295,8 +278,9 @@ func TestParseEntryChunkSeparated(t *testing.T) {
 }
 
 func TestMatchLiteralWhitespaceFlexibility(t *testing.T) {
-	require.Equal(t, 12, matchLiteral("hello\n\tworld", "hello world"))
-	require.Equal(t, 12, matchLiteral("hello\r\nworld", "hello world"))
+	require.Equal(t, 12, matchLiteral("hello\t\tworld", "hello world"))
+	require.Equal(t, -1, matchLiteral("hello\nworld", "hello world"))
+	require.Equal(t, -1, matchLiteral("hello\r\nworld", "hello world"))
 	require.Equal(t, -1, matchLiteral("helloworld", "hello world"))
 }
 
@@ -398,6 +382,56 @@ func TestParseEntryEscapeDefault(t *testing.T) {
 	require.Equal(t, "1.2.3.4", values[0])
 	require.Equal(t, `hello\x22world`, values[1])
 	require.Equal(t, "200", values[2])
+}
+
+func TestUnexpectedFieldBehavior(t *testing.T) {
+	compiled, err := compileFormat(`"$addr" "$status"`)
+	require.NoError(t, err)
+
+	lineClean := `"1.2.3.4" "200"`
+	lineExtra := `"1.2.3.4" "200" "extra1" "extra2"`
+	lineTrailingWS := `"1.2.3.4" "200"   ` + "\t"
+
+	t.Run("no extra fields — any behavior is ok", func(t *testing.T) {
+		_, consumed, err := compiled.parseEntry(lineClean)
+		require.NoError(t, err)
+		require.Equal(t, len(lineClean), consumed)
+		require.NoError(t, checkUnexpectedFields(lineClean, consumed, s3_model.NginxUnexpectedFieldBehaviorError))
+		require.NoError(t, checkUnexpectedFields(lineClean, consumed, s3_model.NginxUnexpectedFieldBehaviorIgnore))
+	})
+
+	t.Run("extra fields — error behavior returns error", func(t *testing.T) {
+		values, consumed, err := compiled.parseEntry(lineExtra)
+		require.NoError(t, err)
+		require.Equal(t, "1.2.3.4", values[0])
+		require.Equal(t, "200", values[1])
+		require.Less(t, consumed, len(lineExtra))
+
+		err = checkUnexpectedFields(lineExtra, consumed, s3_model.NginxUnexpectedFieldBehaviorError)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "unexpected extra fields")
+	})
+
+	t.Run("extra fields — ignore behavior returns nil", func(t *testing.T) {
+		_, consumed, err := compiled.parseEntry(lineExtra)
+		require.NoError(t, err)
+
+		require.NoError(t, checkUnexpectedFields(lineExtra, consumed, s3_model.NginxUnexpectedFieldBehaviorIgnore))
+	})
+
+	t.Run("extra fields — unspecified behavior returns nil", func(t *testing.T) {
+		_, consumed, err := compiled.parseEntry(lineExtra)
+		require.NoError(t, err)
+
+		require.NoError(t, checkUnexpectedFields(lineExtra, consumed, s3_model.NginxUnexpectedFieldBehaviorUnspecified))
+	})
+
+	t.Run("trailing whitespace only — error behavior is ok", func(t *testing.T) {
+		_, consumed, err := compiled.parseEntry(lineTrailingWS)
+		require.NoError(t, err)
+
+		require.NoError(t, checkUnexpectedFields(lineTrailingWS, consumed, s3_model.NginxUnexpectedFieldBehaviorError))
+	})
 }
 
 func TestParseEntryEscapeNone(t *testing.T) {

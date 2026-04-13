@@ -149,8 +149,7 @@ func (c *compiledNginxFormat) nextDelimiter(afterIndex int) string {
 }
 
 // matchLiteral matches a format literal against input character by character.
-// Spaces in the format match one or more whitespace characters in the input,
-// allowing a single format to match both single-line and multi-line log entries.
+// Spaces in the format match one or more spaces/tabs in the input.
 // Returns the number of bytes consumed from input, or -1 on mismatch.
 func matchLiteral(input, literal string) int {
 	inputPos := 0
@@ -160,11 +159,10 @@ func matchLiteral(input, literal string) int {
 		}
 		lch := literal[i]
 		if lch == ' ' {
-			if !isWhitespace(input[inputPos]) {
+			if input[inputPos] != ' ' && input[inputPos] != '\t' {
 				return -1
 			}
-			// Consume all consecutive whitespace (handles \r\n, multiple spaces, etc.)
-			for inputPos < len(input) && isWhitespace(input[inputPos]) {
+			for inputPos < len(input) && (input[inputPos] == ' ' || input[inputPos] == '\t') {
 				inputPos++
 			}
 		} else {

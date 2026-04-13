@@ -112,9 +112,18 @@ type Format struct {
 	NginxSetting   *NginxSetting   `log:"true"`
 }
 
+type NginxUnexpectedFieldBehavior int
+
+const (
+	NginxUnexpectedFieldBehaviorUnspecified NginxUnexpectedFieldBehavior = iota
+	NginxUnexpectedFieldBehaviorIgnore
+	NginxUnexpectedFieldBehaviorError
+)
+
 type NginxSetting struct {
-	Format    string `json:"format" log:"true"`
-	BlockSize int64  `json:"block_size" log:"true"`
+	Format                  string                       `json:"format" log:"true"`
+	BlockSize               int64                        `json:"block_size" log:"true"`
+	UnexpectedFieldBehavior NginxUnexpectedFieldBehavior `json:"unexpected_field_behavior" log:"true"`
 }
 
 type (
@@ -234,6 +243,9 @@ func (s *S3Source) WithDefaults() {
 	if s.InputFormat == model.ParsingFormatNginx {
 		if s.Format.NginxSetting == nil {
 			s.Format.NginxSetting = new(NginxSetting)
+		}
+		if s.Format.NginxSetting.UnexpectedFieldBehavior == NginxUnexpectedFieldBehaviorUnspecified {
+			s.Format.NginxSetting.UnexpectedFieldBehavior = NginxUnexpectedFieldBehaviorIgnore
 		}
 		if s.Format.NginxSetting.BlockSize == 0 {
 			s.Format.NginxSetting.BlockSize = defaultBlockSize
