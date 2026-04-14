@@ -77,7 +77,7 @@ require (
 	go.uber.org/atomic v1.11.0
 	go.uber.org/mock v0.6.0
 	go.uber.org/zap v1.27.1
-	go.ytsaurus.tech/library/go/core/log v0.0.4
+	go.ytsaurus.tech/library/go/core/log v0.0.5
 	go.ytsaurus.tech/yt/go v0.0.32
 	golang.org/x/crypto v0.47.0
 	golang.org/x/exp v0.0.0-20251113190631-e25ba8c21ef6
