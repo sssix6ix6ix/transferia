@@ -167,6 +167,30 @@ func TestAllTypesToStringTransformer(t *testing.T) {
 	}
 }
 
+func TestSerializeToStringSkipUTCConversion(t *testing.T) {
+	t.Parallel()
+	moscow := time.FixedZone("MSK", 3*60*60)
+	createTestTime := func(loc *time.Location) time.Time {
+		return time.Date(2026, 4, 13, 2, 31, 15, 160102162, loc)
+	}
+	var testCases = []struct {
+		originalValue any
+		originalType  schema.Type
+		expectedValue string
+	}{
+		{createTestTime(time.UTC), schema.TypeDate, "2026-04-13"},
+		{createTestTime(moscow), schema.TypeDate, "2026-04-13"},
+		{createTestTime(moscow), schema.TypeDatetime, "2026-04-13T02:31:15.160102162+03:00"},
+		{createTestTime(time.UTC), schema.TypeDatetime, "2026-04-13T02:31:15.160102162Z"},
+		{createTestTime(moscow), schema.TypeString, "2026-04-13 02:31:15.160102162 +0300 MSK"},
+		{nil, schema.TypeDatetime, "<nil>"},
+	}
+	for _, testCase := range testCases {
+		actual := serializeToString(testCase.originalValue, testCase.originalType.String(), true)
+		require.Equal(t, testCase.expectedValue, actual, "type: %s", testCase.originalType)
+	}
+}
+
 func TestResultSchema(t *testing.T) {
 	t.Parallel()
 

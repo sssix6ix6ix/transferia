@@ -27,25 +27,28 @@ func init() {
 			return nil, xerrors.Errorf("unable to create tables filter: %w", err)
 		}
 		return &ToStringTransformer{
-			Columns:        clms,
-			Tables:         tbls,
-			ConvertToBytes: cfg.ConvertToBytes,
-			Logger:         lgr,
+			Columns:           clms,
+			Tables:            tbls,
+			ConvertToBytes:    cfg.ConvertToBytes,
+			SkipUTCConversion: cfg.SkipUTCConversion,
+			Logger:            lgr,
 		}, nil
 	})
 }
 
 type Config struct {
-	Columns        transformer_filter.Columns `json:"columns"`
-	Tables         transformer_filter.Tables  `json:"tables"`
-	ConvertToBytes bool                       `json:"convert_to_bytes"`
+	Columns           transformer_filter.Columns `json:"columns"`
+	Tables            transformer_filter.Tables  `json:"tables"`
+	ConvertToBytes    bool                       `json:"convert_to_bytes"`
+	SkipUTCConversion bool                       `json:"skip_utc_conversion"`
 }
 
 type ToStringTransformer struct {
-	Columns        transformer_filter.Filter
-	Tables         transformer_filter.Filter
-	ConvertToBytes bool
-	Logger         log.Logger
+	Columns           transformer_filter.Filter
+	Tables            transformer_filter.Filter
+	ConvertToBytes    bool
+	SkipUTCConversion bool
+	Logger            log.Logger
 }
 
 func (f *ToStringTransformer) Type() abstract.TransformerType {
@@ -73,7 +76,7 @@ func (f *ToStringTransformer) Apply(input []abstract.ChangeItem) abstract.Transf
 		newValues := make([]interface{}, len(item.ColumnValues))
 		for i, columnName := range item.ColumnNames {
 			if f.Columns.Match(columnName) {
-				stringValue := SerializeToString(item.ColumnValues[i], oldTypes[columnName])
+				stringValue := serializeToString(item.ColumnValues[i], oldTypes[columnName], f.SkipUTCConversion)
 				if f.ConvertToBytes {
 					newValues[i] = []byte(stringValue)
 				} else {
@@ -140,6 +143,10 @@ func trimStr(value string, maxLength int) string {
 }
 
 func SerializeToString(value interface{}, valueType string) string {
+	return serializeToString(value, valueType, false)
+}
+
+func serializeToString(value interface{}, valueType string, skipUTCConversion bool) string {
 	switch valueType {
 	case ytschema.TypeBytes.String():
 		out, ok := value.([]byte)
@@ -153,12 +160,19 @@ func SerializeToString(value interface{}, valueType string) string {
 		}
 	case ytschema.TypeDate.String():
 		if valueAsTime, ok := value.(time.Time); ok {
-			return valueAsTime.UTC().Format("2006-01-02")
+			return normalizeTime(valueAsTime, skipUTCConversion).Format(time.DateOnly)
 		}
 	case ytschema.TypeDatetime.String(), ytschema.TypeTimestamp.String():
 		if valueAsTime, ok := value.(time.Time); ok {
-			return valueAsTime.UTC().Format(time.RFC3339Nano)
+			return normalizeTime(valueAsTime, skipUTCConversion).Format(time.RFC3339Nano)
 		}
 	}
 	return fmt.Sprintf("%v", value)
+}
+
+func normalizeTime(t time.Time, skipUTCConversion bool) time.Time {
+	if skipUTCConversion {
+		return t
+	}
+	return t.UTC()
 }
