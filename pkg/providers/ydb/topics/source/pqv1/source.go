@@ -323,6 +323,7 @@ func NewSource(cfg *topicsource.Config, parser parsers.Parser, logger log.Logger
 		Consumer:                  cfg.Consumer,
 		ManualPartitionAssignment: true,
 		RetryOnFailure:            true,
+		ReadOnlyLocal:             cfg.ReaderOpts.ReadOnlyLocal,
 		MaxMemory:                 cfg.ReaderOpts.MaxMemory,
 		MaxReadSize:               cfg.ReaderOpts.MaxReadSize,
 		MaxReadMessagesCount:      cfg.ReaderOpts.MaxReadMessageCount,
