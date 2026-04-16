@@ -29,7 +29,7 @@ func init() {
 
 const (
 	testNginxFormat = `"$remote_addr" "-" "$remote_user" "[$date_time]" "$request" "$status_code" "$body_bytes_sent" "$http_referer" "$http_user_agent" "$bytes_sent"
-"$edgename" "$scheme" "$host" "$request_time" "$upstream_response_time" "$request_length" "$http_range" "[$responding_node]"
+"[$edgename]" "$scheme" "$host" "$request_time" "$upstream_response_time" "$request_length" "$http_range" "[$responding_node]"
 "$upstream_cache_status" "$upstream_response_length" "$upstream_addr" "$gcdn_api_client_id" "$gcdn_api_resource_id" "$uid_got" "$uid_set"
 "$geoip_country_code" "$geoip_city" "$shield_type" "$server_addr" "$server_port" "$upstream_status" "-" "$upstream_connect_time"
 "$upstream_header_time" "$shard_addr" "$geoip2_data_asnumber" "$connection" "$connection_requests" "$request_id" "$http_x_forwarded_proto"
