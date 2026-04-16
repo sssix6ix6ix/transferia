@@ -257,7 +257,7 @@ func (m *Emitter) GetPackers() (packer.Packer, packer.Packer) {
 // for inserts/updates(without pkey changing) - just pkeys from 'after'
 // for deletes/update(with pkey changing) - extracts pkeys from OldKeys
 func (m *Emitter) makeKey(changeItem *abstract.ChangeItem, useAfter bool, ignoreUnknownSources, snapshot bool) (*debezium_common.Values, error) {
-	if useAfter || changeItem.OldKeys.KeyNames == nil {
+	if useAfter || len(changeItem.OldKeys.KeyNames) == 0 {
 		return buildKV(changeItem, m.connectorParameters, true, ignoreUnknownSources, snapshot)
 	}
 

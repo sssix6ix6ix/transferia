@@ -3165,6 +3165,8 @@
   "tests/e2e/pg2kafka2yt/ysr_policy_optional_friendly/init_source/dump.sql":"transfer_manager/go/tests/e2e/pg2kafka2yt/ysr_policy_optional_friendly/init_source/dump.sql",
   "tests/e2e/pg2kafkamock/debezium_replication/check_db_test.go":"transfer_manager/go/tests/e2e/pg2kafkamock/debezium_replication/check_db_test.go",
   "tests/e2e/pg2kafkamock/debezium_replication/init_source/dump.sql":"transfer_manager/go/tests/e2e/pg2kafkamock/debezium_replication/init_source/dump.sql",
+  "tests/e2e/pg2kafkamock/debezium_replication_transformer_filter_columns/check_db_test.go":"transfer_manager/go/tests/e2e/pg2kafkamock/debezium_replication_transformer_filter_columns/check_db_test.go",
+  "tests/e2e/pg2kafkamock/debezium_replication_transformer_filter_columns/init_source/dump.sql":"transfer_manager/go/tests/e2e/pg2kafkamock/debezium_replication_transformer_filter_columns/init_source/dump.sql",
   "tests/e2e/pg2mock/conn_amount/conn_amount_replica_only/check_db_test.go":"transfer_manager/go/tests/e2e/pg2mock/conn_amount/conn_amount_replica_only/check_db_test.go",
   "tests/e2e/pg2mock/conn_amount/conn_amount_replica_only/init_source/dump.sql":"transfer_manager/go/tests/e2e/pg2mock/conn_amount/conn_amount_replica_only/init_source/dump.sql",
   "tests/e2e/pg2mock/conn_amount/conn_amount_snap_and_replica/check_db_test.go":"transfer_manager/go/tests/e2e/pg2mock/conn_amount/conn_amount_snap_and_replica/check_db_test.go",
