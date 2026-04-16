@@ -7,32 +7,33 @@ import (
 type PgObjectType string
 
 const (
-	Table            PgObjectType = "TABLE"
-	TableAttach      PgObjectType = "TABLE_ATTACH"
-	PrimaryKey       PgObjectType = "PRIMARY_KEY"
-	View             PgObjectType = "VIEW"
-	Sequence         PgObjectType = "SEQUENCE"
-	SequenceSet      PgObjectType = "SEQUENCE_SET"
-	SequenceOwnedBy  PgObjectType = "SEQUENCE_OWNED_BY"
-	Rule             PgObjectType = "RULE"
-	Type             PgObjectType = "TYPE"
-	Constraint       PgObjectType = "CONSTRAINT"
-	FkConstraint     PgObjectType = "FK_CONSTRAINT"
-	Index            PgObjectType = "INDEX"
-	IndexAttach      PgObjectType = "INDEX_ATTACH"
-	Function         PgObjectType = "FUNCTION"
-	Collation        PgObjectType = "COLLATION"
-	Trigger          PgObjectType = "TRIGGER"
-	Policy           PgObjectType = "POLICY"
-	Cast             PgObjectType = "CAST"
-	MaterializedView PgObjectType = "MATERIALIZED_VIEW"
+	PgObjectTypeTable            PgObjectType = "TABLE"
+	PgObjectTypeTableAttach      PgObjectType = "TABLE_ATTACH"
+	PgObjectTypePrimaryKey       PgObjectType = "PRIMARY_KEY"
+	PgObjectTypeView             PgObjectType = "VIEW"
+	PgObjectTypeSequence         PgObjectType = "SEQUENCE"
+	PgObjectTypeSequenceSet      PgObjectType = "SEQUENCE_SET"
+	PgObjectTypeSequenceOwnedBy  PgObjectType = "SEQUENCE_OWNED_BY"
+	PgObjectTypeRule             PgObjectType = "RULE"
+	PgObjectTypeType             PgObjectType = "TYPE"
+	PgObjectTypeConstraint       PgObjectType = "CONSTRAINT"
+	PgObjectTypeFkConstraint     PgObjectType = "FK_CONSTRAINT"
+	PgObjectTypeIndex            PgObjectType = "INDEX"
+	PgObjectTypeIndexAttach      PgObjectType = "INDEX_ATTACH"
+	PgObjectTypeFunction         PgObjectType = "FUNCTION"
+	PgObjectTypeCollation        PgObjectType = "COLLATION"
+	PgObjectTypeTrigger          PgObjectType = "TRIGGER"
+	PgObjectTypePolicy           PgObjectType = "POLICY"
+	PgObjectTypeCast             PgObjectType = "CAST"
+	PgObjectTypeMaterializedView PgObjectType = "MATERIALIZED_VIEW"
+	PgObjectTypeDefault          PgObjectType = "DEFAULT"
 )
 
 func (pot PgObjectType) IsValid() error {
 	switch pot {
-	case Table, TableAttach, PrimaryKey, View, Sequence, SequenceSet, SequenceOwnedBy,
-		Rule, Type, Constraint, FkConstraint, Index, IndexAttach,
-		Function, Collation, Trigger, Policy, Cast, MaterializedView:
+	case PgObjectTypeTable, PgObjectTypeTableAttach, PgObjectTypePrimaryKey, PgObjectTypeView, PgObjectTypeSequence, PgObjectTypeSequenceSet, PgObjectTypeSequenceOwnedBy,
+		PgObjectTypeRule, PgObjectTypeType, PgObjectTypeConstraint, PgObjectTypeFkConstraint, PgObjectTypeIndex, PgObjectTypeIndexAttach,
+		PgObjectTypeFunction, PgObjectTypeCollation, PgObjectTypeTrigger, PgObjectTypePolicy, PgObjectTypeCast, PgObjectTypeMaterializedView:
 		return nil
 	}
 	return fmt.Errorf("invalid PgObjectType: %v", pot)

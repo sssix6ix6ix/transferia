@@ -94,83 +94,83 @@ func Snapshot(t *testing.T) {
 	// test extract dump with DBTables
 	// with custom types, also check cast, function, collation and index
 	itemTypToCnt := extractPgDumpTypToCnt(t, []string{"santa.\"Ho-Ho-Ho\""}, []string{"santa"})
-	require.Equal(t, 0, itemTypToCnt["POLICY"])
-	require.Equal(t, 1, itemTypToCnt["CAST"])
-	require.Equal(t, 2, itemTypToCnt["TYPE"])
-	require.Equal(t, 1, itemTypToCnt["FUNCTION"])
-	require.Equal(t, 0, itemTypToCnt["COLLATION"])
-	require.Equal(t, 1, itemTypToCnt["INDEX"])
+	require.Equal(t, 0, itemTypToCnt[string(provider_postgres.PgObjectTypePolicy)])
+	require.Equal(t, 1, itemTypToCnt[string(provider_postgres.PgObjectTypeCast)])
+	require.Equal(t, 2, itemTypToCnt[string(provider_postgres.PgObjectTypeType)])
+	require.Equal(t, 1, itemTypToCnt[string(provider_postgres.PgObjectTypeFunction)])
+	require.Equal(t, 0, itemTypToCnt[string(provider_postgres.PgObjectTypeCollation)])
+	require.Equal(t, 1, itemTypToCnt[string(provider_postgres.PgObjectTypeIndex)])
 
 	// without custom types
 	itemTypToCnt = extractPgDumpTypToCnt(t, []string{"public.__test"}, []string{"public"})
-	require.Equal(t, 0, itemTypToCnt["TYPE"])
-	require.Equal(t, 1, itemTypToCnt["POLICY"])
-	require.Equal(t, 1, itemTypToCnt["FUNCTION"])
-	require.Equal(t, 1, itemTypToCnt["COLLATION"])
+	require.Equal(t, 0, itemTypToCnt[string(provider_postgres.PgObjectTypeType)])
+	require.Equal(t, 1, itemTypToCnt[string(provider_postgres.PgObjectTypePolicy)])
+	require.Equal(t, 1, itemTypToCnt[string(provider_postgres.PgObjectTypeFunction)])
+	require.Equal(t, 1, itemTypToCnt[string(provider_postgres.PgObjectTypeCollation)])
 
 	// transfer tables from public and santa schemas
 	itemTypToCnt = extractPgDumpTypToCnt(t, []string{"public.__test", "santa.\"Ho-Ho-Ho\""}, []string{"public", "santa"})
-	require.Equal(t, 2, itemTypToCnt["TYPE"])
-	require.Equal(t, 3, itemTypToCnt["FUNCTION"])
-	require.Equal(t, 1, itemTypToCnt["POLICY"])
+	require.Equal(t, 2, itemTypToCnt[string(provider_postgres.PgObjectTypeType)])
+	require.Equal(t, 3, itemTypToCnt[string(provider_postgres.PgObjectTypeFunction)])
+	require.Equal(t, 1, itemTypToCnt[string(provider_postgres.PgObjectTypePolicy)])
 
 	// tableAttach
 	itemTypToCnt = extractPgDumpTypToCnt(t, []string{"public.wide_boys", "public.wide_boys_part_1", "public.wide_boys_part_2"}, []string{"public"})
-	require.Equal(t, 2, itemTypToCnt["TABLE_ATTACH"])
+	require.Equal(t, 2, itemTypToCnt[string(provider_postgres.PgObjectTypeTableAttach)])
 
 	// without table attach
 	itemTypToCnt = extractPgDumpTypToCnt(t, []string{"public.wide_boys_part_1"}, []string{"public"})
-	require.Equal(t, 0, itemTypToCnt["TABLE_ATTACH"])
+	require.Equal(t, 0, itemTypToCnt[string(provider_postgres.PgObjectTypeTableAttach)])
 
 	// PRIMARY KEY, FK_CONSTRAINT
 	itemTypToCnt = extractPgDumpTypToCnt(t, []string{"public.table_with_pk", "public.table_with_fk"}, []string{"public"})
-	require.Equal(t, 1, itemTypToCnt["PRIMARY_KEY"])
-	require.Equal(t, 1, itemTypToCnt["FK_CONSTRAINT"])
-	require.Equal(t, 0, itemTypToCnt["POLICY"])
+	require.Equal(t, 1, itemTypToCnt[string(provider_postgres.PgObjectTypePrimaryKey)])
+	require.Equal(t, 1, itemTypToCnt[string(provider_postgres.PgObjectTypeFkConstraint)])
+	require.Equal(t, 0, itemTypToCnt[string(provider_postgres.PgObjectTypePolicy)])
 
 	// quoting names
 	itemTypToCnt = extractPgDumpTypToCnt(t, []string{"ugly.ugly_table"}, []string{"ugly"})
-	require.Equal(t, 1, itemTypToCnt["TYPE"])
-	require.Equal(t, 1, itemTypToCnt["FUNCTION"])
-	require.Equal(t, 1, itemTypToCnt["CAST"])
+	require.Equal(t, 1, itemTypToCnt[string(provider_postgres.PgObjectTypeType)])
+	require.Equal(t, 1, itemTypToCnt[string(provider_postgres.PgObjectTypeFunction)])
+	require.Equal(t, 1, itemTypToCnt[string(provider_postgres.PgObjectTypeCast)])
 
 	// cast with function from other schema
 	itemTypToCnt = extractPgDumpTypToCnt(t, []string{"ugly.ugly_table", "only_type.table"}, []string{"ugly", "only_type"})
-	require.Equal(t, 2, itemTypToCnt["TYPE"])
-	require.Equal(t, 2, itemTypToCnt["FUNCTION"])
-	require.Equal(t, 2, itemTypToCnt["CAST"])
+	require.Equal(t, 2, itemTypToCnt[string(provider_postgres.PgObjectTypeType)])
+	require.Equal(t, 2, itemTypToCnt[string(provider_postgres.PgObjectTypeFunction)])
+	require.Equal(t, 2, itemTypToCnt[string(provider_postgres.PgObjectTypeCast)])
 
 	// cast and function shouldn't be dumped
 	itemTypToCnt = extractPgDumpTypToCnt(t, []string{"only_type.table"}, []string{"only_type"})
-	require.Equal(t, 1, itemTypToCnt["TYPE"])
-	require.Equal(t, 0, itemTypToCnt["FUNCTION"])
-	require.Equal(t, 0, itemTypToCnt["CAST"])
+	require.Equal(t, 1, itemTypToCnt[string(provider_postgres.PgObjectTypeType)])
+	require.Equal(t, 0, itemTypToCnt[string(provider_postgres.PgObjectTypeFunction)])
+	require.Equal(t, 0, itemTypToCnt[string(provider_postgres.PgObjectTypeCast)])
 
 	// with index attach
 	itemTypToCnt = extractPgDumpTypToCnt(t, []string{"ia.ia_table", "ia.ia_part_1"}, []string{"ia"})
-	require.Equal(t, 3, itemTypToCnt["INDEX"])
-	require.Equal(t, 1, itemTypToCnt["INDEX_ATTACH"])
-	require.Equal(t, 1, itemTypToCnt["TABLE_ATTACH"])
+	require.Equal(t, 3, itemTypToCnt[string(provider_postgres.PgObjectTypeIndex)])
+	require.Equal(t, 1, itemTypToCnt[string(provider_postgres.PgObjectTypeIndexAttach)])
+	require.Equal(t, 1, itemTypToCnt[string(provider_postgres.PgObjectTypeTableAttach)])
 
 	// parent-only include in homo expands to partitions; index attach is preserved
 	itemTypToCnt = extractPgDumpTypToCnt(t, []string{"ia.ia_table"}, []string{"ia"})
-	require.Equal(t, 3, itemTypToCnt["INDEX"])
-	require.Equal(t, 1, itemTypToCnt["INDEX_ATTACH"])
-	require.Equal(t, 1, itemTypToCnt["TABLE_ATTACH"])
+	require.Equal(t, 3, itemTypToCnt[string(provider_postgres.PgObjectTypeIndex)])
+	require.Equal(t, 1, itemTypToCnt[string(provider_postgres.PgObjectTypeIndexAttach)])
+	require.Equal(t, 1, itemTypToCnt[string(provider_postgres.PgObjectTypeTableAttach)])
 
 	// without index attach
 	itemTypToCnt = extractPgDumpTypToCnt(t, []string{"ia.ia_part_1"}, []string{"ia"})
-	require.Equal(t, 2, itemTypToCnt["INDEX"])
-	require.Equal(t, 0, itemTypToCnt["INDEX_ATTACH"])
-	require.Equal(t, 0, itemTypToCnt["TABLE_ATTACH"])
+	require.Equal(t, 2, itemTypToCnt[string(provider_postgres.PgObjectTypeIndex)])
+	require.Equal(t, 0, itemTypToCnt[string(provider_postgres.PgObjectTypeIndexAttach)])
+	require.Equal(t, 0, itemTypToCnt[string(provider_postgres.PgObjectTypeTableAttach)])
 
 	// check function with regex with quote
 	itemTypToCnt = extractPgDumpTypToCnt(t, []string{"only_functions.table_for_functions"}, []string{"only_functions"})
-	require.Equal(t, 1, itemTypToCnt["FUNCTION"])
+	require.Equal(t, 1, itemTypToCnt[string(provider_postgres.PgObjectTypeFunction)])
 
 	// table attach with regex included dbtables like schema.*
 	itemTypToCnt = extractPgDumpTypToCnt(t, []string{"public.*"}, []string{"public"})
-	require.Equal(t, 2, itemTypToCnt["TABLE_ATTACH"])
+	require.Equal(t, 2, itemTypToCnt[string(provider_postgres.PgObjectTypeTableAttach)])
 
 	// Subtest to check that tablelist is intersection of endpoint and transfer, and endpoint exclude_tables.
 	t.Run("table-list", func(t *testing.T) {
@@ -186,7 +186,7 @@ func Snapshot(t *testing.T) {
 			require.NoError(t, err)
 			tableNames := set.New[string]()
 			for _, i := range items {
-				if i.Typ == "TABLE" {
+				if i.Typ == string(provider_postgres.PgObjectTypeTable) {
 					tableNames.Add(i.Schema + "." + i.Name)
 				}
 			}
@@ -207,7 +207,7 @@ func Snapshot(t *testing.T) {
 			require.NoError(t, err)
 			tableNames := set.New[string]()
 			for _, i := range items {
-				if i.Typ == "TABLE" {
+				if i.Typ == string(provider_postgres.PgObjectTypeTable) {
 					tableNames.Add(i.Schema + "." + i.Name)
 				}
 			}

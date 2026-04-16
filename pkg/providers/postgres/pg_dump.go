@@ -106,7 +106,7 @@ func ApplyCommands(commands []*pgDumpItem, transfer model.Transfer, task *model.
 				logger.Log.Warnf("Object(type '%v', name '%v'.'%v') already exists or is already performed", command.Typ, command.Schema, command.Name)
 				continue
 			}
-			if command.Typ == "PRIMARY_KEY" {
+			if command.Typ == string(PgObjectTypePrimaryKey) {
 				if strings.Contains(err.Error(), "multiple primary keys for table") {
 					logger.Log.Warn(
 						fmt.Sprintf("Multiple primary keys for '%v', name '%v'.'%v'", command.Typ, command.Schema, command.Name),
@@ -293,9 +293,9 @@ func dumpSequenceValues(ctx context.Context, conn *pgx.Conn, sequences []abstrac
 		}
 		seqItem := &pgDumpItem{
 			Name:   seq.Name,
-			Typ:    string(SequenceSet),
+			Typ:    string(PgObjectTypeSequenceSet),
 			Owner:  "",
-			Body:   fmt.Sprintf("SELECT pg_catalog.setval('%s', %d, %t);", seq.Fqtn(), lastValue, isCalled),
+			Body:   generateSetvalQuery(seq, lastValue, isCalled),
 			Schema: seq.Namespace,
 		}
 		result = append(result, seqItem)
@@ -456,7 +456,7 @@ func loadPgDumpSchema(ctx context.Context, src *PgSource, transfer *model.Transf
 		}
 		for _, d := range userDefinedFiltered {
 			switch d.Typ {
-			case string(Function), string(Cast):
+			case string(PgObjectTypeFunction), string(PgObjectTypeCast):
 				userDefinedAfterTables = append(userDefinedAfterTables, d)
 			default:
 				userDefinedBeforeTables = append(userDefinedBeforeTables, d)
@@ -508,7 +508,7 @@ func shouldDumpSequenceValues(src *PgSource) bool {
 }
 
 func resolveExcludedTypes(ctx context.Context, dump []*pgDumpItem, src *PgSource, tablesSchemas *set.Set[string]) (*set.Set[string], error) {
-	allTypes := yslices.Filter(dump, func(i *pgDumpItem) bool { return i.Typ == "TYPE" })
+	allTypes := yslices.Filter(dump, func(i *pgDumpItem) bool { return i.Typ == string(PgObjectTypeType) })
 	allowedTypes, err := dumpUserDefinedTypes(ctx, allTypes, src, tablesSchemas)
 	if err != nil {
 		return nil, err
@@ -540,20 +540,20 @@ func filterUserDefinedItemsInOrder(ctx context.Context, dump []*pgDumpItem, src 
 	result := make([]*pgDumpItem, 0, len(dump))
 	for _, d := range dump {
 		switch d.Typ {
-		case string(Collation):
+		case string(PgObjectTypeCollation):
 			if wantCollation && tablesSchemas.Contains(d.Schema) {
 				result = append(result, d)
 			}
-		case string(Type):
+		case string(PgObjectTypeType):
 			if wantType && tablesSchemas.Contains(d.Schema) {
 				result = append(result, d)
 			}
 
-		case string(Function):
+		case string(PgObjectTypeFunction):
 			if wantFunction && tablesSchemas.Contains(d.Schema) && isAllowedFunction(d, excludedTypes) {
 				result = append(result, d)
 			}
-		case string(Cast):
+		case string(PgObjectTypeCast):
 			if wantCast && isAllowedCast(d.Body, excludedTypes, tablesSchemas) {
 				result = append(result, d)
 			}
@@ -812,7 +812,7 @@ func filterDump(dump []*pgDumpItem, filter abstract.Includeable) []*pgDumpItem {
 
 	for _, i := range dump {
 		switch i.Typ {
-		case "TABLE_ATTACH":
+		case string(PgObjectTypeTableAttach):
 			catSQL := strings.TrimPrefix(i.Body, "\n--\nALTER TABLE ONLY ")
 			splitSQL := splitSQLBySeparator(catSQL, " ATTACH")
 			parentTable := splitSQL[0]
@@ -827,7 +827,7 @@ func filterDump(dump []*pgDumpItem, filter abstract.Includeable) []*pgDumpItem {
 				logger.Log.Infof("table attachment for %s skipped", parentTable)
 				continue
 			}
-		case "INDEX":
+		case string(PgObjectTypeIndex):
 			catSQL := strings.TrimPrefix(i.Body, "\n--\nCREATE INDEX ")
 			splitSQL := splitSQLBySeparator(catSQL, " ON ")
 			indexFullName := i.Schema + "." + splitSQL[0]
@@ -836,7 +836,7 @@ func filterDump(dump []*pgDumpItem, filter abstract.Includeable) []*pgDumpItem {
 				continue
 			}
 			createdIndexes.Add(indexFullName)
-		case "INDEX_ATTACH":
+		case string(PgObjectTypeIndexAttach):
 			catSQL := strings.TrimPrefix(i.Body, "\n--\nALTER INDEX ")
 			splitSQL := splitSQLBySeparator(catSQL, " ATTACH")
 			indexFullName := splitSQL[0]
@@ -949,8 +949,8 @@ func parsePgDumpOut(out io.Reader) []*pgDumpItem {
 		}
 		if current != nil {
 			current.Body = current.Body + "\n" + line
-			if current.Typ == "CONSTRAINT" && strings.Contains(line, "PRIMARY KEY") {
-				current.Typ = "PRIMARY_KEY"
+			if current.Typ == string(PgObjectTypeConstraint) && strings.Contains(line, "PRIMARY KEY") {
+				current.Typ = string(PgObjectTypePrimaryKey)
 			}
 		}
 	}

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 
+	"github.com/jackc/pgconn"
 	"github.com/jackc/pgx/v4"
 	"github.com/transferia/transferia/library/go/core/xerrors"
 	"github.com/transferia/transferia/pkg/abstract"
@@ -130,4 +131,17 @@ func GetCurrentStateOfSequence(ctx context.Context, conn *pgx.Conn, sequenceID a
 		return 0, false, xerrors.Errorf("failed to SELECT FROM SEQUENCE: %w", err)
 	}
 	return lastValue, isCalled, nil
+}
+
+func generateSetvalQuery(seq abstract.TableID, lastVal int64, isCalled bool) string {
+	return fmt.Sprintf("SELECT pg_catalog.setval('%s', %d, %t);", seq.Fqtn(), lastVal, isCalled)
+}
+
+type seqExecutor interface {
+	Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
+}
+
+func SetCurrentStateOfSequence(ctx context.Context, conn seqExecutor, seq abstract.TableID, lastVal int64, isCalled bool) error {
+	_, err := conn.Exec(ctx, generateSetvalQuery(seq, lastVal, isCalled))
+	return err
 }

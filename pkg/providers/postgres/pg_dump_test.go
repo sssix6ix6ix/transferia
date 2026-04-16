@@ -13,7 +13,7 @@ import (
 func TestParseCreateTableDDL(t *testing.T) {
 	t.Run("simple", func(t *testing.T) {
 		item := pgDumpItem{
-			Typ: "TABLE",
+			Typ: string(PgObjectTypeTable),
 			Body: `
 CREATE TABLE dev.connector (
     id text NOT NULL,
@@ -39,7 +39,7 @@ CREATE TABLE dev.connector (
 	})
 	t.Run("escaped", func(t *testing.T) {
 		item := pgDumpItem{
-			Typ: "TABLE",
+			Typ: string(PgObjectTypeTable),
 			Body: `
 CREATE TABLE "tm-382_1".connector (
     id text NOT NULL,
@@ -81,7 +81,7 @@ CREATE TABLE public.test1 (
 		require.True(t, len(items) == 1)
 		require.NoError(t, PgObjectType(items[0].Typ).IsValid())
 		typ := PgObjectType(items[0].Typ)
-		require.True(t, typ == Table)
+		require.True(t, typ == PgObjectTypeTable)
 	})
 
 	t.Run("Sequence", func(t *testing.T) {
@@ -102,7 +102,7 @@ CREATE SEQUENCE public.ids_1_seq
 		require.True(t, len(items) == 1)
 		require.NoError(t, PgObjectType(items[0].Typ).IsValid())
 		typ := PgObjectType(items[0].Typ)
-		require.True(t, typ == Sequence)
+		require.True(t, typ == PgObjectTypeSequence)
 	})
 
 	t.Run("SequenceOwnedBy", func(t *testing.T) {
@@ -117,7 +117,7 @@ ALTER SEQUENCE public.ids_1_seq OWNED BY public.test1.id;`
 		require.True(t, len(items) == 1)
 		require.NoError(t, PgObjectType(items[0].Typ).IsValid())
 		typ := PgObjectType(items[0].Typ)
-		require.True(t, typ == SequenceOwnedBy)
+		require.True(t, typ == PgObjectTypeSequenceOwnedBy)
 	})
 
 	t.Run("Constraint", func(t *testing.T) {
@@ -133,7 +133,7 @@ ALTER TABLE ONLY public.__consumer_keeper
 		require.True(t, len(items) == 1)
 		require.NoError(t, PgObjectType(items[0].Typ).IsValid())
 		typ := PgObjectType(items[0].Typ)
-		require.True(t, typ == Constraint)
+		require.True(t, typ == PgObjectTypeConstraint)
 	})
 
 	t.Run("PrimaryKey", func(t *testing.T) {
@@ -149,7 +149,7 @@ ALTER TABLE ONLY public.test1
 		require.True(t, len(items) == 1)
 		require.NoError(t, PgObjectType(items[0].Typ).IsValid())
 		typ := PgObjectType(items[0].Typ)
-		require.True(t, typ == PrimaryKey)
+		require.True(t, typ == PgObjectTypePrimaryKey)
 	})
 
 	t.Run("FkContraint", func(t *testing.T) {
@@ -165,7 +165,7 @@ ALTER TABLE ONLY public.items_1
 		require.True(t, len(items) == 1)
 		require.NoError(t, PgObjectType(items[0].Typ).IsValid())
 		typ := PgObjectType(items[0].Typ)
-		require.True(t, typ == FkConstraint)
+		require.True(t, typ == PgObjectTypeFkConstraint)
 	})
 
 	t.Run("Collation", func(t *testing.T) {
@@ -180,7 +180,7 @@ CREATE COLLATION public.french (provider = libc, locale = 'fr_FR.utf8');`
 		require.True(t, len(items) == 1)
 		require.NoError(t, PgObjectType(items[0].Typ).IsValid())
 		typ := PgObjectType(items[0].Typ)
-		require.True(t, typ == Collation)
+		require.True(t, typ == PgObjectTypeCollation)
 	})
 
 	t.Run("Trigger", func(t *testing.T) {
@@ -195,7 +195,7 @@ CREATE TRIGGER trigger1 BEFORE UPDATE ON public.test1 FOR EACH ROW EXECUTE FUNCT
 		require.True(t, len(items) == 1)
 		require.NoError(t, PgObjectType(items[0].Typ).IsValid())
 		typ := PgObjectType(items[0].Typ)
-		require.True(t, typ == Trigger)
+		require.True(t, typ == PgObjectTypeTrigger)
 	})
 
 	t.Run("Policy", func(t *testing.T) {
@@ -210,7 +210,7 @@ CREATE POLICY test_policy ON public.test1 USING (((name)::text = 'test'::text));
 		require.True(t, len(items) == 1)
 		require.NoError(t, PgObjectType(items[0].Typ).IsValid())
 		typ := PgObjectType(items[0].Typ)
-		require.True(t, typ == Policy)
+		require.True(t, typ == PgObjectTypePolicy)
 	})
 
 	t.Run("Cast", func(t *testing.T) {
@@ -225,7 +225,7 @@ CREATE CAST (character varying AS integer) WITH FUNCTION public.test_to_int(char
 		require.True(t, len(items) == 1)
 		require.NoError(t, PgObjectType(items[0].Typ).IsValid())
 		typ := PgObjectType(items[0].Typ)
-		require.True(t, typ == Cast)
+		require.True(t, typ == PgObjectTypeCast)
 	})
 }
 

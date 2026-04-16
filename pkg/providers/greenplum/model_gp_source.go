@@ -15,6 +15,7 @@ import (
 	conn_greenplum "github.com/transferia/transferia/pkg/connection/greenplum"
 	provider_postgres "github.com/transferia/transferia/pkg/providers/postgres"
 	postgres_utils "github.com/transferia/transferia/pkg/providers/postgres/utils"
+	"github.com/transferia/transferia/pkg/util/set"
 	"go.uber.org/zap/zapcore"
 )
 
@@ -61,6 +62,9 @@ type GpSourceAdvancedProps struct {
 	LivenessMonitorCheckInterval time.Duration `log:"true"`
 	DisableGpfdist               bool          `log:"true"`
 	GpfdistBinPath               string        `log:"true"`
+
+	// SchemaMigration specifies pg_dump object kinds to be applied at destination during homo snapshot.
+	SchemaMigration *provider_postgres.PgDumpSteps `log:"true"`
 }
 
 func (p *GpSourceAdvancedProps) Validate() error {
@@ -407,4 +411,52 @@ func (s *GpSource) FulfilledIncludes(tID abstract.TableID) (result []string) {
 
 func (s *GpSource) AllIncludes() []string {
 	return s.IncludeTables
+}
+
+// gpPreUploadOrder defines the dependency-ordered list of object types that must be applied BEFORE data upload.
+var gpPreUploadOrder = []provider_postgres.PgObjectType{
+	provider_postgres.PgObjectTypeCollation,
+	provider_postgres.PgObjectTypeType,
+	provider_postgres.PgObjectTypeFunction,
+	provider_postgres.PgObjectTypeSequence,
+	provider_postgres.PgObjectTypeTable,
+	provider_postgres.PgObjectTypeTableAttach,
+	provider_postgres.PgObjectTypePrimaryKey,
+	provider_postgres.PgObjectTypeDefault,
+	provider_postgres.PgObjectTypeRule,
+	provider_postgres.PgObjectTypeSequenceOwnedBy,
+	provider_postgres.PgObjectTypePolicy,
+	provider_postgres.PgObjectTypeCast,
+}
+
+// gpPostUploadOrder defines the dependency-ordered list of object types that must be applied AFTER data upload.
+var gpPostUploadOrder = []provider_postgres.PgObjectType{
+	provider_postgres.PgObjectTypeView,
+	provider_postgres.PgObjectTypeMaterializedView,
+	provider_postgres.PgObjectTypeConstraint,
+	provider_postgres.PgObjectTypeIndex,
+	provider_postgres.PgObjectTypeIndexAttach,
+	provider_postgres.PgObjectTypeFkConstraint,
+	provider_postgres.PgObjectTypeTrigger,
+}
+
+// schemaMigrationPreTypes returns the ordered pre-upload types from PgDumpSteps.
+func schemaMigrationPreTypes(cfg *provider_postgres.PgDumpSteps) []string {
+	return filterOrdered(cfg.List(), gpPreUploadOrder)
+}
+
+// schemaMigrationPostTypes returns the ordered post-upload types from PgDumpSteps.
+func schemaMigrationPostTypes(cfg *provider_postgres.PgDumpSteps) []string {
+	return filterOrdered(cfg.List(), gpPostUploadOrder)
+}
+
+func filterOrdered(enabled []string, order []provider_postgres.PgObjectType) []string {
+	enabledSet := set.New(enabled...)
+	var result []string
+	for _, t := range order {
+		if tStr := string(t); enabledSet.Contains(tStr) {
+			result = append(result, tStr)
+		}
+	}
+	return result
 }

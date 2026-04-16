@@ -84,11 +84,31 @@ func (p *Provider) Activate(ctx context.Context, task *model.TransferOperation, 
 	if err := callbacks.Cleanup(tables); err != nil {
 		return xerrors.Errorf("failed to cleanup sink: %w", err)
 	}
+
+	src, isGpSrc := p.transfer.Src.(*GpSource)
+	dst, isGpDst := p.transfer.Dst.(*GpDestination)
+	schemaMigrationEnabled := isGpSrc && isGpDst && src.AdvancedProps.SchemaMigration.AnyStepIsTrue()
+	var dump *provider_postgres.SchemaDump
+	if schemaMigrationEnabled {
+		var err error
+		if dump, err = dumpGpSchema(src); err != nil {
+			return xerrors.Errorf("failed to extract schema from GP source via pg_dump: %w", err)
+		}
+		if err := transferObjectsPreUpload(ctx, p.logger, src, dst, dump); err != nil {
+			return xerrors.Errorf("failed to transfer non-table objects (pre-upload): %w", err)
+		}
+	}
+
 	if err := callbacks.CheckIncludes(tables); err != nil {
 		return xerrors.Errorf("failed in accordance with configuration: %w", err)
 	}
 	if err := callbacks.Upload(tables); err != nil {
 		return xerrors.Errorf("transfer (snapshot) failed: %w", err)
+	}
+	if schemaMigrationEnabled {
+		if err := transferObjectsPostUpload(ctx, p.logger, src, dst, dump); err != nil {
+			return xerrors.Errorf("failed to transfer non-table objects (post-upload): %w", err)
+		}
 	}
 	return nil
 }
