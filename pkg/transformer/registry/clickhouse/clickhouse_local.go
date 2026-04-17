@@ -193,10 +193,20 @@ func (s *ClickhouseTransformer) clickhouseExec(buffer bytes.Buffer, marshallingR
 	cmd := exec.Command(s.clickhousePath, "local", "--input-format", "JSONEachRow", "--output-format", "JSONCompact", "--structure", inputStructure, "--query", s.query, "--no-system-tables")
 	cmd.Env = append(cmd.Env, "TZ=UTC")
 	s.logger.Infof("exec: %s \n%s", format.SizeInt(buffer.Len()), strings.Join(cmd.Args, " "))
+	var stdout, stderr bytes.Buffer
 	cmd.Stdin = &buffer
-	output, err := cmd.CombinedOutput()
-	s.logger.Infof("done exec in %s total data: %s", time.Since(st), format.SizeInt(len(output)))
-	return output, err
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	err := cmd.Run()
+	s.logger.Infof("done exec in %s stdout: %d, stderr: %d", time.Since(st), stdout.Len(), stderr.Len())
+	if stderr.Len() > 0 {
+		if err != nil {
+			s.logger.Errorf("clickhouse stderr: %s", util.DefaultSample(stderr.String()))
+		} else {
+			s.logger.Warnf("clickhouse stderr (non-fatal): %s", util.DefaultSample(stderr.String()))
+		}
+	}
+	return stdout.Bytes(), err
 }
 
 func (s *ClickhouseTransformer) parseOutput(input []abstract.ChangeItem, output []byte) abstract.TransformerResult {
@@ -353,12 +363,24 @@ func (s *ClickhouseTransformer) ResultSchema(schema *abstract.TableSchema) (*abs
 	cmd := exec.Command(s.clickhousePath, "local", "--input-format", "JSONEachRow", "--output-format", "JSONCompact", "--structure", inputStructure, "--query", s.query, "--no-system-tables")
 	buffer := bytes.Buffer{}
 	buffer.Write([]byte(""))
+	var stdout, stderr bytes.Buffer
 	cmd.Stdin = &buffer
-	output, err := cmd.CombinedOutput()
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	err := cmd.Run()
+	output := stdout.Bytes()
+	errText := util.DefaultSample(stderr.String())
 	s.logger.Infof("exec: \n%s", strings.Join(cmd.Args, " "))
+	if stderr.Len() > 0 {
+		if err != nil {
+			s.logger.Errorf("clickhouse stderr: %s", errText)
+		} else {
+			s.logger.Warnf("clickhouse stderr (non-fatal): %s", errText)
+		}
+	}
 	if err != nil {
-		s.logger.Warnf("exec: \n%s\nerror:%s", strings.Join(cmd.Args, " "), util.DefaultSample(string(output)))
-		return nil, xerrors.Errorf("unable to exec query: %w\n:%s", err, util.DefaultSample(string(output)))
+		s.logger.Errorf("exec: \n%s\nstdout: %s\nstderr: %s", strings.Join(cmd.Args, " "), util.DefaultSample(string(output)), errText)
+		return nil, xerrors.Errorf("unable to exec query: %w\nstdout: %s\nstderr: %s", err, util.DefaultSample(string(output)), errText)
 	}
 	s.logger.Infof("input schema:\n%s\noutput:\n%s", inputStructure, string(output))
 	var res jsonCompactResult
