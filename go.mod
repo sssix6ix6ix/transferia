@@ -416,4 +416,6 @@ replace github.com/moby/buildkit => github.com/moby/buildkit v0.12.2
 
 replace github.com/tonistiigi/fsutil => github.com/tonistiigi/fsutil v0.0.0-20230629203738-36ef4d8c0dbb
 
+replace github.com/getsentry/sentry-go => github.com/getsentry/sentry-go v0.13.0
+
 replace github.com/segmentio/kafka-go => ./vendor_patched/github.com/segmentio/kafka-go
