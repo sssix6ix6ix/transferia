@@ -64,7 +64,11 @@ func (p *Provider) Storage() (abstract.Storage, error) {
 		return nil, xerrors.Errorf("unexpected source type: %T", p.transfer.Src)
 	}
 
-	return NewStorage(src, p.logger)
+	jobCount := 1
+	if p.transfer != nil {
+		jobCount = p.transfer.ParallelismParams().JobCount
+	}
+	return NewStorage(src, jobCount, p.logger)
 }
 
 func (p *Provider) Type() abstract.ProviderType {

@@ -25,10 +25,10 @@ type SnapshotSink struct {
 	operationTimestamp string
 	s3Client           S3Client
 	cfg                *s3_model.S3Destination
-	snapshotWriters    map[s3ObjectRef]*SnapshotWriter
+	snapshotWriters    map[S3ObjectRef]*SnapshotWriter
 	logger             log.Logger
 	metrics            *stats.SinkerStats
-	fileSplitter       *FileSplitter
+	fileSplitter       *wrappedFileSplitter
 }
 
 func (s *SnapshotSink) Close() error {
@@ -50,7 +50,7 @@ func (s *SnapshotSink) Push(input []abstract.ChangeItem) error {
 	return nil
 }
 
-func (s *SnapshotSink) initSnapshotLoaderIfNotInited(fullTableName string, ref s3ObjectRef) error {
+func (s *SnapshotSink) initSnapshotLoaderIfNotInited(fullTableName string, ref S3ObjectRef) error {
 	if _, ok := s.snapshotWriters[ref]; ok {
 		return nil
 	}
@@ -59,7 +59,7 @@ func (s *SnapshotSink) initSnapshotLoaderIfNotInited(fullTableName string, ref s
 	return s.initPipe(fullTableName, ref, keyPartNumber)
 }
 
-func (s *SnapshotSink) initPipe(fullTableName string, ref s3ObjectRef, keyPartNumber int) error {
+func (s *SnapshotSink) initPipe(fullTableName string, ref S3ObjectRef, keyPartNumber int) error {
 	pipeReader, pipeWriter := io.Pipe()
 	key := s.fileSplitter.increaseKey(ref)
 	s.logger.Infof("init pipe for %s", key)
@@ -205,7 +205,7 @@ func (s *SnapshotSink) processSnapshot(insertItems []*abstract.ChangeItem) error
 
 // writeChunkAndRotate writes as many items as the current file allows, then
 // rotates to a new file if limits were hit. Returns the number of items consumed.
-func (s *SnapshotSink) writeChunkAndRotate(ref s3ObjectRef, table string, items []*abstract.ChangeItem) (int, error) {
+func (s *SnapshotSink) writeChunkAndRotate(ref S3ObjectRef, table string, items []*abstract.ChangeItem) (int, error) {
 	rowsToWrite := s.fileSplitter.addItems(ref, items)
 
 	if rowsToWrite > 0 {
@@ -228,7 +228,7 @@ func (s *SnapshotSink) writeChunkAndRotate(ref s3ObjectRef, table string, items 
 }
 
 // writeBatch serializes and writes items to the current snapshot file.
-func (s *SnapshotSink) writeBatch(ref s3ObjectRef, items []*abstract.ChangeItem, table string) error {
+func (s *SnapshotSink) writeBatch(ref S3ObjectRef, items []*abstract.ChangeItem, table string) error {
 	snapshotWriter, ok := s.snapshotWriters[ref]
 	if !ok {
 		return xerrors.Errorf("snapshot writer not found for %s", s.fileSplitter.key(ref))
@@ -248,7 +248,7 @@ func (s *SnapshotSink) writeBatch(ref s3ObjectRef, items []*abstract.ChangeItem,
 }
 
 // rotateFile closes the current snapshot file and opens a new one with an incremented counter.
-func (s *SnapshotSink) rotateFile(ref s3ObjectRef, table string) error {
+func (s *SnapshotSink) rotateFile(ref S3ObjectRef, table string) error {
 	s.logger.Infof("rotating file for %s", s.fileSplitter.key(ref))
 
 	snapshotWriter, ok := s.snapshotWriters[ref]
@@ -269,10 +269,10 @@ func (s *SnapshotSink) rotateFile(ref s3ObjectRef, table string) error {
 	return nil
 }
 
-// makeS3ObjectRef creates an s3ObjectRef from a ChangeItem using the source table's
+// makeS3ObjectRef creates an S3ObjectRef from a ChangeItem using the source table's
 // namespace and name, the operation timestamp, and the item's partID.
-func (s *SnapshotSink) makeS3ObjectRef(row abstract.ChangeItem) s3ObjectRef {
-	return newS3ObjectRef(
+func (s *SnapshotSink) makeS3ObjectRef(row abstract.ChangeItem) S3ObjectRef {
+	return NewS3ObjectRef(
 		extractRowBucket(row, s.cfg.LayoutColumn, s.cfg.Layout),
 		row.TableID().Namespace,
 		row.TableID().Name,
@@ -283,8 +283,8 @@ func (s *SnapshotSink) makeS3ObjectRef(row abstract.ChangeItem) s3ObjectRef {
 	)
 }
 
-func groupSnapshotItemsByRef(items []*abstract.ChangeItem, makeRef func(abstract.ChangeItem) s3ObjectRef) map[s3ObjectRef][]*abstract.ChangeItem {
-	result := make(map[s3ObjectRef][]*abstract.ChangeItem)
+func groupSnapshotItemsByRef(items []*abstract.ChangeItem, makeRef func(abstract.ChangeItem) S3ObjectRef) map[S3ObjectRef][]*abstract.ChangeItem {
+	result := make(map[S3ObjectRef][]*abstract.ChangeItem)
 	for _, item := range items {
 		ref := makeRef(*item)
 		result[ref] = append(result[ref], item)
@@ -320,7 +320,7 @@ func NewSnapshotSink(
 		cfg:                cfg,
 		logger:             lgr,
 		metrics:            stats.NewSinkerStats(mtrcs),
-		snapshotWriters:    make(map[s3ObjectRef]*SnapshotWriter),
+		snapshotWriters:    make(map[S3ObjectRef]*SnapshotWriter),
 		fileSplitter:       newFileSplitter(cfg.MaxItemsPerFile, cfg.MaxBytesPerFile),
 	}, nil
 }

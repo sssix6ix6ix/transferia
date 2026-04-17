@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"reflect"
 	"sort"
 	"strings"
 	"testing"
@@ -55,12 +56,27 @@ func ConductSequenceWithAllSubsequencesTest(t *testing.T, sequenceCase canon_tes
 	}
 }
 
+type sourceDumper func(t *testing.T, source model.Source) string
+
+var sourceDumpers = map[reflect.Type]sourceDumper{}
+
+func RegisterSourceDumper[T model.Source](dumper func(t *testing.T, source T) string) {
+	var t T
+	sourceDumpers[reflect.TypeOf(t)] = func(t *testing.T, source model.Source) string {
+		return dumper(t, source.(T))
+	}
+}
+
 func Dump(t *testing.T, source model.Source) {
 	logger.Log.Info(dumpToString(t, source))
 	canon.SaveJSON(t, dumpToString(t, source))
 }
 
 func dumpToString(t *testing.T, source model.Source) string {
+	if dumper, ok := sourceDumpers[reflect.TypeOf(source)]; ok {
+		return dumper(t, source)
+	}
+
 	switch src := source.(type) {
 	case *clickhouse_model.ChSource:
 		return FromClickhouse(t, src, false)

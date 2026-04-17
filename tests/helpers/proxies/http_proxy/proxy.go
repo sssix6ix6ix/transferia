@@ -7,7 +7,6 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"path"
 	"sync"
 )
 
@@ -61,12 +60,15 @@ func (p *HTTPProxy) handleHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// build 'reqNew'
-	targetURL := makePrefix(p.isHTTPS) + path.Join(p.targetAddr, req.URL.String())
+	// Preserve original request URI and Host header to avoid breaking
+	// signature validation for S3-compatible backends.
+	targetURL := makePrefix(p.isHTTPS) + p.targetAddr + req.URL.RequestURI()
 	reqNew, err := http.NewRequest(req.Method, targetURL, bytes.NewBuffer(reqBody))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusServiceUnavailable)
 		return
 	}
+	reqNew.Host = req.Host
 	for k, v := range req.Header {
 		for _, vv := range v {
 			reqNew.Header.Add(k, vv)

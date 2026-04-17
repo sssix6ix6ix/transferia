@@ -23,6 +23,7 @@ type SampleSource struct {
 	MaxSampleData      int64         `log:"true"`
 	MinSleepTime       time.Duration `log:"true"`
 	SnapshotEventCount int64         `log:"true"`
+	PartsCount         int           `log:"true"`
 }
 
 func (s *SampleSource) MarshalLogObject(enc zapcore.ObjectEncoder) error {

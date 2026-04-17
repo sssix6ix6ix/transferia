@@ -111,3 +111,20 @@ func LoadTable(t *testing.T, storage abstract.Storage, table abstract.TableDescr
 
 	return sortChangeItems(t, data)
 }
+
+func ConstructLoadSnapshotItems(t *testing.T, data []abstract.ChangeItem) [][]abstract.ChangeItem {
+	tables := TableMapFromItems(data)
+	require.True(t, len(tables) == 1)
+
+	dataBatches := make([][]abstract.ChangeItem, 5)
+	for id, schema := range tables {
+		cb := NewChangeItemsBuilder(id.Namespace, id.Name, schema.Schema)
+		dataBatches[0] = cb.InitShardedTableLoad()
+		dataBatches[1] = cb.InitTableLoad()
+		dataBatches[2] = data
+		dataBatches[3] = cb.DoneTableLoad()
+		dataBatches[4] = cb.DoneShardedTableLoad()
+	}
+
+	return dataBatches
+}

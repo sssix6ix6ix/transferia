@@ -2,6 +2,7 @@ package sample
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/transferia/transferia/library/go/core/metrics/solomon"
@@ -11,7 +12,10 @@ import (
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
-var _ abstract.Storage = (*Storage)(nil)
+var (
+	_ abstract.Storage         = (*Storage)(nil)
+	_ abstract.ShardingStorage = (*Storage)(nil)
+)
 
 type Storage struct {
 	ctx                context.Context
@@ -23,6 +27,8 @@ type Storage struct {
 	MaxSampleData      int64
 	MinSleepTime       time.Duration
 	logger             log.Logger
+	workersCount       int
+	partsCount         int
 }
 
 func (s *Storage) Close() {
@@ -33,7 +39,11 @@ func (s *Storage) Ping() error {
 	return nil
 }
 
-func (s *Storage) LoadTable(ctx context.Context, _ abstract.TableDescription, pusher abstract.Pusher) error {
+func (s *Storage) LoadTable(ctx context.Context, table abstract.TableDescription, pusher abstract.Pusher) error {
+	if s.workersCount > 1 && table.Offset > 0 &&
+		strings.HasPrefix(string(table.Filter), string(sampleShardFilterMarker)) {
+		return s.loadTableSharded(ctx, table, pusher)
+	}
 	rowsCount := int64(0)
 	s.logger.Infof("The total row number is %v", s.SnapshotEventCount)
 
@@ -49,7 +59,11 @@ func (s *Storage) LoadTable(ctx context.Context, _ abstract.TableDescription, pu
 		if rowsCount+sampleData > s.SnapshotEventCount {
 			sampleData = s.SnapshotEventCount - rowsCount
 		}
-		data := generateRandomDataForSampleType(s.SampleType, s.MaxSampleData, s.TableName, s.metrics)
+		if sampleData <= 0 {
+			break
+		}
+		data := generateRandomDataForSampleType(s.SampleType, sampleData, s.TableName, s.metrics, rowsCount)
+		stampSampleRowsPartID(data, table)
 		rowsCount += sampleData
 		s.metrics.ChangeItems.Add(int64(len(data)))
 		if err := pusher(data); err != nil {
@@ -107,8 +121,25 @@ func (s *Storage) TableExists(_ abstract.TableID) (bool, error) {
 	return true, nil
 }
 
-func NewStorage(config *SampleSource, log log.Logger) (*Storage, error) {
+func stampSampleRowsPartID(rows []abstract.ChangeItem, table abstract.TableDescription) {
+	partID := table.GeneratePartID()
+	if partID == "" {
+		return
+	}
+	for i := range rows {
+		rows[i].PartID = partID
+	}
+}
+
+func NewStorage(config *SampleSource, workersCount int, log log.Logger) (*Storage, error) {
+	if workersCount < 1 {
+		workersCount = 1
+	}
 	ctx, cancel := context.WithCancel(context.Background())
+	partsCount := 1
+	if config.PartsCount > 0 {
+		partsCount = config.PartsCount
+	}
 	return &Storage{
 		ctx:                ctx,
 		metrics:            stats.NewSourceStats(solomon.NewRegistry(solomon.NewRegistryOpts())),
@@ -119,5 +150,7 @@ func NewStorage(config *SampleSource, log log.Logger) (*Storage, error) {
 		MinSleepTime:       config.MinSleepTime,
 		logger:             log,
 		cancel:             cancel,
+		workersCount:       workersCount,
+		partsCount:         partsCount,
 	}, nil
 }

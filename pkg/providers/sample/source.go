@@ -63,7 +63,7 @@ func (s *Source) Run(sink abstract.AsyncSink) error {
 		s.logger.Infof("sleep duration %v", nextSleepDuration)
 		time.Sleep(nextSleepDuration)
 
-		data := generateRandomDataForSampleType(s.src.SampleType, s.src.MaxSampleData, s.src.TableName, s.metrics)
+		data := generateRandomDataForSampleType(s.src.SampleType, s.src.MaxSampleData, s.src.TableName, s.metrics, 0)
 		s.metrics.ChangeItems.Add(int64(len(data)))
 
 		pushStart := time.Now()
@@ -85,7 +85,7 @@ func (s *Source) Run(sink abstract.AsyncSink) error {
 	}
 }
 
-func generateRandomDataForSampleType(sampleType string, maxRowSampleData int64, table string, metrics *stats.SourceStats) []abstract.ChangeItem {
+func generateRandomDataForSampleType(sampleType string, maxRowSampleData int64, table string, metrics *stats.SourceStats, baseOffset int64) []abstract.ChangeItem {
 	generatedData := make([]abstract.ChangeItem, maxRowSampleData)
 	var streamData StreamingData
 
@@ -97,7 +97,7 @@ func generateRandomDataForSampleType(sampleType string, maxRowSampleData int64, 
 			streamData = NewIot(table)
 		}
 
-		generatedData[i] = streamData.ToChangeItem(int64(i))
+		generatedData[i] = streamData.ToChangeItem(baseOffset + int64(i))
 		metrics.Size.Add(int64(generatedData[i].Size.Read))
 		metrics.Count.Inc()
 	}
