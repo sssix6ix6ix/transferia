@@ -141,3 +141,48 @@ func TestIsTableOrParentIncludedCollapseInherit(t *testing.T) {
 	require.True(t, isTableOrParentIncluded(altNames, child, cfg, true))
 	require.False(t, isTableOrParentIncluded(altNames, other, cfg, true))
 }
+
+func TestCountPublisherMetrics(t *testing.T) {
+	userInsert := abstract.ChangeItem{
+		Kind:   abstract.InsertKind,
+		Schema: "public",
+		Table:  "user_table",
+	}
+	userUpdate := abstract.ChangeItem{
+		Kind:   abstract.UpdateKind,
+		Schema: "public",
+		Table:  "user_table",
+	}
+	systemInsert := abstract.ChangeItem{
+		Kind:   abstract.InsertKind,
+		Schema: "public",
+		Table:  TableConsumerKeeper,
+	}
+	systemDDL := abstract.ChangeItem{
+		Kind:   abstract.InitTableLoad,
+		Schema: "public",
+		Table:  TableConsumerKeeper,
+	}
+
+	t.Run("mixed batch excludes system tables", func(t *testing.T) {
+		changeItems, parsedRows := countPublisherMetrics([]abstract.ChangeItem{
+			userInsert,
+			systemInsert,
+			userUpdate,
+			systemDDL,
+		})
+
+		require.EqualValues(t, 2, changeItems)
+		require.EqualValues(t, 2, parsedRows)
+	})
+
+	t.Run("system only batch does not affect metrics", func(t *testing.T) {
+		changeItems, parsedRows := countPublisherMetrics([]abstract.ChangeItem{
+			systemInsert,
+			systemDDL,
+		})
+
+		require.Zero(t, changeItems)
+		require.Zero(t, parsedRows)
+	})
+}

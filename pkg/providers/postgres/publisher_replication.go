@@ -73,7 +73,7 @@ const BufferLimit = 16 * humanize.MiByte
 
 func (p *replication) Run(sink abstract.AsyncSink) error {
 	var err error
-	//level of parallelism combined with hardcoded buffer size in receiver(16mb) prevent OOM in parsequeue
+	// level of parallelism combined with hardcoded buffer size in receiver(16mb) prevent OOM in parsequeue
 	p.parseQ = parsequeue.New(p.logger, 10, sink, p.WithIncludeFilter, p.ack)
 
 	p.wg.Add(1)
@@ -166,6 +166,19 @@ func (p *replication) WithIncludeFilter(items []abstract.ChangeItem) []abstract.
 		}
 	}
 	return changes
+}
+
+func countPublisherMetrics(items []abstract.ChangeItem) (changeItems int64, parsedRows int64) {
+	for _, item := range items {
+		if item.IsSystemTable() {
+			continue
+		}
+		changeItems++
+		if item.IsRowEvent() {
+			parsedRows++
+		}
+	}
+	return changeItems, parsedRows
 }
 
 // isTableOrParentIncluded checks if table or its parent is explicitly included in source configuration
@@ -397,11 +410,15 @@ func (p *replication) receiver(slotTroubleCh <-chan error) {
 						)
 						lastMessageTime = time.Now()
 					}
-					p.metrics.ChangeItems.Add(int64(len(res)))
-					for _, ci := range res {
-						if ci.IsRowEvent() {
-							p.metrics.Parsed.Inc()
-						}
+					// count publisher metrics for included items only. count it here to not rely
+					// on the parsequeue
+					included := p.WithIncludeFilter(res)
+					changeItems, parsedRows := countPublisherMetrics(included)
+					if changeItems > 0 {
+						p.metrics.ChangeItems.Add(changeItems)
+					}
+					if parsedRows > 0 {
+						p.metrics.Parsed.Add(parsedRows)
 					}
 
 					if err = p.sequencer.StartProcessing(res); err != nil {
