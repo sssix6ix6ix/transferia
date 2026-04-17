@@ -80,7 +80,7 @@ require (
 	go.ytsaurus.tech/library/go/core/log v0.0.5
 	go.ytsaurus.tech/yt/go v0.0.32
 	golang.org/x/crypto v0.48.0
-	golang.org/x/exp v0.0.0-20251113190631-e25ba8c21ef6
+	golang.org/x/exp v0.0.0-20260218203240-3dfff04db8fa
 	golang.org/x/mod v0.33.0
 	golang.org/x/net v0.51.0
 	golang.org/x/sync v0.20.0
@@ -285,6 +285,24 @@ require (
 exclude github.com/keybase/go.dbus v0.0.0-20220506165403-5aa21ea2c23a
 
 exclude github.com/knadh/koanf/providers/confmap v1.0.0
+
+exclude (
+	github.com/docker/docker/api v1.52.0-alpha.0
+	github.com/docker/docker/api v1.52.0-alpha.1
+	github.com/docker/docker/api v1.52.0-beta.0
+	github.com/docker/docker/api v1.52.0-beta.1
+	github.com/docker/docker/api v1.52.0-beta.2
+	github.com/docker/docker/api v1.52.0-beta.3
+	github.com/docker/docker/api v1.52.0-beta.4
+	github.com/docker/docker/api v1.52.0-rc.1
+	github.com/docker/docker/api v1.52.0
+	github.com/docker/docker/api v1.53.0-rc.1
+	github.com/docker/docker/api v1.53.0-rc.2
+	github.com/docker/docker/api v1.53.0
+	github.com/docker/docker/api v1.54.0-rc.1
+	github.com/docker/docker/api v1.54.0
+	github.com/docker/docker/api v1.54.1
+)
 
 replace github.com/insomniacslk/dhcp => github.com/insomniacslk/dhcp v0.0.0-20210120172423-cc9239ac6294
 
