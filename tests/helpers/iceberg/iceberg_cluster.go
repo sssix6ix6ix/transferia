@@ -119,6 +119,8 @@ func MustRunCluster(t *testing.T, ctx context.Context) *IcebergCluster {
 	require.NoError(t, err, "failed to start iceberg cluster")
 
 	t.Cleanup(func() {
+		ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
+		defer cancel()
 		if err := cluster.Close(ctx); err != nil {
 			t.Logf("warning: iceberg cluster cleanup: %v", err)
 		}
