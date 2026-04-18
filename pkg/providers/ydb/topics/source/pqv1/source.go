@@ -363,7 +363,7 @@ func NewSource(cfg *topicsource.Config, parser parsers.Parser, logger log.Logger
 	rb.Cancel()
 	stopCh := make(chan bool)
 
-	yds := &Source{
+	src := &Source{
 		config:           cfg,
 		offsetsValidator: lbyds.NewLbOffsetsSourceValidator(logger),
 		consumer:         c,
@@ -378,7 +378,7 @@ func NewSource(cfg *topicsource.Config, parser parsers.Parser, logger log.Logger
 		executor:         executor,
 	}
 
-	go yds.watchParserResource(parser)
+	go src.watchParserResource(parser)
 
-	return yds, nil
+	return src, nil
 }

@@ -12,18 +12,14 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
 	"github.com/transferia/transferia/pkg/format"
-	"github.com/transferia/transferia/pkg/providers/ydb/logadapter"
+	topiccommon "github.com/transferia/transferia/pkg/providers/ydb/topics/common"
 	serializer "github.com/transferia/transferia/pkg/serializer/queue"
 	"github.com/transferia/transferia/pkg/stats"
 	"github.com/transferia/transferia/pkg/util"
 	util_queues "github.com/transferia/transferia/pkg/util/queues"
-	"github.com/transferia/transferia/pkg/xtls"
 	ydb_go_sdk "github.com/ydb-platform/ydb-go-sdk/v3"
-	ydb_config "github.com/ydb-platform/ydb-go-sdk/v3/config"
-	"github.com/ydb-platform/ydb-go-sdk/v3/sugar"
 	"github.com/ydb-platform/ydb-go-sdk/v3/topic/topicoptions"
 	ydb_topicwriter "github.com/ydb-platform/ydb-go-sdk/v3/topic/topicwriter"
-	"github.com/ydb-platform/ydb-go-sdk/v3/trace"
 	"go.ytsaurus.tech/library/go/core/log"
 )
 
@@ -322,34 +318,6 @@ func newWriter(driver *ydb_go_sdk.Driver, topic string, opts []topicoptions.Writ
 	return writer, nil
 }
 
-func newDriver(cfg *Config, lgr log.Logger) (*ydb_go_sdk.Driver, error) {
-	isSecure := false
-	opts := []ydb_go_sdk.Option{
-		logadapter.WithTraces(lgr, trace.DetailsAll),
-		ydb_go_sdk.With(
-			ydb_config.WithOperationTimeout(60 * time.Second), // to prevent some hanging-on
-		),
-	}
-
-	if cfg.Connection.Credentials != nil {
-		opts = append(opts, ydb_go_sdk.WithCredentials(cfg.Connection.Credentials))
-	}
-
-	if cfg.Connection.TLSEnabled {
-		isSecure = true
-		tlsConfig, err := xtls.FromPath(cfg.Connection.RootCAFiles)
-		if err != nil {
-			return nil, xerrors.Errorf("cannot init driver without tls: %w", err)
-		}
-		opts = append(opts, ydb_go_sdk.WithTLSConfig(tlsConfig))
-	}
-
-	driverCtx, cancel := context.WithTimeout(context.Background(), time.Second*15)
-	defer cancel()
-
-	return ydb_go_sdk.Open(driverCtx, sugar.DSN(cfg.Connection.Endpoint, cfg.Connection.Database, sugar.WithSecure(isSecure)), opts...)
-}
-
 func newSinkWithFactories(cfg *Config, registry core_metrics.Registry, lgr log.Logger,
 	transferID string, isSnapshot bool) (abstract.Sinker, error) {
 	_, err := util_queues.NewTopicDefinition(cfg.Topic, cfg.TopicPrefix)
@@ -367,7 +335,7 @@ func newSinkWithFactories(cfg *Config, registry core_metrics.Registry, lgr log.L
 		return nil, xerrors.Errorf("unable to create serializer: %w", err)
 	}
 
-	driver, err := newDriver(cfg, lgr)
+	driver, err := topiccommon.NewYDBDriver(cfg.Connection, lgr)
 	if err != nil {
 		return nil, xerrors.Errorf("unable to create driver, try to check DSN: %w", err)
 	}

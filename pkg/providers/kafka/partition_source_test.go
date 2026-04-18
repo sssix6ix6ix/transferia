@@ -35,7 +35,7 @@ func TestPartitionSource(t *testing.T) {
 		src, err := NewPartitionSource("dtt", &kafkaCfg, partitionDesc, logger.Log, solomon.NewRegistry(solomon.NewRegistryOpts()))
 		require.NoError(t, err)
 
-		result, err := sourcehelpers.WaitForItems(src, 10, 500*time.Millisecond)
+		result, err := sourcehelpers.WaitForItemsQueueToS3(src, 10, 500*time.Millisecond)
 		require.NoError(t, err)
 
 		topicPartitionData, ok := testData[topicPartition]
@@ -79,7 +79,7 @@ func TestPartitionSource(t *testing.T) {
 		src, err = NewPartitionSource("dtt", &kafkaCfg, partitionDesc, logger.Log, solomon.NewRegistry(solomon.NewRegistryOpts()))
 		require.NoError(t, err)
 
-		result, err := sourcehelpers.WaitForItems(src, 7, 500*time.Millisecond)
+		result, err := sourcehelpers.WaitForItemsQueueToS3(src, 7, 500*time.Millisecond)
 		require.NoError(t, err)
 
 		topicPartitionData, ok := testData[topicPartition]

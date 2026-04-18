@@ -1,9 +1,19 @@
 package topiccommon
 
 import (
+	"context"
 	"fmt"
+	"time"
 
-	"github.com/transferia/transferia/pkg/providers/ydb"
+	"github.com/transferia/transferia/library/go/core/xerrors"
+	ydbprovider "github.com/transferia/transferia/pkg/providers/ydb"
+	"github.com/transferia/transferia/pkg/providers/ydb/logadapter"
+	"github.com/transferia/transferia/pkg/xtls"
+	"github.com/ydb-platform/ydb-go-sdk/v3"
+	"github.com/ydb-platform/ydb-go-sdk/v3/config"
+	"github.com/ydb-platform/ydb-go-sdk/v3/sugar"
+	"github.com/ydb-platform/ydb-go-sdk/v3/trace"
+	"go.ytsaurus.tech/library/go/core/log"
 )
 
 const defaultPort = 2135
@@ -11,7 +21,7 @@ const defaultPort = 2135
 type ConnectionConfig struct {
 	Endpoint    string
 	Database    string
-	Credentials ydb.TokenCredentials
+	Credentials ydbprovider.TokenCredentials
 
 	TLSEnabled  bool
 	RootCAFiles []string
@@ -39,4 +49,32 @@ func instanceContainsPort(instance string) bool {
 		}
 	}
 	return false
+}
+
+func NewYDBDriver(cfg ConnectionConfig, lgr log.Logger) (*ydb.Driver, error) {
+	isSecure := false
+	opts := []ydb.Option{
+		logadapter.WithTraces(lgr, trace.DetailsAll),
+		ydb.With(
+			config.WithOperationTimeout(60 * time.Second), // to prevent some hanging-on
+		),
+	}
+
+	if cfg.Credentials != nil {
+		opts = append(opts, ydb.WithCredentials(cfg.Credentials))
+	}
+
+	if cfg.TLSEnabled {
+		isSecure = true
+		tlsConfig, err := xtls.FromPath(cfg.RootCAFiles)
+		if err != nil {
+			return nil, xerrors.Errorf("cannot init driver without tls: %w", err)
+		}
+		opts = append(opts, ydb.WithTLSConfig(tlsConfig))
+	}
+
+	driverCtx, cancel := context.WithTimeout(context.Background(), time.Second*15)
+	defer cancel()
+
+	return ydb.Open(driverCtx, sugar.DSN(cfg.Endpoint, cfg.Database, sugar.WithSecure(isSecure)), opts...)
 }

@@ -26,7 +26,7 @@ type PartitionSource struct {
 }
 
 func (s *PartitionSource) Run(sink abstract.QueueToS3Sink) error {
-	parseQ := queue_to_s3_parsequeue.NewWaitable(s.logger, s.config.ParseQueueParallelism, sink, s.parseWithSynchronizeEvent, s.ackV2)
+	parseQ := queue_to_s3_parsequeue.NewWaitable(s.logger, s.config.ParseQueueParallelism, sink, s.parseWithSynchronizeEvent, s.queueToS3Ack)
 
 	var runErr error
 	runErr = s.run(parseQ)
@@ -67,7 +67,7 @@ func (s *PartitionSource) ListPartitions() ([]abstract.Partition, error) {
 	return partitions, nil
 }
 
-func (s *PartitionSource) ackV2(pushResult abstract.QueueResult) error {
+func (s *PartitionSource) queueToS3Ack(pushResult abstract.QueueResult) error {
 	sequencerMessages := offsetsToQueueMessages(s.config.Topic, s.partition, pushResult.Offsets)
 	commitMessages, err := s.sequencer.Pushed(sequencerMessages)
 	if err != nil {

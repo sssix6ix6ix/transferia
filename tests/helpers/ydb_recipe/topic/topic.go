@@ -21,19 +21,23 @@ func CreateAndFillTopic(t *testing.T, topicName string, messages [][]byte) {
 }
 
 func CreateAndFillTopicWithDriver(t *testing.T, topicName string, messages [][]byte, driver *ydb_go_sdk.Driver) {
-	createTopic(t, topicName, driver)
-	writeMessages(t, topicName, messages, driver)
+	CreateTopic(t, topicName, driver)
+	WriteMessages(t, topicName, messages, driver)
 }
 
-func createTopic(t *testing.T, topicName string, driver *ydb_go_sdk.Driver) {
-	require.NoError(t, driver.Topic().Create(context.Background(), topicName, topicoptions.CreateWithConsumer(topictypes.Consumer{
+func CreateTopic(t *testing.T, topicName string, driver *ydb_go_sdk.Driver, createOpts ...topicoptions.CreateOption) {
+	finalCreateOpts := append(createOpts, topicoptions.CreateWithConsumer(topictypes.Consumer{
 		Name:            DefaultConsumer,
 		SupportedCodecs: []topictypes.Codec{topictypes.CodecRaw, topictypes.CodecGzip},
-	})))
+	}))
+
+	require.NoError(t, driver.Topic().Create(context.Background(), topicName, finalCreateOpts...))
 }
 
-func writeMessages(t *testing.T, topicName string, messages [][]byte, driver *ydb_go_sdk.Driver) {
-	wr, err := driver.Topic().StartWriter(topicName, topicoptions.WithWriterWaitServerAck(true))
+func WriteMessages(t *testing.T, topicName string, messages [][]byte, driver *ydb_go_sdk.Driver, wrOptions ...topicoptions.WriterOption) {
+	wr, err := driver.Topic().StartWriter(topicName,
+		append(wrOptions, topicoptions.WithWriterWaitServerAck(true))...,
+	)
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
