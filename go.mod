@@ -1,6 +1,6 @@
 module github.com/transferia/transferia
 
-go 1.25.0
+go 1.25.8
 
 require (
 	cloud.google.com/go v0.123.0
@@ -310,11 +310,11 @@ replace github.com/insomniacslk/dhcp => github.com/insomniacslk/dhcp v0.0.0-2021
 
 replace cloud.google.com/go/pubsub => cloud.google.com/go/pubsub v1.30.0
 
-replace go.temporal.io/api => go.temporal.io/api v1.50.1
+replace go.temporal.io/api => go.temporal.io/api v1.53.0
 
-replace go.temporal.io/sdk => go.temporal.io/sdk v1.34.0
+replace go.temporal.io/sdk => go.temporal.io/sdk v1.35.0
 
-replace go.temporal.io/server => go.temporal.io/server v1.28.2
+replace go.temporal.io/server => go.temporal.io/server v1.29.6
 
 replace github.com/uber-go/tally/v4 => github.com/uber-go/tally/v4 v4.1.17-0.20240412215630-22fe011f5ff0
 
