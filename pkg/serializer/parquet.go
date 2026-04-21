@@ -14,11 +14,19 @@ import (
 	"github.com/transferia/transferia/pkg/abstract"
 )
 
+const DefaultRowGroupMaxRows = 1_000_000
+
+type ParquetBatchSerializerConfig struct {
+	CompressionCodec compress.Codec
+	RowGroupMaxRows  int64
+}
+
 type parquetStreamSerializer struct {
 	schema           *parquet.Schema
 	compressionCodec compress.Codec
 	writer           *parquet.GenericWriter[struct{}]
 	tableSchema      abstract.FastTableSchema
+	rowGroupMaxRows  int64
 }
 
 var _ BatchSerializer = (*parquetBatchSerializer)(nil)
@@ -29,6 +37,7 @@ type parquetBatchSerializer struct {
 	compressionCodec compress.Codec
 	tableSchema      abstract.FastTableSchema
 	streamSerializer *parquetStreamSerializer
+	rowGroupMaxRows  int64
 
 	buffer *bytes.Buffer
 }
@@ -56,7 +65,7 @@ func (s *parquetBatchSerializer) Serialize(items []*abstract.ChangeItem) ([]byte
 		s.schema = parquetSchema
 		s.tableSchema = items[0].TableSchema.FastColumns()
 
-		s.streamSerializer, err = NewParquetStreamSerializer(s.buffer, s.schema, s.tableSchema, s.compressionCodec)
+		s.streamSerializer, err = NewParquetStreamSerializer(s.buffer, s.schema, s.tableSchema, s.compressionCodec, s.rowGroupMaxRows)
 		if err != nil {
 			return nil, xerrors.Errorf("ParquetBatchSerialize: unable to build underlying stream serializer: %w", err)
 		}
@@ -83,7 +92,11 @@ func (s *parquetStreamSerializer) SetStream(ostream io.Writer) error {
 		return xerrors.Errorf("parquetStreamSerializer: failed to close sink: %w", err)
 	}
 
-	options := []parquet.WriterOption{parquet.Compression(s.compressionCodec), s.schema}
+	options := []parquet.WriterOption{
+		parquet.MaxRowsPerRowGroup(s.rowGroupMaxRows),
+		parquet.Compression(s.compressionCodec),
+		s.schema,
+	}
 	s.writer = parquet.NewGenericWriter[struct{}](ostream, options...)
 
 	return nil
@@ -149,12 +162,13 @@ func CodecFromString(codec string) compress.Codec {
 	}
 }
 
-func NewParquetStreamSerializer(ostream io.Writer, schema *parquet.Schema, tableSchema abstract.FastTableSchema, compressionCodec compress.Codec) (*parquetStreamSerializer, error) {
+func NewParquetStreamSerializer(ostream io.Writer, schema *parquet.Schema, tableSchema abstract.FastTableSchema, compressionCodec compress.Codec, rowGroupMaxRows int64) (*parquetStreamSerializer, error) {
 	pqSerializer := parquetStreamSerializer{
 		schema:           schema,
 		writer:           nil,
 		tableSchema:      tableSchema,
 		compressionCodec: compressionCodec,
+		rowGroupMaxRows:  rowGroupMaxRows,
 	}
 
 	err := pqSerializer.SetStream(ostream)
@@ -165,12 +179,16 @@ func NewParquetStreamSerializer(ostream io.Writer, schema *parquet.Schema, table
 	return &pqSerializer, nil
 }
 
-func NewParquetBatchSerializer(compressionCodec compress.Codec) BatchSerializer {
+func NewParquetBatchSerializer(config ParquetBatchSerializerConfig) BatchSerializer {
+	if config.RowGroupMaxRows <= 0 {
+		config.RowGroupMaxRows = DefaultRowGroupMaxRows
+	}
 	return NewStrictifyingBatchSerializer(&parquetBatchSerializer{
 		schema:           nil,
 		tableSchema:      nil,
-		compressionCodec: compressionCodec,
+		compressionCodec: config.CompressionCodec,
 		streamSerializer: nil,
 		buffer:           nil,
+		rowGroupMaxRows:  config.RowGroupMaxRows,
 	})
 }

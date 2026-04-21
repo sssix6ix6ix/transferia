@@ -1,17 +1,16 @@
 package serializer
 
 import (
-	"github.com/parquet-go/parquet-go/compress"
 	"github.com/transferia/transferia/pkg/abstract"
 	"github.com/transferia/transferia/pkg/abstract/model"
 )
 
 type BatchSerializerCommonConfig struct {
 	Format               model.ParsingFormat
-	CompressionCodec     compress.Codec
 	UnsupportedItemKinds map[abstract.Kind]bool
 	AddClosingNewLine    bool
 	AnyAsString          bool
+	ParquetConfig        ParquetBatchSerializerConfig
 }
 
 func (c *BatchSerializerCommonConfig) toJSONConfig() *JSONSerializerConfig {
@@ -59,7 +58,7 @@ func NewBatchSerializer(config *BatchSerializerCommonConfig) BatchSerializer {
 			nil,
 		)
 	case model.ParsingFormatPARQUET:
-		return NewParquetBatchSerializer(c.CompressionCodec)
+		return NewParquetBatchSerializer(c.ParquetConfig)
 	}
 	return nil
 }

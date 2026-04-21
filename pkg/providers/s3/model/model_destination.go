@@ -39,6 +39,7 @@ type SerializerSettings struct {
 
 type ParquetSerializerSettings struct {
 	CompressionCodec string `log:"true"`
+	RowGroupMaxRows  int64  `log:"true"`
 }
 
 type PartitionerType string

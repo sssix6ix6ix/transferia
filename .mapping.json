@@ -2284,6 +2284,7 @@
   "pkg/serializer/json_test.go":"transfer_manager/go/pkg/serializer/json_test.go",
   "pkg/serializer/parquet.go":"transfer_manager/go/pkg/serializer/parquet.go",
   "pkg/serializer/parquet_format.go":"transfer_manager/go/pkg/serializer/parquet_format.go",
+  "pkg/serializer/parquet_test.go":"transfer_manager/go/pkg/serializer/parquet_test.go",
   "pkg/serializer/queue/debezium_chain_test.go":"transfer_manager/go/pkg/serializer/queue/debezium_chain_test.go",
   "pkg/serializer/queue/debezium_multithreading.go":"transfer_manager/go/pkg/serializer/queue/debezium_multithreading.go",
   "pkg/serializer/queue/debezium_multithreading_test.go":"transfer_manager/go/pkg/serializer/queue/debezium_multithreading_test.go",

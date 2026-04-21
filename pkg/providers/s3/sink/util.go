@@ -36,16 +36,19 @@ func rowPart(row abstract.ChangeItem) string {
 }
 
 func CreateSerializer(outputFormat model.ParsingFormat, anyAsString bool, parquetSetting *s3_model.ParquetSerializerSettings) (serializer.BatchSerializer, error) {
-	var codecName string
+	var parquetConfig serializer.ParquetBatchSerializerConfig
 	if parquetSetting != nil {
-		codecName = parquetSetting.CompressionCodec
+		parquetConfig = serializer.ParquetBatchSerializerConfig{
+			CompressionCodec: serializer.CodecFromString(parquetSetting.CompressionCodec),
+			RowGroupMaxRows:  parquetSetting.RowGroupMaxRows,
+		}
 	}
 	config := &serializer.BatchSerializerCommonConfig{
 		UnsupportedItemKinds: nil,
 		Format:               outputFormat,
 		AddClosingNewLine:    true,
 		AnyAsString:          anyAsString,
-		CompressionCodec:     serializer.CodecFromString(codecName),
+		ParquetConfig:        parquetConfig,
 	}
 
 	batchSerializer := serializer.NewBatchSerializer(config)
