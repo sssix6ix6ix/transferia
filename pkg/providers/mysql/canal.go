@@ -277,7 +277,7 @@ func (c *Canal) GetTable(db string, table string) (*mysql_schema.Table, error) {
 		// load unique and primary keys constraints
 		constraints, constraintCols, err := c.loadTableConstraints(db, table)
 		if err != nil {
-			return nil, xerrors.Errorf("Unable to load contraints for table without primary key %v.%v: %w", db, table, err)
+			return nil, xerrors.Errorf("Unable to load constraints for table without primary key %v.%v: %w", db, table, err)
 		}
 		colsIdx := make(map[string]int)
 		for i, c := range t.Columns {
@@ -330,7 +330,7 @@ func (c *Canal) GetTable(db string, table string) (*mysql_schema.Table, error) {
 	c.tableLock.Lock()
 	c.tables[key] = t
 	if c.cfg.DiscardNoMetaRowEvent {
-		// if get table info success, delete this key from errorTablesGetTime
+		// if GetTable is successful, remove this key from errorTablesGetTime
 		delete(c.errorTablesGetTime, key)
 	}
 	c.tableLock.Unlock()
@@ -473,10 +473,11 @@ func (c *Canal) Execute(cmd string, args ...interface{}) (*mysql_driver.Result, 
 	retryNum := 3
 	for i := 0; i < retryNum; i++ {
 		if c.conn == nil {
-			argF := make([]func(*mysql_client.Conn), 0)
+			argF := make([]mysql_client.Option, 0)
 			if c.cfg.TLSConfig != nil {
-				argF = append(argF, func(conn *mysql_client.Conn) {
+				argF = append(argF, func(conn *mysql_client.Conn) error {
 					conn.SetTLSConfig(c.cfg.TLSConfig)
+					return nil
 				})
 			}
 			var err error
